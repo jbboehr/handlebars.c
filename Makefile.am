@@ -1,51 +1,26 @@
 
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = handlebars.pc
+SUBDIRS = src . tests
+
+EXTRA_DIST = LICENSE README.md
 
 ACLOCAL_AMFLAGS = -I m4
 
-EXTRA_DIST = handlebars.l handlebars.y
-
-if YYDEBUG
-  BISONFLAGS = -d -Wall # --debug --warnings=all
-  FLEXFLAGS = -d -Cem # --debug --ecs --meta-ecs
-else
-  BISONFLAGS = -Wnone # --warnings=none
-  FLEXFLAGS = -Cfra # --align --full
-endif
-
-if GCC
 # These flags are gcc specific
+if GCC
 export AM_CFLAGS = -Wall -Wextra -Wdeclaration-after-statement  \
-    -Wmissing-prototypes -Wstrict-prototypes -Wold-style-definition
+		-Wmissing-prototypes -Wstrict-prototypes -Wold-style-definition
 endif
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = handlebars.pc
 
 # Alias for test (old habits die hard)
 test: check
 
-# Flex/bison
-handlebars.tab.c: handlebars.lex.c
-	${BISON} $(BISONFLAGS) -b handlebars handlebars.y
-handlebars.lex.c:
-	${FLEX} $(FLEXFLAGS) -o handlebars.lex.c handlebars.l
+maintainer-clean-local:
+	-rm -f aclocal.m4 config.h.in configure config/*
+	-find ${builddir} -name Makefile.in -exec rm -f '{}' ';'
 
-# Main
-include_HEADERS = handlebars.tab.h
-
-GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.c
-CLEANFILES = $(GENSOURCE)
-
-lib_LTLIBRARIES=libhandlebars.la
-
-libhandlebars_la_SOURCES = $(GENSOURCE) \
-	handlebars_utils.c \
-	handlebars_utils.h
-
-# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-libhandlebars_la_LDFLAGS = \
-	-no-undefined \
-	-module \
-	-shared \
-	-export-symbols-regex '^handlebars' \
-	-version-info 0:0:0
-
+.PHONY: bootstrap
+bootstrap: maintainer-clean
+	./bootstrap

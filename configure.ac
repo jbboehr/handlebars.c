@@ -1,29 +1,61 @@
 
+# Define the package version numbers
+m4_define([HANDLEBARS_MAJOR], 0)
+m4_define([HANDLEBARS_MINOR], 0)
+m4_define([HANDLEBARS_PATCH], 0)
+
+# Define the libtool version numbers; check the Autobook, Section 11.4.
+m4_define([HANDLEBARS_RELEASE], 0)
+m4_define([HANDLEBARS_CURRENT], 0)
+m4_define([HANDLEBARS_REVISION], 0)
+m4_define([HANDLEBARS_AGE], 0)
+
+# Initialize autoconf & automake.
 AC_PREREQ(2.61)
-AC_INIT([handlebars], [0.0.0], [jbboehr@gmail.com], [handlebars],
-        [https://github.com/jbboehr/handlebars.c])
+AC_INIT([handlebars], [YAML_MAJOR.YAML_MINOR.YAML_PATCH], [jbboehr@gmail.com], 
+        [handlebars], [https://github.com/jbboehr/handlebars.c])
 
 AC_DEFINE([PACKAGE_DESCRIPTION], ["Library for handlebars"], [Description])
 AC_SUBST([PACKAGE_DESCRIPTION], ["Library for handlebars"])
 
-AC_CONFIG_HEADERS([config.h])
-#AC_CONFIG_SRCDIR([src])
-AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build])
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_SRCDIR([src])
+AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([foreign -Wall -Werror subdir-objects])
+
+# Define macro variables for the package version numbers.
+AC_DEFINE(HANDLEBARS_VERSION_MAJOR, HANDLEBARS_MAJOR, [Define the major version number.])
+AC_DEFINE(HANDLEBARS_VERSION_MINOR, HANDLEBARS_MINOR, [Define the minor version number.])
+AC_DEFINE(HANDLEBARS_VERSION_PATCH, HANDLEBARS_PATCH, [Define the patch version number.])
+AC_DEFINE(HANDLEBARS_VERSION_STRING, "HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH", [Define the version string.])
+
+# Define substitutions for the libtool version numbers.
+HANDLEBARS_LT_RELEASE=HANDLEBARS_RELEASE
+HANDLEBARS_LT_CURRENT=HANDLEBARS_CURRENT
+HANDLEBARS_LT_REVISION=HANDLEBARS_REVISION
+HANDLEBARS_LT_AGE=HANDLEBARS_AGE
+AC_SUBST(HANDLEBARS_LT_RELEASE)
+AC_SUBST(HANDLEBARS_LT_CURRENT)
+AC_SUBST(HANDLEBARS_LT_REVISION)
+AC_SUBST(HANDLEBARS_LT_AGE)
 
 # Checks for programs
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_CC_STDC
+AC_PROG_INSTALL
 AC_PROG_LEX
 AC_PROG_LIBTOOL
+AC_PROG_LN_S
 AC_PROG_YACC
 AC_PATH_PROGS(BISON, [bison], no)
 AC_PATH_PROGS(FLEX, [flex], no)
 
+AC_CHECK_PROG(DOXYGEN, [doxygen], [true], [false])
+AM_CONDITIONAL(DOXYGEN, [test "$DOXYGEN" = true])
 AM_CONDITIONAL([GCC], [test x$GCC = xyes])
 
 # Checks for header files
@@ -42,10 +74,37 @@ AC_CHECK_FUNC(calloc, , AC_MSG_ERROR([calloc is required]))
 AC_CHECK_FUNC(memcpy, , AC_MSG_ERROR([memcpy is required]))
 
 # Checks for typedefs, structures, and compiler characteristics
+AC_C_CONST
 AC_TYPE_SIZE_T
 
 # Checks for system
 AC_EXEEXT
+
+# check
+AC_ARG_ENABLE([check],
+  [AS_HELP_STRING([--disable-check], [disable support for check])])
+
+AS_IF([test "x$enable_check" != "xno"], [
+  PKG_CHECK_MODULES(CHECK, [check >= 0.9.4], [], [
+    AC_MSG_FAILURE([check version too low (--disable-check to disable)])
+  ])
+  AC_CHECK_HEADERS(check.h, [], [
+    AC_MSG_FAILURE([check.h missing (--disable-check to disable)])
+  ])
+#  AC_CHECK_LIB([check], [check_major_version], [
+    AC_DEFINE([HAVE_LIBCHECK], [1], [Use check])
+    AC_SUBST([LIBCHECK_LIBS], ["-lcheck"])
+#  ], [
+#    AC_MSG_FAILURE([check test failed (--disable-check to disable)])
+#  ])
+	AC_CHECK_LIB([m], [cos], [], [
+		AC_MSG_FAILURE([check required libm (--disable-check to disable)])
+	])
+	AC_CHECK_LIB([rt], [timer_create], [], [
+		AC_MSG_FAILURE([check required librt (--disable-check to disable)])
+	])
+])
+AM_CONDITIONAL([CHECK], [test x$enable_check = xyes])
 
 # json
 AC_ARG_ENABLE([json],
@@ -92,8 +151,13 @@ AS_IF([test "x$enable_yydebug" == "xyes"], [
 ])
 AM_CONDITIONAL([YYDEBUG], [test x$enable_yydebug = xyes])
 
+# Define Makefiles.
 AC_CONFIG_FILES([
   handlebars.pc
+  src/Makefile
   Makefile
+  tests/Makefile
 ])
+
+# Generate the "configure" script.
 AC_OUTPUT
