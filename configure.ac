@@ -112,19 +112,14 @@ AC_ARG_ENABLE([json],
 
 AS_IF([test "x$enable_json" != "xno"], [
   # it was renamed in trusty, detect if old or new name is available
-  AC_CHECK_LIB([json], [json_tokener_new], [
-    AC_DEFINE([LIBJSON_NAME], [json], [Whether libjson is json or json-c. Thanks, ubuntu])
-    AC_CHECK_HEADERS([json/json.h json/json_object.h json/json_tokener.h], []. [
-      AC_MSG_FAILURE([json header missing (--disable-json to disable)])
-    ])
-  ], [
-    AC_CHECK_LIB([json-c], [json_tokener_new], [
-      AC_DEFINE([LIBJSON_NAME], [json-c], [Whether libjson is json or json-c. Thanks, ubuntu])
-      AC_CHECK_HEADERS([json-c/json.h json-c/json_object.h json-c/json_tokener.h], [], [
-        AC_MSG_FAILURE([json header missing (--disable-json to disable)])
-      ])
-    ], [
+  AC_CHECK_LIB([json], [json_tokener_new], , [
+    AC_CHECK_LIB([json-c], [json_tokener_new], , [
       AC_MSG_FAILURE([json test failed (--disable-json to disable)])
+    ])
+  ])
+  AC_CHECK_HEADERS([json/json.h json/json_object.h json/json_tokener.h], , [
+    AC_CHECK_HEADERS([json-c/json.h json-c/json_object.h json-c/json_tokener.h], , [
+      AC_MSG_FAILURE([json header missing (--disable-json to disable)])
     ])
   ])
 ])

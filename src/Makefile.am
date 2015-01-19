@@ -18,14 +18,16 @@ handlebars.lex.c:
 # Main
 include_HEADERS = handlebars.tab.h
 
-GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.c
+GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c
 CLEANFILES = $(GENSOURCE)
 
 lib_LTLIBRARIES=libhandlebars.la
 
 libhandlebars_la_SOURCES = $(GENSOURCE) \
-	handlebars_utils.c \
-	handlebars_utils.h
+	handlebars_context.h \
+	handlebars_context.c \
+	handlebars_utils.h \
+	handlebars_utils.c
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libhandlebars_la_LDFLAGS = \

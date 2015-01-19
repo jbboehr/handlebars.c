@@ -11,14 +11,14 @@
 #define ECHO
 
 #ifndef YY_FATAL_ERROR
-#define YY_FATAL_ERROR(msg) handlebars_fatal_error(msg , yyscanner)
+#define YY_FATAL_ERROR(msg) handlebars_yy_fatal_error(msg, yyscanner)
 #endif
 
 #undef YY_INPUT
-#define YY_INPUT(b,r,s) handlebars_input(b,&r,s,handlebars_get_extra(yyscanner))
+#define YY_INPUT(b,r,s) handlebars_yy_input(b, &r, s, handlebars_yy_get_extra(yyscanner))
 
 #if defined(YYDEBUG) && YYDEBUG
-  #define YY_USER_DEBUG_INIT handlebars_set_debug(1, yyg);
+  #define YY_USER_DEBUG_INIT handlebars_yy_set_debug(1, yyg);
 #else
   #define YY_USER_DEBUG_INIT
 #endif
@@ -36,6 +36,7 @@
 %}
 
 %option prefix="handlebars_yy_"
+%option header-file="handlebars.lex.h"
 %option noyywrap
 %option stack
 %option reentrant
@@ -48,6 +49,16 @@
 
 %%
 
-<<EOF>>              {}
+[^\x00\n]+ {
+                    //printf( "Content: %s\n", yytext );
+                    yylval->text = yytext;
+                    return CONTENT;
+}
+
+\n {
+                    //printf( "Whitespace: %s\n", yytext );
+                    yylval->text = yytext;
+                    return WHITESPACE;
+}
 
 %%
