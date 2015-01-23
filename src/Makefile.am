@@ -26,6 +26,12 @@ lib_LTLIBRARIES=libhandlebars.la
 libhandlebars_la_SOURCES = $(GENSOURCE) \
 	handlebars_context.h \
 	handlebars_context.c \
+	handlebars_token.h \
+	handlebars_token.c \
+	handlebars_token_list.h \
+	handlebars_token_list.c \
+	handlebars_token_printer.h \
+	handlebars_token_printer.c \
 	handlebars_utils.h \
 	handlebars_utils.c
 

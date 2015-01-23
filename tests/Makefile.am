@@ -1,9 +1,16 @@
 
-check_PROGRAMS = test_spec_handlebars_tokenizer
+check_PROGRAMS = test_token \
+                 test_token_list \
+                 test_spec_handlebars_tokenizer
 
+test_token_SOURCES = utils.c test_token.c
+test_token_list_SOURCES = utils.c test_token_list.c
 test_spec_handlebars_tokenizer_SOURCES = utils.c test_spec_handlebars_tokenizer.c
 
-TESTS = test_spec_handlebars_tokenizer
+TESTS = test_token \
+        test_token_list \
+        test_spec_handlebars_tokenizer
+
 TESTS_ENVIRONMENT = \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \

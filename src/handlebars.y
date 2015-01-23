@@ -15,7 +15,7 @@
 %code requires {
   struct handlebars_context; /* needed for bison 2.7 */
   #define YY_END_OF_BUFFER_CHAR 0
-  #define YY_EXTRA_TYPE handlebars_context *
+  #define YY_EXTRA_TYPE struct handlebars_context *
 }
 
 %start  start
@@ -41,7 +41,26 @@
 }
 
 %token END 0 "end of file"
+%token BOOLEAN
+%token CLOSE
+%token CLOSE_SEXPR
+%token CLOSE_UNESCAPED
+%token COMMENT
 %token CONTENT
+%token DATA
+%token EQUALS
+%token ID
+%token INVERSE
+%token NUMBER
+%token OPEN
+%token OPEN_BLOCK
+%token OPEN_INVERSE
+%token OPEN_PARTIAL
+%token OPEN_SEXPR
+%token OPEN_UNESCAPED
+%token SEP
+%token STRING
+
 %token WHITESPACE
 
 %%

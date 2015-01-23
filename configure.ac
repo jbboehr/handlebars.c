@@ -12,8 +12,9 @@ m4_define([HANDLEBARS_AGE], 0)
 
 # Initialize autoconf & automake.
 AC_PREREQ(2.61)
-AC_INIT([handlebars], [YAML_MAJOR.YAML_MINOR.YAML_PATCH], [jbboehr@gmail.com], 
-        [handlebars], [https://github.com/jbboehr/handlebars.c])
+AC_INIT([handlebars], [HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH], 
+        [jbboehr@gmail.com], [handlebars], 
+        [https://github.com/jbboehr/handlebars.c])
 
 AC_DEFINE([PACKAGE_DESCRIPTION], ["Library for handlebars"], [Description])
 AC_SUBST([PACKAGE_DESCRIPTION], ["Library for handlebars"])
@@ -123,6 +124,12 @@ AS_IF([test "x$enable_json" != "xno"], [
     ])
   ])
 ])
+
+# talloc
+AC_CHECK_LIB([talloc], [talloc_version_major], , [
+  AC_MSG_FAILURE([talloc test failed, talloc is required])
+])
+
 
 # yaml
 AC_ARG_ENABLE([yaml], 

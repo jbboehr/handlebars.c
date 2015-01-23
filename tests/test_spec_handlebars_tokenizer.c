@@ -5,6 +5,7 @@
 
 #include <check.h>
 #include <stdio.h>
+#include <talloc.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
 #include "json-c/json.h"
@@ -16,7 +17,11 @@
 #include "json/json_tokener.h"
 #endif
 
+#include "handlebars.h"
 #include "handlebars_context.h"
+#include "handlebars_token.h"
+#include "handlebars_token_list.h"
+#include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
@@ -31,9 +36,9 @@ struct tokenizer_test {
     char * description;
     char * it;
     char * tmpl;
-    struct tokenizer_test_tokens * expected;
+    struct handlebars_token_list * expected;
     size_t expected_len;
-    size_t expected_size;
+    TALLOC_CTX * mem_ctx;
 };
 
 static struct tokenizer_test * tests;
@@ -46,14 +51,21 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
     int array_len = 0;
     json_object * cur = NULL;
     struct tokenizer_test_tokens * expected_token = NULL;
+    int token_int = -1;
+    const char * name = NULL;
+    const char * text = NULL;
+    struct handlebars_token * token = NULL;
     
     // Get number of tokens cases
     array_len = json_object_array_length(object);
     
     // Allocate token array
-    test->expected_len = 0;
-    test->expected_size = array_len + 1;
-    test->expected = calloc(test->expected_size, sizeof(struct tokenizer_test_tokens));
+    // test->expected_len = 0;
+    // test->expected_size = array_len + 1;
+    // test->expected = calloc(test->expected_size, sizeof(struct tokenizer_test_tokens));
+    
+    // Allocate token list
+    test->expected = handlebars_talloc(NULL, struct handlebars_token_list);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -63,13 +75,10 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
             continue;
         }
         
-        // Get a token object
-        expected_token = &test->expected[test->expected_len];
-        
         // Get name
         cur = json_object_object_get(array_item, "name");
         if( cur && json_object_get_type(cur) == json_type_string ) {
-            expected_token->name = strdup(json_object_get_string(cur));
+            name = json_object_get_string(cur);
         } else {
             fprintf(stderr, "Warning: expected token name was not a string\n");
             continue;
@@ -78,12 +87,28 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
         // Get text
         cur = json_object_object_get(array_item, "text");
         if( cur && json_object_get_type(cur) == json_type_string ) {
-            expected_token->text = strdup(json_object_get_string(cur));
+            text = json_object_get_string(cur);
         } else {
             fprintf(stderr, "Warning: expected token text was not a string\n");
             continue;
         }
         
+        // Convert name to integer T_T
+        token_int = handlebars_token_reverse_readable_type(name);
+        if( token_int == -1 ) {
+            fprintf(stderr, "Warning: failed reverse lookup to int on token name\n");
+            continue;
+        }
+        
+        // Make token object
+        token = handlebars_token_ctor(token_int, text, strlen(text), test->expected);
+        if( token == NULL ) {
+            fprintf(stderr, "Warning: failed to allocate token struct\n");
+            continue;
+        }
+        
+        // Append
+        handlebars_token_list_append(test->expected, token);
         test->expected_len++;
     }
 }
@@ -172,59 +197,39 @@ static void loadSpec(char * filename) {
 START_TEST(handlebars_spec_tokenizer)
 {
     struct tokenizer_test * test = &tests[_i];
-    struct handlebars_context ctx;
-    handlebars_context_ctor(&ctx);
+    struct handlebars_context * ctx = handlebars_context_ctor();
     
-    ctx.tmpl = test->tmpl;
+    ctx->tmpl = test->tmpl;
     
-    // Prepare token array
-    size_t actual_size = 16;
+    // Prepare token list
+    struct handlebars_token_list * actual = handlebars_token_list_ctor(ctx);
     size_t actual_len = 0;
-    struct tokenizer_test_tokens * actual = calloc(actual_size, sizeof(struct tokenizer_test_tokens));
+    struct handlebars_token * token = NULL;
     
     // Run
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
-    int token = 0;
+    int token_int = 0;
     do {
-        token = handlebars_yy_lex(&yylval_param, &yylloc_param, ctx.scanner);
-        if( token == 0 ) break;
-        YYSTYPE * lval = handlebars_yy_get_lval(ctx.scanner);
-        // Get token name
-        const char * token_name = handlebars_token_readable_type(token);
-        // Expand token array if necessary
-        if( actual_len >= actual_size ) {
-            actual_size *= 2;
-            actual = realloc(actual, actual_size);
-        }
-        // Assign
-        // struct tokenizer_test_tokens * cur_actual = &actual[actual_len++];
-        // cur_actual->name = token_name;
-        // cur_actual->text = lval->text;
+        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, ctx->scanner);
+        if( token_int == 0 ) break;
+        YYSTYPE * lval = handlebars_yy_get_lval(ctx->scanner);
         
-        // Compare
-        // @todo make this more informative, e.g. with a token serializer
-        if( actual_len < test->expected_len ) {
-            ck_assert_str_eq(token_name, test->expected[actual_len].name);
-        }
+        // Make token object
+        token = handlebars_token_ctor(token_int, lval->text, strlen(lval->text), actual);
         
+        // Append
+        handlebars_token_list_append(actual, token);
         actual_len++;
     } while( token );
     
+    // Convert to string
+    char * expected_str = handlebars_token_list_print(test->expected);
+    char * actual_str = handlebars_token_list_print(actual);
     
-    // Compare
-    // int max = (actual_len >= test->expected_len ? actual_len : test->expected_len);
-    // for( int i = 0; i < max; i++ ) {
-    //     if( i < actual_len && i < test->expected_len ) {
-    //         ck_assert_str_eq(actual[i].name, test->expected[i].name);
-    //         ck_assert_str_eq(actual[i].text, test->expected[i].text);
-    //     }
-    // }
+    ck_assert_str_eq(expected_str, actual_str);
     
-    // printf("Test #%d: %s - %s\n", _i, test->description, test->it);
-    // ck_assert(1 == 0);
-    
-    handlebars_context_dtor(&ctx);
+    handlebars_context_dtor(ctx);
 }
 END_TEST
 
@@ -232,6 +237,7 @@ Suite * parser_suite(void)
 {
     const char * title = "Handlebars Tokenizer Spec";
     Suite * s = suite_create(title);
+    
     TCase * tc_handlebars_spec_tokenizer = tcase_create(title);
     // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
     tcase_add_loop_test(tc_handlebars_spec_tokenizer, handlebars_spec_tokenizer, 0, tests_len - 1);
@@ -250,14 +256,14 @@ int main(void)
     // Load the spec
     spec_filename = getenv("handlebars_tokenizer_spec");
     loadSpec(spec_filename);
-    fprintf(stderr, "Loaded %lud test cases\n", tests_len);
+    fprintf(stderr, "Loaded %lu test cases\n", tests_len);
     
     s = parser_suite();
     sr = srunner_create(s);
-#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
+//#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
     srunner_set_fork_status(sr, CK_NOFORK);
-#endif
-    srunner_set_log(sr, "test_spec_handlebars_tokenizer.log");
+//#endif
+    //runner_set_log(sr, "test_spec_handlebars_tokenizer.log");
     srunner_run_all(sr, CK_VERBOSE);
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);

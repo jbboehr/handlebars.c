@@ -7,16 +7,6 @@
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
-const char * handlebars_token_readable_type(int type)
-{
-  switch( type ) {
-    case END: return "END";
-    case CONTENT: return "CONTENT";
-    case WHITESPACE: return "WHITESPACE";
-    default: return "UNKNOWN";
-  }
-}
-
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_context * context)
 {
   int numBytesToRead = maxBytesToRead;

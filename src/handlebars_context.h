@@ -20,7 +20,7 @@ struct YYLTYPE;
 /**
  * Contains the scanning state information
  */
-typedef struct handlebars_context
+struct handlebars_context
 {
   char * tmpl;
   int tmplReadOffset;
@@ -29,11 +29,13 @@ typedef struct handlebars_context
   int eof;
   char * error;
   struct YYLTYPE * errloc;
-} handlebars_context;
+};
 
-int handlebars_context_ctor(handlebars_context * context);
+struct handlebars_context * handlebars_context_ctor(void);
+void handlebars_context_dtor(struct handlebars_context * context);
 
-int handlebars_context_dtor(handlebars_context * context);
+//int handlebars_context_ctor(struct handlebars_context * context);
+//int handlebars_context_dtor(struct handlebars_context * context);
 
 #ifdef	__cplusplus
 }

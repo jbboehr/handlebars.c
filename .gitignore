@@ -44,16 +44,10 @@ output.log
 src/handlebars_config.h
 src/handlebars.lex.*
 src/handlebars.tab.*
-test/generators/generate_parser
-test/generators/generate_tokenizer
-test/test_context
-test/test_data
-test/test_node
-test/test_node_list
-test/test_parser
-test/test_string
-test/test_token
-test/test_tokenizer
+tests/test_spec_handlebars_tokenizer
+tests/test_context
+tests/test_token
+tests/test_token_list
 test_coverage
 
 # distros
