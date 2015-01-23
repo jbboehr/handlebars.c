@@ -216,7 +216,8 @@ START_TEST(handlebars_spec_tokenizer)
         YYSTYPE * lval = handlebars_yy_get_lval(ctx->scanner);
         
         // Make token object
-        token = handlebars_token_ctor(token_int, lval->text, strlen(lval->text), actual);
+        char * text = (lval->text == NULL ? "" : lval->text);
+        token = handlebars_token_ctor(token_int, text, strlen(text), actual);
         
         // Append
         handlebars_token_list_append(actual, token);

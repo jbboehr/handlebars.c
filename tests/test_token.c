@@ -53,7 +53,7 @@ START_TEST(test_token_revere_readable_type)
 {
 #define _RTYPE_REV_TEST(str) do {\
       int expected = str; \
-      int actual_str = handlebars_stringify(str); \
+      const char * actual_str = handlebars_stringify(str); \
       int actual = handlebars_token_reverse_readable_type(actual_str); \
       ck_assert_int_eq(expected, actual); \
     } while(0)
