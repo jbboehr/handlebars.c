@@ -225,10 +225,10 @@ START_TEST(handlebars_spec_tokenizer)
     } while( token );
     
     // Convert to string
-    char * expected_str = handlebars_token_list_print(test->expected);
-    char * actual_str = handlebars_token_list_print(actual);
+    char * expected_str = handlebars_token_list_print(test->expected, 1);
+    char * actual_str = handlebars_token_list_print(actual, 1);
     
-    ck_assert_str_eq(expected_str, actual_str);
+    ck_assert_str_eq_msg(expected_str, actual_str, test->tmpl);
     
     handlebars_context_dtor(ctx);
 }

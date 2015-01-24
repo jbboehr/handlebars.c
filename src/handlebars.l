@@ -1,7 +1,12 @@
 
 %{
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdint.h>
+
 #include "handlebars.h"
 #include "handlebars_context.h"
 #include "handlebars_utils.h"
@@ -19,31 +24,39 @@
 
 #if defined(YYDEBUG) && YYDEBUG
   #define YY_USER_DEBUG_INIT handlebars_yy_set_debug(1, yyg);
+  #define YY_USER_DEBUG_ACTION fprintf(stderr, "Action: Line %d, yytext: %s\n", __LINE__, yytext)
 #else
   #define YY_USER_DEBUG_INIT
+  #define YY_USER_DEBUG_ACTION 
 #endif
 
 #define YY_USER_INIT \
-     YY_USER_DEBUG_INIT \
-     memset(yylval, 0, sizeof(YYSTYPE)); \
-     if( yy_flex_debug ) fprintf( stderr, "--initializing yylval\n" )
+    YY_USER_DEBUG_INIT \
+    memset(yylval, 0, sizeof(YYSTYPE)); \
+    if( yy_flex_debug ) { \
+     	fprintf( stderr, "--initializing yylval\n" ); \
+	}
  
 #define handlebars_yy_unput_all \
+	handlebars_yy_unput_n(yyleng)
+ 		
+#define handlebars_yy_unput_n(n) \
 	do { \
 		int i; \
  		char * yycopy = strdup( yytext ); \
- 		for ( i = yyleng - 1; i >= 0; --i ) { \
+ 		for ( i = yyleng - 1; i >= yyleng - n; --i ) { \
  			unput( yycopy[i] ); \
  		} \
         free( yycopy ); \
     } while(0)
- 		
  
+
 #define YY_USER_ACTION \
     yylloc->first_line = yylloc->last_line = yylineno; \
     yylloc->first_column = yycolumn; \
     yylloc->last_column = yycolumn + yyleng - 1; \
-    yycolumn += yyleng;
+    yycolumn += yyleng; \
+   	YY_USER_DEBUG_ACTION;
 %}
 
 %option prefix="handlebars_yy_"
@@ -69,10 +82,11 @@ RIGHT_STRIP   "~"
 LOOKAHEAD           [=~}\s\/.)]
 LITERAL_LOOKAHEAD   [~}\s)]
 
-MU \{\{
-CMU \}\}
-EMU \\\}\{
-CONTENT [^\x00\{\}\\]
+MU \{\{\{?
+CMU \}\}\}?
+EMU \\\{\{\{?
+EEMU \\\\\{\{\{?
+CONTENT [^\x00\{\\]
 
 ID    [^\s!\"#%-,\.\/;->@\[-\^\`\{-~]+/{LOOKAHEAD}
 
@@ -80,38 +94,45 @@ ID    [^\s!\"#%-,\.\/;->@\[-\^\`\{-~]+/{LOOKAHEAD}
 %%
 
 
+{CONTENT}+\\\\/{MU}             	{
+										yytext[yyleng - 1] = 0;
+										yylval->text = yytext;
+										yy_push_state(mu, yyscanner);
+										return CONTENT;
+									}
+
 {CONTENT}+                         	{
 										// v2.0.0 handlebars.l line 31
 										yylval->text = yytext;
 										return CONTENT;
 									}
 
-\\{EMU} 							{
+{EEMU} 								{
 										// v2.0.0 handlebars.l line 32
+										handlebars_yy_unput_n(2);
+										yylval->text = "\\";
 										yy_push_state(mu, yyscanner);
-										yylval->text = yytext;
-										return OPEN;
+										//yylval->text = yytext;
+										return CONTENT;
 									}
 									
-{EMU} 								{			
+{EMU}{CONTENT}+ 								{			
 										// v2.0.0 handlebars.l line 35
-										handlebars_yy_unput_all;
 										yy_push_state(emu, yyscanner);
-										//return CONTENT;
+										yylval->text = yytext + 1;
+										return CONTENT;
 									}
-									
+
 {MU}  								{
 										// v2.0.0 handlebars.l line 38
 										handlebars_yy_unput_all;
 										yy_push_state(mu, yyscanner);
-										//return OPEN;
 									}
 
-<emu>{CONTENT}+ 					{
+<emu>. 								{
 										// v2.0.0 handlebars.l line 47
+										handlebars_yy_unput_all;
                                    		yy_pop_state(yyg);
-										yylval->text = yytext;
-                                   		return CONTENT;
                                  	}
 
 <raw>"{{{{/"[^\s!"#%-,\.\/;->@\[-\^`\{-~]+/[=}\s\/.]"}}}}" {

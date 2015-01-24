@@ -14,6 +14,19 @@
   tcase_add_checked_fixture(tc_ ## name, setup, teardown); \
   tcase_add_test(tc_ ## name, name); \
   suite_add_tcase(s, tc_ ## name);
+
+#define _ck_assert_str_msg(X, OP, Y, msg) do { \
+  const char* _ck_x = (X); \
+  const char* _ck_y = (Y); \
+  ck_assert_msg(0 OP strcmp(_ck_y, _ck_x), \
+    "Assertion '"#X#OP#Y"' failed: "#X"==\"%s\", "#Y"==\"%s\" with message \"%s\"", _ck_x, _ck_y, msg); \
+} while (0)
+#define ck_assert_str_eq_msg(X, Y, msg) _ck_assert_str_msg(X, ==, Y, msg)
+#define ck_assert_str_ne_msg(X, Y, msg) _ck_assert_str_msg(X, !=, Y, msg)
+#define ck_assert_str_lt_msg(X, Y, msg) _ck_assert_str_msg(X, <, Y, msg)
+#define ck_assert_str_le_msg(X, Y, msg) _ck_assert_str_msg(X, <=, Y, msg)
+#define ck_assert_str_gt_msg(X, Y, msg) _ck_assert_str_msg(X, >, Y, msg)
+#define ck_assert_str_ge_msg(X, Y, msg) _ck_assert_str_msg(X, >=, Y, msg)
   
 typedef void (*scan_directory_cb)(char * filename);
 

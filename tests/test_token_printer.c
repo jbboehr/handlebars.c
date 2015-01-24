@@ -25,7 +25,7 @@ START_TEST(test_token_print)
 	tok->text = "{{";
 	tok->length = strlen(tok->text);
 
-	char * actual = handlebars_token_print(tok);
+	char * actual = handlebars_token_print(tok, 0);
 	char * expected = "OPEN [{{] ";
 	ck_assert_str_eq(expected, actual);
 
@@ -37,7 +37,7 @@ START_TEST(test_token_print)
 	tok->text = "this\nis\ra\ttest";
 	tok->length = strlen(tok->text);
 
-	char * actual = handlebars_token_print(tok);
+	char * actual = handlebars_token_print(tok, 0);
 	char * expected = "CONTENT [this\\nis\\ra\\ttest] ";
 	ck_assert_str_eq(expected, actual);
 

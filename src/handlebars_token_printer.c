@@ -9,7 +9,7 @@
 #include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
 
-char * handlebars_token_print(struct handlebars_token * token)
+char * handlebars_token_print(struct handlebars_token * token, int flags)
 {
     char * str = NULL;
     const char * name = NULL;
@@ -34,17 +34,22 @@ char * handlebars_token_print(struct handlebars_token * token)
         str = talloc_strdup_append(str, tmp);
         talloc_free(tmp);
 
-        str = talloc_strdup_append(str, "] ");
+        str = talloc_strdup_append(str, "]");
+    }
+
+    if( flags & HANDLEBARS_TOKEN_PRINT_NEWLINES ) {
+        str = talloc_strdup_append(str, "\n");
     } else {
         str = talloc_strdup_append(str, " ");
     }
+
     token->length = strlen(str);
     
 done:
     return str;
 }
 
-char * handlebars_token_list_print(struct handlebars_token_list * list)
+char * handlebars_token_list_print(struct handlebars_token_list * list, int flags)
 {
     struct handlebars_token_list_item * el = NULL;
     struct handlebars_token_list_item * tmp = NULL;
@@ -55,7 +60,7 @@ char * handlebars_token_list_print(struct handlebars_token_list * list)
     str = talloc_strdup(list, "");
     handlebars_token_list_foreach(list, el, tmp) {
         token = el->data;
-        token_str = handlebars_token_print(token);
+        token_str = handlebars_token_print(token, flags);
         if( token_str != NULL ) {
             str = talloc_strdup_append(str, token_str);
         }

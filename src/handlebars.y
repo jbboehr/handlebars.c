@@ -21,10 +21,16 @@
 %start  start
 
 %{
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "handlebars.h"
 #include "handlebars_context.h"
 #include "handlebars_utils.h"
