@@ -44,6 +44,8 @@ output.log
 src/handlebars_config.h
 src/handlebars.lex.*
 src/handlebars.tab.*
+tests/test_ast
+tests/test_ast_list
 tests/test_spec_handlebars_tokenizer
 tests/test_context
 tests/test_token

@@ -24,6 +24,10 @@ CLEANFILES = $(GENSOURCE)
 lib_LTLIBRARIES=libhandlebars.la
 
 libhandlebars_la_SOURCES = $(GENSOURCE) \
+	handlebars_ast.h \
+	handlebars_ast.c \
+	handlebars_ast_list.h \
+	handlebars_ast_list.c \
 	handlebars_context.h \
 	handlebars_context.c \
 	handlebars_token.h \
