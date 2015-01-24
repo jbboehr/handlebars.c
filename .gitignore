@@ -48,6 +48,8 @@ tests/test_spec_handlebars_tokenizer
 tests/test_context
 tests/test_token
 tests/test_token_list
+tests/test_token_printer
+tests/test_utils
 test_coverage
 
 # distros

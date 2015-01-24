@@ -20,11 +20,34 @@ static void teardown(void)
 
 START_TEST(test_token_print)
 {
+	struct handlebars_token * tok = talloc(NULL, struct handlebars_token);
+	tok->token = OPEN;
+	tok->text = "{{";
+	tok->length = strlen(tok->text);
+
+	char * actual = handlebars_token_print(tok);
+	char * expected = "OPEN [{{] ";
+	ck_assert_str_eq(expected, actual);
+
+	talloc_free(tok);
+}
+{
+	struct handlebars_token * tok = talloc(NULL, struct handlebars_token);
+	tok->token = CONTENT;
+	tok->text = "this\nis\ra\ttest";
+	tok->length = strlen(tok->text);
+
+	char * actual = handlebars_token_print(tok);
+	char * expected = "CONTENT [this\\nis\\ra\\ttest] ";
+	ck_assert_str_eq(expected, actual);
+
+	talloc_free(tok);
 }
 END_TEST
 
 START_TEST(test_token_list_print)
 {
+	// @todo
 }
 END_TEST
 

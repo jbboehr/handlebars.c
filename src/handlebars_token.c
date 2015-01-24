@@ -30,6 +30,7 @@ struct handlebars_token * handlebars_token_ctor(int token_int, const char * text
         goto error;
     }
     token->text = textdup;
+    token->length = length;
     
     return token;
 error:

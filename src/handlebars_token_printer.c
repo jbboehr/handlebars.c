@@ -13,6 +13,8 @@ char * handlebars_token_print(struct handlebars_token * token)
 {
     char * str = NULL;
     const char * name = NULL;
+    char * tmp = NULL;
+    const char * ws = "\r\n\t\v";
     
     // Sanity check
     if( token == NULL ) {
@@ -22,12 +24,16 @@ char * handlebars_token_print(struct handlebars_token * token)
     name = handlebars_token_readable_type(token->token);
     
     // Meh
-    // @todo escape newlines T_T
     str = talloc_strdup(token, "");
     str = talloc_strdup_append(str, name);
     if( token->text != NULL ) {
         str = talloc_strdup_append(str, " [");
-        str = talloc_strdup_append(str, token->text);
+
+        // Escape line breaks and tabs
+        tmp = handlebars_addcslashes(token->text, token->length, ws, strlen(ws));
+        str = talloc_strdup_append(str, tmp);
+        talloc_free(tmp);
+
         str = talloc_strdup_append(str, "] ");
     } else {
         str = talloc_strdup_append(str, " ");

@@ -8,6 +8,8 @@
 struct handlebars_context;
 struct YYLTYPE;
 
+char * handlebars_addcslashes(const char * str, size_t str_length, const char * what, size_t what_length);
+
 void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * context, const char * err);
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_context * context);
 void handlebars_yy_fatal_error(const char * msg, void * yyscanner);
