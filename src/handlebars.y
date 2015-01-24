@@ -43,6 +43,7 @@
 %union {
   struct {
 	  char * text;
+	  size_t length;
   };
 }
 

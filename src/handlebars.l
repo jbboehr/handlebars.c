@@ -100,8 +100,9 @@ ID    {IDC}+/{LOOKAHEAD}
 
 
 {CONTENT}+\\\\/{MU}             	{
-										yytext[yyleng - 1] = 0;
+										yytext[--yyleng] = 0;
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										yy_push_state(mu, yyscanner);
 										return CONTENT;
 									}
@@ -109,22 +110,26 @@ ID    {IDC}+/{LOOKAHEAD}
 {CONTENT}+                         	{
 										// v2.0.0 handlebars.l line 31
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return CONTENT;
 									}
 
 {EEMU} 								{
 										// v2.0.0 handlebars.l line 32
 										handlebars_yy_unput_n(2);
+										// @todo make sure this is safe
 										yylval->text = "\\";
+										yylval->length = 1;
 										yy_push_state(mu, yyscanner);
-										//yylval->text = yytext;
 										return CONTENT;
 									}
 									
-{EMU}{CONTENT}+ 								{			
+{EMU}{CONTENT}+ 					{		
 										// v2.0.0 handlebars.l line 35
 										yy_push_state(emu, yyscanner);
-										yylval->text = yytext + 1;
+										yytext++, yyleng--;
+										yylval->text = yytext;
+										yylval->length = yyleng;
 										return CONTENT;
 									}
 
@@ -144,20 +149,24 @@ ID    {IDC}+/{LOOKAHEAD}
 										// v2.0.0 handlebars.l line 52
                                   		yy_pop_state(yyg);
 										yylval->text = yytext;
+										yylval->length = yyleng;
                                   		return END_RAW_BLOCK;
                                  	}
 
 <raw>[^\x00]*?/("{{{{/")         	{
 										// v2.0.0 handlebars.l line 57
+										yylval->text = yytext;
+										yylval->length = yyleng;
 										return CONTENT;
 									}
 
 <com>[^\x00]+"--}}"					{
 										// v2.0.0 handlebars.l line 59
   										yy_pop_state(yyg);
-  										yytext[yyleng - 4] = 0;
-  										yytext += 5;
+  										yytext[yyleng -= 4] = 0;
+  										yytext += 5, yyleng -= 5;
 										yylval->text = yytext;
+										yylval->length = yyleng;
   										return COMMENT;
 									}
 
@@ -169,36 +178,42 @@ ID    {IDC}+/{LOOKAHEAD}
 										// v2.0.0 handlebars.l line 59
   										yy_pop_state(yyg);
 										yylval->text = yytext;
+										yylval->length = yyleng;
   										return COMMENT;
 									}
 									
 <com>[\}\-]+						{
 										// v2.0.0 handlebars.l line 59
 										yylval->text = yytext;
+										yylval->length = yyleng;
 									}
 
 <com1>[^\x00\}]*?"}}"				{
   										yytext[yyleng - 2] = 0;
   										yy_pop_state(yyg);
 										yylval->text = yytext;
+										yylval->length = yyleng;
   										return COMMENT;
 									}
 
 <mu>"("                          	{
 										// v2.0.0 handlebars.l line 61
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN_SEXPR;
 									}
 
 <mu>")"                          	{
 										// v2.0.0 handlebars.l line 62
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return CLOSE_SEXPR;
 									}
 
 <mu>"{{{{"                       	{
 										// v2.0.0 handlebars.l line 64
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN_RAW_BLOCK;
 									}
 
@@ -207,24 +222,28 @@ ID    {IDC}+/{LOOKAHEAD}
 										yy_pop_state(yyg);
                                   		yy_push_state(raw, yyscanner);
 										yylval->text = yytext;
+										yylval->length = yyleng;
                                   		return CLOSE_RAW_BLOCK;
                              		}
                              		
 <mu>"{{"{LEFT_STRIP}?">"         	{
 										// v2.0.0 handlebars.l line 70
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN_PARTIAL;
                              		}
 
 <mu>"{{"{LEFT_STRIP}?"#"         	{
 										// v2.0.0 handlebars.l line 71
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN_BLOCK;
                              		}
 
 <mu>"{{"{LEFT_STRIP}?"/"         	{
 										// v2.0.0 handlebars.l line 72
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN_ENDBLOCK;
                              		}
 
@@ -232,36 +251,43 @@ ID    {IDC}+/{LOOKAHEAD}
 										// v2.0.0 handlebars.l line 73
 										yy_pop_state(yyg);
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return INVERSE;
                              		}
 
-<mu>"{{"{LEFT_STRIP}?\s*"else"\s*{RIGHT_STRIP}?"}}"  {
+<mu>"{{"{LEFT_STRIP}?{WHITESPACE}*"else"{WHITESPACE}*{RIGHT_STRIP}?"}}"  {
 										// v2.0.0 handlebars.l line 74
 										yy_pop_state(yyg);
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return INVERSE;
                              		}
 
 <mu>"{{"{LEFT_STRIP}?"^"         	{
 										// v2.0.0 handlebars.l line 75
+										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN_INVERSE;
                              		}
 
 <mu>"{{"{LEFT_STRIP}?\s*"else"   	{
 										// v2.0.0 handlebars.l line 76
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN_INVERSE;
                              		}
 
 <mu>"{{"{LEFT_STRIP}?"{"         	{
 										// v2.0.0 handlebars.l line 77
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN_UNESCAPED;
                              		}
 
 <mu>"{{"{LEFT_STRIP}?"&"         	{
 										// v2.0.0 handlebars.l line 78
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN;
                              		}
                              		
@@ -281,43 +307,48 @@ ID    {IDC}+/{LOOKAHEAD}
 <mu>"{{"{LEFT_STRIP}?            	{
 										// v2.0.0 handlebars.l line 81
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return OPEN;
 									}
 
 <mu>"="                          	{
 										// v2.0.0 handlebars.l line 83
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return EQUALS;
 									}
 
 <mu>".."                         	{
 										// v2.0.0 handlebars.l line 84
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return ID;
 									}
 
 <mu>"."/{LOOKAHEAD}              	{
 										// v2.0.0 handlebars.l line 85
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return ID;
 									}
 
 <mu>[\/.]                        	{
 										// v2.0.0 handlebars.l line 86
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return SEP;
 									}
 
 <mu>{WHITESPACE}+                   {
 										// v2.0.0 handlebars.l line 87
 										// ignore whitespace
-										// ? yylval->text = yytext;
                                  	}
 
 <mu>"}"{RIGHT_STRIP}?"}}"        	{
 										// v2.0.0 handlebars.l line 88
 										yy_pop_state(yyg);
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return CLOSE_UNESCAPED;
 									}
 
@@ -325,69 +356,86 @@ ID    {IDC}+/{LOOKAHEAD}
 										// v2.0.0 handlebars.l line 89
 										yy_pop_state(yyg);
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return CLOSE;
 									}
 
 <mu>"\""("\\"["]|[^"])*"\""      	{
 										// v2.0.0 handlebars.l line 90
+										yytext[--yyleng] = 0;
+										yytext++, yyleng--;
 										yylval->text = yytext;
+										yylval->length = yyleng;
+										handlebars_stripcslashes(yylval->text, &yylval->length);
                                    		return STRING;
                                  	}
 
 <mu>"'"("\\"[']|[^'])*"'"        	{
 										// v2.0.0 handlebars.l line 91
+										yytext[--yyleng] = 0;
+										yytext++, yyleng--;
 										yylval->text = yytext;
+										yylval->length = yyleng;
+										handlebars_stripcslashes(yylval->text, &yylval->length);
 										return STRING;
                                 	}
                                  
 <mu>"@"                          	{
 										// v2.0.0 handlebars.l line 92
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return DATA;
 									}
 
 <mu>"true"/{LITERAL_LOOKAHEAD}   	{
 										// v2.0.0 handlebars.l line 93
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return BOOLEAN;
 									}
 
 <mu>"false"/{LITERAL_LOOKAHEAD}  	{
 										// v2.0.0 handlebars.l line 94
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return BOOLEAN;
 									}
 
 <mu>\-?[0-9]+(?:\.[0-9]+)?/{LITERAL_LOOKAHEAD} {
 										// v2.0.0 handlebars.l line 95
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return NUMBER;
 									}
 
 <mu>{ID}                			{
 										// v2.0.0 handlebars.l line 97
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return ID;
 									}
 
 <mu>"["[^\]]*"]"                	{
 										// v2.0.0 handlebars.l line 99
 										// yytext = strip(1,2);
-										yytext[yyleng - 1] = 0;
-										yytext++;
+										yytext[--yyleng] = 0;
+										yytext++, yyleng--;
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return ID;
 									}
 
 <mu>.                            	{
 										// v2.0.0 handlebars.l line 100
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return INVALID;
 									}
 
 <INITIAL,mu><<END>>              	{
 										// v2.0.0 handlebars.l line 102
 										yylval->text = yytext;
+										yylval->length = yyleng;
 										return END;
 									}
 

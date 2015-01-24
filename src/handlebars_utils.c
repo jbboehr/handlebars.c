@@ -1,4 +1,5 @@
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -62,6 +63,73 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
 	}
 	return new_str;
 }
+
+void handlebars_stripcslashes(char * str, size_t * length)
+{
+	char *source, *target, *end;
+	size_t nlen = (length == NULL ? strlen(str) : *length);
+	size_t i;
+	char numtmp[4];
+	
+	source = str;
+	end = source + nlen;
+	target = str;
+	for ( ; source < end; source++ ) {
+		if (*source == '\\' && source + 1 < end) {
+			source++;
+			switch (*source) {
+				case 'n':  *target++='\n'; nlen--; break;
+				case 'r':  *target++='\r'; nlen--; break;
+				case 'a':  *target++='\a'; nlen--; break;
+				case 't':  *target++='\t'; nlen--; break;
+				case 'v':  *target++='\v'; nlen--; break;
+				case 'b':  *target++='\b'; nlen--; break;
+				case 'f':  *target++='\f'; nlen--; break;
+				case '\\': *target++='\\'; nlen--; break;
+				case 'x':
+					if (source+1 < end && isxdigit((int)(*(source+1)))) {
+						numtmp[0] = *++source;
+						if (source+1 < end && isxdigit((int)(*(source+1)))) {
+							numtmp[1] = *++source;
+							numtmp[2] = '\0';
+							nlen-=3;
+						} else {
+							numtmp[1] = '\0';
+							nlen-=2;
+						}
+						*target++=(char)strtol(numtmp, NULL, 16);
+						break;
+					}
+					/* break is left intentionally */
+				default:
+					i=0;
+					while (source < end && *source >= '0' && *source <= '7' && i<3) {
+						numtmp[i++] = *source++;
+					}
+					if (i) {
+						numtmp[i]='\0';
+						*target++=(char)strtol(numtmp, NULL, 8);
+						nlen-=i;
+						source--;
+					} else {
+						*target++=*source;
+						nlen--;
+					}
+			}
+		} else {
+			*target++=*source;
+		}
+	}
+
+	if (nlen != 0) {
+		*target='\0';
+	}
+	
+	if( length != NULL ) {
+		*length = nlen;
+	}
+}
+
 
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_context * context)
 {

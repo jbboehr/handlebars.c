@@ -55,11 +55,47 @@ START_TEST(test_addcslashes)
 }
 END_TEST
 
+START_TEST(test_stripcslashes)
+{
+	char * input = strdup("\\n\\r");
+	size_t input_len = strlen(input);
+	const char * expected = "\n\r";
+	handlebars_stripcslashes(input, &input_len);
+	ck_assert_str_eq(expected, input);
+	free(input);
+}
+{
+	char * input = strdup("\\065\\x64");
+	size_t input_len = strlen(input);
+	const char * expected = "5d";
+	handlebars_stripcslashes(input, &input_len);
+	ck_assert_str_eq(expected, input);
+	free(input);
+}
+{
+	char * input = strdup("");
+	size_t input_len = strlen(input);
+	const char * expected = "";
+	handlebars_stripcslashes(input, &input_len);
+	ck_assert_str_eq(expected, input);
+	free(input);
+}
+{
+	char * input = strdup("\\{");
+	size_t input_len = strlen(input);
+	const char * expected = "{";
+	handlebars_stripcslashes(input, &input_len);
+	ck_assert_str_eq(expected, input);
+	free(input);
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
   Suite * s = suite_create("Utils");
 
   REGISTER_TEST_FIXTURE(s, test_addcslashes, "addcslashes");
+  REGISTER_TEST_FIXTURE(s, test_stripcslashes, "stripcslashes");
 
   return s;
 }
