@@ -28,6 +28,17 @@
      memset(yylval, 0, sizeof(YYSTYPE)); \
      if( yy_flex_debug ) fprintf( stderr, "--initializing yylval\n" )
  
+#define handlebars_yy_unput_all \
+	do { \
+		int i; \
+ 		char * yycopy = strdup( yytext ); \
+ 		for ( i = yyleng - 1; i >= 0; --i ) { \
+ 			unput( yycopy[i] ); \
+ 		} \
+        free( yycopy ); \
+    } while(0)
+ 		
+ 
 #define YY_USER_ACTION \
     yylloc->first_line = yylloc->last_line = yylineno; \
     yylloc->first_column = yycolumn; \
@@ -47,18 +58,256 @@
 
 %option 8bit
 
+%x mu
+%x emu
+%x com
+%x raw
+
+LEFT_STRIP    "~"
+RIGHT_STRIP   "~"
+
+LOOKAHEAD           [=~}\s\/.)]
+LITERAL_LOOKAHEAD   [~}\s)]
+
+MU \{\{
+CMU \}\}
+EMU \\\}\{
+CONTENT [^\x00\{\}\\]
+
+ID    [^\s!\"#%-,\.\/;->@\[-\^\`\{-~]+/{LOOKAHEAD}
+
+
 %%
 
-[^\x00\n]+ {
-                    //printf( "Content: %s\n", yytext );
-                    yylval->text = yytext;
-                    return CONTENT;
-}
 
-\n {
-                    //printf( "Whitespace: %s\n", yytext );
-                    yylval->text = yytext;
-                    return WHITESPACE;
-}
+{CONTENT}+                         	{
+										// v2.0.0 handlebars.l line 31
+										return CONTENT;
+									}
+
+\\{EMU} 							{
+										// v2.0.0 handlebars.l line 32
+										yy_push_state(mu, yyscanner);
+										return OPEN;
+									}
+									
+{EMU} 								{			
+										// v2.0.0 handlebars.l line 35
+										handlebars_yy_unput_all;
+										yy_push_state(emu, yyscanner);
+										//return CONTENT;
+									}
+									
+{MU}  								{
+										// v2.0.0 handlebars.l line 38
+										handlebars_yy_unput_all;
+										yy_push_state(mu, yyscanner);
+										//return OPEN;
+									}
+
+<emu>{CONTENT}+ 					{
+										// v2.0.0 handlebars.l line 47
+                                   		yy_pop_state(yyg);
+                                   		return CONTENT;
+                                 	}
+
+<raw>"{{{{/"[^\s!"#%-,\.\/;->@\[-\^`\{-~]+/[=}\s\/.]"}}}}" {
+										// v2.0.0 handlebars.l line 52
+                                  		yy_pop_state(yyg);
+                                  		return END_RAW_BLOCK;
+                                 	}
+
+<raw>[^\x00]*?/("{{{{/")         	{
+										// v2.0.0 handlebars.l line 57
+										return CONTENT;
+									}
+
+<com>[^\x00\}\-]* 					{
+										// v2.0.0 handlebars.l line 59
+									}
+
+<com>"--}}"							{
+										// v2.0.0 handlebars.l line 59
+  										yy_pop_state(yyg);
+  										return COMMENT;
+									}
+									
+<com>[\}\-]+						{
+										// v2.0.0 handlebars.l line 59
+									}
+
+<mu>"("                          	{
+										// v2.0.0 handlebars.l line 61
+										return OPEN_SEXPR;
+									}
+
+<mu>")"                          	{
+										// v2.0.0 handlebars.l line 62
+										return CLOSE_SEXPR;
+									}
+
+<mu>"{{{{"                       	{
+										// v2.0.0 handlebars.l line 64
+										return OPEN_RAW_BLOCK;
+									}
+
+<mu>"}}}}"                       	{
+										// v2.0.0 handlebars.l line 65
+										yy_pop_state(yyg);
+                                  		yy_push_state(raw, yyscanner);
+                                  		return CLOSE_RAW_BLOCK;
+                             		}
+                             		
+<mu>"{{"{LEFT_STRIP}?">"         	{
+										// v2.0.0 handlebars.l line 70
+										return OPEN_PARTIAL;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?"#"         	{
+										// v2.0.0 handlebars.l line 71
+										return OPEN_BLOCK;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?"/"         	{
+										// v2.0.0 handlebars.l line 72
+										return OPEN_ENDBLOCK;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?"^"\s*{RIGHT_STRIP}?"}}"        {
+										// v2.0.0 handlebars.l line 73
+										yy_pop_state(yyg);
+										return INVERSE;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?\s*"else"\s*{RIGHT_STRIP}?"}}"  {
+										// v2.0.0 handlebars.l line 74
+										yy_pop_state(yyg);
+										return INVERSE;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?"^"         	{
+										// v2.0.0 handlebars.l line 75
+										return OPEN_INVERSE;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?\s*"else"   	{
+										// v2.0.0 handlebars.l line 76
+										return OPEN_INVERSE;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?"{"         	{
+										// v2.0.0 handlebars.l line 77
+										return OPEN_UNESCAPED;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?"&"         	{
+										// v2.0.0 handlebars.l line 78
+										return OPEN;
+                             		}
+                             		
+<mu>"{{!--" 						{
+										// v2.0.0 handlebars.l line 79
+  										// this.unput(yytext);
+  										yy_pop_state(yyg);
+  										yy_push_state(com, yyscanner);
+									}
+
+<mu>"{{!"[\s\S]*?"}}" 				{
+										// v2.0.0 handlebars.l line 80
+  										yy_pop_state(yyg);
+  										return COMMENT;
+									}
+
+<mu>"{{"{LEFT_STRIP}?            	{
+										// v2.0.0 handlebars.l line 81
+										return OPEN;
+									}
+
+<mu>"="                          	{
+										// v2.0.0 handlebars.l line 83
+										return EQUALS;
+									}
+
+<mu>".."                         	{
+										// v2.0.0 handlebars.l line 84
+										return ID;
+									}
+
+<mu>"."/{LOOKAHEAD}              	{
+										// v2.0.0 handlebars.l line 85
+										return ID;
+									}
+
+<mu>[\/.]                        	{
+										// v2.0.0 handlebars.l line 86
+										return SEP;
+									}
+
+<mu>\s+                          	{
+										// v2.0.0 handlebars.l line 87
+										// ignore whitespace
+                                 	}
+
+<mu>"}"{RIGHT_STRIP}?"}}"        	{
+										// v2.0.0 handlebars.l line 88
+										yy_pop_state(yyg);
+										return CLOSE_UNESCAPED;
+									}
+
+<mu>{RIGHT_STRIP}?"}}"           	{
+										// v2.0.0 handlebars.l line 89
+										yy_pop_state(yyg); return CLOSE;
+									}
+
+<mu>"\""("\\"["]|[^"])*"\""      	{
+										// v2.0.0 handlebars.l line 90
+                                   		return STRING;
+                                 	}
+
+<mu>"'"("\\"[']|[^'])*"'"        	{
+										// v2.0.0 handlebars.l line 91
+										return STRING;
+                                	}
+                                 
+<mu>"@"                          	{
+										// v2.0.0 handlebars.l line 92
+										return DATA;
+									}
+
+<mu>"true"/{LITERAL_LOOKAHEAD}   	{
+										// v2.0.0 handlebars.l line 93
+										return BOOLEAN;
+									}
+
+<mu>"false"/{LITERAL_LOOKAHEAD}  	{
+										// v2.0.0 handlebars.l line 94
+										return BOOLEAN;
+									}
+
+<mu>\-?[0-9]+(?:\.[0-9]+)?/{LITERAL_LOOKAHEAD} {
+										// v2.0.0 handlebars.l line 95
+										return NUMBER;
+									}
+
+<mu>{ID}                			{
+										// v2.0.0 handlebars.l line 97
+										return ID;
+									}
+
+<mu>'['[^\]]*']'                 	{
+										// v2.0.0 handlebars.l line 99
+										// yytext = strip(1,2);
+										return ID;
+									}
+
+<mu>.                            	{
+										// v2.0.0 handlebars.l line 100
+										return INVALID;
+									}
+
+<INITIAL,mu><<END>>              	{
+										// v2.0.0 handlebars.l line 102
+										return END;
+									}
 
 %%

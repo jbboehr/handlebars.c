@@ -52,25 +52,29 @@ const char * handlebars_token_readable_type(int type)
   switch( type ) {
     _RTYPE_CASE(BOOLEAN);
     _RTYPE_CASE(CLOSE);
+    _RTYPE_CASE(CLOSE_RAW_BLOCK);
     _RTYPE_CASE(CLOSE_SEXPR);
     _RTYPE_CASE(CLOSE_UNESCAPED);
     _RTYPE_CASE(COMMENT);
     _RTYPE_CASE(CONTENT);
     _RTYPE_CASE(DATA);
     _RTYPE_CASE(END);
+    _RTYPE_CASE(END_RAW_BLOCK);
     _RTYPE_CASE(EQUALS);
     _RTYPE_CASE(ID);
+    _RTYPE_CASE(INVALID);
     _RTYPE_CASE(INVERSE);
     _RTYPE_CASE(NUMBER);
     _RTYPE_CASE(OPEN);
     _RTYPE_CASE(OPEN_BLOCK);
+    _RTYPE_CASE(OPEN_ENDBLOCK);
     _RTYPE_CASE(OPEN_INVERSE);
     _RTYPE_CASE(OPEN_PARTIAL);
+    _RTYPE_CASE(OPEN_RAW_BLOCK);
     _RTYPE_CASE(OPEN_SEXPR);
     _RTYPE_CASE(OPEN_UNESCAPED);
     _RTYPE_CASE(SEP);
     _RTYPE_CASE(STRING);
-    _RTYPE_CASE(WHITESPACE);
   }
   
   return "UNKNOWN";
@@ -88,6 +92,7 @@ int handlebars_token_reverse_readable_type(const char * type)
             break;
         case 'C':
             _RTYPE_CMP(CLOSE);
+            _RTYPE_CMP(CLOSE_RAW_BLOCK);
             _RTYPE_CMP(CLOSE_SEXPR);
             _RTYPE_CMP(CLOSE_UNESCAPED);
             _RTYPE_CMP(COMMENT);
@@ -98,10 +103,12 @@ int handlebars_token_reverse_readable_type(const char * type)
             break;
         case 'E':
             _RTYPE_CMP(END);
+            _RTYPE_CMP(END_RAW_BLOCK);
             _RTYPE_CMP(EQUALS);
             break;
         case 'I':
             _RTYPE_CMP(ID);
+            _RTYPE_CMP(INVALID);
             _RTYPE_CMP(INVERSE);
             break;
         case 'N':
@@ -110,17 +117,16 @@ int handlebars_token_reverse_readable_type(const char * type)
         case 'O':
             _RTYPE_CMP(OPEN);
             _RTYPE_CMP(OPEN_BLOCK);
+            _RTYPE_CMP(OPEN_ENDBLOCK);
             _RTYPE_CMP(OPEN_INVERSE);
             _RTYPE_CMP(OPEN_PARTIAL);
+            _RTYPE_CMP(OPEN_RAW_BLOCK);
             _RTYPE_CMP(OPEN_SEXPR);
             _RTYPE_CMP(OPEN_UNESCAPED);
             break;
         case 'S':
             _RTYPE_CMP(SEP);
             _RTYPE_CMP(STRING);
-            break;
-        case 'W':
-            _RTYPE_CMP(WHITESPACE);
             break;
     }
     

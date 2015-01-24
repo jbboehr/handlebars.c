@@ -43,25 +43,29 @@
 %token END 0 "end of file"
 %token BOOLEAN
 %token CLOSE
+%token CLOSE_RAW_BLOCK // meh
 %token CLOSE_SEXPR
 %token CLOSE_UNESCAPED
 %token COMMENT
 %token CONTENT
 %token DATA
+%token END_RAW_BLOCK // meh
 %token EQUALS
 %token ID
+%token INVALID
 %token INVERSE
 %token NUMBER
 %token OPEN
 %token OPEN_BLOCK
+%token OPEN_ENDBLOCK // meh
 %token OPEN_INVERSE
 %token OPEN_PARTIAL
+%token OPEN_RAW_BLOCK // meh
 %token OPEN_SEXPR
 %token OPEN_UNESCAPED
 %token SEP
 %token STRING
 
-%token WHITESPACE
 
 %%
 
