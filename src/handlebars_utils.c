@@ -7,6 +7,7 @@
 
 #include "handlebars.h"
 #include "handlebars_context.h"
+#include "handlebars_memory.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
@@ -27,7 +28,7 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
 		flags[(unsigned char) what[i]] = 1;
 	}
 
-	new_str = talloc_zero_size(NULL, sizeof(char) * str_length * 4 + 1);
+	new_str = handlebars_talloc_zero_size(NULL, sizeof(char) * str_length * 4 + 1);
 
 	source = (char *) str;
 	target = new_str;
@@ -57,8 +58,8 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
 	*target = 0;
 	new_str_length = target - new_str;
 	if( new_str_length < str_length * 4 + 1 ) {
-		char * tmp = talloc_strndup(NULL, new_str, new_str_length + 1);
-		talloc_free(new_str);
+		char * tmp = handlebars_talloc_strndup(NULL, new_str, new_str_length + 1);
+		handlebars_talloc_free(new_str);
 		new_str = tmp;
 	}
 	return new_str;

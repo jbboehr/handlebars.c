@@ -34,9 +34,6 @@ struct handlebars_context
 struct handlebars_context * handlebars_context_ctor(void);
 void handlebars_context_dtor(struct handlebars_context * context);
 
-//int handlebars_context_ctor(struct handlebars_context * context);
-//int handlebars_context_dtor(struct handlebars_context * context);
-
 #ifdef	__cplusplus
 }
 #endif

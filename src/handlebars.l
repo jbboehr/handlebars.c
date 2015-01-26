@@ -9,6 +9,7 @@
 
 #include "handlebars.h"
 #include "handlebars_context.h"
+#include "handlebars_memory.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
@@ -69,8 +70,10 @@
 %option bison-locations
 %option yylineno
 %option warn
-
 %option 8bit
+%option noyyalloc
+%option noyyrealloc
+%option noyyfree
 
 %x mu
 %x emu

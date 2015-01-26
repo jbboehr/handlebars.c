@@ -3,6 +3,7 @@
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
 #include "handlebars.tab.h"
@@ -10,13 +11,12 @@
 
 static void setup(void)
 {
-//   handlebars_alloc_failure(0);
-    ;
+   handlebars_memory_fail_disable();
 }
 
 static void teardown(void)
 {
-  ;
+   handlebars_memory_fail_disable();
 }
 
 START_TEST(test_token_list_append)
@@ -35,22 +35,23 @@ START_TEST(test_token_list_append)
 }
 END_TEST
 
-/*
 START_TEST(test_token_list_append_failed_alloc)
 {
-  struct handlebars_token_list * list = handlebars_token_list_ctor();
+  struct handlebars_token_list * list = handlebars_token_list_ctor(NULL);
   struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
+  int retval;
   
-  handlebars_alloc_failure(1);
-  handlebars_token_list_append(list, node1);
-  handlebars_alloc_failure(0);
+  handlebars_memory_fail_enable();
+  retval = handlebars_token_list_append(list, node1);
+  handlebars_memory_fail_disable();
   
-  ck_assert_ptr_eq(list->list, NULL);
+  ck_assert_int_eq(retval, HANDLEBARS_NOMEM);
+  ck_assert_ptr_eq(list->first, NULL);
+  ck_assert_ptr_eq(list->last, NULL);
   
   handlebars_token_list_dtor(list);
 }
 END_TEST
-*/
 
 START_TEST(test_token_list_append_null)
 {
@@ -65,6 +66,18 @@ START_TEST(test_token_list_ctor)
   ck_assert_ptr_ne(list, NULL);
   
   handlebars_token_list_dtor(list);
+}
+END_TEST
+
+START_TEST(test_token_list_ctor_failed_alloc)
+{
+  struct handlebars_token_list * list;
+  
+  handlebars_memory_fail_enable();
+  list = handlebars_token_list_ctor(NULL);
+  handlebars_memory_fail_disable();
+  
+  ck_assert_ptr_eq(list, NULL);
 }
 END_TEST
 
@@ -84,22 +97,23 @@ START_TEST(test_token_list_prepend)
 }
 END_TEST
 
-/*
 START_TEST(test_token_list_prepend_failed_alloc)
 {
-  struct handlebars_token_list * list = handlebars_token_list_ctor();
+  struct handlebars_token_list * list = handlebars_token_list_ctor(NULL);
   struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
+  int retval;
   
-  handlebars_alloc_failure(1);
-  handlebars_token_list_prepend(list, node1);
-  handlebars_alloc_failure(0);
+  handlebars_memory_fail_enable();
+  retval = handlebars_token_list_prepend(list, node1);
+  handlebars_memory_fail_disable();
   
-  ck_assert_ptr_eq(list->list, NULL);
+  ck_assert_int_eq(retval, HANDLEBARS_NOMEM);
+  ck_assert_ptr_eq(list->first, NULL);
+  ck_assert_ptr_eq(list->last, NULL);
   
   handlebars_token_list_dtor(list);
 }
 END_TEST
-*/
 
 START_TEST(test_token_list_prepend_null)
 {
@@ -112,11 +126,12 @@ Suite * parser_suite(void)
   Suite * s = suite_create("Token List");
   
   REGISTER_TEST_FIXTURE(s, test_token_list_append, "Append");
-//   REGISTER_TEST_FIXTURE(s, test_token_list_append_failed_alloc, "Append with failed alloc");
+  REGISTER_TEST_FIXTURE(s, test_token_list_append_failed_alloc, "Append with failed alloc");
   REGISTER_TEST_FIXTURE(s, test_token_list_append_null, "Append with null argument");
   REGISTER_TEST_FIXTURE(s, test_token_list_ctor, "Constructor");
+  REGISTER_TEST_FIXTURE(s, test_token_list_ctor_failed_alloc, "Constructor with failed alloc");
   REGISTER_TEST_FIXTURE(s, test_token_list_prepend, "Prepend");
-//   REGISTER_TEST_FIXTURE(s, test_token_list_prepend_failed_alloc, "Prepend with failed alloc");
+  REGISTER_TEST_FIXTURE(s, test_token_list_prepend_failed_alloc, "Prepend with failed alloc");
   REGISTER_TEST_FIXTURE(s, test_token_list_prepend_null, "Prepend with null argument");
   
   return s;

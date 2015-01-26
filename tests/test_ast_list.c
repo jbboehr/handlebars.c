@@ -5,17 +5,17 @@
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_memory.h"
 #include "utils.h"
 
 static void setup(void)
 {
-//   handlebars_alloc_failure(0);
-    ;
+   handlebars_memory_fail_disable();
 }
 
 static void teardown(void)
 {
-  ;
+   handlebars_memory_fail_disable();
 }
 
 START_TEST(test_ast_list_append)
@@ -34,22 +34,23 @@ START_TEST(test_ast_list_append)
 }
 END_TEST
 
-/*
 START_TEST(test_ast_list_append_failed_alloc)
 {
-  struct handlebars_ast_list * list = handlebars_ast_list_ctor();
+  struct handlebars_ast_list * list = handlebars_ast_list_ctor(NULL);
   struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
+  int retval;
   
-  handlebars_alloc_failure(1);
-  handlebars_ast_list_append(list, node1);
-  handlebars_alloc_failure(0);
+  handlebars_memory_fail_enable();
+  retval = handlebars_ast_list_append(list, node1);
+  handlebars_memory_fail_disable();
   
-  ck_assert_ptr_eq(list->list, NULL);
+  ck_assert_int_eq(retval, HANDLEBARS_NOMEM);
+  ck_assert_ptr_eq(list->first, NULL);
+  ck_assert_ptr_eq(list->last, NULL);
   
   handlebars_ast_list_dtor(list);
 }
 END_TEST
-*/
 
 START_TEST(test_ast_list_append_null)
 {
@@ -64,6 +65,18 @@ START_TEST(test_ast_list_ctor)
   ck_assert_ptr_ne(list, NULL);
   
   handlebars_ast_list_dtor(list);
+}
+END_TEST
+
+START_TEST(test_ast_list_ctor_failed_alloc)
+{
+  struct handlebars_ast_list * list;
+  
+  handlebars_memory_fail_enable();
+  list = handlebars_ast_list_ctor(NULL);
+  handlebars_memory_fail_disable();
+  
+  ck_assert_ptr_eq(list, NULL);
 }
 END_TEST
 
@@ -83,22 +96,23 @@ START_TEST(test_ast_list_prepend)
 }
 END_TEST
 
-/*
 START_TEST(test_ast_list_prepend_failed_alloc)
 {
-  struct handlebars_ast_list * list = handlebars_ast_list_ctor();
+  struct handlebars_ast_list * list = handlebars_ast_list_ctor(NULL);
   struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
+  int retval;
   
-  handlebars_alloc_failure(1);
-  handlebars_ast_list_prepend(list, node1);
-  handlebars_alloc_failure(0);
+  handlebars_memory_fail_enable();
+  retval = handlebars_ast_list_prepend(list, node1);
+  handlebars_memory_fail_disable();
   
-  ck_assert_ptr_eq(list->list, NULL);
+  ck_assert_int_eq(retval, HANDLEBARS_NOMEM);
+  ck_assert_ptr_eq(list->first, NULL);
+  ck_assert_ptr_eq(list->last, NULL);
   
   handlebars_ast_list_dtor(list);
 }
 END_TEST
-*/
 
 START_TEST(test_ast_list_prepend_null)
 {
@@ -111,11 +125,12 @@ Suite * parser_suite(void)
   Suite * s = suite_create("AST Node List");
   
   REGISTER_TEST_FIXTURE(s, test_ast_list_append, "Append");
-//   REGISTER_TEST_FIXTURE(s, test_ast_list_append_failed_alloc, "Append with failed alloc");
+  REGISTER_TEST_FIXTURE(s, test_ast_list_append_failed_alloc, "Append with failed alloc");
   REGISTER_TEST_FIXTURE(s, test_ast_list_append_null, "Append with null argument");
   REGISTER_TEST_FIXTURE(s, test_ast_list_ctor, "Constructor");
+  REGISTER_TEST_FIXTURE(s, test_ast_list_ctor_failed_alloc, "Constructor with failed alloc");
   REGISTER_TEST_FIXTURE(s, test_ast_list_prepend, "Prepend");
-//   REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_failed_alloc, "Prepend with failed alloc");
+  REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_failed_alloc, "Prepend with failed alloc");
   REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_null, "Prepend with null argument");
   
   return s;

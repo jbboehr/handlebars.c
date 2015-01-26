@@ -81,6 +81,8 @@ AC_TYPE_SIZE_T
 # Checks for system
 AC_EXEEXT
 
+# Checks for libraries
+
 # check
 AC_ARG_ENABLE([check],
   [AS_HELP_STRING([--disable-check], [disable support for check])])
@@ -130,7 +132,6 @@ AC_CHECK_LIB([talloc], [talloc_version_major], , [
   AC_MSG_FAILURE([talloc test failed, talloc is required])
 ])
 
-
 # yaml
 AC_ARG_ENABLE([yaml], 
 	[AS_HELP_STRING([--disable-yaml], [disable support for yaml])], [])
@@ -143,6 +144,17 @@ AS_IF([test "x$enable_yaml" != "xno"], [
     AC_MSG_FAILURE([yaml test failed (--disable-yaml to disable)])
   ])
 ])
+
+# Options
+
+# memdebug
+#AC_ARG_ENABLE([memdebug], 
+#  [AS_HELP_STRING([--enable-memdebug], [compile with memory debug functions])], [])
+#
+#AS_IF([test "x$enable_memdebug" != "xno"], [
+#  AC_DEFINE([HANDLEBARS_MEMDEBUG], [1], [Defined if memory debugging is requested])
+#])
+#AM_CONDITIONAL([HANDLEBARS_MEMDEBUG], [test x$enable_memdebug = xyes])
 
 # yydebug
 AC_ARG_ENABLE([yydebug], 

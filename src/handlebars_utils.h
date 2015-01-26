@@ -2,6 +2,10 @@
 #ifndef HANDLEBARS_UTILS_H
 #define HANDLEBARS_UTILS_H
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 /**
  * Pre-declarations
  */
@@ -23,5 +27,9 @@ void handlebars_stripcslashes(char * str, size_t * length);
 void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * context, const char * err);
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_context * context);
 void handlebars_yy_fatal_error(const char * msg, void * yyscanner);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif

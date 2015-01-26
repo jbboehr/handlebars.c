@@ -4,12 +4,15 @@
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
 
+
 struct handlebars_token * handlebars_token_ctor(int token_int, const char * text, size_t length, void * ctx)
 {
-    struct handlebars_token * token = NULL;
+    struct handlebars_token * token;
+    char * textdup;
     
     // Allocate token
     // @todo doesn't take into account the alignment
@@ -24,7 +27,7 @@ struct handlebars_token * handlebars_token_ctor(int token_int, const char * text
     token->token = token_int;
     
     // Copy string and null terminate
-    char * textdup = talloc_strndup(token, text, length);
+    textdup = handlebars_talloc_strndup(token, text, length);
     if( textdup == NULL ) {
         errno = ENOMEM;
         goto error;
@@ -35,7 +38,7 @@ struct handlebars_token * handlebars_token_ctor(int token_int, const char * text
     return token;
 error:
     if( token ) {
-        talloc_free(token);
+        handlebars_talloc_free(token);
         token = NULL;
     }
     return token;

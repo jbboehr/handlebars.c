@@ -16,14 +16,26 @@ handlebars.lex.c:
 	${FLEX} $(FLEXFLAGS) -o handlebars.lex.c handlebars.l
 
 # Main
-include_HEADERS = handlebars.tab.h
+include_HEADERS = \
+	handlebars_ast.h \
+	handlebars_ast_list.h \
+	handlebars_context.h \
+	handlebars_memory.h \
+	handlebars_token.h \
+	handlebars_token_list.h \
+	handlebars_token_printer.h \
+	handlebars_utils.h
 
 GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c
 CLEANFILES = $(GENSOURCE)
 
 lib_LTLIBRARIES=libhandlebars.la
 
-libhandlebars_la_SOURCES = $(GENSOURCE) \
+libhandlebars_la_SOURCES = \
+	handlebars_memory.h \
+	handlebars_memory.c \
+	\
+	$(GENSOURCE) \
 	handlebars_ast.h \
 	handlebars_ast.c \
 	handlebars_ast_list.h \
@@ -44,6 +56,6 @@ libhandlebars_la_LDFLAGS = \
 	-no-undefined \
 	-module \
 	-shared \
-	-export-symbols-regex '^handlebars' \
 	-version-info $(HANDLEBARS_LT_CURRENT):$(HANDLEBARS_LT_REVISION):$(HANDLEBARS_LT_AGE)
+#	-export-symbols-regex '^_?handlebars' \
 #	-release $(HANDLEBARS_LT_RELEASE)

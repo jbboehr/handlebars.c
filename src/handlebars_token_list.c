@@ -3,6 +3,7 @@
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_token_list.h"
 
 int handlebars_token_list_append(struct handlebars_token_list * list, struct handlebars_token * token)

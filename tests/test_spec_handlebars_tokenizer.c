@@ -19,6 +19,7 @@
 
 #include "handlebars.h"
 #include "handlebars_context.h"
+#include "handlebars_memory.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
 #include "handlebars_token_printer.h"

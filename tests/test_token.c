@@ -9,8 +9,7 @@
 
 static void setup(void)
 {
-//   handlebars_alloc_failure(0);
-    ;
+   handlebars_memory_fail_disable();
 }
 
 static void teardown(void)

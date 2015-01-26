@@ -2,6 +2,10 @@
 #ifndef HANDLEBARS_AST_LIST_H
 #define HANDLEBARS_AST_LIST_H
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 struct handlebars_ast_node;
 
 struct handlebars_ast_list_item {
@@ -24,5 +28,9 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx);
 void handlebars_ast_list_dtor(struct handlebars_ast_list * list);
 
 int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif

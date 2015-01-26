@@ -6,6 +6,7 @@
 
 #include "handlebars.h"
 #include "handlebars_context.h"
+#include "handlebars_memory.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
@@ -23,7 +24,7 @@ struct handlebars_context * handlebars_context_ctor(void)
   }
   
   // Initialize lexer
-  // @todo set a destructor on the context object to deinit the lexer
+  // @todo set a destructor on the context object to deinit the lexerf
   lexerr = handlebars_yy_lex_init(&context->scanner);
   if( lexerr != 0 ) {
     // Failure, free context and return null

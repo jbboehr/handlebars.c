@@ -33,6 +33,7 @@
 
 #include "handlebars.h"
 #include "handlebars_context.h"
+#include "handlebars_memory.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"

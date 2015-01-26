@@ -2,6 +2,10 @@
 #ifndef HANDLEBARS_TOKEN_LIST_H
 #define HANDLEBARS_TOKEN_LIST_H
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 struct handlebars_token;
 
 struct handlebars_token_list_item {
@@ -24,5 +28,9 @@ struct handlebars_token_list * handlebars_token_list_ctor(void * ctx);
 void handlebars_token_list_dtor(struct handlebars_token_list * list);
 
 int handlebars_token_list_prepend(struct handlebars_token_list * list, struct handlebars_token * token);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif
