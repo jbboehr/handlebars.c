@@ -23,6 +23,9 @@ struct handlebars_context * handlebars_context_ctor(void)
     goto done;
   }
   
+  // Set the current context in a variable for yyalloc >.>
+  _handlebars_context_tmp = context;
+  
   // Initialize lexer
   // @todo set a destructor on the context object to deinit the lexerf
   lexerr = handlebars_yy_lex_init(&context->scanner);
@@ -37,6 +40,7 @@ struct handlebars_context * handlebars_context_ctor(void)
   handlebars_yy_set_extra(context, context->scanner);
   
 done:
+  _handlebars_context_tmp = NULL;
   return context;
 }
 

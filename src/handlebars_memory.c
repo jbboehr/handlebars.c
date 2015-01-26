@@ -54,15 +54,21 @@ static void * _handlebars_memfail_talloc_zero(const void * ctx, size_t size, con
 }
 
 // Allocators for a reentrant scanner (flex)
+struct handlebars_context * _handlebars_context_tmp;
+
 void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
 {
-    // yyscanner should be a handlebars_context pointer, so this should be safe
-    return (void *) handlebars_talloc_size(yyscanner, bytes);
+    // Note: it looks like the yyscanner is allocated before we can pass in
+    // a handlebars context...
+    // Also look into the performance hit for doing this
+    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_tmp);
+    return (void *) handlebars_talloc_size(ctx, bytes);
 }
 
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
-    return (void *) handlebars_talloc_realloc(yyscanner, ptr, char, bytes);
+    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_tmp);
+    return (void *) handlebars_talloc_realloc(ctx, ptr, char, bytes);
 }
 
 void handlebars_yy_free(void * ptr, void * yyscanner)

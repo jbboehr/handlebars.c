@@ -62,6 +62,7 @@ extern handlebars_talloc_zero_func _handlebars_talloc_zero;
 
 // Allocators for a reentrant scanner (flex)
 // We use the scanner pointer as a talloc context
+struct handlebars_context * _handlebars_context_tmp;
 void * handlebars_yy_alloc(size_t bytes, void * yyscanner);
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner);
 void handlebars_yy_free(void * ptr, void * yyscanner);
