@@ -24,6 +24,7 @@ enum handlebars_node_type {
   HANDLEBARS_AST_NODE_RAW_BLOCK,
   HANDLEBARS_AST_NODE_CONTENT,
   HANDLEBARS_AST_NODE_HASH,
+  HANDLEBARS_AST_NODE_HASH_SEGMENT,
   HANDLEBARS_AST_NODE_ID,
   HANDLEBARS_AST_NODE_PARTIAL_NAME,
   HANDLEBARS_AST_NODE_DATA,
@@ -39,7 +40,7 @@ struct handlebars_ast_node_program {
 };
 
 struct handlebars_ast_node_mustache {
-  struct handlebars_node * sexpr;
+  struct handlebars_ast_node * sexpr;
   int escaped;
   // Deprecated: id params hash eligibleHelper isHelper
 };
@@ -53,15 +54,18 @@ struct handlebars_ast_node_partial {
 };
 
 struct handlebars_ast_node_block {
-  struct handlebars_node * mustache;
-  struct handlebars_node * program;
-  struct handlebars_node * inverse;
+  struct handlebars_ast_node * mustache;
+  struct handlebars_ast_node * program;
+  struct handlebars_ast_node * inverse;
+  struct handlebars_ast_node * close;
+  int inverted;
   // Todo: strip isInverse
 };
 
 struct handlebars_ast_node_raw_block {
-  struct handlebars_node * mustache;
-  struct handlebars_node * program;
+  struct handlebars_ast_node * mustache;
+  struct handlebars_ast_node * program;
+  char * close;
   // Note: program is just content
 };
 
@@ -72,13 +76,13 @@ struct handlebars_ast_node_content {
 };
 
 struct handlebars_ast_node_hash {
-  // Todo: pairs
+  struct handlebars_ast_list * segments;
 };
 
-struct handlebars_ast_node_hash_pair {
+struct handlebars_ast_node_hash_segment {
   char * key;
   size_t key_length;
-  struct handlebars_node * value;
+  struct handlebars_ast_node * value;
 };
 
 struct handlebars_ast_node_id {
@@ -124,7 +128,7 @@ union handlebars_ast_internals {
     struct handlebars_ast_node_raw_block raw_block;
     struct handlebars_ast_node_content content;
     struct handlebars_ast_node_hash hash;
-    struct handlebars_ast_node_hash_pair hash_pair;
+    struct handlebars_ast_node_hash_segment hash_segment;
     struct handlebars_ast_node_id id;
     struct handlebars_ast_node_partial_name partial_name;
     struct handlebars_ast_node_data data;
@@ -145,6 +149,9 @@ struct handlebars_ast_node {
    */
   union handlebars_ast_internals node;
 };
+
+struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type type, void * ctx);
+void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
 
 #ifdef	__cplusplus
 }
