@@ -19,6 +19,7 @@ handlebars.lex.c:
 include_HEADERS = \
 	handlebars_ast.h \
 	handlebars_ast_list.h \
+	handlebars_ast_printer.h \
 	handlebars_context.h \
 	handlebars_memory.h \
 	handlebars_token.h \
@@ -40,6 +41,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_ast.c \
 	handlebars_ast_list.h \
 	handlebars_ast_list.c \
+	handlebars_ast_printer.h \
+	handlebars_ast_printer.c \
 	handlebars_context.h \
 	handlebars_context.c \
 	handlebars_token.h \

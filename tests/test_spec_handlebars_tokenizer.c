@@ -262,9 +262,9 @@ int main(void)
     
     s = parser_suite();
     sr = srunner_create(s);
-//#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
+#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
     srunner_set_fork_status(sr, CK_NOFORK);
-//#endif
+#endif
     //runner_set_log(sr, "test_spec_handlebars_tokenizer.log");
     srunner_run_all(sr, CK_VERBOSE);
     number_failed = srunner_ntests_failed(sr);

@@ -14,7 +14,7 @@ extern "C" {
 /**
  * Pre-declarations
  */
-//struct handlebars_node;
+struct handlebars_ast_node;
 struct YYLTYPE;
 
 /**
@@ -25,7 +25,7 @@ struct handlebars_context
   char * tmpl;
   int tmplReadOffset;
   void * scanner;
-  //struct handlebars_node * program;
+  struct handlebars_ast_node * program;
   int eof;
   char * error;
   struct YYLTYPE * errloc;

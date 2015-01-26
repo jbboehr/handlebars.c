@@ -1,6 +1,18 @@
 
-/build/
-/m4/
+# to ignore binaries... scary
+*
+!*.*
+
+# specific
+doc/Doxyfile
+doc/html
+handlebars_c_test.info
+src/handlebars_config.h
+src/handlebars.lex.*
+src/handlebars.tab.*
+test_coverage
+
+# ignores by extension
 *~
 *.o
 *.a
@@ -16,6 +28,8 @@
 *.stackdump
 *.trs
 *.c.*r.*
+
+# autotools
 .autotools
 .libs
 .deps
@@ -33,27 +47,6 @@ configure
 libtool
 stamp-h1
 
-# specific
-bin/handlebarsc
-bin/handlebarsc.exe
-doc/Doxyfile
-doc/html
-handlebars_c_test.info
-nbproject
-output.log
-src/handlebars_config.h
-src/handlebars.lex.*
-src/handlebars.tab.*
-tests/test_ast
-tests/test_ast_list
-tests/test_spec_handlebars_tokenizer
-tests/test_context
-tests/test_token
-tests/test_token_list
-tests/test_token_printer
-tests/test_utils
-test_coverage
-
 # distros
 *.tar.gz
 *.tgz
@@ -64,3 +57,6 @@ test_coverage
 .cproject
 .project
 .settings
+
+# cloud9
+.c9
