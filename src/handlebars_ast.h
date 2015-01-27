@@ -31,7 +31,8 @@ enum handlebars_node_type {
   HANDLEBARS_AST_NODE_STRING,
   HANDLEBARS_AST_NODE_NUMBER,
   HANDLEBARS_AST_NODE_BOOLEAN,
-  HANDLEBARS_AST_NODE_COMMENT
+  HANDLEBARS_AST_NODE_COMMENT,
+  HANDLEBARS_AST_NODE_PATH_SEGMENT
 };
 
 struct handlebars_ast_node_program {
@@ -46,11 +47,17 @@ struct handlebars_ast_node_mustache {
 };
 
 struct handlebars_ast_node_sexpr {
-  // Todo: hash id params isHelper eligibleHelper 
+  struct handlebars_ast_node * hash;
+  struct handlebars_ast_node * id;
+  struct handlebars_ast_list * params;
+  // Todo: isHelper eligibleHelper 
 };
 
 struct handlebars_ast_node_partial {
-  // Todo: partialName context hash strip
+  struct handlebars_ast_node * partial_name;
+  struct handlebars_ast_node * context;
+  struct handlebars_ast_node * hash;
+  // Todo: strip
 };
 
 struct handlebars_ast_node_block {
@@ -86,15 +93,17 @@ struct handlebars_ast_node_hash_segment {
 };
 
 struct handlebars_ast_node_id {
-  // Todo: original parts string depth idName isSimple isScoped stringModeValue
+  struct handlebars_ast_list * parts;
+  // Todo: original string depth idName isSimple isScoped stringModeValue
 };
 
 struct handlebars_ast_node_partial_name {
-  // Todo: name
+  struct handlebars_ast_node * name;
 };
 
 struct handlebars_ast_node_data {
-  // Todo: id stringModeValue idName
+  struct handlebars_ast_node * id;
+  // Todo: stringModeValue idName
 };
 
 struct handlebars_ast_node_string {
@@ -116,26 +125,36 @@ struct handlebars_ast_node_boolean {
 };
 
 struct handlebars_ast_node_comment {
-  // Todo: comment strip
+  char * comment;
+  size_t length;
+  // Todo: strip
+};
+
+struct handlebars_ast_node_path_segment {
+  char * part;
+  size_t part_length;
+  char * separator;
+  size_t separator_length;
 };
 
 union handlebars_ast_internals {
-    struct handlebars_ast_node_program program;
-    struct handlebars_ast_node_mustache mustache;
-    struct handlebars_ast_node_sexpr sexpr;
-    struct handlebars_ast_node_partial partial;
     struct handlebars_ast_node_block block;
-    struct handlebars_ast_node_raw_block raw_block;
+    struct handlebars_ast_node_boolean boolean;
+    struct handlebars_ast_node_comment comment;
     struct handlebars_ast_node_content content;
+    struct handlebars_ast_node_data data;
     struct handlebars_ast_node_hash hash;
     struct handlebars_ast_node_hash_segment hash_segment;
     struct handlebars_ast_node_id id;
-    struct handlebars_ast_node_partial_name partial_name;
-    struct handlebars_ast_node_data data;
-    struct handlebars_ast_node_string string;
+    struct handlebars_ast_node_mustache mustache;
     struct handlebars_ast_node_number number;
-    struct handlebars_ast_node_boolean boolean;
-    struct handlebars_ast_node_comment comment;
+    struct handlebars_ast_node_partial partial;
+    struct handlebars_ast_node_partial_name partial_name;
+    struct handlebars_ast_node_path_segment path_segment;
+    struct handlebars_ast_node_program program;
+    struct handlebars_ast_node_raw_block raw_block;
+    struct handlebars_ast_node_sexpr sexpr;
+    struct handlebars_ast_node_string string;
 };
 
 struct handlebars_ast_node {

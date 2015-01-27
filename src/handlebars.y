@@ -40,6 +40,13 @@
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
+#ifdef YYDEBUG
+#define YYPRINT handlebars_yy_print
+int handlebars_yy_debug = 1;
+#else
+int handlebars_yy_debug = 0;
+#endif
+
 #define scanner context->scanner
 %}
 
@@ -99,6 +106,12 @@
 %type <ast_node> data_name
 %type <ast_list> hash_segments
 %type <ast_node> hash_segment
+%type <ast_list> path_segments
+%type <ast_ndoe> path_segment
+
+%left CLOSE CLOSE_UNESCAPED CONTENT END OPEN OPEN_BLOCK OPEN_ENDBLOCK 
+%left OPEN_INVERSE OPEN_PARTIAL OPEN_UNESCAPED SEP ID BOOLEAN COMMENT DATA 
+%left EQUALS INTEGER STRING INVALID
 
 %%
 
@@ -148,8 +161,8 @@ statement
     }
   | COMMENT {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_COMMENT, context);
-      ast_node->node.content.string = $1;
-      ast_node->node.content.length = strlen($1);
+      ast_node->node.comment.comment = $1;
+      ast_node->node.comment.length = strlen($1);
       $$ = ast_node;
     }
   ;
@@ -269,40 +282,62 @@ mustache
 partial
   : OPEN_PARTIAL partial_name param CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-      // Todo: $1 $2 $3 $4
+      ast_node->node.partial.partial_name = $2;
+      ast_node->node.partial.context = $3;
+      // Todo: $1 $4
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name param hash CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-      // Todo: $1 $2 $3 $4 $5
+      ast_node->node.partial.partial_name = $2;
+      ast_node->node.partial.context = $3;
+      ast_node->node.partial.hash = $4;
+      // Todo: $1 $5
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-      // Todo: $1 $2 $3
+      ast_node->node.partial.partial_name = $2;
+      // Todo: $1 $3
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name hash CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-      // Todo: $1 $2 $3 $4
+      ast_node->node.partial.partial_name = $2;
+      ast_node->node.partial.hash = $3;
+      // Todo: $1 $4
       $$ = ast_node;
     }
   ;
 
 sexpr
-  : path params hash {
+  : path {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      // Todo: $1 $2 $3
+      ast_node->node.sexpr.id = $1;
+      $$ = ast_node;
+    }
+  | path hash {
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
+      ast_node->node.sexpr.id = $1;
+      ast_node->node.sexpr.hash = $2;
+      $$ = ast_node;
+    }
+  | path params hash {
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
+      ast_node->node.sexpr.id = $1;
+      ast_node->node.sexpr.params = $2;
+      ast_node->node.sexpr.hash = $3;
       $$ = ast_node;
     }
   | path params {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      // Todo: $1 $2
+      ast_node->node.sexpr.id = $1;
+      ast_node->node.sexpr.params = $2;
       $$ = ast_node;
     }
   | data_name {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      // Todo: $1
+      ast_node->node.sexpr.id = $1;
       $$ = ast_node;
     }
   ;
@@ -380,33 +415,61 @@ hash_segment
 
 partial_name
   : path {
-      // -> new yy.PartialNameNode($1, @$)
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
+      ast_node->node.partial_name.name = $1;
+      $$ = ast_node;
     }
   | STRING {
-      // -> new yy.PartialNameNode(new yy.StringNode($1, @$), @$)
+      struct handlebars_ast_node * string_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_STRING, context);
+      string_node->node.string.string = $1;
+      
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
+      ast_node->node.partial_name.name = string_node;
+      $$ = ast_node;
     }
   | NUMBER {
-      // -> new yy.PartialNameNode(new yy.NumberNode($1, @$))
+      struct handlebars_ast_node * string_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_NUMBER, context);
+      string_node->node.number.string = $1;
+      
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
+      ast_node->node.partial_name.name = string_node;
+      $$ = ast_node;
     }
   ;
 
 data_name
   : DATA path {
-      // -> new yy.DataNode($2, @$)
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_DATA, context);
+      ast_node->node.data.id = $2;
+      $$ = ast_node;
     }
   ;
 
 path
   : path_segments {
-      // -> new yy.IdNode($1, @$)
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, context);
+      ast_node->node.id.parts = $1;
+      $$ = ast_node;
     }
   ;
 
 path_segments
   : path_segments SEP ID {
-      // { $1.push({part: $3, separator: $2}); $$ = $1; }
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH_SEGMENT, context);
+      ast_node->node.path_segment.part = handlebars_talloc_strdup(ast_node, $3);
+      ast_node->node.path_segment.part_length = strlen($3);
+      ast_node->node.path_segment.separator = handlebars_talloc_strdup(ast_node, $2);
+      ast_node->node.path_segment.separator_length = strlen($2);
+      
+      handlebars_ast_list_append($1, ast_node);
+      $$ = $1;
     }
   | ID {
-      // -> [{part: $1}]
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH_SEGMENT, context);
+      ast_node->node.path_segment.part = handlebars_talloc_strdup(ast_node, $1);
+      ast_node->node.path_segment.part_length = strlen($1);
+      
+      $$ = handlebars_ast_list_ctor(context);
+      handlebars_ast_list_append($$, ast_node);
     }
   ;

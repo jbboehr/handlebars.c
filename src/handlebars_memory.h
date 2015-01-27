@@ -29,7 +29,11 @@ extern "C" {
 
 #define handlebars_talloc_strdup_append _handlebars_talloc_strdup_append
 
+#define handlebars_talloc_strdup_append_buffer _handlebars_talloc_strdup_append_buffer;
+
 #define handlebars_talloc_strndup _handlebars_talloc_strndup
+
+#define handlebars_talloc_strndup_append_buffer _handlebars_talloc_strndup_append_buffer
 
 #define handlebars_talloc_realloc(ctx, p, type, count) \
     (type *) _handlebars_talloc_realloc_array(ctx, p, sizeof(type), count, #type)
@@ -46,7 +50,9 @@ typedef void * (*handlebars_talloc_named_const_func)(const void * context, size_
 typedef void * (*handlebars_talloc_realloc_array_func)(const void *ctx, void *ptr, size_t el_size, unsigned count, const char *name);
 typedef char * (*handlebars_talloc_strdup_func)(const void *t, const char *p);
 typedef char * (*handlebars_talloc_strdup_append_func)(char *s, const char *a);
+typedef char * (*handlebars_talloc_strdup_append_buffer_func)(char *s, const char *a);
 typedef char * (*handlebars_talloc_strndup_func)(const void * t, const char * p, size_t n);
+typedef char * (*handlebars_talloc_strndup_append_buffer_func)(char *s, const char *a, size_t n);
 typedef void * (*handlebars_talloc_zero_func)(const void * ctx, size_t size, const char * name);
 
 // Memory function pointers
@@ -56,7 +62,9 @@ extern handlebars_talloc_named_const_func _handlebars_talloc_named_const;
 extern handlebars_talloc_realloc_array_func _handlebars_talloc_realloc_array;
 extern handlebars_talloc_strdup_func _handlebars_talloc_strdup;
 extern handlebars_talloc_strdup_append_func _handlebars_talloc_strdup_append;
+extern handlebars_talloc_strdup_append_buffer_func _handlebars_talloc_strdup_append_buffer;
 extern handlebars_talloc_strndup_func _handlebars_talloc_strndup;
+extern handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_append_buffer;
 extern handlebars_talloc_zero_func _handlebars_talloc_zero;
 #endif
 

@@ -14,6 +14,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type 
         errno = ENOMEM;
         goto done;
     }
+    ast_node->type = type;
     
 done:
     return ast_node;

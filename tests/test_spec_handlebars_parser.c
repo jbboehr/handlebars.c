@@ -3,6 +3,7 @@
 #include "config.h"
 #endif
 
+#include <errno.h>
 #include <check.h>
 #include <stdio.h>
 #include <talloc.h>
@@ -18,6 +19,7 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
@@ -165,9 +167,19 @@ START_TEST(handlebars_spec_parser)
         
         ck_assert_msg(0, errmsg);
     } else {
-        char * output = handlebars_ast_print(ctx->program, 0);
+        errno = 0;
         
+        //char * output = handlebars_ast_print(ctx->program, 0);
+        struct handlebars_ast_printer_context printctx = handlebars_ast_print2(ctx->program, 0);
+        //_handlebars_ast_print(ctx->program, &printctx);
+        char * output = printctx.output;
+        
+        ck_assert_int_eq(0, errno);
+        ck_assert_int_eq(0, printctx.error);
+        ck_assert_ptr_ne(NULL, output);
         ck_assert_str_eq(test->expected, output);
+        
+        handlebars_talloc_free(output);
     }
   
     handlebars_context_dtor(ctx);
@@ -201,9 +213,9 @@ int main(void)
     
     s = parser_suite();
     sr = srunner_create(s);
-#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
+// #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
     srunner_set_fork_status(sr, CK_NOFORK);
-#endif
+// #endif
     //runner_set_log(sr, "test_spec_handlebars_parser.log");
     srunner_run_all(sr, CK_VERBOSE);
     number_failed = srunner_ntests_failed(sr);

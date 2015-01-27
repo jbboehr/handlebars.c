@@ -160,3 +160,8 @@ void handlebars_yy_fatal_error(const char * msg, void * yyscanner)
   fprintf(stderr, "%s\n", msg);
   exit(2);
 }
+
+void handlebars_yy_print(FILE *file, int type, YYSTYPE value)
+{
+	fprintf(stderr, "%d : \m", type);
+}
