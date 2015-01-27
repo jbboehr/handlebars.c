@@ -192,7 +192,7 @@ ID    {IDC}+/{LOOKAHEAD}
 									}
 
 <com1>[^\x00\}]*?"}}"				{
-  										yytext[yyleng - 2] = 0;
+  										yytext[yyleng -= 2] = 0;
   										yy_pop_state(yyg);
 										yylval->text = yytext;
 										yylval->length = yyleng;

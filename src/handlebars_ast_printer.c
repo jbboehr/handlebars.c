@@ -114,7 +114,30 @@ static void _handlebars_ast_print_block(struct handlebars_ast_node * ast_node, s
 
 static void _handlebars_ast_print_sexpr(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    ;
+    if( ast_node->node.sexpr.id ) {
+        __PRINT(ast_node->node.sexpr.id);
+    }
+    __APPEND(" [");
+    
+    if( ast_node->node.sexpr.params ) {
+        struct handlebars_ast_list * ast_list = ast_node->node.sexpr.params;
+        struct handlebars_ast_list_item * item;
+        struct handlebars_ast_list_item * tmp;
+        
+        handlebars_ast_list_foreach(ast_list, item, tmp) {
+            __PRINT(item->data);
+            if( item->next ) {
+                __APPEND(", ");
+            }
+        }
+    }
+    
+    __APPEND("]");
+    
+    if( ast_node->node.sexpr.hash ) {
+        __APPEND(" ");
+        __PRINT(ast_node->node.sexpr.hash);
+    }
 }
 
 static void _handlebars_ast_print_mustache(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
@@ -250,7 +273,10 @@ static void _handlebars_ast_print_hash_segment(struct handlebars_ast_node * ast_
 
 static void _handlebars_ast_print_path_segment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    ;
+    if( ast_node->node.path_segment.separator ) {
+        __APPEND(ast_node->node.path_segment.separator);
+    }
+    __APPEND(ast_node->node.path_segment.part);
 }
 
 
