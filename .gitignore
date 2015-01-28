@@ -1,7 +1,7 @@
 
 # to ignore binaries... scary
-*
-!*.*
+#*
+#!*.*
 
 # specific
 doc/Doxyfile
@@ -10,7 +10,11 @@ handlebars_c_test.info
 src/handlebars_config.h
 src/handlebars.lex.*
 src/handlebars.tab.*
-test_coverage
+
+# hackey rules
+bin/handlebarsc
+tests/test_*
+!tests/test_*.c
 
 # ignores by extension
 *~

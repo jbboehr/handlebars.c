@@ -170,6 +170,7 @@ AC_CONFIG_FILES([
   handlebars.pc
   src/Makefile
   Makefile
+  bin/Makefile
   tests/Makefile
 ])
 
