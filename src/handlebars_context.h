@@ -27,12 +27,15 @@ struct handlebars_context
   void * scanner;
   struct handlebars_ast_node * program;
   int eof;
+  int errnum;
   char * error;
   struct YYLTYPE * errloc;
 };
 
 struct handlebars_context * handlebars_context_ctor(void);
 void handlebars_context_dtor(struct handlebars_context * context);
+char * handlebars_context_get_errmsg(struct handlebars_context * context);
+char * handlebars_context_get_errmsg_js(struct handlebars_context * context);
 
 #ifdef	__cplusplus
 }

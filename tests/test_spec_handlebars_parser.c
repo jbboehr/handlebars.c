@@ -81,7 +81,7 @@ static void loadSpecTest(json_object * object)
     // Get exception
     cur = json_object_object_get(object, "exception");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
-        test->expected = (int) json_object_get_boolean(cur);
+        test->exception = (int) json_object_get_boolean(cur);
         nreq++;
     }
     
@@ -158,14 +158,28 @@ START_TEST(handlebars_spec_parser)
     retval = handlebars_yy_parse(ctx);
     
     if( ctx->error != NULL ) {
-        snprintf(errlinestr, sizeof(errlinestr), " on line %d, column %d", 
-                ctx->errloc->last_line, 
-                ctx->errloc->last_column);
+        char * errmsg = handlebars_context_get_errmsg(ctx);
+        char * errmsgjs = handlebars_context_get_errmsg_js(ctx);
         
-        errmsg = handlebars_talloc_strdup(ctx, ctx->error);
-        errmsg = handlebars_talloc_strdup_append(errmsg, errlinestr);
-        
-        ck_assert_msg(0, errmsg);
+        if( test->exception ) {
+            // It's a regexp, try to do substring search
+            if( test->message[0] == '/' && test->message[strlen(test->message) - 1] == '/' ) {
+                char * tmp = strdup(test->message + 1);
+                tmp[strlen(test->message) - 2] = '\0';
+                char * found = strstr(errmsgjs, tmp);
+                if( found != NULL ) {
+                    // ok
+                } else {
+                    //ck_assert_msg(found != NULL, errmsg);
+                    ck_assert_str_eq(test->message, errmsg);
+                }
+                free(tmp);
+            } else {
+                ck_assert_str_eq(test->message, errmsg);
+            }
+        } else {
+            ck_assert_msg(0, errmsg);
+        }
     } else {
         errno = 0;
         
@@ -174,10 +188,14 @@ START_TEST(handlebars_spec_parser)
         //_handlebars_ast_print(ctx->program, &printctx);
         char * output = printctx.output;
         
-        ck_assert_int_eq(0, errno);
-        ck_assert_int_eq(0, printctx.error);
-        ck_assert_ptr_ne(NULL, output);
-        ck_assert_str_eq(test->expected, output);
+        if( !test->exception ) {
+            ck_assert_int_eq(0, errno);
+            ck_assert_int_eq(0, printctx.error);
+            ck_assert_ptr_ne(NULL, output);
+            ck_assert_str_eq(test->expected, output);
+        } else {
+            ck_assert_msg(0, test->message);
+        }
         
         handlebars_talloc_free(output);
     }

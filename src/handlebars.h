@@ -11,6 +11,7 @@ extern "C" {
 #define HANDLEBARS_ERROR 1
 #define HANDLEBARS_NOMEM 2
 #define HANDLEBARS_NULLARG 3
+#define HANDLEBARS_PARSEERR 4
 
 // Annoying lex missing prototypes
 int handlebars_yy_get_column(void * yyscanner);

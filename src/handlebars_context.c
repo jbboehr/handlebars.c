@@ -86,3 +86,51 @@ int handlebars_context_dtor(struct handlebars_context * context)
   return ret;
 }
 */
+
+
+#define __ERRLINESTR 
+char * handlebars_context_get_errmsg(struct handlebars_context * context)
+{
+    char * errmsg;
+    char errbuf[256];
+    
+    if( context->error == NULL ) {
+      return NULL;
+    }
+    
+    snprintf(errbuf, sizeof(errbuf), "%s on line %d, column %d", 
+            context->error,
+            context->errloc->last_line, 
+            context->errloc->last_column);
+    
+    errmsg = handlebars_talloc_strdup(context, errbuf);
+    if( errmsg == NULL ) {
+      // this might be a bad idea... 
+      return context->error;
+    }
+    
+    return errmsg;
+}
+
+char * handlebars_context_get_errmsg_js(struct handlebars_context * context)
+{
+    char * errmsg;
+    char errbuf[256];
+    
+    if( context->error == NULL ) {
+      return NULL;
+    }
+    
+    // @todo check errno == HANDLEBARS_PARSEERR
+    
+    snprintf(errbuf, sizeof(errbuf), "Parse error on line %d", 
+            context->errloc->last_line);
+    
+    errmsg = handlebars_talloc_strdup(context, errbuf);
+    if( errmsg == NULL ) {
+      // this might be a bad idea... 
+      return context->error;
+    }
+    
+    return errmsg;
+}
