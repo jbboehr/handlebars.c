@@ -118,11 +118,6 @@ int handlebars_ast_node_id_init(struct handlebars_ast_node * ast_node, void * ct
         ast_node->node.id.id_name_length = id_name_length;
     }
     
-    printf("original: %s\n", original);
-    printf("id_name: %s\n", id_name);
-    printf("depth: %d\n", depth);
-    printf("count: %d\n", count);
-    
     return 0;
 }
 
@@ -171,8 +166,52 @@ int handlebars_check_open_close(struct handlebars_ast_node * ast_node, struct ha
         char errmsgtmp[256];
         snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s\0", open, close);
         handlebars_yy_error(yylloc, context, errmsgtmp);
-        // context->error = "ARRRRGG"; //handlebars_talloc_strdup(NULL, open);
-        //
+    }
+    
+    return cmp;
+}
+
+int handlebars_check_raw_open_close(struct handlebars_ast_node * ast_node, struct handlebars_context * context, struct YYLTYPE * yylloc)
+{
+    // this is retarded...
+    struct handlebars_ast_node * open_node;
+    struct handlebars_ast_node * close_node;
+    char * open;
+    char * close;
+    int cmp;
+    
+    if( ast_node == NULL ) {
+        return 1;
+    }
+    
+    open_node = ast_node->node.raw_block.mustache;
+    if( open_node == NULL ) {
+        return 1;
+    }
+    open_node = open_node->node.mustache.sexpr;
+    if( open_node == NULL ) {
+        return 1;
+    }
+    open_node = open_node->node.sexpr.id;
+    if( open_node == NULL ) {
+        return 1;
+    }
+    open = open_node->node.id.original;
+    if( open == NULL ) {
+        return 1;
+    }
+    
+    close = ast_node->node.raw_block.close;
+    if( close == NULL ) {
+        return 1;
+    }
+    
+    cmp = strcmp(open, close);
+    
+    if( cmp != 0 ) {
+        char errmsgtmp[256];
+        snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s\0", open, close);
+        handlebars_yy_error(yylloc, context, errmsgtmp);
     }
     
     return cmp;

@@ -65,7 +65,7 @@ static int do_lex(void)
         output = handlebars_token_print(token, 0);
         fprintf(stdout, "%s\n", output);
         fflush(stdout);
-    } while( token && token_int != END );
+    } while( token && token_int != END && token_int != INVALID );
     
     return 0;
 }

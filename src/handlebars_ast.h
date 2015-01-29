@@ -185,6 +185,7 @@ void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
 
 int handlebars_ast_node_id_init(struct handlebars_ast_node * ast_node, void * ctx);
 int handlebars_check_open_close(struct handlebars_ast_node * ast_node, struct handlebars_context * context, struct YYLTYPE * yylloc);
+int handlebars_check_raw_open_close(struct handlebars_ast_node * ast_node, struct handlebars_context * context, struct YYLTYPE * yylloc);
 
 #ifdef	__cplusplus
 }

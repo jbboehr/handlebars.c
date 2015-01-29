@@ -149,14 +149,15 @@ ID    {IDC}+/{LOOKAHEAD}
                                    		yy_pop_state(yyg);
                                  	}
 
-<raw>"{{{{/"{IDC}+/[=} \r\n\t\/.]"}}}}" {
+<raw>"{{{{/"{IDC}+"}}}}" 			{
 										// v2.0.0 handlebars.l line 52
+										yytext += 5, yyleng -= 9;
                                   		yy_pop_state(yyg);
 										handlebars_yy_copy_lval();
                                   		return END_RAW_BLOCK;
                                  	}
 
-<raw>[^\x00]*?/("{{{{/")         	{
+<raw>[^\x00]+/("{{{{/")         	{
 										// v2.0.0 handlebars.l line 57
 										handlebars_yy_copy_lval();
 										return CONTENT;

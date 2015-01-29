@@ -179,10 +179,14 @@ raw_block
       content_node->node.content.length = strlen($2);
       
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_RAW_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = content_node;
-      ast_node->node.block.close = (char *) handlebars_talloc_strdup(ast_node, $3);
+      ast_node->node.raw_block.mustache = $1;
+      ast_node->node.raw_block.program = content_node;
+      ast_node->node.raw_block.close = (char *) handlebars_talloc_strdup(ast_node, $3);
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_raw_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   ;
 
