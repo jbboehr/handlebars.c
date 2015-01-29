@@ -15,6 +15,7 @@ struct handlebars_ast_printer_context {
   char * output;
   size_t length;
   long counter;
+  int in_partial;
 };
 
 char * handlebars_ast_print(struct handlebars_ast_node * ast_node, int flags);

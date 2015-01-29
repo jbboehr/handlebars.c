@@ -456,9 +456,9 @@ path
 path_segments
   : path_segments SEP ID {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH_SEGMENT, context);
-      ast_node->node.path_segment.part = handlebars_talloc_strdup(ast_node, $3);
+      ast_node->node.path_segment.part = handlebars_talloc_strndup(ast_node, $3, strlen($3));
       ast_node->node.path_segment.part_length = strlen($3);
-      ast_node->node.path_segment.separator = handlebars_talloc_strdup(ast_node, $2);
+      ast_node->node.path_segment.separator = handlebars_talloc_strndup(ast_node, $2, strlen($2));
       ast_node->node.path_segment.separator_length = strlen($2);
       
       handlebars_ast_list_append($1, ast_node);

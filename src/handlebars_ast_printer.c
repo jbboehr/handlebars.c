@@ -155,7 +155,9 @@ static void _handlebars_ast_print_partial(struct handlebars_ast_node * ast_node,
     __PAD_HEAD();
     __APPEND("{{> ");
     
+    ctx->in_partial = 1;
     __PRINT(ast_node->node.partial.partial_name);
+    ctx->in_partial = 0;
     
     if( ast_node->node.partial.context ) {
         __APPEND(" ");
@@ -207,7 +209,7 @@ static void _handlebars_ast_print_number(struct handlebars_ast_node * ast_node, 
 
 static void _handlebars_ast_print_boolean(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND("NUMBER{");
+    __APPEND("BOOLEAN{");
     __APPEND(ast_node->node.boolean.string);
     __APPEND("}");
 }
@@ -218,16 +220,18 @@ static void _handlebars_ast_print_id(struct handlebars_ast_node * ast_node, stru
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
     
-    if( !ast_list->first || !ast_list->first->next ) {
-        __APPEND("ID:");
-    } else {
-        __APPEND("PATH:");
+    if( !ctx->in_partial ) {
+        if( !ast_list->first || !ast_list->first->next ) {
+            __APPEND("ID:");
+        } else {
+            __APPEND("PATH:");
+        }
     }
     
     handlebars_ast_list_foreach(ast_list, item, tmp) {
         __PRINT(item->data);
         if( item->next ) {
-            __APPEND("/");
+            //__APPEND("/");
         }
     }
 }
@@ -356,6 +360,7 @@ struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_as
     ctx.length = 0;
     ctx.padding = 0;
     ctx.flags = flags;
+    ctx.in_partial = 0;
     
     // Allocate initial string
     ctx.output = handlebars_talloc_strdup(NULL, "");
