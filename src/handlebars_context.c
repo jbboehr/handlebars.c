@@ -115,7 +115,7 @@ char * handlebars_context_get_errmsg(struct handlebars_context * context)
 char * handlebars_context_get_errmsg_js(struct handlebars_context * context)
 {
     char * errmsg;
-    char errbuf[256];
+    char errbuf[512];
     
     if( context->error == NULL ) {
       return NULL;
@@ -123,8 +123,10 @@ char * handlebars_context_get_errmsg_js(struct handlebars_context * context)
     
     // @todo check errno == HANDLEBARS_PARSEERR
     
-    snprintf(errbuf, sizeof(errbuf), "Parse error on line %d", 
-            context->errloc->last_line);
+    snprintf(errbuf, sizeof(errbuf), "Parse error on line %d, column %d : %s", 
+            context->errloc->last_line, 
+            context->errloc->last_column,
+            context->error);
     
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( errmsg == NULL ) {

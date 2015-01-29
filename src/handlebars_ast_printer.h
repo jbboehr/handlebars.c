@@ -8,6 +8,11 @@ extern "C" {
 
 struct handlebars_ast;
 
+enum handlebars_ast_printer_flags {
+  HANDLEBARS_AST_PRINTER_FLAGS_NONE = 0,
+  HANDLEBARS_AST_PRINTER_FLAGS_COMPAT = 1
+};
+
 struct handlebars_ast_printer_context {
   int flags;
   int padding;

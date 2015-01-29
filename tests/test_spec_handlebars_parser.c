@@ -171,14 +171,16 @@ START_TEST(handlebars_spec_parser)
                     // ok
                 } else {
                     //ck_assert_msg(found != NULL, errmsg);
-                    ck_assert_str_eq(test->message, errmsg);
+                    ck_assert_str_eq(test->message, errmsgjs);
                 }
                 free(tmp);
             } else {
                 ck_assert_str_eq(test->message, errmsg);
             }
         } else {
-            ck_assert_msg(0, errmsg);
+            char * lesigh = handlebars_talloc_strdup(ctx, errmsg);
+            lesigh = handlebars_talloc_strdup_append(lesigh, test->tmpl);
+            ck_assert_msg(0, lesigh);
         }
     } else {
         errno = 0;
@@ -192,7 +194,17 @@ START_TEST(handlebars_spec_parser)
             ck_assert_int_eq(0, errno);
             ck_assert_int_eq(0, printctx.error);
             ck_assert_ptr_ne(NULL, output);
-            ck_assert_str_eq(test->expected, output);
+            if( strcmp(test->expected, output) == 0 ) {
+                ck_assert_str_eq(test->expected, output);
+            } else {
+                char * lesigh = handlebars_talloc_strdup(ctx, "\nExpected: \n");
+                lesigh = handlebars_talloc_strdup_append(lesigh, test->expected);
+                lesigh = handlebars_talloc_strdup_append(lesigh, "\nActual: \n");
+                lesigh = handlebars_talloc_strdup_append(lesigh, output);
+                lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
+                lesigh = handlebars_talloc_strdup_append(lesigh, test->tmpl);
+                ck_assert_msg(0, lesigh);
+            }
         } else {
             ck_assert_msg(0, test->message);
         }

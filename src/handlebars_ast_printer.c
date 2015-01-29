@@ -233,8 +233,10 @@ static void _handlebars_ast_print_id(struct handlebars_ast_node * ast_node, stru
     }
     
     handlebars_ast_list_foreach(ast_list, item, tmp) {
-        __PRINT(item->data);
+        __APPEND(item->data->node.path_segment.part);
+        //__PRINT(item->data);
         if( item->next ) {
+            __APPEND(item->next->data->node.path_segment.separator);
             //__APPEND("/");
         }
     }

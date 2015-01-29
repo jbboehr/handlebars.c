@@ -120,6 +120,77 @@ START_TEST(test_ast_list_prepend_null)
 }
 END_TEST
 
+START_TEST(test_ast_list_remove_single)
+{
+  // Only item
+  struct handlebars_ast_list * list = handlebars_ast_list_ctor(NULL);
+  struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
+  handlebars_ast_list_append(list, node1);
+  
+  handlebars_ast_list_remove(list, node1);
+  
+  ck_assert_ptr_eq(list->first, NULL);
+  ck_assert_ptr_eq(list->last, NULL);
+  
+  handlebars_ast_list_dtor(list);
+}
+END_TEST
+
+START_TEST(test_ast_list_remove_first)
+{
+  // Not only item
+  struct handlebars_ast_list * list = handlebars_ast_list_ctor(NULL);
+  struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
+  struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
+  handlebars_ast_list_append(list, node1);
+  handlebars_ast_list_append(list, node2);
+  
+  handlebars_ast_list_remove(list, node1);
+  
+  ck_assert_ptr_eq(list->first->data, node2);
+  ck_assert_ptr_eq(list->last->data, node2);
+  
+  handlebars_ast_list_dtor(list);
+}
+END_TEST
+
+START_TEST(test_ast_list_remove_middle)
+{
+  struct handlebars_ast_list * list = handlebars_ast_list_ctor(NULL);
+  struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
+  struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
+  struct handlebars_ast_node * node3 = handlebars_talloc(list, struct handlebars_ast_node);
+  handlebars_ast_list_append(list, node1);
+  handlebars_ast_list_append(list, node2);
+  handlebars_ast_list_append(list, node3);
+  
+  handlebars_ast_list_remove(list, node2);
+  
+  ck_assert_ptr_eq(list->first->data, node1);
+  ck_assert_ptr_eq(list->last->data, node3);
+  ck_assert_ptr_eq(list->first->next->data, node3);
+  
+  handlebars_ast_list_dtor(list);
+}
+END_TEST
+
+START_TEST(test_ast_list_remove_last)
+{
+  struct handlebars_ast_list * list = handlebars_ast_list_ctor(NULL);
+  struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
+  struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
+  handlebars_ast_list_append(list, node1);
+  handlebars_ast_list_append(list, node2);
+  
+  handlebars_ast_list_remove(list, node2);
+  
+  ck_assert_ptr_eq(list->first->data, node1);
+  ck_assert_ptr_eq(list->last->data, node1);
+  
+  handlebars_ast_list_dtor(list);
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
   Suite * s = suite_create("AST Node List");
@@ -132,6 +203,10 @@ Suite * parser_suite(void)
   REGISTER_TEST_FIXTURE(s, test_ast_list_prepend, "Prepend");
   REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_failed_alloc, "Prepend with failed alloc");
   REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_null, "Prepend with null argument");
+  REGISTER_TEST_FIXTURE(s, test_ast_list_remove_single, "Remove (single)");
+  REGISTER_TEST_FIXTURE(s, test_ast_list_remove_first, "Remove (first)");
+  REGISTER_TEST_FIXTURE(s, test_ast_list_remove_middle, "Remove (middle)");
+  REGISTER_TEST_FIXTURE(s, test_ast_list_remove_last, "Remove (last)");
   
   return s;
 }

@@ -51,6 +51,50 @@ void handlebars_ast_list_dtor(struct handlebars_ast_list * list)
     handlebars_talloc_free(list);
 }
 
+int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
+{
+    struct handlebars_ast_list_item * it;
+    struct handlebars_ast_list_item * tmp;
+    struct handlebars_ast_list_item * prev;
+    
+    if( !list->first || !list->last ) {
+        return 0;
+    }
+    
+    handlebars_ast_list_foreach(list, it, tmp) {
+        // Test for equality
+        if( it->data != ast_node ) {
+            prev = it;
+            continue;
+        }
+        // Is this the first and last
+        if( it == list->first && it == list->last ) {
+            list->first = list->last = NULL;
+            goto done;
+        }
+        // Is this this first
+        if( it == list->first ) {
+            list->first = it->next;
+            goto done;
+        }
+        // Is this the last
+        if( it == list->last ) {
+            prev->next = NULL;
+            list->last = prev;
+            goto done;
+        }
+        // Middle, splice
+        prev->next = it->next;
+    }
+    
+    return 0;
+done:
+    if( it ) {
+        handlebars_talloc_free(it);
+    }
+    return 1;
+}
+
 int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {
     int error = HANDLEBARS_SUCCESS;

@@ -11,6 +11,8 @@ extern "C" {
 /**
  * Pre-declarations
  */
+struct YYLTYPE;
+struct handlebars_context;
 struct handlebars_ast_node;
 struct handlebars_ast_list;
 
@@ -94,7 +96,16 @@ struct handlebars_ast_node_hash_segment {
 
 struct handlebars_ast_node_id {
   struct handlebars_ast_list * parts;
-  // Todo: original string depth idName isSimple isScoped stringModeValue
+  int depth;
+  int is_simple;
+  int is_scoped;
+  size_t id_name_length;
+  char * id_name;
+  size_t string_length;
+  char * string;
+  size_t original_length;
+  char * original;
+  // Todo: stringModeValue
 };
 
 struct handlebars_ast_node_partial_name {
@@ -171,6 +182,9 @@ struct handlebars_ast_node {
 
 struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type type, void * ctx);
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
+
+int handlebars_ast_node_id_init(struct handlebars_ast_node * ast_node, void * ctx);
+int handlebars_check_open_close(struct handlebars_ast_node * ast_node, struct handlebars_context * context, struct YYLTYPE * yylloc);
 
 #ifdef	__cplusplus
 }

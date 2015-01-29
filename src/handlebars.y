@@ -203,6 +203,10 @@ block
       ast_node->node.block.close = $4;
       ast_node->node.block.inverted = 0;
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   | open_block inverse_and_program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
@@ -212,6 +216,10 @@ block
       ast_node->node.block.close = $3;
       ast_node->node.block.inverted = 0;
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   | open_block program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
@@ -220,6 +228,10 @@ block
       ast_node->node.block.close = $3;
       ast_node->node.block.inverted = 0;
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   | open_block close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
@@ -228,6 +240,10 @@ block
       ast_node->node.block.close = $2;
       ast_node->node.block.inverted = 0;
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   | open_inverse program inverse_and_program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
@@ -237,6 +253,10 @@ block
       ast_node->node.block.close = $4;
       ast_node->node.block.inverted = 1;
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   | open_inverse inverse_and_program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
@@ -245,6 +265,10 @@ block
       ast_node->node.block.close = $3;
       ast_node->node.block.inverted = 1;
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   | open_inverse program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
@@ -254,6 +278,10 @@ block
       ast_node->node.block.close = $3;
       ast_node->node.block.inverted = 1;
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   | open_inverse close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
@@ -261,6 +289,10 @@ block
       ast_node->node.block.close = $2;
       ast_node->node.block.inverted = 1;
       $$ = ast_node;
+      
+      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
+        YYABORT;
+      }
     }
   ;
 
@@ -489,6 +521,7 @@ path
   : path_segments {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, context);
       ast_node->node.id.parts = $1;
+      handlebars_ast_node_id_init(ast_node, context);
       $$ = ast_node;
     }
   ;

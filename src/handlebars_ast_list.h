@@ -27,6 +27,8 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx);
 
 void handlebars_ast_list_dtor(struct handlebars_ast_list * list);
 
+int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+
 int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
 
 #ifdef	__cplusplus
