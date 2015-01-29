@@ -109,7 +109,7 @@ int handlebars_yy_debug = 0;
 %type <ast_list> path_segments
 %type <ast_ndoe> path_segment
 
-%left CLOSE CLOSE_UNESCAPED CONTENT END OPEN OPEN_BLOCK OPEN_ENDBLOCK 
+%left CLOSE CLOSE_UNESCAPED CONTENT END OPEN OPEN_BLOCK OPEN_ENDBLOCK
 %left OPEN_INVERSE OPEN_PARTIAL OPEN_UNESCAPED SEP ID BOOLEAN COMMENT DATA 
 %left EQUALS INTEGER STRING INVALID
 
@@ -127,6 +127,10 @@ program :
       $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
       $$->node.program.statements = $1;
     }
+  | "" {
+      $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      $$->node.program.statements = handlebars_ast_list_ctor($$);
+  }
   ;
 
 statements
@@ -217,6 +221,14 @@ block
       ast_node->node.block.inverted = 0;
       $$ = ast_node;
     }
+  | open_block close_block {
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
+      ast_node->node.block.mustache = $1;
+      ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      ast_node->node.block.close = $2;
+      ast_node->node.block.inverted = 0;
+      $$ = ast_node;
+    }
   | open_inverse program inverse_and_program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
       ast_node->node.block.mustache = $1;
@@ -229,8 +241,7 @@ block
   | open_inverse inverse_and_program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
       ast_node->node.block.mustache = $1;
-      //ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
-      ast_node->node.block.inverse = $2;
+      ast_node->node.block.program = $2;
       ast_node->node.block.close = $3;
       ast_node->node.block.inverted = 1;
       $$ = ast_node;
@@ -241,6 +252,13 @@ block
       //ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
       ast_node->node.block.inverse = $2;
       ast_node->node.block.close = $3;
+      ast_node->node.block.inverted = 1;
+      $$ = ast_node;
+    }
+  | open_inverse close_block {
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
+      ast_node->node.block.mustache = $1;
+      ast_node->node.block.close = $2;
       ast_node->node.block.inverted = 1;
       $$ = ast_node;
     }
@@ -266,10 +284,13 @@ open_inverse
 
 inverse_and_program
   : INVERSE program {
-      // this is kind of wrong
+      // cough
       $$ = $2;
       // Original:
       // -> { strip: yy.stripFlags($1, $1), program: $2 }
+    }
+  | INVERSE {
+      $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
     }
   ;
 
