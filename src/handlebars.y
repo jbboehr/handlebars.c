@@ -191,15 +191,7 @@ open_raw_block
   ;
 
 block
-  : open_block program close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = $2;
-      ast_node->node.block.close = $3;
-      ast_node->node.block.inverted = 0;
-      $$ = ast_node;
-    }
-  | open_block program inverse_and_program close_block {
+  : open_block program inverse_and_program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
       ast_node->node.block.mustache = $1;
       ast_node->node.block.program = $2;
@@ -208,20 +200,47 @@ block
       ast_node->node.block.inverted = 0;
       $$ = ast_node;
     }
-  | open_inverse program close_block {
+  | open_block inverse_and_program close_block {
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
+      ast_node->node.block.mustache = $1;
+      ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      ast_node->node.block.inverse = $2;
+      ast_node->node.block.close = $3;
+      ast_node->node.block.inverted = 0;
+      $$ = ast_node;
+    }
+  | open_block program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
       ast_node->node.block.mustache = $1;
       ast_node->node.block.program = $2;
       ast_node->node.block.close = $3;
-      ast_node->node.block.inverted = 1;
+      ast_node->node.block.inverted = 0;
       $$ = ast_node;
     }
   | open_inverse program inverse_and_program close_block {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
       ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = $2;
-      ast_node->node.block.inverse = $3;
+      ast_node->node.block.program = $3;
+      ast_node->node.block.inverse = $2;
       ast_node->node.block.close = $4;
+      ast_node->node.block.inverted = 1;
+      $$ = ast_node;
+    }
+  | open_inverse inverse_and_program close_block {
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
+      ast_node->node.block.mustache = $1;
+      //ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      ast_node->node.block.inverse = $2;
+      ast_node->node.block.close = $3;
+      ast_node->node.block.inverted = 1;
+      $$ = ast_node;
+    }
+  | open_inverse program close_block {
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
+      ast_node->node.block.mustache = $1;
+      //ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      ast_node->node.block.inverse = $2;
+      ast_node->node.block.close = $3;
       ast_node->node.block.inverted = 1;
       $$ = ast_node;
     }

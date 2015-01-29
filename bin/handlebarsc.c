@@ -91,7 +91,7 @@ static int do_parse(void)
         
         output = handlebars_talloc_strdup(ctx, ctx->error);
         output = handlebars_talloc_strdup_append(output, errlinestr);
-        fprintf(stdout, output);
+        fprintf(stdout, "%s\n", output);
         error = 1;
     } else {
         errno = 0;
@@ -101,7 +101,7 @@ static int do_parse(void)
         //_handlebars_ast_print(ctx->program, &printctx);
         char * output = printctx.output;
         
-        fprintf(stdout, output);
+        fprintf(stdout, "%s\n", output);
         
         handlebars_talloc_free(output);
     }

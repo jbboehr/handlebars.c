@@ -37,9 +37,9 @@ void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context
     do { \
         char tmp[32]; \
         char * tmp2 = tmp; \
-        if( ctx->padding > 0 && ctx->padding < 32 ) { \
-            memset(tmp, ' ', ctx->padding); \
-            tmp[ctx->padding] = 0; \
+        if( ctx->padding > 0 && ctx->padding < 16 ) { \
+            memset(tmp, ' ', ctx->padding * 2); \
+            tmp[ctx->padding * 2] = 0; \
             __APPEND(tmp2); \
         } \
     } while(0)
@@ -62,6 +62,10 @@ static void _handlebars_ast_print_list(struct handlebars_ast_list * ast_list, st
 {
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
+    
+    if( ast_list == NULL ) {
+        return;
+    }
     
     handlebars_ast_list_foreach(ast_list, item, tmp) {
         __PRINT(item->data);
@@ -89,7 +93,7 @@ static void _handlebars_ast_print_block(struct handlebars_ast_node * ast_node, s
     
     // Program
     if( ast_node->node.block.program ) {
-        __PAD("BLOCK:");
+        __PAD("PROGRAM:");
         ctx->padding++;
         __PRINT(ast_node->node.block.program);
         ctx->padding--;
