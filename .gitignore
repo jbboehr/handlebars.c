@@ -6,6 +6,7 @@
 # specific
 doc/Doxyfile
 doc/html
+doc/man
 handlebars_c_test.info
 src/handlebars_config.h
 src/handlebars.lex.*
@@ -29,6 +30,7 @@ tests/test_*
 *.gcov
 *.gcda
 *.gcno
+*.stamp
 *.stackdump
 *.trs
 *.c.*r.*

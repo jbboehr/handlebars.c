@@ -52,12 +52,15 @@ AC_PROG_LEX
 AC_PROG_LIBTOOL
 AC_PROG_LN_S
 AC_PROG_YACC
-AC_PATH_PROGS(BISON, [bison], no)
-AC_PATH_PROGS(FLEX, [flex], no)
-
-AC_CHECK_PROG(DOXYGEN, [doxygen], [true], [false])
-AM_CONDITIONAL(DOXYGEN, [test "$DOXYGEN" = true])
+AC_PATH_PROG(BISON, [bison], no)
+AC_PATH_PROG(FLEX, [flex], no)
+AC_PATH_PROG(DOXYGEN, [doxygen], no)
 AM_CONDITIONAL([GCC], [test x$GCC = xyes])
+
+AM_CONDITIONAL(HAVE_DOXYGEN, [test "x$DOXYGEN" != "xno"])
+AS_IF([test "x$DOXYGEN" = "xno"], [
+  AC_MSG_WARN([Doxygen not found - continuing without Doxygen support])
+])
 
 # Checks for header files
 AC_HEADER_STDC
@@ -170,6 +173,8 @@ AC_CONFIG_FILES([
   handlebars.pc
   src/Makefile
   Makefile
+  doc/Doxyfile
+  doc/Makefile
   bin/Makefile
   tests/Makefile
 ])

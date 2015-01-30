@@ -1,5 +1,5 @@
 
-SUBDIRS = src . bin tests
+SUBDIRS = src . doc bin tests
 
 EXTRA_DIST = LICENSE README.md
 
