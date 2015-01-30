@@ -56,6 +56,8 @@ START_TEST(test_lex)
     ck_assert_ptr_ne(NULL, list->first->next->next);
     ck_assert_int_eq(CLOSE, list->first->next->next->data->token);
     ck_assert_str_eq("}}", list->first->next->next->data->text);
+    
+    handlebars_context_dtor(ctx);
 }
 END_TEST
 
