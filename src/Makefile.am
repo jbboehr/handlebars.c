@@ -17,6 +17,7 @@ handlebars.lex.c:
 
 # Main
 include_HEADERS = \
+	handlebars.h \
 	handlebars_ast.h \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
@@ -37,6 +38,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_memory.c \
 	\
 	$(GENSOURCE) \
+	handlebars.h \
+	handlebars.c \
 	handlebars_ast.h \
 	handlebars_ast.c \
 	handlebars_ast_list.h \
@@ -62,3 +65,4 @@ libhandlebars_la_LDFLAGS = \
 	-version-info $(HANDLEBARS_LT_CURRENT):$(HANDLEBARS_LT_REVISION):$(HANDLEBARS_LT_AGE)
 #	-export-symbols-regex '^_?handlebars' \
 #	-release $(HANDLEBARS_LT_RELEASE)
+

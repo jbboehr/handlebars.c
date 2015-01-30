@@ -13,6 +13,10 @@ extern "C" {
 #define HANDLEBARS_NULLARG 3
 #define HANDLEBARS_PARSEERR 4
 
+// Version functions
+const char * handlebars_version_string();
+int handlebars_version();
+
 // Annoying lex missing prototypes
 int handlebars_yy_get_column(void * yyscanner);
 void handlebars_yy_set_column(int column_no, void * yyscanner);
