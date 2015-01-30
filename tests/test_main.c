@@ -8,6 +8,12 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_context.h"
+#include "handlebars_token.h"
+#include "handlebars_token_list.h"
+#include "handlebars_token_printer.h"
+#include "handlebars.tab.h"
+#include "handlebars.lex.h"
 #include "utils.h"
 
 START_TEST(test_version)
@@ -30,12 +36,36 @@ START_TEST(test_version_string)
 }
 END_TEST
 
+START_TEST(test_lex)
+{
+    struct handlebars_context * ctx = handlebars_context_ctor();
+    struct handlebars_token_list * list;
+    
+    ctx->tmpl = "{{foo}}";
+    
+    list = handlebars_lex(ctx);
+    
+    ck_assert_ptr_ne(NULL, list->first);
+    ck_assert_int_eq(OPEN, list->first->data->token);
+    ck_assert_str_eq("{{", list->first->data->text);
+    
+    ck_assert_ptr_ne(NULL, list->first->next);
+    ck_assert_int_eq(ID, list->first->next->data->token);
+    ck_assert_str_eq("foo", list->first->next->data->text);
+    
+    ck_assert_ptr_ne(NULL, list->first->next->next);
+    ck_assert_int_eq(CLOSE, list->first->next->next->data->token);
+    ck_assert_str_eq("}}", list->first->next->next->data->text);
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
   Suite * s = suite_create("Handlebars");
 
   REGISTER_TEST(s, test_version, "Version");
   REGISTER_TEST(s, test_version_string, "Version String");
+  REGISTER_TEST(s, test_lex, "Lex Convenience Function");
 
   return s;
 }
