@@ -26,7 +26,9 @@ include_HEADERS = \
 	handlebars_token.h \
 	handlebars_token_list.h \
 	handlebars_token_printer.h \
-	handlebars_utils.h
+	handlebars_utils.h \
+        handlebars.tab.h \
+        handlebars.lex.h
 
 GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c
 CLEANFILES = $(GENSOURCE)
