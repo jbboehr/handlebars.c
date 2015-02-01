@@ -17,18 +17,31 @@
 
 #define __BUFF_SIZE 1024
 char * stdin_buf;
+size_t stdin_buf_length;
 
 static void readStdin(void)
 {
     char buffer[__BUFF_SIZE];
+    char * tmp;
+    
     stdin_buf = talloc_strdup(NULL, "");
+    if( stdin_buf == NULL ) {
+        exit(1);
+    }
+    
     while (fgets(buffer, __BUFF_SIZE, stdin) != NULL) {
         stdin_buf = talloc_strdup_append_buffer(stdin_buf, buffer);
     }
+    stdin_buf_length = strlen(stdin_buf);
     
-    if( stdin_buf == NULL ) {
-        exit(1);
-    } else if( strlen(stdin_buf) <= 0 ) {
+    // Trim the newline off the end >.>
+    tmp = stdin_buf + stdin_buf_length - 1;
+    while( stdin_buf_length > 0 && (*tmp == '\n' || *tmp == '\r') ) {
+        *tmp = 0;
+        stdin_buf_length--;
+    }
+    
+    if( stdin_buf_length <= 0 ) {
         exit(1);
     }
 }
