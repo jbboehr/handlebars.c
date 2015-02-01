@@ -1,0 +1,19 @@
+language: c
+
+compiler:
+  - gcc
+
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq autoconf automake check bison flex gawk gcc git-core lcov libjson0-dev libtalloc-dev libtool m4 make pkg-config uthash-dev
+
+script:
+  - ./bootstrap
+  - ./configure
+  - make
+  - make test
+  - sudo make install
+
+branches:
+  only:
+    - master
