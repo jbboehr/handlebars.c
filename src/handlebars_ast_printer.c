@@ -374,11 +374,11 @@ struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_as
         goto error;
     }
     
-    // Trim whitespace off right end of output
-    handlebars_rtrim(ctx.output, " \t\r\n");
-    
     // Main print
     _handlebars_ast_print(ast_node, &ctx);
+    
+    // Trim whitespace off right end of output
+    handlebars_rtrim(ctx.output, " \t\r\n");
     
     // Check for error and free
     if( ctx.error && ctx.output != NULL )  {
