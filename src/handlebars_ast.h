@@ -17,7 +17,7 @@ struct handlebars_ast_node;
 struct handlebars_ast_list;
 
 enum handlebars_node_type {
-  HANDLEBARS_AST_NODE_NULL = 0,
+  HANDLEBARS_AST_NODE_NIL = 0,
   HANDLEBARS_AST_NODE_PROGRAM,
   HANDLEBARS_AST_NODE_MUSTACHE,
   HANDLEBARS_AST_NODE_SEXPR,
@@ -186,6 +186,8 @@ void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
 int handlebars_ast_node_id_init(struct handlebars_ast_node * ast_node, void * ctx);
 int handlebars_check_open_close(struct handlebars_ast_node * ast_node, struct handlebars_context * context, struct YYLTYPE * yylloc);
 int handlebars_check_raw_open_close(struct handlebars_ast_node * ast_node, struct handlebars_context * context, struct YYLTYPE * yylloc);
+
+const char * handlebars_ast_node_readable_type(int type);
 
 #ifdef	__cplusplus
 }

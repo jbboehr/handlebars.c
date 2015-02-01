@@ -216,3 +216,32 @@ int handlebars_check_raw_open_close(struct handlebars_ast_node * ast_node, struc
     
     return cmp;
 }
+
+const char * handlebars_ast_node_readable_type(int type)
+{
+#define _RTYPE_MK(str) HANDLEBARS_AST_NODE_ ## str
+#define _RTYPE_CASE(str) \
+    case _RTYPE_MK(str): return handlebars_stringify(str); break
+  switch( type ) {
+    _RTYPE_CASE(NIL);
+    _RTYPE_CASE(PROGRAM);
+    _RTYPE_CASE(MUSTACHE);
+    _RTYPE_CASE(SEXPR);
+    _RTYPE_CASE(PARTIAL);
+    _RTYPE_CASE(BLOCK);
+    _RTYPE_CASE(RAW_BLOCK);
+    _RTYPE_CASE(CONTENT);
+    _RTYPE_CASE(HASH);
+    _RTYPE_CASE(HASH_SEGMENT);
+    _RTYPE_CASE(ID);
+    _RTYPE_CASE(PARTIAL_NAME);
+    _RTYPE_CASE(DATA);
+    _RTYPE_CASE(STRING);
+    _RTYPE_CASE(NUMBER);
+    _RTYPE_CASE(BOOLEAN);
+    _RTYPE_CASE(COMMENT);
+    _RTYPE_CASE(PATH_SEGMENT);
+  }
+  
+  return "UNKNOWN";
+}
