@@ -11,7 +11,7 @@ lexer and parser using flex and bison.
 ```bash
 # Install dependencies
 sudo apt-get install autoconf automake bison flex gawk gcc git-core \
-                     libjson0-devlibtalloc-dev libtool m4 make pkg-config \
+                     libjson0-dev libtalloc-dev libtool m4 make pkg-config \
                      uthash-dev
 
 # Install testing dependencies
