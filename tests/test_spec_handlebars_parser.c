@@ -75,6 +75,7 @@ static void loadSpecTest(json_object * object)
     cur = json_object_object_get(object, "expected");
     if( cur && json_object_get_type(cur) == json_type_string ) {
         test->expected = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        handlebars_rtrim(test->expected, " \t\r\n");
         nreq++;
     }
     
