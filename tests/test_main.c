@@ -75,6 +75,7 @@ Suite * parser_suite(void)
 int main(void)
 {
   int number_failed;
+  talloc_enable_leak_report_full();
   Suite * s = parser_suite();
   SRunner * sr = srunner_create(s);
 #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)

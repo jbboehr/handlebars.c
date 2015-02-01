@@ -42,7 +42,7 @@ error:
 
 struct handlebars_token_list * handlebars_token_list_ctor(void * ctx)
 {
-    return handlebars_talloc_zero(ctx, struct handlebars_token_list);
+    return handlebars_talloc_zero((struct handlebars_context *)ctx, struct handlebars_token_list);
 }
 
 void handlebars_token_list_dtor(struct handlebars_token_list * list)

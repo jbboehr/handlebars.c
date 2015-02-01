@@ -53,6 +53,8 @@ void handlebars_context_dtor(struct handlebars_context * context)
       context->scanner = NULL;
     }
   }
+  
+  handlebars_talloc_free(context);
 }
 
 /*

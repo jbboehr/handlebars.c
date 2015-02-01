@@ -38,9 +38,9 @@ struct parser_test {
     char * expected;
     int exception;
     char * message;
-    TALLOC_CTX * mem_ctx;
 };
 
+static TALLOC_CTX * rootctx;
 static struct parser_test * tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
@@ -56,25 +56,25 @@ static void loadSpecTest(json_object * object)
     // Get description
     cur = json_object_object_get(object, "description");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->description = strdup(json_object_get_string(cur));
+        test->description = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
     }
     
     // Get it
     cur = json_object_object_get(object, "it");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->it = strdup(json_object_get_string(cur));
+        test->it = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
     }
     
     // Get template
     cur = json_object_object_get(object, "template");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->tmpl = strdup(json_object_get_string(cur));
+        test->tmpl = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
     }
     
     // Get expected
     cur = json_object_object_get(object, "expected");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->expected = strdup(json_object_get_string(cur));
+        test->expected = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
         nreq++;
     }
     
@@ -88,7 +88,7 @@ static void loadSpecTest(json_object * object)
     // Get message
     cur = json_object_object_get(object, "message");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->message = strdup(json_object_get_string(cur));
+        test->message = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
         nreq++;
     }
     
@@ -98,7 +98,7 @@ static void loadSpecTest(json_object * object)
     }
 }
 
-static void loadSpec(char * filename) {
+static int loadSpec(char * filename) {
     int error = 0;
     char * data = NULL;
     size_t data_len = 0;
@@ -110,7 +110,7 @@ static void loadSpec(char * filename) {
     error = file_get_contents((const char *) filename, &data, &data_len);
     if( error != 0 ) {
         fprintf(stderr, "Failed to read spec file: %s, code: %d\n", filename, error);
-        exit(1);
+        goto error;
     }
     
     // Parse JSON
@@ -118,13 +118,15 @@ static void loadSpec(char * filename) {
     // @todo: parsing errors seem to cause segfaults....
     if( result == NULL ) {
         fprintf(stderr, "Failed so parse JSON\n");
-        exit(1);
+        error = 1;
+        goto error;
     }
     
     // Root object should be array
     if( json_object_get_type(result) != json_type_array ) {
         fprintf(stderr, "Root JSON value was not array\n");
-        exit(1);
+        error = 1;
+        goto error;
     }
     
     // Get number of test cases
@@ -132,7 +134,7 @@ static void loadSpec(char * filename) {
     
     // Allocate tests array
     tests_size = array_len + 1;
-    tests = calloc(tests_size, sizeof(struct parser_test));
+    tests = talloc_array(rootctx, struct parser_test, tests_size);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -143,6 +145,8 @@ static void loadSpec(char * filename) {
         }
         loadSpecTest(array_item);
     }
+error:
+    return error;
 }
 
 START_TEST(handlebars_spec_parser)
@@ -235,20 +239,42 @@ int main(void)
     Suite * s;
     SRunner * sr;
     char * spec_filename;
+    int memdebug = 0;
+    int iswin = 0;
+    int error = 0;
+    
+#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
+    iswin = 1;
+#endif
+    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
+    
+    if( memdebug ) {
+        talloc_enable_leak_report_full();
+    }
+    rootctx = talloc_new(NULL);
     
     // Load the spec
     spec_filename = getenv("handlebars_parser_spec");
-    loadSpec(spec_filename);
+    error = loadSpec(spec_filename);
+    if( error != 0 ) {
+        goto error;
+    }
     fprintf(stderr, "Loaded %lu test cases\n", tests_len);
     
     s = parser_suite();
     sr = srunner_create(s);
-// #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
-    srunner_set_fork_status(sr, CK_NOFORK);
-// #endif
-    //runner_set_log(sr, "test_spec_handlebars_parser.log");
+    if( iswin || memdebug ) {
+        srunner_set_fork_status(sr, CK_NOFORK);
+    }
     srunner_run_all(sr, CK_VERBOSE);
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
-    return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+    
+error:
+    talloc_free(rootctx);
+    if( memdebug ) {
+        talloc_report_full(NULL, stderr);
+    }
+    return error;
 }

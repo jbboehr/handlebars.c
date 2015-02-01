@@ -54,7 +54,9 @@ static int do_lex(void)
     // Run
     do {
         token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, ctx->scanner);
-        //if( token_int == END || token_int == INVALID ) break;
+        if( token_int == END || token_int == INVALID ) {
+            break;
+        }
         YYSTYPE * lval = handlebars_yy_get_lval(ctx->scanner);
         
         // Make token object
