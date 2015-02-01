@@ -104,12 +104,7 @@ static int do_parse(void)
     /*retval =*/ handlebars_yy_parse(ctx);
     
     if( ctx->error != NULL ) {
-        snprintf(errlinestr, sizeof(errlinestr), " on line %d, column %d", 
-                ctx->errloc->last_line, 
-                ctx->errloc->last_column);
-        
-        output = handlebars_talloc_strdup(ctx, ctx->error);
-        output = handlebars_talloc_strdup_append(output, errlinestr);
+        output = handlebars_context_get_errmsg(ctx);
         fprintf(stdout, "%s\n", output);
         handlebars_talloc_free(output);
         
