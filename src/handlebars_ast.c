@@ -8,6 +8,7 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
+#include "handlebars_utils.h"
 
 struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type type, void * ctx)
 {
@@ -164,7 +165,7 @@ int handlebars_check_open_close(struct handlebars_ast_node * ast_node, struct ha
     
     if( cmp != 0 ) {
         char errmsgtmp[256];
-        snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s\0", open, close);
+        snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s", open, close);
         handlebars_yy_error(yylloc, context, errmsgtmp);
     }
     
@@ -175,7 +176,6 @@ int handlebars_check_raw_open_close(struct handlebars_ast_node * ast_node, struc
 {
     // this is retarded...
     struct handlebars_ast_node * open_node;
-    struct handlebars_ast_node * close_node;
     char * open;
     char * close;
     int cmp;
@@ -210,7 +210,7 @@ int handlebars_check_raw_open_close(struct handlebars_ast_node * ast_node, struc
     
     if( cmp != 0 ) {
         char errmsgtmp[256];
-        snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s\0", open, close);
+        snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s", open, close);
         handlebars_yy_error(yylloc, context, errmsgtmp);
     }
     

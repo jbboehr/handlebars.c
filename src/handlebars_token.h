@@ -2,7 +2,7 @@
 #ifndef HANDLEBARS_TOKEN_H
 #define HANDLEBARS_TOKEN_H
 
-#include <stdlib.h>
+#include <stddef.h>
 
 #ifdef	__cplusplus
 extern "C" {

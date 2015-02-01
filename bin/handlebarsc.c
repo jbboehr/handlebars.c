@@ -36,6 +36,7 @@ static void readStdin(void)
 static int do_usage(void)
 {
     fprintf(stderr, "Usage: handlebarsc [lex|parse] [TEMPLATE]\n");
+    return 0;
 }
 
 static int do_lex(void)
@@ -43,9 +44,6 @@ static int do_lex(void)
     struct handlebars_context * ctx;
     struct handlebars_token * token = NULL;
     int token_int = 0;
-    char * output;
-    YYSTYPE yylval_param;
-    YYLTYPE yylloc_param;
     
     readStdin();
     ctx = handlebars_context_ctor();
@@ -53,14 +51,20 @@ static int do_lex(void)
     
     // Run
     do {
+        YYSTYPE yylval_param;
+        YYLTYPE yylloc_param;
+        YYSTYPE * lval;
+        char * text;
+        char * output;
+        
         token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, ctx->scanner);
         if( token_int == END || token_int == INVALID ) {
             break;
         }
-        YYSTYPE * lval = handlebars_yy_get_lval(ctx->scanner);
+        lval = handlebars_yy_get_lval(ctx->scanner);
         
         // Make token object
-        char * text = (lval->text == NULL ? "" : lval->text);
+        text = (lval->text == NULL ? "" : lval->text);
         token = handlebars_token_ctor(token_int, text, strlen(text), ctx);
         
         // Print token
@@ -76,7 +80,7 @@ static int do_parse(void)
 {
     struct handlebars_context * ctx;
     char * output;
-    int retval;
+    //int retval;
     char errlinestr[32];
     int error = 0;
     
@@ -84,7 +88,7 @@ static int do_parse(void)
     ctx = handlebars_context_ctor();
     ctx->tmpl = stdin_buf;
     
-    retval = handlebars_yy_parse(ctx);
+    /*retval =*/ handlebars_yy_parse(ctx);
     
     if( ctx->error != NULL ) {
         snprintf(errlinestr, sizeof(errlinestr), " on line %d, column %d", 
@@ -94,18 +98,18 @@ static int do_parse(void)
         output = handlebars_talloc_strdup(ctx, ctx->error);
         output = handlebars_talloc_strdup_append(output, errlinestr);
         fprintf(stdout, "%s\n", output);
+        handlebars_talloc_free(output);
+        
         error = 1;
     } else {
-        errno = 0;
-        
         //char * output = handlebars_ast_print(ctx->program, 0);
         struct handlebars_ast_printer_context printctx = handlebars_ast_print2(ctx->program, 0);
         //_handlebars_ast_print(ctx->program, &printctx);
         char * output = printctx.output;
-        
         fprintf(stdout, "%s\n", output);
-        
         handlebars_talloc_free(output);
+        
+        errno = 0;
     }
     
     return error;

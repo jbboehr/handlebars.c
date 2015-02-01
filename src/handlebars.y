@@ -107,7 +107,6 @@ int handlebars_yy_debug = 0;
 %type <ast_list> hash_segments
 %type <ast_node> hash_segment
 %type <ast_list> path_segments
-%type <ast_ndoe> path_segment
 
 %left CLOSE CLOSE_UNESCAPED CONTENT END OPEN OPEN_BLOCK OPEN_ENDBLOCK
 %left OPEN_INVERSE OPEN_PARTIAL OPEN_UNESCAPED SEP ID BOOLEAN COMMENT DATA 
@@ -174,11 +173,14 @@ statement
 
 raw_block
   : open_raw_block CONTENT END_RAW_BLOCK {
-      struct handlebars_ast_node * content_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_CONTENT, context);
+      struct handlebars_ast_node * ast_node;
+      struct handlebars_ast_node * content_node;
+      
+      content_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_CONTENT, context);
       content_node->node.content.string = handlebars_talloc_strdup(content_node, $2);
       content_node->node.content.length = strlen($2);
       
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_RAW_BLOCK, context);
+      ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_RAW_BLOCK, context);
       ast_node->node.raw_block.mustache = $1;
       ast_node->node.raw_block.program = content_node;
       ast_node->node.raw_block.close = (char *) handlebars_talloc_strdup(ast_node, $3);
@@ -496,10 +498,13 @@ partial_name
       $$ = ast_node;
     }
   | STRING {
-      struct handlebars_ast_node * string_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_STRING, context);
+      struct handlebars_ast_node * ast_node;
+      struct handlebars_ast_node * string_node;
+      
+      string_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_STRING, context);
       string_node->node.string.string = $1;
       
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
+      ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
       ast_node->node.partial_name.name = string_node;
       $$ = ast_node;
     }

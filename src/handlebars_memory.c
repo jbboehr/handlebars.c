@@ -65,33 +65,11 @@ static void * _handlebars_memfail_talloc_zero(const void * ctx, size_t size, con
     return NULL;
 }
 
-// Allocators for a reentrant scanner (flex)
-struct handlebars_context * _handlebars_context_tmp;
-
-void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
-{
-    // Note: it looks like the yyscanner is allocated before we can pass in
-    // a handlebars context...
-    // Also look into the performance hit for doing this
-    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_tmp);
-    return (void *) handlebars_talloc_size(ctx, bytes);
-}
-
-void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
-{
-    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_tmp);
-    return (void *) handlebars_talloc_realloc(ctx, ptr, char, bytes);
-}
-
-void handlebars_yy_free(void * ptr, void * yyscanner)
-{
-    handlebars_talloc_free(ptr);
-}
-
 // Functions to manipulate memory allocation failures
 void handlebars_memory_fail_enable(void)
 {
     if( !_handlebars_memfail_enabled ) {
+        _handlebars_memfail_enabled = 1;
         _handlebars_talloc_free = &_handlebars_memfail_talloc_free;
         _handlebars_talloc_named_const = &_handlebars_memfail_talloc_named_const;
         _handlebars_talloc_realloc_array = &_handlebars_memfail_talloc_realloc_array;
@@ -107,6 +85,7 @@ void handlebars_memory_fail_enable(void)
 void handlebars_memory_fail_disable(void)
 {
     if( _handlebars_memfail_enabled ) {
+        _handlebars_memfail_enabled = 0;
         _handlebars_talloc_free = &_talloc_free;
         _handlebars_talloc_named_const = &talloc_named_const;
         _handlebars_talloc_realloc_array = &_talloc_realloc_array;
@@ -117,4 +96,9 @@ void handlebars_memory_fail_disable(void)
         _handlebars_talloc_strndup_append_buffer = &talloc_strndup_append_buffer;
         _handlebars_talloc_zero = &_talloc_zero;
     }
+}
+
+int handlebars_memory_fail_get_state(void)
+{
+    return _handlebars_memfail_enabled;
 }

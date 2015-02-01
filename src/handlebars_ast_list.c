@@ -48,7 +48,7 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx)
 
 void handlebars_ast_list_dtor(struct handlebars_ast_list * list)
 {
-    handlebars_talloc_free(list);
+   handlebars_talloc_free(list);
 }
 
 int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
@@ -61,6 +61,7 @@ int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handleb
         return 0;
     }
     
+    prev = NULL;
     handlebars_ast_list_foreach(list, it, tmp) {
         // Test for equality
         if( it->data != ast_node ) {
@@ -84,7 +85,9 @@ int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handleb
             goto done;
         }
         // Middle, splice
-        prev->next = it->next;
+        if( prev ) {
+            prev->next = it->next;
+        }
     }
     
     return 0;

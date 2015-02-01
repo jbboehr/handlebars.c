@@ -2,7 +2,7 @@
 #ifndef HANDLEBARS_AST_H
 #define HANDLEBARS_AST_H
 
-#include <stdlib.h>
+#include <stddef.h>
 
 #ifdef	__cplusplus
 extern "C" {

@@ -2,7 +2,7 @@
 #ifndef HANDLEBARS_MEMORY_H
 #define HANDLEBARS_MEMORY_H
 
-#include <stdlib.h>
+#include <stddef.h>
 #include <talloc.h>
 
 #ifdef	__cplusplus
@@ -29,7 +29,7 @@ extern "C" {
 
 #define handlebars_talloc_strdup_append _handlebars_talloc_strdup_append
 
-#define handlebars_talloc_strdup_append_buffer _handlebars_talloc_strdup_append_buffer;
+#define handlebars_talloc_strdup_append_buffer _handlebars_talloc_strdup_append_buffer
 
 #define handlebars_talloc_strndup _handlebars_talloc_strndup
 
@@ -68,16 +68,10 @@ extern handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_a
 extern handlebars_talloc_zero_func _handlebars_talloc_zero;
 #endif
 
-// Allocators for a reentrant scanner (flex)
-// We use the scanner pointer as a talloc context
-struct handlebars_context * _handlebars_context_tmp;
-void * handlebars_yy_alloc(size_t bytes, void * yyscanner);
-void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner);
-void handlebars_yy_free(void * ptr, void * yyscanner);
-
 // Functions to manipulate memory allocation failures
 void handlebars_memory_fail_enable(void);
 void handlebars_memory_fail_disable(void);
+int handlebars_memory_fail_get_state(void);
 
 #ifdef	__cplusplus
 }

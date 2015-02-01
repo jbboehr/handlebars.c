@@ -2,6 +2,8 @@
 #ifndef HANDLEBARS_UTILS_H
 #define HANDLEBARS_UTILS_H
 
+#include <stddef.h>
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -29,7 +31,14 @@ void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * cont
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_context * context);
 void handlebars_yy_fatal_error(const char * msg, void * yyscanner);
 void handlebars_yy_print(FILE *file, int type, union YYSTYPE value);
-     
+
+// Allocators for a reentrant scanner (flex)
+// We use the scanner pointer as a talloc context
+struct handlebars_context * _handlebars_context_tmp;
+void * handlebars_yy_alloc(size_t bytes, void * yyscanner);
+void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner);
+void handlebars_yy_free(void * ptr, void * yyscanner);
+
 #ifdef	__cplusplus
 }
 #endif

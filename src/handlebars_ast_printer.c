@@ -359,7 +359,6 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
 struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_ast_node * ast_node, int flags)
 {
     struct handlebars_ast_printer_context ctx;
-    char * output;
     
     // Setup print context
     ctx.error = 0;
@@ -380,7 +379,7 @@ struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_as
     
     // Check for error and free
     if( ctx.error && ctx.output != NULL )  {
-        handlebars_talloc_free(output);
+        handlebars_talloc_free(ctx.output);
         ctx.output = NULL;
     }
 
