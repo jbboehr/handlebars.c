@@ -1,5 +1,7 @@
 # handlebars.c
 
+[![Build Status](https://travis-ci.org/jbboehr/handlebars.c.svg?branch=master)](https://travis-ci.org/jbboehr/handlebars.c)
+
 C implementation of the [handlebars.js](https://github.com/wycats/handlebars.js/)
 lexer and parser using flex and bison.
 
