@@ -55,17 +55,20 @@ char * handlebars_token_list_print(struct handlebars_token_list * list, int flag
     struct handlebars_token_list_item * el = NULL;
     struct handlebars_token_list_item * tmp = NULL;
     struct handlebars_token * token = NULL;
-    char * str = NULL;
+    char * output = NULL;
     char * token_str = NULL;
     
-    str = handlebars_talloc_strdup(list, "");
+    output = handlebars_talloc_strdup(list, "");
     handlebars_token_list_foreach(list, el, tmp) {
         token = el->data;
         token_str = handlebars_token_print(token, flags);
         if( token_str != NULL ) {
-            str = handlebars_talloc_strdup_append(str, token_str);
+            output = handlebars_talloc_strdup_append(output, token_str);
         }
     }
     
-    return str;
+    // Trim whitespace off right end of output
+    handlebars_rtrim(output, " \t\r\n");
+    
+    return output;
 }

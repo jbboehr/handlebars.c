@@ -22,6 +22,15 @@ union YYSTYPE;
 char * handlebars_addcslashes(const char * str, size_t str_length, const char * what, size_t what_length);
 
 /**
+ * @brief Trims a set of characters off the right end of string
+ * 
+ * @param[in] string the string to trim
+ * @param[in] what the set of characters to trim
+ * @return the original pointer
+ */
+char * handlebars_rtrim(char * string, const char * what);
+
+/**
  * Strips slashes from a string. Changes are done in-place. length accepts
  * NULL, uses strlen for length.
  */

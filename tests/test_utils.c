@@ -3,6 +3,7 @@
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_utils.h"
 #include "utils.h"
 
@@ -54,6 +55,21 @@ START_TEST(test_addcslashes)
 }
 END_TEST
 
+START_TEST(test_rtrim)
+{
+    char * in = handlebars_talloc_strdup(NULL, "test \n \r ");
+    handlebars_rtrim(in, " \t\r\n");
+    ck_assert_str_eq(in, "test");
+    handlebars_talloc_free(in);
+}
+{
+    char * in = handlebars_talloc_strdup(NULL, "");
+    handlebars_rtrim(in, "");
+    ck_assert_str_eq(in, "");
+    handlebars_talloc_free(in);
+}
+END_TEST
+
 START_TEST(test_stripcslashes)
 {
 	char * input = strdup("\\n\\r");
@@ -94,6 +110,7 @@ Suite * parser_suite(void)
 	Suite * s = suite_create("Utils");
 
 	REGISTER_TEST_FIXTURE(s, test_addcslashes, "addcslashes");
+	REGISTER_TEST_FIXTURE(s, test_rtrim, "rtrim");
 	REGISTER_TEST_FIXTURE(s, test_stripcslashes, "stripcslashes");
 
 	return s;

@@ -65,6 +65,23 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
 	return new_str;
 }
 
+char * handlebars_rtrim(char * string, const char * what)
+{
+	int i, l;
+	char flags[256];
+	
+	// Make char mask
+	memset(flags, 0, sizeof(flags));
+	for( i = 0, l = strlen(what); i < l; i++ ) {
+		flags[(unsigned char) what[i]] = 1;
+	}
+	
+  char * original = string + strlen(string);
+  while(original > string && flags[*--original]);
+  *(original + 1) = '\0';
+  return string;
+}
+
 void handlebars_stripcslashes(char * str, size_t * length)
 {
 	char *source, *target, *end;
