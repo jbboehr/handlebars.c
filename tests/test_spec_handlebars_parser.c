@@ -84,6 +84,8 @@ static void loadSpecTest(json_object * object)
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->exception = (int) json_object_get_boolean(cur);
         nreq++;
+    } else {
+        test->exception = 0;
     }
     
     // Get message
@@ -147,6 +149,12 @@ static int loadSpec(char * filename) {
         loadSpecTest(array_item);
     }
 error:
+    if( data ) {
+        free(data);
+    }
+    if( result ) {
+        json_object_put(result);
+    }
     return error;
 }
 

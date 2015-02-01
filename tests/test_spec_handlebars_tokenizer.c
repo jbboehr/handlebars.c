@@ -63,7 +63,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
     array_len = json_object_array_length(object);
     
     // Allocate token list
-    test->expected = handlebars_talloc(rootctx, struct handlebars_token_list);
+    test->expected = handlebars_token_list_ctor(rootctx);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -181,7 +181,7 @@ static int loadSpec(char * filename) {
     
     // Allocate tests array
     tests_size = array_len + 1;
-    tests = calloc(tests_size, sizeof(struct tokenizer_test));
+    tests = talloc_zero_array(rootctx, struct tokenizer_test, tests_size);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -193,6 +193,12 @@ static int loadSpec(char * filename) {
         loadSpecTest(array_item);
     }
 error:
+    if( data ) {
+        free(data);
+    }
+    if( result ) {
+        json_object_put(result);
+    }
     return error;
 }
 
