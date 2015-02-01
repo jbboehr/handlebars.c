@@ -11,6 +11,7 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_memory.h"
+#include "handlebars_utils.h"
 
 
 
@@ -272,15 +273,6 @@ static void _handlebars_ast_print_comment(struct handlebars_ast_node * ast_node,
     __PAD_FOOT();
 }
 
-
-
-
-
-static void _handlebars_ast_print_hash_segment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
-{
-    ;
-}
-
 static void _handlebars_ast_print_path_segment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     if( ast_node->node.path_segment.separator ) {
@@ -291,7 +283,10 @@ static void _handlebars_ast_print_path_segment(struct handlebars_ast_node * ast_
 
 
 
-
+static void _handlebars_ast_print_hash_segment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    ;
+}
 
 
 

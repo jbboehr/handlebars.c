@@ -94,7 +94,6 @@ static int do_parse(void)
     struct handlebars_context * ctx;
     char * output;
     //int retval;
-    char errlinestr[32];
     int error = 0;
     
     readStdin();

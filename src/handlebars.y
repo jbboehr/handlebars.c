@@ -509,10 +509,11 @@ partial_name
       $$ = ast_node;
     }
   | NUMBER {
+      struct handlebars_ast_node * ast_node;
       struct handlebars_ast_node * string_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_NUMBER, context);
       string_node->node.number.string = $1;
       
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
+      ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
       ast_node->node.partial_name.name = string_node;
       $$ = ast_node;
     }

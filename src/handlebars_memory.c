@@ -22,46 +22,80 @@ handlebars_talloc_zero_func _handlebars_talloc_zero = &_talloc_zero;
 // Overrides for memory functions
 static int _handlebars_memfail_talloc_free(void *ptr, const char *location)
 {
+    // Suppress unused parameter errors
+    ptr = ptr;
+    location = location;
     return -1;
 }
 
 static void * _handlebars_memfail_talloc_named_const(const void * context, size_t size, const char * name)
 {
+    // Suppress unused parameter errors
+    context = context;
+    size = size;
+    name = name;
     return NULL;
 }
 
 static void * _handlebars_memfail_talloc_realloc_array(const void *ctx, void *ptr, size_t el_size, unsigned count, const char *name)
 {
+    // Suppress unused parameter errors
+    ctx = ctx;
+    ptr = ptr;
+    el_size = el_size;
+    count = count;
+    name = name;
     return NULL;
 }
 
 static char * _handlebars_memfail_talloc_strdup(const void *t, const char *p)
 {
+    // Suppress unused parameter errors
+    t = t;
+    p = p;
     return NULL;
 }
 
 static char * _handlebars_memfail_talloc_strdup_append(char *s, const char *a)
 {
+    // Suppress unused parameter errors
+    s = s;
+    a = a;
     return NULL;
 }
 
 static char * _handlebars_memfail_talloc_strdup_append_buffer(char *s, const char *a)
 {
+    // Suppress unused parameter errors
+    s = s;
+    a = a;
     return NULL;
 }
 
 static char * _handlebars_memfail_talloc_strndup(const void * t, const char * p, size_t n)
 {
-   return NULL;
+    // Suppress unused parameter errors
+    t = t;
+    p = p;
+    n = n;
+    return NULL;
 }
 
 static char * _handlebars_memfail_talloc_strndup_append_buffer(char *s, const char *a, size_t n)
 {
+    // Suppress unused parameter errors
+    s = s;
+    a = a;
+    n = n;
     return NULL;
 }
 
 static void * _handlebars_memfail_talloc_zero(const void * ctx, size_t size, const char * name)
 {
+    // Suppress unused parameter errors
+    ctx = ctx;
+    size = size;
+    name = name;
     return NULL;
 }
 
