@@ -45,18 +45,18 @@ AC_SUBST(HANDLEBARS_LT_AGE)
 # Checks for programs
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_CC
-AM_PROG_CC_C_O
 AC_PROG_CC_STDC
 AC_PROG_INSTALL
 AC_PROG_LEX
 AC_PROG_LIBTOOL
 AC_PROG_LN_S
 AC_PROG_YACC
-AC_PATH_PROG(BISON, [bison], no)
-AC_PATH_PROG(FLEX, [flex], no)
-AC_PATH_PROG(DOXYGEN, [doxygen], no)
+AC_PATH_PROGS(BISON, [bison], no)
+AC_PATH_PROGS(FLEX, [flex], no)
+AC_PATH_PROGS(DOXYGEN, [doxygen], no)
+AC_PATH_PROGS(LCOV, [lcov], no)
 AM_CONDITIONAL([GCC], [test x$GCC = xyes])
-
+AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
 AM_CONDITIONAL(HAVE_DOXYGEN, [test "x$DOXYGEN" != "xno"])
 AS_IF([test "x$DOXYGEN" = "xno"], [
   AC_MSG_WARN([Doxygen not found - continuing without Doxygen support])
@@ -68,14 +68,11 @@ AC_FUNC_MALLOC
 AC_HEADER_DIRENT
 AC_CHECK_HEADERS(ctype.h, , AC_MSG_ERROR([ctype.h is required]))
 AC_CHECK_HEADERS(errno.h, , AC_MSG_ERROR([errno.h is required]))
-AC_CHECK_HEADERS(memory.h, , AC_MSG_ERROR([memory.h is required]))
-AC_CHECK_HEADERS(stdio.h, , AC_MSG_ERROR([stdio.h is required]))
 AC_CHECK_HEADERS(stdint.h, , AC_MSG_ERROR([stdint.h is required]))
 AC_CHECK_HEADERS(uthash.h, , AC_MSG_ERROR([uthash.h is required]))
 
 # Checks for functions
-AC_CHECK_FUNC(calloc, , AC_MSG_ERROR([calloc is required]))
-AC_CHECK_FUNC(memcpy, , AC_MSG_ERROR([memcpy is required]))
+AC_CHECK_FUNC(snprintf, , AC_MSG_ERROR([snprintf is required]))
 
 # Checks for typedefs, structures, and compiler characteristics
 AC_C_CONST
@@ -149,6 +146,21 @@ AS_IF([test "x$enable_yaml" != "xno"], [
 ])
 
 # Options
+
+# gcov
+AC_ARG_ENABLE([gcov], AS_HELP_STRING([--enable-gcov], [compile with gcov]))
+
+AS_IF([test "x$enable_gcov" == "xyes"], [
+  AC_CHECK_LIB(gcov, __gcov_open, , [
+    AC_MSG_FAILURE([gcov test failed (--disable-gcov to disable)])
+  ])
+
+  AC_SUBST([LIBGCOV_LIBS], ["-lgcov -coverage"])
+  LIBGCOV_CFLAGS="-g -O0 -coverage" # -disable-shared
+  CFLAGS="$CFLAGS $LIBGCOV_CFLAGS"
+])
+
+AM_CONDITIONAL([GCOV], [test x$enable_gcov = xyes])
 
 # memdebug
 #AC_ARG_ENABLE([memdebug], 

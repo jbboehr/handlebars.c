@@ -11,6 +11,7 @@ handlebars_c_test.info
 src/handlebars_config.h
 src/handlebars.lex.*
 src/handlebars.tab.*
+test_coverage
 
 # hackey rules
 bin/handlebarsc
