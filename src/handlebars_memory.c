@@ -6,6 +6,8 @@
 #include "handlebars_memory.h"
 #undef IN_HANDLEBARS_MEMORY_C
 
+// LCOV_EXCL_START
+
 static int _handlebars_memfail_enabled = 0;
 static int _handlebars_memfail_counter = -1;
 
@@ -19,10 +21,6 @@ handlebars_talloc_strdup_append_buffer_func _handlebars_talloc_strdup_append_buf
 handlebars_talloc_strndup_func _handlebars_talloc_strndup = &talloc_strndup;
 handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_append_buffer = &talloc_strndup_append_buffer;
 handlebars_talloc_zero_func _handlebars_talloc_zero = &_talloc_zero;
-
-static void _handlebars_memfail_internal()
-{
-}
 
 // Overrides for memory functions
 static int _handlebars_memfail_talloc_free(void *ptr, const char *location)
@@ -245,3 +243,5 @@ int handlebars_memory_fail_get_counter(void)
 {
     return _handlebars_memfail_counter;
 }
+
+// LCOV_EXCL_STOP
