@@ -1,5 +1,4 @@
 
-#include <errno.h>
 #include <string.h>
 #include <talloc.h>
 
@@ -15,11 +14,8 @@ struct handlebars_token * handlebars_token_ctor(int token_int, const char * text
     char * textdup;
     
     // Allocate token
-    // @todo doesn't take into account the alignment
-    // note: +1 for \0, -1 for char[1]
     token = handlebars_talloc_zero(ctx, struct handlebars_token);
     if( token == NULL ) {
-        errno = ENOMEM;
         goto error;
     }
     
@@ -29,7 +25,6 @@ struct handlebars_token * handlebars_token_ctor(int token_int, const char * text
     // Copy string and null terminate
     textdup = handlebars_talloc_strndup(token, text, length);
     if( textdup == NULL ) {
-        errno = ENOMEM;
         goto error;
     }
     token->text = textdup;
@@ -47,6 +42,35 @@ error:
 void handlebars_token_dtor(struct handlebars_token * token)
 {
     handlebars_talloc_free(token);
+}
+
+int handlebars_token_get_type(struct handlebars_token * token)
+{
+    if( token != NULL ) {
+        return token->token;
+    }
+    
+    return -1;
+}
+
+const char * handlebars_token_get_text(struct handlebars_token * token)
+{
+    if( token != NULL ) {
+        return (const char *) token->text;
+    }
+    
+    return NULL;
+}
+
+void handlebars_token_get_text_ex(struct handlebars_token * token, const char ** text, size_t * length)
+{
+    if( token != NULL ) {
+        *text = (const char *) token->text;
+        *length = (const size_t) token->length;
+    } else {
+        *text = NULL;
+        *length = 0;
+    }
 }
 
 const char * handlebars_token_readable_type(int type)
@@ -93,7 +117,7 @@ int handlebars_token_reverse_readable_type(const char * type)
     switch( type[0] ) {
         case 'B':
             _RTYPE_CMP(BOOLEAN);
-            break;
+            //break;
         case 'C':
             _RTYPE_CMP(CLOSE);
             _RTYPE_CMP(CLOSE_RAW_BLOCK);
@@ -101,23 +125,23 @@ int handlebars_token_reverse_readable_type(const char * type)
             _RTYPE_CMP(CLOSE_UNESCAPED);
             _RTYPE_CMP(COMMENT);
             _RTYPE_CMP(CONTENT);
-            break;
+            //break;
         case 'D':
             _RTYPE_CMP(DATA);
-            break;
+            //break;
         case 'E':
             _RTYPE_CMP(END);
             _RTYPE_CMP(END_RAW_BLOCK);
             _RTYPE_CMP(EQUALS);
-            break;
+            //break;
         case 'I':
             _RTYPE_CMP(ID);
             _RTYPE_CMP(INVALID);
             _RTYPE_CMP(INVERSE);
-            break;
+            //break;
         case 'N':
             _RTYPE_CMP(NUMBER);
-            break;
+            //break;
         case 'O':
             _RTYPE_CMP(OPEN);
             _RTYPE_CMP(OPEN_BLOCK);
@@ -127,11 +151,11 @@ int handlebars_token_reverse_readable_type(const char * type)
             _RTYPE_CMP(OPEN_RAW_BLOCK);
             _RTYPE_CMP(OPEN_SEXPR);
             _RTYPE_CMP(OPEN_UNESCAPED);
-            break;
+            //break;
         case 'S':
             _RTYPE_CMP(SEP);
             _RTYPE_CMP(STRING);
-            break;
+            //break;
     }
     
     // Unknown :(

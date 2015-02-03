@@ -44,7 +44,6 @@ const char * handlebars_version_string(void);
  * @param[in] ctx
  * @return the token list
  */
-// 
 struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx);
 
 #ifdef	__cplusplus

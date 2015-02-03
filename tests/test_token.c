@@ -8,15 +8,99 @@
 #include "handlebars.tab.h"
 #include "utils.h"
 
+static TALLOC_CTX * ctx;
+
 static void setup(void)
 {
 	 handlebars_memory_fail_disable();
+	 ctx = talloc_init(NULL);
 }
 
 static void teardown(void)
 {
 	 handlebars_memory_fail_disable();
+	 talloc_free(ctx);
+	 ctx = NULL;
 }
+
+START_TEST(test_token_ctor)
+{
+    const char * text = "{{";
+    struct handlebars_token * token = handlebars_token_ctor(OPEN, text, sizeof(text), ctx);
+    
+    ck_assert_ptr_ne(NULL, token);
+    ck_assert_ptr_ne(NULL, token->text);
+    ck_assert_int_eq(OPEN, token->token);
+    ck_assert_str_eq(token->text, text);
+    ck_assert_uint_eq(sizeof(text), token->length);
+}
+END_TEST
+
+START_TEST(test_token_ctor_failed_alloc)
+{
+    struct handlebars_token * token;
+    
+    handlebars_memory_fail_enable();
+    token = handlebars_token_ctor(OPEN, "{{", strlen("{{"), ctx);
+    handlebars_memory_fail_disable();
+    
+    ck_assert_ptr_eq(token, NULL);
+}
+END_TEST
+
+START_TEST(test_token_ctor_failed_alloc2)
+{
+    struct handlebars_token * token;
+    
+    handlebars_memory_fail_counter(2);
+    token = handlebars_token_ctor(OPEN, "{{", strlen("{{"), ctx);
+    handlebars_memory_fail_disable();
+    
+    ck_assert_ptr_eq(token, NULL);
+}
+END_TEST
+
+START_TEST(test_token_dtor)
+{
+    const char * text = "{{";
+    struct handlebars_token * token = handlebars_token_ctor(OPEN, text, strlen(text), ctx);
+    handlebars_token_dtor(token);
+}
+END_TEST
+
+START_TEST(test_token_get_type)
+{
+    const char * text = "{{";
+    struct handlebars_token * token = handlebars_token_ctor(OPEN, text, strlen(text), ctx);
+    ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
+    ck_assert_int_eq(-1, handlebars_token_get_type(NULL));
+}
+END_TEST
+
+START_TEST(test_token_get_text)
+{
+    const char * text = "{{";
+    struct handlebars_token * token = handlebars_token_ctor(OPEN, text, strlen(text), ctx);
+    ck_assert_str_eq(text, handlebars_token_get_text(token));
+    ck_assert_ptr_eq(NULL, handlebars_token_get_text(NULL));
+}
+END_TEST
+
+START_TEST(test_token_get_text_ex)
+{
+    const char * text = "{{";
+    struct handlebars_token * token = handlebars_token_ctor(OPEN, text, strlen(text), ctx);
+    const char * actual;
+    size_t actual_length;
+    handlebars_token_get_text_ex(token, &actual, &actual_length);
+    ck_assert_uint_eq(actual_length, strlen(text));
+    ck_assert_str_eq(text, actual);
+    
+    handlebars_token_get_text_ex(NULL, &actual, &actual_length);
+    ck_assert_uint_eq(0, actual_length);
+    ck_assert_ptr_eq(NULL, actual);
+}
+END_TEST
 
 START_TEST(test_token_readable_type)
 {
@@ -52,6 +136,7 @@ START_TEST(test_token_readable_type)
 	_RTYPE_TEST(OPEN_UNESCAPED);
 	_RTYPE_TEST(SEP);
 	_RTYPE_TEST(STRING);
+	ck_assert_str_eq("UNKNOWN", handlebars_token_readable_type(-1));
 }
 END_TEST
 
@@ -90,6 +175,7 @@ START_TEST(test_token_revere_readable_type)
 	_RTYPE_REV_TEST(OPEN_UNESCAPED);
 	_RTYPE_REV_TEST(SEP);
 	_RTYPE_REV_TEST(STRING);
+	ck_assert_int_eq(-1, handlebars_token_reverse_readable_type("UNKNOWN"));
 }
 END_TEST
 	
@@ -97,6 +183,13 @@ Suite * parser_suite(void)
 {
 	Suite * s = suite_create("Token");
 	
+	REGISTER_TEST_FIXTURE(s, test_token_ctor, "Constructor");
+	REGISTER_TEST_FIXTURE(s, test_token_ctor_failed_alloc, "Constructor (failed alloc)");
+	REGISTER_TEST_FIXTURE(s, test_token_ctor_failed_alloc2, "Constructor (failed alloc 2)");
+	REGISTER_TEST_FIXTURE(s, test_token_dtor, "Destructor");
+	REGISTER_TEST_FIXTURE(s, test_token_get_type, "Get type");
+	REGISTER_TEST_FIXTURE(s, test_token_get_text, "Get text");
+	REGISTER_TEST_FIXTURE(s, test_token_get_text_ex, "Get text ex");
 	REGISTER_TEST_FIXTURE(s, test_token_readable_type, "Readable Type");
 	REGISTER_TEST_FIXTURE(s, test_token_revere_readable_type, "Reverse Readable Type");
 	

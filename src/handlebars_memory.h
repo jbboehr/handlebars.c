@@ -73,6 +73,9 @@ void handlebars_memory_fail_enable(void);
 void handlebars_memory_fail_disable(void);
 int handlebars_memory_fail_get_state(void);
 
+void handlebars_memory_fail_counter(int count);
+int handlebars_memory_fail_get_counter(void);
+
 #ifdef	__cplusplus
 }
 #endif

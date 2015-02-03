@@ -6,7 +6,10 @@
 #include "handlebars_memory.h"
 #undef IN_HANDLEBARS_MEMORY_C
 
+#define __CHECK_COUNTER() (_handlebars_memfail_counter == -1 ? 0 : )
+
 static int _handlebars_memfail_enabled = 0;
+static int _handlebars_memfail_counter = -1;
 
 // Setup default memory function pointers
 handlebars_talloc_free_func _handlebars_talloc_free = &_talloc_free;
@@ -19,9 +22,23 @@ handlebars_talloc_strndup_func _handlebars_talloc_strndup = &talloc_strndup;
 handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_append_buffer = &talloc_strndup_append_buffer;
 handlebars_talloc_zero_func _handlebars_talloc_zero = &_talloc_zero;
 
+static void _handlebars_memfail_internal()
+{
+}
+
 // Overrides for memory functions
 static int _handlebars_memfail_talloc_free(void *ptr, const char *location)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return _talloc_free(ptr, location);
+        }
+    }
+    
     // Suppress unused parameter errors
     ptr = ptr;
     location = location;
@@ -30,6 +47,16 @@ static int _handlebars_memfail_talloc_free(void *ptr, const char *location)
 
 static void * _handlebars_memfail_talloc_named_const(const void * context, size_t size, const char * name)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return talloc_named_const(context, size, name);
+        }
+    }
+    
     // Suppress unused parameter errors
     context = context;
     size = size;
@@ -39,6 +66,16 @@ static void * _handlebars_memfail_talloc_named_const(const void * context, size_
 
 static void * _handlebars_memfail_talloc_realloc_array(const void *ctx, void *ptr, size_t el_size, unsigned count, const char *name)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return _talloc_realloc_array(ctx, ptr, el_size, count, name);
+        }
+    }
+    
     // Suppress unused parameter errors
     ctx = ctx;
     ptr = ptr;
@@ -50,6 +87,16 @@ static void * _handlebars_memfail_talloc_realloc_array(const void *ctx, void *pt
 
 static char * _handlebars_memfail_talloc_strdup(const void *t, const char *p)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return talloc_strdup(t, p);
+        }
+    }
+    
     // Suppress unused parameter errors
     t = t;
     p = p;
@@ -58,6 +105,16 @@ static char * _handlebars_memfail_talloc_strdup(const void *t, const char *p)
 
 static char * _handlebars_memfail_talloc_strdup_append(char *s, const char *a)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return talloc_strdup_append(s, a);
+        }
+    }
+    
     // Suppress unused parameter errors
     s = s;
     a = a;
@@ -66,6 +123,16 @@ static char * _handlebars_memfail_talloc_strdup_append(char *s, const char *a)
 
 static char * _handlebars_memfail_talloc_strdup_append_buffer(char *s, const char *a)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return talloc_strdup_append_buffer(s, a);
+        }
+    }
+    
     // Suppress unused parameter errors
     s = s;
     a = a;
@@ -74,6 +141,16 @@ static char * _handlebars_memfail_talloc_strdup_append_buffer(char *s, const cha
 
 static char * _handlebars_memfail_talloc_strndup(const void * t, const char * p, size_t n)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return talloc_strndup(t, p, n);
+        }
+    }
+    
     // Suppress unused parameter errors
     t = t;
     p = p;
@@ -83,6 +160,16 @@ static char * _handlebars_memfail_talloc_strndup(const void * t, const char * p,
 
 static char * _handlebars_memfail_talloc_strndup_append_buffer(char *s, const char *a, size_t n)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return talloc_strndup(s, a, n);;
+        }
+    }
+    
     // Suppress unused parameter errors
     s = s;
     a = a;
@@ -92,6 +179,17 @@ static char * _handlebars_memfail_talloc_strndup_append_buffer(char *s, const ch
 
 static void * _handlebars_memfail_talloc_zero(const void * ctx, size_t size, const char * name)
 {
+    // Do counter, succeed unless last count
+    if( _handlebars_memfail_counter > -1 ) {
+        if( --_handlebars_memfail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return _talloc_zero(ctx, size, name);
+        }
+    }
+    
+    
     // Suppress unused parameter errors
     ctx = ctx;
     size = size;
@@ -104,6 +202,7 @@ void handlebars_memory_fail_enable(void)
 {
     if( !_handlebars_memfail_enabled ) {
         _handlebars_memfail_enabled = 1;
+        _handlebars_memfail_counter = -1;
         _handlebars_talloc_free = &_handlebars_memfail_talloc_free;
         _handlebars_talloc_named_const = &_handlebars_memfail_talloc_named_const;
         _handlebars_talloc_realloc_array = &_handlebars_memfail_talloc_realloc_array;
@@ -120,6 +219,7 @@ void handlebars_memory_fail_disable(void)
 {
     if( _handlebars_memfail_enabled ) {
         _handlebars_memfail_enabled = 0;
+        _handlebars_memfail_counter = -1;
         _handlebars_talloc_free = &_talloc_free;
         _handlebars_talloc_named_const = &talloc_named_const;
         _handlebars_talloc_realloc_array = &_talloc_realloc_array;
@@ -135,4 +235,15 @@ void handlebars_memory_fail_disable(void)
 int handlebars_memory_fail_get_state(void)
 {
     return _handlebars_memfail_enabled;
+}
+
+void handlebars_memory_fail_counter(int count)
+{
+    handlebars_memory_fail_enable();
+    _handlebars_memfail_counter = count;
+}
+
+int handlebars_memory_fail_get_counter(void)
+{
+    return _handlebars_memfail_counter;
 }
