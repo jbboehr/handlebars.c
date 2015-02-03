@@ -12,15 +12,15 @@ static TALLOC_CTX * ctx;
 
 static void setup(void)
 {
-	 handlebars_memory_fail_disable();
-	 ctx = talloc_init(NULL);
+    handlebars_memory_fail_disable();
+    ctx = talloc_init(NULL);
 }
 
 static void teardown(void)
 {
-	 handlebars_memory_fail_disable();
-	 talloc_free(ctx);
-	 ctx = NULL;
+    handlebars_memory_fail_disable();
+    talloc_free(ctx);
+    ctx = NULL;
 }
 
 START_TEST(test_token_ctor)

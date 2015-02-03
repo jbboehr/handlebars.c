@@ -2,6 +2,7 @@
 check_PROGRAMS = test_main \
                  test_ast \
                  test_ast_list \
+                 test_context \
                  test_token \
                  test_token_list \
                  test_token_printer \
@@ -12,6 +13,7 @@ check_PROGRAMS = test_main \
 test_main_SOURCES = utils.c test_main.c
 test_ast_SOURCES = utils.c test_ast.c
 test_ast_list_SOURCES = utils.c test_ast_list.c
+test_context_SOURCES = utils.c test_context.c
 test_token_SOURCES = utils.c test_token.c
 test_token_list_SOURCES = utils.c test_token_list.c
 test_token_printer_SOURCES = utils.c test_token_printer.c
@@ -22,6 +24,7 @@ test_spec_handlebars_tokenizer_SOURCES = utils.c test_spec_handlebars_tokenizer.
 TESTS = test_main \
         test_ast \
         test_ast_list \
+        test_context \
         test_token \
         test_token_list \
         test_token_printer \

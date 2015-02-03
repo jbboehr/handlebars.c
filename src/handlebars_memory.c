@@ -6,8 +6,6 @@
 #include "handlebars_memory.h"
 #undef IN_HANDLEBARS_MEMORY_C
 
-#define __CHECK_COUNTER() (_handlebars_memfail_counter == -1 ? 0 : )
-
 static int _handlebars_memfail_enabled = 0;
 static int _handlebars_memfail_counter = -1;
 

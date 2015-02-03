@@ -63,7 +63,7 @@ char * handlebars_context_get_errmsg(struct handlebars_context * context)
     char * errmsg;
     char errbuf[256];
     
-    if( context->error == NULL ) {
+    if( context == NULL || context->error == NULL ) {
       return NULL;
     }
     
@@ -86,7 +86,7 @@ char * handlebars_context_get_errmsg_js(struct handlebars_context * context)
     char * errmsg;
     char errbuf[512];
     
-    if( context->error == NULL ) {
+    if( context == NULL || context->error == NULL ) {
       return NULL;
     }
     
