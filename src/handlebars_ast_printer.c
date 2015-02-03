@@ -273,6 +273,7 @@ static void _handlebars_ast_print_comment(struct handlebars_ast_node * ast_node,
     __PAD_FOOT();
 }
 
+/*
 static void _handlebars_ast_print_path_segment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     if( ast_node->node.path_segment.separator ) {
@@ -281,14 +282,11 @@ static void _handlebars_ast_print_path_segment(struct handlebars_ast_node * ast_
     __APPEND(ast_node->node.path_segment.part);
 }
 
-
-
 static void _handlebars_ast_print_hash_segment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     ;
 }
-
-
+*/
 
 static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
@@ -319,9 +317,6 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
         case HANDLEBARS_AST_NODE_HASH: 
             return _handlebars_ast_print_hash(ast_node, ctx);
             break;
-        case HANDLEBARS_AST_NODE_HASH_SEGMENT: 
-            return _handlebars_ast_print_hash_segment(ast_node, ctx);
-            break;
         case HANDLEBARS_AST_NODE_ID: 
             return _handlebars_ast_print_id(ast_node, ctx);
             break;
@@ -343,11 +338,17 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
         case HANDLEBARS_AST_NODE_COMMENT: 
             return _handlebars_ast_print_comment(ast_node, ctx);
             break;
+        // LCOV_EXCL_START
+        // Note: these are currently implemented within their parent
+        case HANDLEBARS_AST_NODE_HASH_SEGMENT: 
+            //return _handlebars_ast_print_hash_segment(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_PATH_SEGMENT: 
-            return _handlebars_ast_print_path_segment(ast_node, ctx);
+            //return _handlebars_ast_print_path_segment(ast_node, ctx);
             break;
         case HANDLEBARS_AST_NODE_NIL:
             break;
+        // LCOV_EXCL_STOP
     }
 }
 
