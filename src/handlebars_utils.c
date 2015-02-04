@@ -156,8 +156,10 @@ void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, s
     int numBytesToRead = maxBytesToRead;
     int bytesRemaining = strlen(context->tmpl) - context->tmplReadOffset;
     int i;
-    if ( numBytesToRead > bytesRemaining ) { numBytesToRead = bytesRemaining; }
-    for ( i = 0; i < numBytesToRead; i++ ) {
+    if( numBytesToRead > bytesRemaining ) {
+        numBytesToRead = bytesRemaining;
+    }
+    for( i = 0; i < numBytesToRead; i++ ) {
         buffer[i] = context->tmpl[context->tmplReadOffset+i];
     }
     *numBytesRead = numBytesToRead;
@@ -177,10 +179,12 @@ void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * cont
 
 void handlebars_yy_fatal_error(const char * msg, void * yyscanner)
 {
-    fprintf(stderr, "%s\n", msg);
-    exit(2);
     // Suppress unused parameter warning
     yyscanner = yyscanner;
+    
+    // Exit
+    fprintf(stderr, "%s\n", msg);
+    handlebars_exit(2);
 }
 
 void handlebars_yy_print(FILE *file, int type, YYSTYPE value)
@@ -192,20 +196,19 @@ void handlebars_yy_print(FILE *file, int type, YYSTYPE value)
 
 
 // Allocators for a reentrant scanner (flex)
-struct handlebars_context * _handlebars_context_tmp;
 
 void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
 {
     // Note: it looks like the yyscanner is allocated before we can pass in
     // a handlebars context...
     // Also look into the performance hit for doing this
-    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_tmp);
+    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
     return (void *) handlebars_talloc_size(ctx, bytes);
 }
 
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
-    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_tmp);
+    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
     return (void *) handlebars_talloc_realloc(ctx, ptr, char, bytes);
 }
 

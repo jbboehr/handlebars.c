@@ -11,6 +11,8 @@
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
+struct handlebars_context * _handlebars_context_init_current = NULL;
+
 struct handlebars_context * handlebars_context_ctor(void)
 {
     struct handlebars_context * context = NULL;
@@ -25,7 +27,7 @@ struct handlebars_context * handlebars_context_ctor(void)
     }
     
     // Set the current context in a variable for yyalloc >.>
-    _handlebars_context_tmp = context;
+    _handlebars_context_init_current = context;
     
     // Initialize lexer
     // @todo set a destructor on the context object to deinit the lexerf
@@ -37,11 +39,11 @@ struct handlebars_context * handlebars_context_ctor(void)
         goto done;
     }
   
-  // Set the extra on the lexer
-  handlebars_yy_set_extra(context, context->scanner);
+    // Set the extra on the lexer
+    handlebars_yy_set_extra(context, context->scanner);
   
 done:
-    _handlebars_context_tmp = NULL;
+    _handlebars_context_init_current = NULL;
     return context;
 }
 

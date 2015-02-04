@@ -55,8 +55,10 @@ typedef char * (*handlebars_talloc_strndup_func)(const void * t, const char * p,
 typedef char * (*handlebars_talloc_strndup_append_buffer_func)(char *s, const char *a, size_t n);
 typedef void * (*handlebars_talloc_zero_func)(const void * ctx, size_t size, const char * name);
 
+// Typedefs for other function pointers
+typedef void * (*handlebars_exit_func)(int exit_code);
+
 // Memory function pointers
-#ifndef IN_HANDLEBARS_MEMORY_C
 extern handlebars_talloc_free_func _handlebars_talloc_free;
 extern handlebars_talloc_named_const_func _handlebars_talloc_named_const;
 extern handlebars_talloc_realloc_array_func _handlebars_talloc_realloc_array;
@@ -66,15 +68,20 @@ extern handlebars_talloc_strdup_append_buffer_func _handlebars_talloc_strdup_app
 extern handlebars_talloc_strndup_func _handlebars_talloc_strndup;
 extern handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_append_buffer;
 extern handlebars_talloc_zero_func _handlebars_talloc_zero;
-#endif
 
-// Functions to manipulate memory allocation failures
+// Other function pointers
+extern handlebars_exit_func handlebars_exit;
+
+// Functions to manipulate and mock memory allocations
 void handlebars_memory_fail_enable(void);
 void handlebars_memory_fail_disable(void);
 int handlebars_memory_fail_get_state(void);
 
 void handlebars_memory_fail_counter(int count);
 int handlebars_memory_fail_get_counter(void);
+
+int handlebars_memory_get_last_exit_code(void);
+int handlebars_memory_get_call_counter(void);
 
 #ifdef	__cplusplus
 }

@@ -18,6 +18,12 @@ struct handlebars_ast_node;
 struct YYLTYPE;
 
 /**
+ * @brief Stores the context that is currently being allocated. Used for
+ *        handlebars_yy_alloc during the initial allocation.
+ */
+extern struct handlebars_context * _handlebars_context_init_current;
+
+/**
  * Contains the scanning state information
  */
 struct handlebars_context
