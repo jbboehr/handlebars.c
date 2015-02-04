@@ -30,6 +30,9 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
     }
 
     new_str = handlebars_talloc_zero_size(NULL, sizeof(char) * str_length * 4 + 1);
+    if( new_str == NULL ) {
+        return NULL;
+    }
 
     source = (char *) str;
     target = new_str;

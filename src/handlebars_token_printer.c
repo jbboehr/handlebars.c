@@ -13,40 +13,50 @@
 char * handlebars_token_print(struct handlebars_token * token, int flags)
 {
     char * str = NULL;
-    const char * name = NULL;
+    const char * name;
     char * tmp = NULL;
+    const char * tmp2 = "";
     const char * ws = "\r\n\t\v";
+    char sep;
     
     // Sanity check
     if( token == NULL ) {
         goto done;
     }
     
+    // Get name
     name = handlebars_token_readable_type(token->token);
     
-    // Meh
-    str = handlebars_talloc_strdup(token, "");
-    str = handlebars_talloc_strdup_append(str, name);
-    if( token->text != NULL ) {
-        str = handlebars_talloc_strdup_append(str, " [");
-
-        // Escape line breaks and tabs
-        tmp = handlebars_addcslashes(token->text, token->length, ws, strlen(ws));
-        str = handlebars_talloc_strdup_append(str, tmp);
-        handlebars_talloc_free(tmp);
-
-        str = handlebars_talloc_strdup_append(str, "]");
-    }
-
-    if( flags & HANDLEBARS_TOKEN_PRINT_NEWLINES ) {
-        str = handlebars_talloc_strdup_append(str, "\n");
+    // Get separator
+    if( flags & handlebars_token_printer_flag_newlines ) {
+        sep = '\n';
     } else {
-        str = handlebars_talloc_strdup_append(str, " ");
+        sep = ' ';
     }
-
-    token->length = strlen(str);
+    
+    // Prepare token text
+    if( token->text != NULL ) {
+        tmp = handlebars_addcslashes(token->text, token->length, ws, strlen(ws));
+        if( !tmp ) {
+            return NULL;
+        }
+        tmp2 = (const char *) tmp;
+    }
+    
+    // Make output string
+    // @todo mock this out
+    str = talloc_asprintf(token, "%s [%s]%c", name, tmp2, sep);
+    if( str == NULL ) {
+        goto done; // LCOV_EXCL_LINE
+    }
+    
+    // idk what this was doing here >.>
+    //token->length = strlen(str);
     
 done:
+    if( tmp ) {
+        handlebars_talloc_free(tmp);
+    }
     return str;
 }
 
