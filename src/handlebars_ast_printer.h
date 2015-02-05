@@ -6,6 +6,7 @@
 extern "C" {
 #endif
 
+// Declarations
 struct handlebars_ast;
 
 enum handlebars_ast_printer_flags {

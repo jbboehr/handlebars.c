@@ -8,6 +8,9 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Token structure 
+ */
 struct handlebars_token {
     int token;
     size_t length;

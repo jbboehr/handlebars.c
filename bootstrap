@@ -1,3 +1,4 @@
 #!/bin/sh
-
+AUTOMAKE_SHARE=`ls -d /usr/share/automake* | tail -n 1`
+cp $AUTOMAKE_SHARE/tap-driver.sh build
 exec autoreconf -fvi

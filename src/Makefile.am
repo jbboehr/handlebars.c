@@ -19,6 +19,7 @@ handlebars.lex.c:
 include_HEADERS = \
 	handlebars.h \
 	handlebars_ast.h \
+	handlebars_ast_helpers.h \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
 	handlebars_context.h \
@@ -27,8 +28,8 @@ include_HEADERS = \
 	handlebars_token_list.h \
 	handlebars_token_printer.h \
 	handlebars_utils.h \
-        handlebars.tab.h \
-        handlebars.lex.h
+	handlebars.tab.h \
+	handlebars.lex.h
 
 GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c
 CLEANFILES = $(GENSOURCE)
@@ -44,6 +45,8 @@ libhandlebars_la_SOURCES = \
 	handlebars.c \
 	handlebars_ast.h \
 	handlebars_ast.c \
+	handlebars_ast_helpers.h \
+	handlebars_ast_helpers.c \
 	handlebars_ast_list.h \
 	handlebars_ast_list.c \
 	handlebars_ast_printer.h \

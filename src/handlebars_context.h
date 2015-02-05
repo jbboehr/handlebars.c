@@ -11,9 +11,7 @@
 extern "C" {
 #endif
 
-/**
- * Pre-declarations
- */
+// Declarations
 struct handlebars_ast_node;
 struct YYLTYPE;
 
@@ -24,7 +22,7 @@ struct YYLTYPE;
 extern struct handlebars_context * _handlebars_context_init_current;
 
 /**
- * Contains the scanning state information
+ * @brief Contains the scanning state information
  */
 struct handlebars_context
 {

@@ -33,6 +33,7 @@
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
+#include "handlebars_ast_helpers.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
@@ -46,6 +47,13 @@ int handlebars_yy_debug = 1;
 #else
 int handlebars_yy_debug = 0;
 #endif
+
+#define __MEMCHECK(cond) \
+  do { \
+    if( !cond ) { \
+      YYABORT; \
+    } \
+  } while(0)
 
 #define scanner context->scanner
 %}
@@ -173,22 +181,8 @@ statement
 
 raw_block
   : open_raw_block CONTENT END_RAW_BLOCK {
-      struct handlebars_ast_node * ast_node;
-      struct handlebars_ast_node * content_node;
-      
-      content_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_CONTENT, context);
-      content_node->node.content.string = handlebars_talloc_strdup(content_node, $2);
-      content_node->node.content.length = strlen($2);
-      
-      ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_RAW_BLOCK, context);
-      ast_node->node.raw_block.mustache = $1;
-      ast_node->node.raw_block.program = content_node;
-      ast_node->node.raw_block.close = (char *) handlebars_talloc_strdup(ast_node, $3);
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_raw_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      $$ = handlebars_ast_helper_prepare_raw_block(context, $1, $2, $3, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
@@ -202,103 +196,38 @@ open_raw_block
 
 block
   : open_block program inverse_and_program close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = $2;
-      ast_node->node.block.inverse = $3;
-      ast_node->node.block.close = $4;
-      ast_node->node.block.inverted = 0;
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, $3, $4, 0, &yylloc);
+      __MEMCHECK($$);
     }
   | open_block inverse_and_program close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
-      ast_node->node.block.inverse = $2;
-      ast_node->node.block.close = $3;
-      ast_node->node.block.inverted = 0;
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      struct handlebars_ast_node * program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      $$ = handlebars_ast_helper_prepare_block(context, $1, program, $2, $3, 0, &yylloc);
+      __MEMCHECK($$);
     }
   | open_block program close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = $2;
-      ast_node->node.block.close = $3;
-      ast_node->node.block.inverted = 0;
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, NULL, $3, 0, &yylloc);
+      __MEMCHECK($$);
     }
   | open_block close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
-      ast_node->node.block.close = $2;
-      ast_node->node.block.inverted = 0;
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      struct handlebars_ast_node * program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      $$ = handlebars_ast_helper_prepare_block(context, $1, program, NULL, $2, 0, &yylloc);
+      __MEMCHECK($$);
     }
   | open_inverse program inverse_and_program close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = $3;
-      ast_node->node.block.inverse = $2;
-      ast_node->node.block.close = $4;
-      ast_node->node.block.inverted = 1;
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      $$ = handlebars_ast_helper_prepare_block(context, $1, $3, $2, $4, 1, &yylloc);
+      __MEMCHECK($$);
     }
   | open_inverse inverse_and_program close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.program = $2;
-      ast_node->node.block.close = $3;
-      ast_node->node.block.inverted = 1;
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, NULL, $3, 1, &yylloc);
+      __MEMCHECK($$);
     }
   | open_inverse program close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      //ast_node->node.block.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
-      ast_node->node.block.inverse = $2;
-      ast_node->node.block.close = $3;
-      ast_node->node.block.inverted = 1;
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      $$ = handlebars_ast_helper_prepare_block(context, $1, NULL, $2, $3, 1, &yylloc);
+      __MEMCHECK($$);
     }
   | open_inverse close_block {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-      ast_node->node.block.mustache = $1;
-      ast_node->node.block.close = $2;
-      ast_node->node.block.inverted = 1;
-      $$ = ast_node;
-      
-      if( 0 != handlebars_check_open_close(ast_node, context, &yylloc) ) {
-        YYABORT;
-      }
+      $$ = handlebars_ast_helper_prepare_block(context, $1, NULL, NULL, $2, 1, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
@@ -529,10 +458,8 @@ data_name
 
 path
   : path_segments {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, context);
-      ast_node->node.id.parts = $1;
-      handlebars_ast_node_id_init(ast_node, context);
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_id(context, $1);
+      __MEMCHECK($$);
     }
   ;
 

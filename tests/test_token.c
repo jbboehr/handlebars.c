@@ -104,9 +104,10 @@ END_TEST
 
 START_TEST(test_token_readable_type)
 {
+#define _RTYPE_STR(str) #str
 #define _RTYPE_TEST(str) \
         do { \
-			const char * expected = handlebars_stringify(str); \
+			const char * expected = _RTYPE_STR(str); \
 			const char * actual = handlebars_token_readable_type(str); \
 			ck_assert_str_eq(expected, actual); \
 		} while(0)
@@ -142,10 +143,11 @@ END_TEST
 
 START_TEST(test_token_revere_readable_type)
 {
+#define _RTYPE_REV_STR(str) #str
 #define _RTYPE_REV_TEST(str) \
         do { \
     		int expected = str; \
-    		const char * actual_str = handlebars_stringify(str); \
+    		const char * actual_str = _RTYPE_REV_STR(str); \
     		int actual = handlebars_token_reverse_readable_type(actual_str); \
     		ck_assert_int_eq(expected, actual); \
     	} while(0)
@@ -214,7 +216,7 @@ int main(void)
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);
     }
-    srunner_run_all(sr, CK_VERBOSE);
+    srunner_run_all(sr, CK_ENV);
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;

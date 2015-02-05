@@ -9,13 +9,16 @@ extern "C" {
 #endif
 
 /**
- * Pre-declarations
+ * Declarations
  */
 struct YYLTYPE;
 struct handlebars_context;
 struct handlebars_ast_node;
 struct handlebars_ast_list;
 
+/**
+ * @brief An enumeration of AST node types
+ */
 enum handlebars_node_type {
   HANDLEBARS_AST_NODE_NIL = 0,
   HANDLEBARS_AST_NODE_PROGRAM,
@@ -180,13 +183,29 @@ struct handlebars_ast_node {
   union handlebars_ast_internals node;
 };
 
+/**
+ * @brief Contruct an AST node
+ * 
+ * @param[in] type The AST node type
+ * @param[in] ctx The talloc context on which to allocate
+ * @return the newly constructed AST node
+ */
 struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type type, void * ctx);
+
+/**
+ * @brief Destruct and AST node
+ * 
+ * @param[in] ast_node The AST node to destruct
+ * @return void
+ */
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
 
-int handlebars_ast_node_id_init(struct handlebars_ast_node * ast_node, void * ctx);
-int handlebars_check_open_close(struct handlebars_ast_node * ast_node, struct handlebars_context * context, struct YYLTYPE * yylloc);
-int handlebars_check_raw_open_close(struct handlebars_ast_node * ast_node, struct handlebars_context * context, struct YYLTYPE * yylloc);
-
+/**
+ * @brief Get a string for the integral AST node type
+ * 
+ * @param[in] type The integral AST node type
+ * @return The string name of the type
+ */
 const char * handlebars_ast_node_readable_type(int type);
 
 #ifdef	__cplusplus

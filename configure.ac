@@ -42,8 +42,12 @@ AC_SUBST(HANDLEBARS_LT_CURRENT)
 AC_SUBST(HANDLEBARS_LT_REVISION)
 AC_SUBST(HANDLEBARS_LT_AGE)
 
+# Checks for scripts
+AC_REQUIRE_AUX_FILE([tap-driver.sh])
+
 # Checks for programs
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+AC_PROG_AWK
 AC_PROG_CC
 AC_PROG_CC_STDC
 AC_PROG_INSTALL
@@ -88,8 +92,12 @@ AC_ARG_ENABLE([check],
   [AS_HELP_STRING([--disable-check], [disable support for check])])
 
 AS_IF([test "x$enable_check" != "xno"], [
-  PKG_CHECK_MODULES(CHECK, [check >= 0.9.4], [], [
-    AC_MSG_FAILURE([check version too low (--disable-check to disable)])
+  PKG_CHECK_MODULES(CHECK, [check >= 0.9.12], [
+    AM_CONDITIONAL([CHECK_HAS_TAP], [test "x$pkg_failed" == "xno"])
+  ], [
+    PKG_CHECK_MODULES(CHECK, [check >= 0.9.4], [], [
+      AC_MSG_FAILURE([check version too low (--disable-check to disable)])
+    ])
   ])
   AC_CHECK_HEADERS(check.h, [], [
     AC_MSG_FAILURE([check.h missing (--disable-check to disable)])

@@ -75,8 +75,9 @@ void handlebars_token_get_text_ex(struct handlebars_token * token, const char **
 
 const char * handlebars_token_readable_type(int type)
 {
+#define _RTYPE_STR(x) #x
 #define _RTYPE_CASE(str) \
-    case str: return handlebars_stringify(str); break
+    case str: return _RTYPE_STR(str); break
   switch( type ) {
     _RTYPE_CASE(BOOLEAN);
     _RTYPE_CASE(CLOSE);
@@ -110,51 +111,52 @@ const char * handlebars_token_readable_type(int type)
 
 int handlebars_token_reverse_readable_type(const char * type)
 {
-#define _RTYPE_CMP(str) \
-    if( strcmp(type, handlebars_stringify(str)) == 0 ) { \
+#define _RTYPE_REV_STR(x) #x
+#define _RTYPE_REV_CMP(str) \
+    if( strcmp(type, _RTYPE_REV_STR(str)) == 0 ) { \
         return str; \
     }
     switch( type[0] ) {
         case 'B':
-            _RTYPE_CMP(BOOLEAN);
+            _RTYPE_REV_CMP(BOOLEAN);
             //break;
         case 'C':
-            _RTYPE_CMP(CLOSE);
-            _RTYPE_CMP(CLOSE_RAW_BLOCK);
-            _RTYPE_CMP(CLOSE_SEXPR);
-            _RTYPE_CMP(CLOSE_UNESCAPED);
-            _RTYPE_CMP(COMMENT);
-            _RTYPE_CMP(CONTENT);
+            _RTYPE_REV_CMP(CLOSE);
+            _RTYPE_REV_CMP(CLOSE_RAW_BLOCK);
+            _RTYPE_REV_CMP(CLOSE_SEXPR);
+            _RTYPE_REV_CMP(CLOSE_UNESCAPED);
+            _RTYPE_REV_CMP(COMMENT);
+            _RTYPE_REV_CMP(CONTENT);
             //break;
         case 'D':
-            _RTYPE_CMP(DATA);
+            _RTYPE_REV_CMP(DATA);
             //break;
         case 'E':
-            _RTYPE_CMP(END);
-            _RTYPE_CMP(END_RAW_BLOCK);
-            _RTYPE_CMP(EQUALS);
+            _RTYPE_REV_CMP(END);
+            _RTYPE_REV_CMP(END_RAW_BLOCK);
+            _RTYPE_REV_CMP(EQUALS);
             //break;
         case 'I':
-            _RTYPE_CMP(ID);
-            _RTYPE_CMP(INVALID);
-            _RTYPE_CMP(INVERSE);
+            _RTYPE_REV_CMP(ID);
+            _RTYPE_REV_CMP(INVALID);
+            _RTYPE_REV_CMP(INVERSE);
             //break;
         case 'N':
-            _RTYPE_CMP(NUMBER);
+            _RTYPE_REV_CMP(NUMBER);
             //break;
         case 'O':
-            _RTYPE_CMP(OPEN);
-            _RTYPE_CMP(OPEN_BLOCK);
-            _RTYPE_CMP(OPEN_ENDBLOCK);
-            _RTYPE_CMP(OPEN_INVERSE);
-            _RTYPE_CMP(OPEN_PARTIAL);
-            _RTYPE_CMP(OPEN_RAW_BLOCK);
-            _RTYPE_CMP(OPEN_SEXPR);
-            _RTYPE_CMP(OPEN_UNESCAPED);
+            _RTYPE_REV_CMP(OPEN);
+            _RTYPE_REV_CMP(OPEN_BLOCK);
+            _RTYPE_REV_CMP(OPEN_ENDBLOCK);
+            _RTYPE_REV_CMP(OPEN_INVERSE);
+            _RTYPE_REV_CMP(OPEN_PARTIAL);
+            _RTYPE_REV_CMP(OPEN_RAW_BLOCK);
+            _RTYPE_REV_CMP(OPEN_SEXPR);
+            _RTYPE_REV_CMP(OPEN_UNESCAPED);
             //break;
         case 'S':
-            _RTYPE_CMP(SEP);
-            _RTYPE_CMP(STRING);
+            _RTYPE_REV_CMP(SEP);
+            _RTYPE_REV_CMP(STRING);
             //break;
     }
     
