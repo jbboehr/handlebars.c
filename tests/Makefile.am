@@ -49,6 +49,8 @@ if CHECK_HAS_TAP
 TESTS_ENVIRONMENT += CK_TAP_LOG_FILE_NAME=-
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
                   $(top_srcdir)/build/tap-driver.sh
+else
+LOG_DRIVER = $(SHELL) $(top_srcdir)/build/test-driver
 endif
 
 AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
