@@ -192,11 +192,11 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
     int count = 0;
     int depth = 0;
     int is_scoped = 0;
-    char * string = handlebars_talloc_strdup(ast_node, "");
+    char * string = NULL;
     size_t string_length = 0;
     char * id_name = NULL;
     size_t id_name_length = 0;
-    char * original = handlebars_talloc_strdup(ast_node, "");
+    char * original = NULL;
     size_t original_length = 0;
     int i = 0;
     
@@ -205,12 +205,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
     
     // Create the block node
     ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, ctx);
-    if( !ast_node ) {
-        context->errnum = HANDLEBARS_NOMEM;
-        ast_node = NULL;
-        goto error;
-    }
+    __MEMCHECK(ast_node);
     
+    // Allocate and check the initial strings
+    string = handlebars_talloc_strdup(ast_node, "");
+    __MEMCHECK(string);
+    original = handlebars_talloc_strdup(ast_node, "");
+    __MEMCHECK(original);
+
     // Assign and reparent the list
     ast_node->node.id.parts = talloc_steal(ast_node, list);
     
