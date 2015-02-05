@@ -93,9 +93,11 @@ AC_ARG_ENABLE([check],
 
 AS_IF([test "x$enable_check" != "xno"], [
   PKG_CHECK_MODULES(CHECK, [check >= 0.9.12], [
-    AM_CONDITIONAL([CHECK_HAS_TAP], [test "x$pkg_failed" == "xno"])
+    CHECK_HAS_TAP=yes
   ], [
-    PKG_CHECK_MODULES(CHECK, [check >= 0.9.4], [], [
+    CHECK_HAS_TAP=no
+    PKG_CHECK_MODULES(CHECK, [check >= 0.9.4], [
+    ], [
       AC_MSG_FAILURE([check version too low (--disable-check to disable)])
     ])
   ])
@@ -116,6 +118,7 @@ AS_IF([test "x$enable_check" != "xno"], [
 	])
 ])
 AM_CONDITIONAL([CHECK], [test x$enable_check = xyes])
+AM_CONDITIONAL([CHECK_HAS_TAP], [test "x$CHECK_HAS_TAP" == "xyes"])
 
 # json
 AC_ARG_ENABLE([json],
