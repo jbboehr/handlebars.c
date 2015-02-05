@@ -1,4 +1,9 @@
 
+/**
+ * @file
+ * @brief AST Node Tree 
+ */
+
 #ifndef HANDLEBARS_AST_H
 #define HANDLEBARS_AST_H
 
@@ -19,7 +24,8 @@ struct handlebars_ast_list;
 /**
  * @brief An enumeration of AST node types
  */
-enum handlebars_node_type {
+enum handlebars_node_type
+{
   HANDLEBARS_AST_NODE_NIL = 0,
   HANDLEBARS_AST_NODE_PROGRAM,
   HANDLEBARS_AST_NODE_MUSTACHE,
@@ -171,14 +177,17 @@ union handlebars_ast_internals {
     struct handlebars_ast_node_string string;
 };
 
+/**
+ * @brief The main AST node structure 
+ */
 struct handlebars_ast_node {
   /**
-   * Enum describing the type of node
+   * @brief Enum describing the type of node
    */
   enum handlebars_node_type type;
   
   /**
-   * The guts
+   * @brief A union with structs of the different node types
    */
   union handlebars_ast_internals node;
 };
@@ -193,7 +202,7 @@ struct handlebars_ast_node {
 struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type type, void * ctx);
 
 /**
- * @brief Destruct and AST node
+ * @brief Destruct an AST node
  * 
  * @param[in] ast_node The AST node to destruct
  * @return void

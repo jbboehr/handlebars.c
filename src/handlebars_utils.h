@@ -1,4 +1,9 @@
 
+/**
+ * @file
+ * @brief Utilities
+ */
+
 #ifndef HANDLEBARS_UTILS_H
 #define HANDLEBARS_UTILS_H
 
@@ -9,7 +14,7 @@ extern "C" {
 #endif
 
 /**
- * Pre-declarations
+ * Declarations
  */
 struct handlebars_context;
 struct YYLTYPE;
@@ -29,7 +34,7 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
 
 /**
  * @brief Trims a set of characters off the right end of string. Trims in
- *        place by settin a null terminator.
+ *        place by setting a null terminator.
  * 
  * @param[in] string the string to trim
  * @param[in] what the set of characters to trim

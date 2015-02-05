@@ -1,14 +1,14 @@
 #!/bin/sh
 
-#if [ ! -f build/tap-driver.sh ]; then
+if [ ! -f build/tap-driver.sh ]; then
     DRIVER=`find /usr/share/automake*/ -name 'tap-driver.sh' 2>/dev/null | tail -n 1`
     if [ -z $DRIVER ]; then
         echo "Warning: tap-driver not found in /usr/share/automake*/"
     else
         cp -v $DRIVER build/
     fi
-#else
-#    echo "Okay: build/tap-driver.sh"
-#fi
+else
+    echo "Okay: build/tap-driver.sh"
+fi
 
 exec autoreconf -fvi

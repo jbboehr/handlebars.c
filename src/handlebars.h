@@ -1,4 +1,9 @@
 
+/**
+ * @file
+ * @brief General 
+ */
+
 #ifndef HANDLEBARS_H
 #define HANDLEBARS_H
 
@@ -10,30 +15,46 @@ extern "C" {
 struct handlebars_context;
 struct handlebars_token_list;
 
-// Annoying lex missing prototypes
-int handlebars_yy_get_column(void * yyscanner);
-void handlebars_yy_set_column(int column_no, void * yyscanner);
-
-// Error types
-enum handlebars_error_type {
+/**
+ * @brief Enumeration of error types
+ */
+enum handlebars_error_type
+{
+    /**
+     * @brief Indicates that no error has occurred
+     */
     HANDLEBARS_SUCCESS = 0,
+    
+    /**
+     * @brief Indicates that a generic error has occurred 
+     */
     HANDLEBARS_ERROR = 1,
+    
+    /**
+     * @brief Indicates that failure was due to an allocation failure
+     */
     HANDLEBARS_NOMEM = 2,
+    
+    /**
+     * @brief Indicates that failure was due to a null pointer argument
+     */
     HANDLEBARS_NULLARG = 3,
+    
+    /**
+     * @brief Indicates that failure was due to a parse error
+     */
     HANDLEBARS_PARSEERR = 4
 };
 
 /**
  * @brief Get the library version as an integer
- * 
- * @return the version
+ * @return The version of handlebars as an integer
  */
 int handlebars_version(void);
 
 /**
  * @brief Get the library version as a string
- * 
- * @return the version
+ * @return The version of handlebars as a string
  */
 const char * handlebars_version_string(void);
 
@@ -44,6 +65,10 @@ const char * handlebars_version_string(void);
  * @return the token list
  */
 struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx);
+
+// Flex/Bison prototypes
+int handlebars_yy_get_column(void * yyscanner);
+void handlebars_yy_set_column(int column_no, void * yyscanner);
 
 #ifdef	__cplusplus
 }

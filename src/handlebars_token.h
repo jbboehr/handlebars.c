@@ -1,4 +1,9 @@
 
+/**
+ * @file
+ * @brief Token
+ */
+
 #ifndef HANDLEBARS_TOKEN_H
 #define HANDLEBARS_TOKEN_H
 

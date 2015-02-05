@@ -1,4 +1,9 @@
 
+/**
+ * @file
+ * @brief Functions for printing tokens into a human-readable string
+ */
+
 #ifndef HANDLEBARS_TOKEN_PRINTER_H
 #define HANDLEBARS_TOKEN_PRINTER_H
 
@@ -15,7 +20,8 @@ struct handlebars_token_list;
 /**
  * @brief Flags to control print behaviour 
  */
-enum handlebars_token_printer_flags {
+enum handlebars_token_printer_flags
+{
     /**
      * @brief Default print behaviour flag
      */

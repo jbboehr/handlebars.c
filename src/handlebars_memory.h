@@ -1,4 +1,9 @@
 
+/**
+ * @file
+ * @brief Memory allocation and manipulation functions
+ */
+
 #ifndef HANDLEBARS_MEMORY_H
 #define HANDLEBARS_MEMORY_H
 
