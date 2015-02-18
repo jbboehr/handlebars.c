@@ -4,6 +4,7 @@ check_PROGRAMS = \
 	test_ast \
 	test_ast_helpers \
 	test_ast_list \
+	test_compiler \
 	test_context \
 	test_token \
 	test_token_list \
@@ -16,6 +17,7 @@ test_main_SOURCES = utils.c test_main.c
 test_ast_SOURCES = utils.c test_ast.c
 test_ast_helpers_SOURCES = utils.c test_ast_helpers.c
 test_ast_list_SOURCES = utils.c test_ast_list.c
+test_compiler_SOURCES = utils.c test_compiler.c
 test_context_SOURCES = utils.c test_context.c
 test_token_SOURCES = utils.c test_token.c
 test_token_list_SOURCES = utils.c test_token_list.c
@@ -29,6 +31,7 @@ TESTS = \
 	test_ast \
 	test_ast_helpers \
 	test_ast_list \
+	test_compiler \
 	test_context \
 	test_token \
 	test_token_list \

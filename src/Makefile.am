@@ -51,6 +51,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_ast_list.c \
 	handlebars_ast_printer.h \
 	handlebars_ast_printer.c \
+	handlebars_compiler.h \
+	handlebars_compiler.c \
 	handlebars_context.h \
 	handlebars_context.c \
 	handlebars_token.h \
