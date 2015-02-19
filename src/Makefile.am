@@ -55,6 +55,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_compiler.c \
 	handlebars_context.h \
 	handlebars_context.c \
+	handlebars_opcodes.h \
+	handlebars_opcodes.c \
 	handlebars_token.h \
 	handlebars_token.c \
 	handlebars_token_list.h \

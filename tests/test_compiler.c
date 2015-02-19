@@ -100,55 +100,6 @@ START_TEST(test_compiler_set_flags)
     ck_assert_int_eq(0, compiler->flags);
 }
 END_TEST
-    
-START_TEST(test_opcode_readable_type)
-{
-#define _RTYPE_STR(x) #x
-#define _RTYPE_MK(type) handlebars_opcode_type_ ## type
-#define _RTYPE_TEST(type, name) \
-        do { \
-			const char * expected = _RTYPE_STR(name); \
-			const char * actual = handlebars_opcode_readable_type(_RTYPE_MK(type)); \
-			ck_assert_str_eq(expected, actual); \
-		} while(0)
-		
-    _RTYPE_TEST(nil, nil);
-    _RTYPE_TEST(ambiguous_block_value, ambiguousBlockValue);
-    _RTYPE_TEST(append, append);
-    _RTYPE_TEST(append_escaped, appendEscaped);
-    _RTYPE_TEST(empty_hash, emptyHash);
-    _RTYPE_TEST(pop_hash, popHash);
-    _RTYPE_TEST(push_context, pushContext);
-    _RTYPE_TEST(push_hash, pushHash);
-    _RTYPE_TEST(resolve_possible_lambda, resolvePossibleLambda);
-    
-    _RTYPE_TEST(get_context, getContext);
-    _RTYPE_TEST(push_program, pushProgram);
-    
-    _RTYPE_TEST(append_content, appendContent);
-    _RTYPE_TEST(assign_to_hash, assignToHash);
-    _RTYPE_TEST(block_value, blockValue);
-    _RTYPE_TEST(push, push);
-    _RTYPE_TEST(push_literal, pushLiteral);
-    _RTYPE_TEST(push_string, pushString);
-    
-    _RTYPE_TEST(invoke_partial, invokePartial);
-    _RTYPE_TEST(push_id, pushId);
-    _RTYPE_TEST(push_string_param, pushStringParam);
-    
-    _RTYPE_TEST(invoke_ambiguous, invokeAmbiguous);
-    
-    _RTYPE_TEST(invoke_known_helper, invokeKnownHelper);
-    
-    _RTYPE_TEST(invoke_helper, invokeHelper);
-    
-    _RTYPE_TEST(lookup_on_context, lookupOnContext);
-    
-    _RTYPE_TEST(lookup_data, lookupData);
-    
-    _RTYPE_TEST(invalid, invalid);
-}
-END_TEST
 
 Suite * parser_suite(void)
 {
@@ -159,8 +110,6 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");
-	
-	REGISTER_TEST_FIXTURE(s, test_opcode_readable_type, "Opcode Readable Type");
 	
     return s;
 }
