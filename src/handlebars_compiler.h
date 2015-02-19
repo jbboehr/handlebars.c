@@ -14,6 +14,9 @@ extern "C" {
 #include <stddef.h>
 
 
+struct handlebars_ast_node;
+
+
 enum handlebars_compiler_flag {
     handlebars_compiler_flag_none = 0,
     
@@ -21,6 +24,7 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_use_depths = 1,
     handlebars_compiler_flag_string_params = 2,
     handlebars_compiler_flag_track_ids = 4,
+    handlebars_compiler_flag_no_escape = 8,
     
     // Result flags
     handlebars_compiler_flag_use_partial = 16,
@@ -28,7 +32,13 @@ enum handlebars_compiler_flag {
     
     // Composite option flags
     handlebars_compiler_flag_compat = 1,
-    handlebars_compiler_flag_all = 7
+    handlebars_compiler_flag_all = 15
+};
+
+enum handlebars_compiler_sexpr_type {
+    handlebars_compiler_sexpr_type_ambiguous = 0,
+    handlebars_compiler_sexpr_type_helper = 1,
+    handlebars_compiler_sexpr_type_simple = 2
 };
 
 struct handlebars_compiler {
@@ -36,7 +46,7 @@ struct handlebars_compiler {
     // @todo opcodes children depths
     
     // Symbol counter
-    size_t guid;
+    long guid;
     
     // Flags
     int flags;
@@ -45,11 +55,15 @@ struct handlebars_compiler {
     short string_params;
     short track_ids;
     short use_depths;
+    short no_escape;
     
     // Result flags
     short is_simple;
     short use_partial;
 };
+
+void handlebars_compiler_compile(
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * node);
 
 /**
  * @brief Construct a compiler context object.

@@ -60,17 +60,17 @@ enum handlebars_opcode_type {
 
 enum handlebars_operand_type {
     handlebars_operand_type_null = 0,
-    handlebars_operand_type_long = 1,
-    handlebars_operand_type_string = 2,
-    handlebars_operand_type_array = 3,
-    handlebars_operand_type_boolean = 4
+    handlebars_operand_type_boolean = 1,
+    handlebars_operand_type_long = 2,
+    handlebars_operand_type_string = 3,
+    handlebars_operand_type_array = 4
 };
 
 union handlebars_operand_internals {
-    long intval;   // these might only need int
-    char * strval;
-    void * arrval; // maybe concat to string for string arrays
     short boolval;
+    long longval;   // these might only need int
+    char * stringval;
+    void * arrayval; // maybe concat to string for string arrays
 };
 
 struct handlebars_operand {
@@ -84,6 +84,21 @@ struct handlebars_opcode {
     struct handlebars_operand op2;
     struct handlebars_operand op3;
 };
+
+struct handlebars_opcode * handlebars_opcode_ctor(
+        void * ctx, enum handlebars_opcode_type type);
+
+struct handlebars_opcode * handlebars_opcode_ctor_long(
+        void * ctx, enum handlebars_opcode_type type, long arg);
+
+struct handlebars_opcode * handlebars_opcode_ctor_string(
+        void * ctx, enum handlebars_opcode_type type, const char * arg);
+
+void handlebars_operand_set_boolval(struct handlebars_operand * operand, short arg);
+
+void handlebars_operand_set_longval(struct handlebars_operand * operand, long arg);
+
+void handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg);
 
 /**
  * @brief Get a string for the integral opcode type. Should match the 
