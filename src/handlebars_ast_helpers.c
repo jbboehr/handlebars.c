@@ -343,3 +343,34 @@ error:
     handlebars_talloc_free(ctx);
     return ast_node;
 }
+
+struct handlebars_ast_node * handlebars_ast_helper_prepare_sexpr(
+        struct handlebars_context * context, struct handlebars_ast_node * id,
+        struct handlebars_ast_list * params, struct handlebars_ast_node * hash)
+{
+    struct handlebars_ast_node * ast_node;
+    
+    // Create the sexpr node
+    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
+    __MEMCHECK(ast_node);
+    
+    // Assign the params
+    ast_node->node.sexpr.id = id;
+    ast_node->node.sexpr.params = params;
+    ast_node->node.sexpr.hash = hash;
+    
+    // Is it a helper?
+    if( (params != NULL && params->first != NULL) || hash != NULL ) {
+        ast_node->node.sexpr.is_helper = 1;
+        ast_node->node.sexpr.eligible_helper = 1;
+    }
+    
+    // Is it an eligible helper?
+    if( id != NULL && id->node.id.is_simple ) {
+        ast_node->node.sexpr.eligible_helper = 1;
+    }
+
+error:
+    //handlebars_talloc_free(ctx);
+    return ast_node;
+}

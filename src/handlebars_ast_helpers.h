@@ -84,6 +84,19 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
         struct handlebars_context * context, struct handlebars_ast_node * mustache, 
         const char * content, const char * close, struct YYLTYPE * yylloc);
 
+/**
+ * @brief Prepare an SEXPR node.
+ * 
+ * @param[in] context The handlebars context
+ * @param[in] id
+ * @param[in] params
+ * @param[in] hash
+ * @return A newly constructed SEXPR AST node
+ */
+struct handlebars_ast_node * handlebars_ast_helper_prepare_sexpr(
+        struct handlebars_context * context, struct handlebars_ast_node * id,
+        struct handlebars_ast_list * params, struct handlebars_ast_node * hash);
+
 #ifdef	__cplusplus
 }
 #endif

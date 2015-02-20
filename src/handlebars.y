@@ -319,33 +319,24 @@ partial
 
 sexpr
   : path {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, NULL);
+      __MEMCHECK($$);
     }
   | path hash {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      ast_node->node.sexpr.hash = $2;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, $2);
+      __MEMCHECK($$);
     }
   | path params hash {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      ast_node->node.sexpr.params = $2;
-      ast_node->node.sexpr.hash = $3;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, $2, $3);
+      __MEMCHECK($$);
     }
   | path params {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      ast_node->node.sexpr.params = $2;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, $2, NULL);
+      __MEMCHECK($$);
     }
   | data_name {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, NULL);
+      __MEMCHECK($$);
     }
   ;
 
@@ -387,7 +378,7 @@ param
     }
   | OPEN_SEXPR sexpr CLOSE_SEXPR {
       $$ = $2;
-      // {$2.isHelper = true; $$ = $2;}
+      $$->node.sexpr.is_helper = 1;
     }
   ;
 
