@@ -1,4 +1,5 @@
 
+#include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 
@@ -46,10 +47,17 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
     operand->data.longval = arg;
 }
 
-void handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg)
+int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg)
 {
     operand->type = handlebars_operand_type_string;
     operand->data.stringval = handlebars_talloc_strdup(ctx, arg);
+    
+    if( operand->data.stringval == NULL ) {
+        operand->type = handlebars_operand_type_null;
+        return HANDLEBARS_NOMEM;
+    }
+    
+    return HANDLEBARS_SUCCESS;
 }
 
 const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)

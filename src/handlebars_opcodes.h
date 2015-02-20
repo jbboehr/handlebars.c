@@ -98,7 +98,7 @@ void handlebars_operand_set_boolval(struct handlebars_operand * operand, short a
 
 void handlebars_operand_set_longval(struct handlebars_operand * operand, long arg);
 
-void handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg);
+int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg);
 
 /**
  * @brief Get a string for the integral opcode type. Should match the 
