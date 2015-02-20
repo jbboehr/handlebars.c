@@ -12,6 +12,11 @@
 #include "handlebars_memory.h"
 #include "utils.h"
 
+// Include compiler source file so we can test the inline functions
+#include "handlebars_compiler.c"
+
+
+
 static TALLOC_CTX * ctx;
 
 static void setup(void)

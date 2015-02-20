@@ -21,18 +21,19 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_none = 0,
     
     // Option flags
-    handlebars_compiler_flag_use_depths = 1,
-    handlebars_compiler_flag_string_params = 2,
-    handlebars_compiler_flag_track_ids = 4,
-    handlebars_compiler_flag_no_escape = 8,
+    handlebars_compiler_flag_use_depths = (1 << 0),
+    handlebars_compiler_flag_string_params = (1 << 1),
+    handlebars_compiler_flag_track_ids = (1 << 2),
+    handlebars_compiler_flag_no_escape = (1 << 3),
+    handlebars_compiler_flag_known_helpers_only = (1 << 4),
     
     // Result flags
-    handlebars_compiler_flag_use_partial = 16,
-    handlebars_compiler_flag_is_simple = 32,
+    handlebars_compiler_flag_use_partial = (1 << 8),
+    handlebars_compiler_flag_is_simple = (1 << 9),
     
     // Composite option flags
-    handlebars_compiler_flag_compat = 1,
-    handlebars_compiler_flag_all = 15
+    handlebars_compiler_flag_compat = (1 << 0),
+    handlebars_compiler_flag_all = ((1 << 5) - 1)
 };
 
 enum handlebars_compiler_sexpr_type {
@@ -43,7 +44,15 @@ enum handlebars_compiler_sexpr_type {
 
 struct handlebars_compiler {
     
-    // @todo opcodes children depths
+    struct handlebars_opcode ** opcodes;
+    size_t opcodes_length;
+    size_t opcodes_size;
+    
+    // @todo children
+    
+    unsigned long depths;
+    
+    const char ** known_helpers;
     
     // Symbol counter
     long guid;
@@ -56,6 +65,7 @@ struct handlebars_compiler {
     short track_ids;
     short use_depths;
     short no_escape;
+    short known_helpers_only;
     
     // Result flags
     short is_simple;
