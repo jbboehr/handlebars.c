@@ -157,6 +157,7 @@ AS_IF([test "x$enable_yaml" != "xno"], [
 ])
 
 # Options
+AC_DEFINE([YY_NO_UNISTD_H], [1], [Disable usage of unistd.h])
 
 # gcov
 AC_ARG_ENABLE([gcov], AS_HELP_STRING([--enable-gcov], [compile with gcov]))
