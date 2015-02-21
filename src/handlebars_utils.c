@@ -18,7 +18,6 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
     char * source;
     char * target;
     char * end;
-    char c;
     size_t i;
     char * new_str;
     size_t new_str_length;
@@ -38,7 +37,7 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
     target = new_str;
     end = source + str_length;
     for( ; source < end ; source++ ) {
-        c = *source;
+        char c = *source;
         if( flags[(unsigned char) c] ) {
             if ((unsigned char) c < 32 || (unsigned char) c > 126) {
             *target++ = '\\';

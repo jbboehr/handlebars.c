@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"

@@ -64,14 +64,12 @@ char * handlebars_token_list_print(struct handlebars_token_list * list, int flag
 {
     struct handlebars_token_list_item * el = NULL;
     struct handlebars_token_list_item * tmp = NULL;
-    struct handlebars_token * token = NULL;
     char * output = NULL;
-    char * token_str = NULL;
     
     output = handlebars_talloc_strdup(list, "");
     handlebars_token_list_foreach(list, el, tmp) {
-        token = el->data;
-        token_str = handlebars_token_print(token, flags);
+        struct handlebars_token * token = el->data;
+        char * token_str = token_str = handlebars_token_print(token, flags);
         if( token_str != NULL ) {
             output = handlebars_talloc_strdup_append(output, token_str);
         }
