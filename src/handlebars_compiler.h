@@ -78,9 +78,10 @@ void handlebars_compiler_compile(
 /**
  * @brief Construct a compiler context object.
  * 
+ * @param[in] ctx The memory context
  * @return the compiler context pointer
  */
-struct handlebars_compiler * handlebars_compiler_ctor(void);
+struct handlebars_compiler * handlebars_compiler_ctor(void * ctx);
 
 /**
  * @brief Free a compiler context and it's resouces.

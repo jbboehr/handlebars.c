@@ -41,11 +41,11 @@ static const char * handlebars_builtins[] = {
 
 
 
-struct handlebars_compiler * handlebars_compiler_ctor(void)
+struct handlebars_compiler * handlebars_compiler_ctor(void * ctx)
 {
     struct handlebars_compiler * compiler;
     
-    compiler = handlebars_talloc_zero(NULL, struct handlebars_compiler);
+    compiler = handlebars_talloc_zero(ctx, struct handlebars_compiler);
     
     if( compiler ) {
         compiler->known_helpers = handlebars_builtins;
