@@ -96,9 +96,11 @@ static inline short handlebars_compiler_is_known_helper(
     struct handlebars_ast_node * path_segment;
     const char * helper_name;
     const char ** ptr;
-    if( !id || !(parts = id->node.id.parts) || !parts->first || 
-            !(path_segment = parts->first->data) ||
-            !(helper_name = path_segment->node.path_segment.part) ) {
+    if( NULL == id || 
+        NULL == (parts = id->node.id.parts) || 
+        NULL == parts->first || 
+        NULL == (path_segment = parts->first->data) ||
+        NULL == (helper_name = path_segment->node.path_segment.part) ) {
         return 0;
     }
     

@@ -8,6 +8,8 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_ast.h"
+#include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "utils.h"
@@ -106,6 +108,48 @@ START_TEST(test_compiler_set_flags)
 }
 END_TEST
 
+START_TEST(test_compiler_is_known_helper)
+{
+    struct handlebars_compiler * compiler;
+    struct handlebars_ast_node * id;
+    struct handlebars_ast_list * parts;
+    struct handlebars_ast_node * path_segment;
+    const char * helper1 = "if";
+    const char * helper2 = "unless";
+    const char * helper3 = "foobar";
+    const char * helper4 = "";
+    
+    compiler = handlebars_compiler_ctor();
+    ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, NULL));
+    
+    id = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, compiler);
+    ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
+    
+    id->node.id.parts = parts = handlebars_ast_list_ctor(compiler);
+    ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
+    
+    path_segment = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, compiler);
+    handlebars_ast_list_append(parts, path_segment);
+    ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
+    
+    path_segment->node.path_segment.part = helper1;
+    path_segment->node.path_segment.part_length = strlen(helper1);
+    ck_assert_int_eq(1, handlebars_compiler_is_known_helper(compiler, id));
+    
+    path_segment->node.path_segment.part = helper2;
+    path_segment->node.path_segment.part_length = strlen(helper2);
+    ck_assert_int_eq(1, handlebars_compiler_is_known_helper(compiler, id));
+    
+    path_segment->node.path_segment.part = helper3;
+    path_segment->node.path_segment.part_length = strlen(helper3);
+    ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
+    
+    path_segment->node.path_segment.part = helper4;
+    path_segment->node.path_segment.part_length = strlen(helper4);
+    ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("Compiler");
@@ -115,6 +159,7 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");
+	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");
 	
     return s;
 }
