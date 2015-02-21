@@ -50,6 +50,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_AWK
 AC_PROG_CC
 AC_PROG_CC_STDC
+AC_PROG_CC_C99
 AC_PROG_INSTALL
 AC_PROG_LEX
 AC_PROG_LIBTOOL
@@ -80,6 +81,8 @@ AC_CHECK_FUNC(snprintf, , AC_MSG_ERROR([snprintf is required]))
 
 # Checks for typedefs, structures, and compiler characteristics
 AC_C_CONST
+AC_C_INLINE
+AC_C_STRINGIZE
 AC_TYPE_SIZE_T
 
 # Checks for system
@@ -168,8 +171,10 @@ AS_IF([test "x$enable_gcov" == "xyes"], [
   ])
 
   AC_SUBST([LIBGCOV_LIBS], ["-lgcov -coverage"])
-  LIBGCOV_CFLAGS="-g -O0 -coverage" # -disable-shared
-  CFLAGS="$CFLAGS $LIBGCOV_CFLAGS"
+  LIBGCOV_CFLAGS="-g -O0 --coverage" # -disable-shared
+  LIBGCOV_LDFLAGS="--coverage"
+  CFLAGS+=" $LIBGCOV_CFLAGS"
+  LDFLAGS+=" $LIBGCOV_LDFLAGS"
 ])
 
 AM_CONDITIONAL([GCOV], [test x$enable_gcov = xyes])
