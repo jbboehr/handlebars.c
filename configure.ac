@@ -162,6 +162,17 @@ AS_IF([test "x$enable_yaml" != "xno"], [
 # Options
 AC_DEFINE([YY_NO_UNISTD_H], [1], [Disable usage of unistd.h])
 
+# debug
+AC_ARG_ENABLE([debug], 
+  [AS_HELP_STRING([--enable-debug], [compile with debug functions])], [])
+
+AS_IF([test "x$enable_debug" == "xyes"], [
+  AC_DEFINE([DEBUG], [1], [Defined if debug functions requested])
+], [
+  AC_DEFINE([NDEBUG], [1], [Defined if debug functions NOT requested])
+])
+AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
+
 # gcov
 AC_ARG_ENABLE([gcov], AS_HELP_STRING([--enable-gcov], [compile with gcov]))
 

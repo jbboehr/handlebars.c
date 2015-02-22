@@ -120,7 +120,7 @@ START_TEST(test_compiler_is_known_helper)
     const char * helper4 = "";
     
     compiler = handlebars_compiler_ctor(ctx);
-    ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, NULL));
+    //ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, NULL));
     
     id = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, compiler);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
@@ -157,42 +157,41 @@ START_TEST(test_compiler_classify_sexpr)
     enum handlebars_compiler_sexpr_type ret;
     const char * helper1 = "if";
     const char * helper2 = "foo";
+    struct handlebars_ast_node * id;
+    struct handlebars_ast_list * parts;
+    struct handlebars_ast_node * path_segment;
     
     compiler = handlebars_compiler_ctor(ctx);
     sexpr = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, ctx);
     
     ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-    ck_assert_int_eq(handlebars_compiler_sexpr_type_simple, ret);
+    //ck_assert_int_eq(handlebars_compiler_sexpr_type_simple, ret);
+    
+    id = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, compiler);
     
     sexpr->node.sexpr.eligible_helper = 1;
     ck_assert_int_eq(handlebars_compiler_sexpr_type_simple, ret);
     
-    do {
-        struct handlebars_ast_node * id;
-        struct handlebars_ast_list * parts;
-        struct handlebars_ast_node * path_segment;
-        id = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, compiler);
-        id->node.id.parts = parts = handlebars_ast_list_ctor(compiler);
-        path_segment = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, compiler);
-        handlebars_ast_list_append(parts, path_segment);
-        path_segment->node.path_segment.part = helper1;
-        path_segment->node.path_segment.part_length = strlen(helper1);
-        sexpr->node.sexpr.id = id;
-        
-        ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-        ck_assert_int_eq(handlebars_compiler_sexpr_type_helper, ret);
-        
-        path_segment->node.path_segment.part = helper2;
-        path_segment->node.path_segment.part_length = strlen(helper2);
-        
-        ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-        ck_assert_int_eq(handlebars_compiler_sexpr_type_ambiguous, ret);
-        
-        compiler->known_helpers_only = 1;
-        ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-        ck_assert_int_eq(handlebars_compiler_sexpr_type_simple, ret);
-        compiler->known_helpers_only = 0;
-    } while(0);
+    id->node.id.parts = parts = handlebars_ast_list_ctor(compiler);
+    path_segment = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, compiler);
+    handlebars_ast_list_append(parts, path_segment);
+    path_segment->node.path_segment.part = helper1;
+    path_segment->node.path_segment.part_length = strlen(helper1);
+    sexpr->node.sexpr.id = id;
+    
+    ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
+    ck_assert_int_eq(handlebars_compiler_sexpr_type_helper, ret);
+    
+    path_segment->node.path_segment.part = helper2;
+    path_segment->node.path_segment.part_length = strlen(helper2);
+    
+    ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
+    ck_assert_int_eq(handlebars_compiler_sexpr_type_ambiguous, ret);
+    
+    compiler->known_helpers_only = 1;
+    ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
+    ck_assert_int_eq(handlebars_compiler_sexpr_type_simple, ret);
+    compiler->known_helpers_only = 0;
     
     sexpr->node.sexpr.is_helper = 1;
     ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
