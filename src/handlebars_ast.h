@@ -109,13 +109,13 @@ struct handlebars_ast_node_id {
   int depth;
   int is_simple;
   int is_scoped;
+  short is_falsy; /* used in the compiler */
   size_t id_name_length;
   char * id_name;
   size_t string_length;
   char * string;
   size_t original_length;
   char * original;
-  // Todo: stringModeValue
 };
 
 struct handlebars_ast_node_partial_name {
@@ -124,25 +124,23 @@ struct handlebars_ast_node_partial_name {
 
 struct handlebars_ast_node_data {
   struct handlebars_ast_node * id;
-  // Todo: stringModeValue idName
+  size_t id_name_length;
+  char * id_name;
 };
 
 struct handlebars_ast_node_string {
   char * string;
   size_t length;
-  // Todo: stringModeValue
 };
 
 struct handlebars_ast_node_number {
   char * string;
   size_t length;
-  // Todo: stringModeValue
 };
 
 struct handlebars_ast_node_boolean {
   char * string;
   size_t length;
-  // Todo: stringModeValue
 };
 
 struct handlebars_ast_node_comment {
@@ -209,6 +207,33 @@ struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type 
  * @return void
  */
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
+
+/**
+ * @brief Get the ID name of an AST node. Returns NULL if not 
+ * applicable. Returns a pointer to the current buffer.
+ * 
+ * @param[in] ast_node The AST node
+ * @return The string
+ */
+const char * handlebars_ast_node_get_id_name(struct handlebars_ast_node * ast_node);
+
+/**
+ * @brief Get the first part of an ID name of an AST node. Returns NULL if not 
+ * applicable. Returns a pointer to the current buffer.
+ * 
+ * @param[in] ast_node The AST node
+ * @return The string
+ */
+const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node);
+
+/**
+ * @brief Get the string mode value of an AST node. Returns NULL if not 
+ * applicable. Returns a pointer to the current buffer.
+ * 
+ * @param[in] ast_node The AST node
+ * @return The string
+ */
+const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_node * ast_node);
 
 /**
  * @brief Get a string for the integral AST node type

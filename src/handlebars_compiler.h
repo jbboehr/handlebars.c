@@ -36,6 +36,12 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_all = ((1 << 5) - 1)
 };
 
+enum handlebars_compiler_error {
+    handlebars_compiler_error_none = 0,
+    handlebars_compiler_error_nomem = 1,
+    handlebars_compiler_error_unknown_helper = 2
+};
+
 enum handlebars_compiler_sexpr_type {
     handlebars_compiler_sexpr_type_ambiguous = 0,
     handlebars_compiler_sexpr_type_helper = 1,
@@ -43,12 +49,16 @@ enum handlebars_compiler_sexpr_type {
 };
 
 struct handlebars_compiler {
+    enum handlebars_compiler_error errno;
+    char * error;
     
     struct handlebars_opcode ** opcodes;
     size_t opcodes_length;
     size_t opcodes_size;
     
-    // @todo children
+    struct handlebar_compiler ** children;
+    size_t children_length;
+    size_t children_size;
     
     unsigned long depths;
     
@@ -70,6 +80,7 @@ struct handlebars_compiler {
     // Result flags
     short is_simple;
     short use_partial;
+    short use_data;
 };
 
 void handlebars_compiler_compile(

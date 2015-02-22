@@ -1,6 +1,11 @@
 
-#include <stdlib.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "handlebars.h"
@@ -28,6 +33,78 @@ done:
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node)
 {
     handlebars_talloc_free(ast_node);
+}
+
+const char * handlebars_ast_node_get_id_name(struct handlebars_ast_node * ast_node)
+{
+    const char * ret;
+    
+    switch( ast_node->type ) {
+        case HANDLEBARS_AST_NODE_ID:
+            ret = (const char *) ast_node->node.id.id_name;
+            break;
+        case HANDLEBARS_AST_NODE_DATA: {
+            if( ast_node->node.data.id_name == NULL ) {
+                const char * id_string_mode_value = handlebars_ast_node_get_string_mode_value(ast_node->node.data.id);
+                ast_node->node.data.id_name = talloc_asprintf(ast_node, "@%s", id_string_mode_value ? id_string_mode_value : "");
+            }
+            ret = ast_node->node.data.id_name;
+            break;
+        }
+        default:
+            ret = NULL;
+            break;
+    }
+    
+    return ret;
+}
+
+const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node)
+{
+    struct handlebars_ast_list * parts;
+    struct handlebars_ast_node * path_segment;
+    
+    assert(ast_node != NULL);
+    assert(ast_node->type == HANDLEBARS_AST_NODE_ID);
+    
+    parts = ast_node->node.id.parts;
+    if( parts == NULL || parts->first == NULL || parts->first->data == NULL ) {
+        return NULL;
+    }
+    
+    path_segment = parts->first->data;
+    
+    assert(ast_node->type == HANDLEBARS_AST_NODE_PATH_SEGMENT);
+    
+    return (const char *) path_segment->node.path_segment.part;
+}
+
+const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_node * ast_node)
+{
+    const char * ret;
+    
+    switch( ast_node->type ) {
+        case HANDLEBARS_AST_NODE_ID:
+            ret = (const char *) ast_node->node.id.string;
+            break;
+        case HANDLEBARS_AST_NODE_DATA:
+            ret = handlebars_ast_node_get_string_mode_value(ast_node->node.data.id);
+            break;
+        case HANDLEBARS_AST_NODE_STRING:
+            ret = (const char *) ast_node->node.string.string;
+            break;
+        case HANDLEBARS_AST_NODE_NUMBER:
+            ret = (const char *) ast_node->node.number.string;
+            break;
+        case HANDLEBARS_AST_NODE_BOOLEAN:
+            ret = (const char *) ast_node->node.boolean.string;
+            break;
+        default:
+            ret = NULL;
+            break;
+    }
+    
+    return ret;
 }
 
 const char * handlebars_ast_node_readable_type(int type)
