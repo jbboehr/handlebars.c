@@ -6,6 +6,7 @@ check_PROGRAMS = \
 	test_ast_list \
 	test_compiler \
 	test_context \
+	test_opcode_printer \
 	test_opcodes \
 	test_token \
 	test_token_list \
@@ -20,6 +21,7 @@ test_ast_helpers_SOURCES = utils.c test_ast_helpers.c
 test_ast_list_SOURCES = utils.c test_ast_list.c
 test_compiler_SOURCES = utils.c test_compiler.c
 test_context_SOURCES = utils.c test_context.c
+test_opcode_printer_SOURCES = utils.c test_opcode_printer.c
 test_opcodes_SOURCES = utils.c test_opcodes.c
 test_token_SOURCES = utils.c test_token.c
 test_token_list_SOURCES = utils.c test_token_list.c
@@ -35,6 +37,7 @@ TESTS = \
 	test_ast_list \
 	test_compiler \
 	test_context \
+	test_opcode_printer \
 	test_opcodes \
 	test_token \
 	test_token_list \
