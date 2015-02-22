@@ -147,6 +147,18 @@ START_TEST(test_opcode_readable_type)
 }
 END_TEST
 
+START_TEST(test_operand_set_null)
+{
+    struct handlebars_operand op;
+    
+    handlebars_operand_set_null(&op);
+    ck_assert_int_eq(handlebars_operand_type_null, op.type);
+    ck_assert_int_eq(0, op.data.boolval);
+    ck_assert_int_eq(0, op.data.longval);
+    ck_assert_ptr_eq(NULL, op.data.stringval);
+}
+END_TEST
+
 START_TEST(test_operand_set_boolval)
 {
     struct handlebars_operand op;
@@ -215,6 +227,7 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string_failed_alloc, "Constructor (string) (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_opcode_readable_type, "Readable Type");
 	
+	REGISTER_TEST_FIXTURE(s, test_operand_set_null, "Set operand null");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_boolval, "Set operand boolval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_longval, "Set operand longval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_stringval, "Set operand stringval");

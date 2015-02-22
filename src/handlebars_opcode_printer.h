@@ -13,6 +13,8 @@ extern "C" {
 
 struct handlebars_opcode;
 
+char * handlebars_operand_print_append(char * str, struct handlebars_operand * operand);
+
 char * handlebars_opcode_print(void * ctx, struct handlebars_opcode * opcode);
 
 char * handlebars_opcode_array_print(void * ctx, struct handlebars_opcode ** opcodes, size_t count);

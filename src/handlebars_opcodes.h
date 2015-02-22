@@ -103,6 +103,8 @@ struct handlebars_opcode * handlebars_opcode_ctor_string2(
 struct handlebars_opcode * handlebars_opcode_ctor_string_long(
         void * ctx, enum handlebars_opcode_type type, const char * arg1, long arg2);
 
+void handlebars_operand_set_null(struct handlebars_operand * operand);
+
 void handlebars_operand_set_boolval(struct handlebars_operand * operand, short arg);
 
 void handlebars_operand_set_longval(struct handlebars_operand * operand, long arg);

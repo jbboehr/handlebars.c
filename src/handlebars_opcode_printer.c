@@ -3,27 +3,27 @@
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 
-static inline char * handlebars_operand_print_append(struct handlebars_operand * operand, char ** buf)
+char * handlebars_operand_print_append(char * str, struct handlebars_operand * operand)
 {
     switch( operand->type ) {
         case handlebars_operand_type_null:
-            *buf = handlebars_talloc_strdup_append(*buf, "[NULL]");
+            str = handlebars_talloc_strdup_append(str, "[NULL]");
             break;
         case handlebars_operand_type_boolean:
-            *buf = talloc_asprintf_append(*buf, "[BOOL:%d]", operand->data.boolval);
+            str = talloc_asprintf_append(str, "[BOOLEAN:%d]", operand->data.boolval);
             break;
         case handlebars_operand_type_long:
-            *buf = talloc_asprintf_append(*buf, "[LONG:%d]", operand->data.longval);
+            str = talloc_asprintf_append(str, "[LONG:%ld]", operand->data.longval);
             break;
         case handlebars_operand_type_string:
-            *buf = talloc_asprintf_append(*buf, "[STRING:%d]", operand->data.stringval);
+            str = talloc_asprintf_append(str, "[STRING:%s]", operand->data.stringval);
             break;
         case handlebars_operand_type_array:
-            *buf = handlebars_talloc_strdup_append(*buf, "[ARRAY:]");
-            //*buf = talloc_asprintf_append(*buf, "[ARRAY:]");
+            str = handlebars_talloc_strdup_append(str, "[ARRAY:]");
+            //str = talloc_asprintf_append(str, "[ARRAY:]");
             break;
     }
-    return *buf;
+    return str;
 }
 
 char * handlebars_opcode_print(void * ctx, struct handlebars_opcode * opcode)
@@ -33,9 +33,9 @@ char * handlebars_opcode_print(void * ctx, struct handlebars_opcode * opcode)
     
     name = handlebars_opcode_readable_type(opcode->type);
     str = handlebars_talloc_strdup(ctx, name);
-    str = handlebars_operand_print_append(&opcode->op1, &str);
-    str = handlebars_operand_print_append(&opcode->op2, &str);
-    str = handlebars_operand_print_append(&opcode->op3, &str);
+    str = handlebars_operand_print_append(str, &opcode->op1);
+    str = handlebars_operand_print_append(str, &opcode->op2);
+    str = handlebars_operand_print_append(str, &opcode->op3);
     
     return str;
 }

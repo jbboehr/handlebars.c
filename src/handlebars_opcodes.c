@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
@@ -69,6 +71,12 @@ struct handlebars_opcode * handlebars_opcode_ctor_string_long(
         handlebars_operand_set_longval(&opcode->op2, arg2);
     }
     return opcode;
+}
+
+void handlebars_operand_set_null(struct handlebars_operand * operand)
+{
+    operand->type = handlebars_operand_type_null;
+    memset(&operand->data, 0, sizeof(union handlebars_operand_internals));
 }
 
 void handlebars_operand_set_boolval(struct handlebars_operand * operand, short arg)
