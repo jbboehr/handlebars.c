@@ -24,6 +24,18 @@ struct handlebars_opcode * handlebars_opcode_ctor_long(
     return opcode;
 }
 
+struct handlebars_opcode * handlebars_opcode_ctor_long_string(
+        void * ctx, enum handlebars_opcode_type type, long arg1, const char * arg2)
+{
+    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
+    if( opcode ) {
+        opcode->type = type;
+        handlebars_operand_set_longval(&opcode->op1, arg1);
+        handlebars_operand_set_stringval(ctx, &opcode->op2, arg2);
+    }
+    return opcode;
+}
+
 struct handlebars_opcode * handlebars_opcode_ctor_string(
         void * ctx, enum handlebars_opcode_type type, const char * arg)
 {
@@ -31,6 +43,30 @@ struct handlebars_opcode * handlebars_opcode_ctor_string(
     if( opcode ) {
         opcode->type = type;
         handlebars_operand_set_stringval(ctx, &opcode->op1, arg);
+    }
+    return opcode;
+}
+
+struct handlebars_opcode * handlebars_opcode_ctor_string2(
+        void * ctx, enum handlebars_opcode_type type, const char * arg1, const char * arg2)
+{
+    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
+    if( opcode ) {
+        opcode->type = type;
+        handlebars_operand_set_stringval(ctx, &opcode->op1, arg1);
+        handlebars_operand_set_stringval(ctx, &opcode->op2, arg2);
+    }
+    return opcode;
+}
+
+struct handlebars_opcode * handlebars_opcode_ctor_string_long(
+        void * ctx, enum handlebars_opcode_type type, const char * arg1, long arg2)
+{
+    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
+    if( opcode ) {
+        opcode->type = type;
+        handlebars_operand_set_stringval(ctx, &opcode->op1, arg1);
+        handlebars_operand_set_longval(&opcode->op2, arg2);
     }
     return opcode;
 }

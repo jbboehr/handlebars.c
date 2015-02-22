@@ -43,6 +43,14 @@ struct handlebars_ast_list {
 int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
 
 /**
+ * @brief Count the number of items in an AST list
+ * 
+ * @param[in] lust The list to count
+ * @return The number of items in the list
+ */
+int handlebars_ast_list_count(struct handlebars_ast_list * list);
+
+/**
  * @brief Contruct a new AST node list
  * 
  * @param[in] ctx The talloc memory context

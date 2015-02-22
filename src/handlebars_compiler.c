@@ -16,6 +16,10 @@
 #define __OPN(type) __PUSH(handlebars_opcode_ctor(compiler, __MK(type)))
 #define __OPS(type, arg) __PUSH(handlebars_opcode_ctor_string(compiler, __MK(type), arg))
 
+#define __OPLS(type, arg1, arg2) __PUSH(handlebars_opcode_ctor_long_string(compiler, __MK(type), arg1, arg2))
+#define __OPS2(type, arg1, arg2) __PUSH(handlebars_opcode_ctor_string2(compiler, __MK(type), arg1, arg2))
+#define __OPSL(type, arg1, arg2) __PUSH(handlebars_opcode_ctor_string_long(compiler, __MK(type), arg1, arg2))
+
 
 
 static void handlebars_compiler_accept(
@@ -31,6 +35,8 @@ static inline void handlebars_compiler_accept_sexpr_simple(
 static inline void handlebars_compiler_accept_sexpr_ambiguous(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
         long programGuid, long inverseGuid);
+static inline void handlebars_compiler_accept_hash(
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * node);
 
 
 
@@ -97,6 +103,7 @@ static inline short handlebars_compiler_is_known_helper(
     const char * helper_name;
     const char ** ptr;
     if( NULL == id || 
+        id->type != HANDLEBARS_AST_NODE_ID ||
         NULL == (parts = id->node.id.parts) || 
         NULL == parts->first || 
         NULL == (path_segment = parts->first->data) ||
@@ -139,7 +146,8 @@ static inline enum handlebars_compiler_sexpr_type handlebars_compiler_classify_s
 static inline long handlebars_compiler_compile_program(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * program)
 {
-    return -1; // @todo
+    // @todo
+    return -1;
 }
 
 static inline void handlebars_compiler_opcode(
@@ -156,18 +164,63 @@ static inline void handlebars_compiler_opcode(
     compiler->opcodes[compiler->opcodes_length++] = opcode;
 }
 
-/*
-static inline void _handlebars_compiler_push_param(struct handlebars_compiler * compiler)
+static inline void handlebars_compiler_push_param(
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * param)
 {
-    ;
+    if( compiler->string_params ) {
+        int depth = 0;
+        char * string_mode_value = NULL;
+        
+        if( param->type == HANDLEBARS_AST_NODE_ID &&
+                (depth = param->node.id.depth) ) {
+            handlebars_compiler_add_depth(compiler, depth);
+        }
+        __OPL(get_context, depth);
+        
+        // @todo get string mode value
+        __OPS2(push_string_param, string_mode_value, handlebars_ast_node_readable_type(param->type));
+        
+        if( param->type == HANDLEBARS_AST_NODE_SEXPR ) {
+            handlebars_compiler_accept/*_sexpr*/(compiler, param);
+        }
+    } else {
+        if( compiler->track_ids ) {
+            char * id_name = NULL;
+            // @todo get id name
+            __OPS2(push_id, handlebars_ast_node_readable_type(param->type), id_name);
+        }
+        handlebars_compiler_accept(compiler, param);
+    }
 }
-*/
 
-static inline void handlebars_compiler_setup_full_mustache_params(
-        struct handlebars_compiler * compiler,
-        struct handlebars_ast_node * sexpr, long program, long inverse)
+static inline void handlebars_compiler_push_params(
+        struct handlebars_compiler * compiler, struct handlebars_ast_list * params)
 {
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+    handlebars_ast_list_foreach(params, item, tmp) {
+        handlebars_compiler_push_param(compiler, item->data);
+    }
+}
+
+static inline struct handlebars_ast_list * handlebars_compiler_setup_full_mustache_params(
+        struct handlebars_compiler * compiler,
+        struct handlebars_ast_node * sexpr, long programGuid, long inverseGuid)
+{
+    struct handlebars_ast_list * params = sexpr->node.sexpr.params;
+    handlebars_compiler_push_params(compiler, params);
     
+    __OPL(push_program, programGuid);
+    __OPL(push_program, inverseGuid);
+    
+    // @todo make sure empty
+    if( sexpr->node.sexpr.hash ) {
+        handlebars_compiler_accept/*_hash*/(compiler, sexpr->node.sexpr.hash);
+    } else {
+        __OPN(empty_hash);
+    }
+    
+    return params;
 }
 
 
@@ -233,17 +286,60 @@ static inline void handlebars_compiler_accept_block(
 }
 
 static inline void handlebars_compiler_accept_hash(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * hash)
 {
-    // @todo
-    ;
+    struct handlebars_ast_list * params = hash->node.hash.segments;
+    int len = handlebars_ast_list_count(params);
+    int i = 0;
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+    char ** keys;
+    
+    // @todo wrap talloc function
+    keys = talloc_array(compiler, char *, len);
+    
+    __OPN(push_hash);
+    
+    handlebars_ast_list_foreach(params, item, tmp) {
+        struct handlebars_ast_node * hash_segment = item->data;
+        if( hash_segment && hash_segment->type == HANDLEBARS_AST_NODE_HASH_SEGMENT ) {
+            handlebars_compiler_push_param(compiler, hash_segment->node.hash_segment.value);
+            keys[i++] = hash_segment->node.hash_segment.key;
+        }
+    }
+    
+    while( i-- ) {
+        __OPS(assign_to_hash, keys[i]);
+    }
+    
+    __OPN(pop_hash);
+    
+    handlebars_talloc_free(keys);
 }
 
 static inline void handlebars_compiler_accept_partial(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * partial)
 {
-    // @todo
-    ;
+    struct handlebars_ast_node * partial_name = partial->node.partial.partial_name;
+    char * name = NULL;
+    compiler->use_partial = 1;
+    
+    if( partial->node.partial.hash ) {
+        handlebars_compiler_accept(compiler, partial->node.partial.hash);
+    } else {
+        __OPS(push, "undefined");
+    }
+    
+    if( partial->node.partial.context ) {
+        handlebars_compiler_accept(compiler, partial->node.partial.context);
+    } else {
+        __OPL(get_context, 0);
+        __OPN(push_context);
+    }
+    
+    // @todo get partial string name
+    __OPS(invoke_partial, name);
+    __OPN(append);
 }
 
 static inline void handlebars_compiler_accept_content(
@@ -257,7 +353,7 @@ static inline void handlebars_compiler_accept_content(
 static inline void handlebars_compiler_accept_mustache(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * mustache)
 {
-    handlebars_compiler_accept_sexpr(compiler, mustache->node.mustache.sexpr);
+    handlebars_compiler_accept/*_sexpr*/(compiler, mustache->node.mustache.sexpr);
     
     if( mustache->node.mustache.escaped && !compiler->no_escape ) {
         __OPN(append_escaped);
@@ -270,24 +366,76 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
         long programGuid, long inverseGuid)
 {
-    // @todo
-    ;
+    struct handlebars_ast_node * id = sexpr->node.sexpr.id;
+    // @todo get name
+    char * name;
+    int is_block = (programGuid >= 0 || inverseGuid >= 0);
+    int depth = 0;
+    
+    if( id->type == HANDLEBARS_AST_NODE_ID ) {
+        depth = id->node.id.depth;
+    }
+    
+    __OPL(get_context, depth);
+    __OPL(push_program, programGuid);
+    __OPL(push_program, inverseGuid);
+    
+    handlebars_compiler_accept/*_id*/(compiler, id);
+    
+    __OPSL(invoke_ambiguous, name, is_block);
 }
 
 static inline void handlebars_compiler_accept_sexpr_simple(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
         long programGuid, long inverseGuid)
 {
-    // @todo
-    ;
+    struct handlebars_ast_node * id = sexpr->node.sexpr.id;
+    
+    if( id->type == HANDLEBARS_AST_NODE_DATA ) {
+        handlebars_compiler_accept/*_data*/(compiler, id);
+    } else if( id->type == HANDLEBARS_AST_NODE_ID ) {
+        if( id->node.id.parts ) {
+            handlebars_compiler_accept/*_id*/(compiler, id);
+        } else {
+            handlebars_compiler_add_depth(compiler, id->node.id.depth);
+            __OPL(get_context, id->node.id.depth);
+            __OPN(push_context);
+        }
+    } else {
+        // @todo explode?
+    }
+    
+    __OPN(resolve_possible_lambda);
 }
 
 static inline void handlebars_compiler_accept_sexpr_helper(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
         long programGuid, long inverseGuid)
 {
-    // @todo
-    ;
+    struct handlebars_ast_list * params = handlebars_compiler_setup_full_mustache_params(
+                compiler, sexpr, programGuid, inverseGuid);
+    // @todo make sure id?
+    struct handlebars_ast_node * id = sexpr->node.sexpr.id;
+    // @todo get name?
+    char * name = NULL;
+    
+    if( handlebars_compiler_is_known_helper(compiler, id) ) {
+        __OPLS(invoke_known_helper, handlebars_ast_list_count(params), name);
+    } else if( compiler->known_helpers_only ) {
+        // @todo explode?
+    } else {
+        struct handlebars_opcode * opcode;
+        short is_simple = (short) id->node.id.is_simple;
+        
+        // @todo set falsy?
+        handlebars_compiler_accept/*_id*/(compiler, id);
+        
+        opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invoke_helper);
+        handlebars_operand_set_longval(&opcode->op1, handlebars_ast_list_count(params));
+        handlebars_operand_set_stringval(compiler, &opcode->op2, name);
+        handlebars_operand_set_boolval(&opcode->op3, is_simple);
+        handlebars_compiler_opcode(compiler, opcode);
+    }
 }
 
 static inline void handlebars_compiler_accept_sexpr(
@@ -308,17 +456,26 @@ static inline void handlebars_compiler_accept_sexpr(
 }
 
 static inline void handlebars_compiler_accept_id(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * id)
 {
-    // @todo
-    ;
+    char * name = NULL;
+    
+    handlebars_compiler_add_depth(compiler, id->node.id.depth);
+    __OPL(get_context, id->node.id.depth);
+    
+    // @todo get name
+    
+    if( name == NULL ) {
+        __OPN(push_context);
+    } else {
+        // @todo lookup on context
+    }
 }
 
 static inline void handlebars_compiler_accept_data(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
     // @todo
-    ;
 }
 
 static inline void handlebars_compiler_accept_string(

@@ -41,6 +41,19 @@ error:
     return error;
 }
 
+int handlebars_ast_list_count(struct handlebars_ast_list * list)
+{
+    int count = 0;
+    if( list ) {
+        struct handlebars_ast_list_item * item;
+        struct handlebars_ast_list_item * tmp;
+        handlebars_ast_list_foreach(list, item, tmp) {
+            count++;
+        }
+    }
+    return count;
+}
+
 struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx)
 {
     return handlebars_talloc_zero(ctx, struct handlebars_ast_list);

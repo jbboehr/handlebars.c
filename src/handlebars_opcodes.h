@@ -91,8 +91,17 @@ struct handlebars_opcode * handlebars_opcode_ctor(
 struct handlebars_opcode * handlebars_opcode_ctor_long(
         void * ctx, enum handlebars_opcode_type type, long arg);
 
+struct handlebars_opcode * handlebars_opcode_ctor_long_string(
+        void * ctx, enum handlebars_opcode_type type, long arg1, const char * arg2);
+        
 struct handlebars_opcode * handlebars_opcode_ctor_string(
         void * ctx, enum handlebars_opcode_type type, const char * arg);
+        
+struct handlebars_opcode * handlebars_opcode_ctor_string2(
+        void * ctx, enum handlebars_opcode_type type, const char * arg1, const char * arg2);
+        
+struct handlebars_opcode * handlebars_opcode_ctor_string_long(
+        void * ctx, enum handlebars_opcode_type type, const char * arg1, long arg2);
 
 void handlebars_operand_set_boolval(struct handlebars_operand * operand, short arg);
 
