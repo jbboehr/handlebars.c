@@ -70,6 +70,33 @@ START_TEST(test_opcode_ctor_long_failed_alloc)
 }
 END_TEST
 
+START_TEST(test_opcode_ctor_long_string)
+{
+    struct handlebars_opcode * opcode;
+    const char * str = "blah";
+    
+    opcode = handlebars_opcode_ctor_long_string(ctx, handlebars_opcode_type_get_context, 1, str);
+    ck_assert_ptr_ne(NULL, opcode);
+    ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
+    ck_assert_int_eq(1, opcode->op1.data.longval);
+    ck_assert_ptr_ne(NULL, opcode->op2.data.stringval);
+    ck_assert_str_eq(str, opcode->op2.data.stringval);
+}
+END_TEST
+
+START_TEST(test_opcode_ctor_long_string_failed_alloc)
+{
+    struct handlebars_opcode * opcode;
+    const char * str = "blah";
+    
+    handlebars_memory_fail_enable();
+    opcode = handlebars_opcode_ctor_long_string(ctx, handlebars_opcode_type_get_context, 1, str);
+    handlebars_memory_fail_disable();
+    
+    ck_assert_ptr_eq(NULL, opcode);
+}
+END_TEST
+
 START_TEST(test_opcode_ctor_string)
 {
     struct handlebars_opcode * opcode;
@@ -90,6 +117,63 @@ START_TEST(test_opcode_ctor_string_failed_alloc)
     
     handlebars_memory_fail_enable();
     opcode = handlebars_opcode_ctor_string(ctx, handlebars_opcode_type_append_content, str);
+    handlebars_memory_fail_disable();
+    
+    ck_assert_ptr_eq(NULL, opcode);
+}
+END_TEST
+
+START_TEST(test_opcode_ctor_string2)
+{
+    struct handlebars_opcode * opcode;
+    const char * str1 = "foo";
+    const char * str2 = "bar";
+    
+    opcode = handlebars_opcode_ctor_string2(ctx, handlebars_opcode_type_append_content, str1, str2);
+    ck_assert_ptr_ne(NULL, opcode);
+    ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
+    ck_assert_str_eq(str1, opcode->op1.data.stringval);
+    ck_assert_ptr_ne(str1, opcode->op1.data.stringval);
+    ck_assert_str_eq(str2, opcode->op2.data.stringval);
+    ck_assert_ptr_ne(str2, opcode->op2.data.stringval);
+}
+END_TEST
+
+START_TEST(test_opcode_ctor_string2_failed_alloc)
+{
+    struct handlebars_opcode * opcode;
+    const char * str1 = "foo";
+    const char * str2 = "bar";
+    
+    handlebars_memory_fail_enable();
+    opcode = handlebars_opcode_ctor_string2(ctx, handlebars_opcode_type_append_content, str1, str2);
+    handlebars_memory_fail_disable();
+    
+    ck_assert_ptr_eq(NULL, opcode);
+}
+END_TEST
+
+START_TEST(test_opcode_ctor_string_long)
+{
+    struct handlebars_opcode * opcode;
+    const char * str = "foo";
+    
+    opcode = handlebars_opcode_ctor_string_long(ctx, handlebars_opcode_type_append_content, str, 3);
+    ck_assert_ptr_ne(NULL, opcode);
+    ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
+    ck_assert_str_eq(str, opcode->op1.data.stringval);
+    ck_assert_ptr_ne(str, opcode->op1.data.stringval);
+    ck_assert_int_eq(3, opcode->op2.data.longval);
+}
+END_TEST
+
+START_TEST(test_opcode_ctor_string_long_failed_alloc)
+{
+    struct handlebars_opcode * opcode;
+    const char * str = "foo";
+    
+    handlebars_memory_fail_enable();
+    opcode = handlebars_opcode_ctor_string_long(ctx, handlebars_opcode_type_append_content, str, 3);
     handlebars_memory_fail_disable();
     
     ck_assert_ptr_eq(NULL, opcode);
@@ -223,8 +307,14 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_failed_alloc, "Constructor (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_long, "Constructor (long) ");
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_long_failed_alloc, "Constructor (long) (failed alloc)");
+	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_long_string, "Constructor (long/string) ");
+	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_long_string_failed_alloc, "Constructor (long/string) (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string, "Constructor (string) ");
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string_failed_alloc, "Constructor (string) (failed alloc)");
+	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string2, "Constructor (string) ");
+	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string2_failed_alloc, "Constructor (string) (failed alloc)");
+	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string_long, "Constructor (string/long) ");
+	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string_long_failed_alloc, "Constructor (string/long) (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_opcode_readable_type, "Readable Type");
 	
 	REGISTER_TEST_FIXTURE(s, test_operand_set_null, "Set operand null");
