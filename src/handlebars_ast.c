@@ -74,7 +74,7 @@ const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_no
     
     path_segment = parts->first->data;
     
-    assert(ast_node->type == HANDLEBARS_AST_NODE_PATH_SEGMENT);
+    assert(path_segment->type == HANDLEBARS_AST_NODE_PATH_SEGMENT);
     
     return (const char *) path_segment->node.path_segment.part;
 }

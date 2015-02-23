@@ -168,7 +168,7 @@ static inline long handlebars_compiler_compile_program(
     
     subcompiler = handlebars_compiler_ctor(compiler);
     if( subcompiler == NULL ) {
-        compiler->errno = handlebars_compiler_error_nomem;
+        compiler->errnum = handlebars_compiler_error_nomem;
         return -1;
     }
     
@@ -271,8 +271,8 @@ static inline struct handlebars_ast_list * handlebars_compiler_setup_full_mustac
     struct handlebars_ast_list * params = sexpr->node.sexpr.params;
     handlebars_compiler_push_params(compiler, params);
     
-    __OPL(push_program, programGuid);
-    __OPL(push_program, inverseGuid);
+    programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
+    inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
     
     // @todo make sure empty
     if( sexpr->node.sexpr.hash ) {
@@ -329,8 +329,8 @@ static inline void handlebars_compiler_accept_block(
             break;
         case handlebars_compiler_sexpr_type_simple:
             handlebars_compiler_accept_sexpr_simple(compiler, sexpr, programGuid, inverseGuid);
-            __OPL(push_program, programGuid);
-            __OPL(push_program, inverseGuid);
+            programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
+            inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
             __OPN(empty_hash);
             id = sexpr->node.sexpr.id;
             assert(!id || id->type == HANDLEBARS_AST_NODE_ID);
@@ -338,8 +338,8 @@ static inline void handlebars_compiler_accept_block(
             break;
         case handlebars_compiler_sexpr_type_ambiguous:
             handlebars_compiler_accept_sexpr_ambiguous(compiler, sexpr, programGuid, inverseGuid);
-            __OPL(push_program, programGuid);
-            __OPL(push_program, inverseGuid);
+            programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
+            inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
             __OPN(empty_hash);
             __OPN(ambiguous_block_value);
             break;
@@ -361,7 +361,7 @@ static inline void handlebars_compiler_accept_hash(
     // @todo wrap talloc function
     keys = talloc_array(compiler, char *, len);
     if( !keys ) {
-        compiler->errno = handlebars_compiler_error_nomem;
+        compiler->errnum = handlebars_compiler_error_nomem;
         return;
     }
     
@@ -475,8 +475,8 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
     name = handlebars_ast_node_get_id_part(id);
     
     __OPL(get_context, id->node.id.depth);
-    __OPL(push_program, programGuid);
-    __OPL(push_program, inverseGuid);
+    programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
+    inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
     
     handlebars_compiler_accept/*_id*/(compiler, id);
     
@@ -534,7 +534,7 @@ static inline void handlebars_compiler_accept_sexpr_helper(
     if( handlebars_compiler_is_known_helper(compiler, id) ) {
         __OPLS(invoke_known_helper, handlebars_ast_list_count(params), name);
     } else if( compiler->known_helpers_only ) {
-        compiler->errno = handlebars_compiler_error_unknown_helper;
+        compiler->errnum = handlebars_compiler_error_unknown_helper;
         compiler->error = talloc_asprintf(compiler, 
                 "You specified knownHelpersOnly, but used the unknown helper %s", name);
     } else {

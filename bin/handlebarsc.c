@@ -6,8 +6,10 @@
 
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
+#include "handlebars_compiler.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
+#include "handlebars_opcode_printer.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
 #include "handlebars_token_printer.h"
@@ -48,7 +50,7 @@ static void readStdin(void)
 
 static int do_usage(void)
 {
-    fprintf(stderr, "Usage: handlebarsc [lex|parse] [TEMPLATE]\n");
+    fprintf(stderr, "Usage: handlebarsc [lex|parse|compile] [TEMPLATE]\n");
     return 0;
 }
 
@@ -122,6 +124,41 @@ static int do_parse(void)
     return error;
 }
 
+static int do_compile(void)
+{
+    struct handlebars_context * ctx;
+    struct handlebars_compiler * compiler;
+    struct handlebars_opcode_printer * printer;
+    char * output;
+    //int retval;
+    int error = 0;
+    
+    ctx = handlebars_context_ctor();
+    compiler = handlebars_compiler_ctor(ctx);
+    printer = handlebars_opcode_printer_ctor(ctx);
+    
+    // Read
+    readStdin();
+    ctx->tmpl = stdin_buf;
+    
+    // Parse
+    /*retval =*/ handlebars_yy_parse(ctx);
+    
+    // Compile
+    handlebars_compiler_compile(compiler, ctx->program);
+    if( compiler->errnum ) {
+        goto error;
+    }
+    
+    // Printer
+    handlebars_opcode_printer_print(printer, compiler);
+    fprintf(stdout, "%s\n", printer->output);
+    
+error:
+    handlebars_context_dtor(ctx);
+    return error;
+}
+
 int main( int argc, char * argv[])
 {
     if( argc <= 1 ) {
@@ -132,6 +169,8 @@ int main( int argc, char * argv[])
         return do_lex();
     } else if( strcmp(argv[1], "parse") == 0 ) {
         return do_parse();
+    } else if( strcmp(argv[1], "compile") == 0 ) {
+        return do_compile();
     } else {
         return do_usage();
     }

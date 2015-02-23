@@ -49,7 +49,7 @@ enum handlebars_compiler_sexpr_type {
 };
 
 struct handlebars_compiler {
-    enum handlebars_compiler_error errno;
+    enum handlebars_compiler_error errnum;
     char * error;
     
     struct handlebars_opcode ** opcodes;
