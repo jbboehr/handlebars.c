@@ -120,6 +120,8 @@ int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * ope
  */
 const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type);
 
+enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char * type);
+
 #ifdef	__cplusplus
 }
 #endif

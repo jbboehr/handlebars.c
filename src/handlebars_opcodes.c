@@ -151,3 +151,63 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
     
     return "invalid";
 }
+
+enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char * type)
+{
+#define _RTYPE_REV_STR(x) #x
+#define _RTYPE_MK(type) handlebars_opcode_type_ ## type
+#define _RTYPE_REV_CMP(str, str2) \
+    if( strcmp(type, _RTYPE_REV_STR(str2)) == 0 ) { \
+        return _RTYPE_MK(str); \
+    }
+    int l = strlen(type);
+    
+    switch( type[0] ) {
+        case 'a':
+            _RTYPE_REV_CMP(ambiguous_block_value, ambiguousBlockValue);
+            _RTYPE_REV_CMP(append, append);
+            _RTYPE_REV_CMP(append_escaped, appendEscaped);
+            _RTYPE_REV_CMP(append_content, appendContent);
+            _RTYPE_REV_CMP(assign_to_hash, assignToHash);
+            break;
+        case 'b':
+            _RTYPE_REV_CMP(block_value, blockValue);
+            break;
+        case 'e':
+            _RTYPE_REV_CMP(empty_hash, emptyHash);
+            break;
+        case 'g':
+            _RTYPE_REV_CMP(get_context, getContext);
+            break;
+        case 'i':
+            _RTYPE_REV_CMP(invoke_partial, invokePartial);
+            _RTYPE_REV_CMP(invoke_ambiguous, invokeAmbiguous);
+            _RTYPE_REV_CMP(invoke_known_helper, invokeKnownHelper);
+            _RTYPE_REV_CMP(invoke_helper, invokeHelper);
+            _RTYPE_REV_CMP(invalid, invalid);
+        case 'l':
+            _RTYPE_REV_CMP(lookup_on_context, lookupOnContext);
+            _RTYPE_REV_CMP(lookup_data, lookupData);
+            break;
+        case 'n':
+            _RTYPE_REV_CMP(nil, nil);
+            break;
+        case 'p':
+            _RTYPE_REV_CMP(pop_hash, popHash);
+            _RTYPE_REV_CMP(push_context, pushContext);
+            _RTYPE_REV_CMP(push_hash, pushHash);
+            _RTYPE_REV_CMP(push_program, pushProgram);
+            _RTYPE_REV_CMP(push, push);
+            _RTYPE_REV_CMP(push_literal, pushLiteral);
+            _RTYPE_REV_CMP(push_string, pushString);
+            _RTYPE_REV_CMP(push_id, pushId);
+            _RTYPE_REV_CMP(push_string_param, pushStringParam);
+            break;
+        case 'r':
+            _RTYPE_REV_CMP(resolve_possible_lambda, resolvePossibleLambda);
+            break;
+    }
+    
+    // Unknown :(
+    return -1;
+}
