@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <talloc.h>
 
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
@@ -108,10 +109,9 @@ static inline short handlebars_compiler_is_known_helper(
     const char * helper_name;
     const char ** ptr;
     
-    assert(id != NULL);
-    assert(id->type == HANDLEBARS_AST_NODE_ID);
-    
-    if( NULL == (parts = id->node.id.parts) || 
+    if( NULL == id ||
+        id->type != HANDLEBARS_AST_NODE_ID ||
+        NULL == (parts = id->node.id.parts) || 
         NULL == parts->first || 
         NULL == (path_segment = parts->first->data) ||
         NULL == (helper_name = path_segment->node.path_segment.part) ) {
@@ -136,7 +136,7 @@ static inline enum handlebars_compiler_sexpr_type handlebars_compiler_classify_s
     
     //assert(id != NULL);
     //assert(id->type == HANDLEBARS_AST_NODE_ID);
-    assert(id == NULL || id->type == HANDLEBARS_AST_NODE_ID);
+    //assert(id == NULL || id->type == HANDLEBARS_AST_NODE_ID);
     
     if( is_eligible && !is_helper ) {
         if( handlebars_compiler_is_known_helper(compiler, id) ) {
@@ -164,7 +164,8 @@ static inline long handlebars_compiler_compile_program(
     int depthi;
     
     assert(program != NULL);
-    assert(program->type == HANDLEBARS_AST_NODE_PROGRAM);
+    assert(program->type == HANDLEBARS_AST_NODE_PROGRAM ||
+           program->type == HANDLEBARS_AST_NODE_CONTENT);
     
     subcompiler = handlebars_compiler_ctor(compiler);
     if( subcompiler == NULL ) {
@@ -180,8 +181,8 @@ static inline long handlebars_compiler_compile_program(
     // Realloc children array
     if( compiler->children_size <= compiler->children_length ) {
         compiler->children_size += 2;
-        compiler->children = talloc_array(compiler, struct handlebars_children *, 
-                    compiler->children_size);
+        compiler->children = talloc_realloc(compiler, compiler->children, 
+                    struct handlebars_compiler *, compiler->children_size);
     }
     
     // Append child
@@ -207,8 +208,8 @@ static inline void handlebars_compiler_opcode(
     // Realloc opcode array
     if( compiler->opcodes_size <= compiler->opcodes_length ) {
         compiler->opcodes_size += 32;
-        compiler->opcodes = talloc_array(compiler, struct handlebars_opcode *, 
-                    compiler->opcodes_size);
+        compiler->opcodes = talloc_realloc(compiler, compiler->opcodes,
+                    struct handlebars_opcode *, compiler->opcodes_size);
     }
     
     // Append opcode
@@ -218,9 +219,10 @@ static inline void handlebars_compiler_opcode(
 static inline void handlebars_compiler_push_param(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * param)
 {
-    assert(param->type == HANDLEBARS_AST_NODE_ID ||
-           param->type == HANDLEBARS_AST_NODE_DATA ||
-           param->type == HANDLEBARS_AST_NODE_SEXPR );
+    assert(param != NULL);
+    if( param ) {
+        return;
+    }
     
     if( compiler->string_params ) {
         int depth = 0;
@@ -254,13 +256,13 @@ static inline void handlebars_compiler_push_param(
 static inline void handlebars_compiler_push_params(
         struct handlebars_compiler * compiler, struct handlebars_ast_list * params)
 {
-    struct handlebars_ast_list_item * item;
-    struct handlebars_ast_list_item * tmp;
-    
-    assert(params != NULL);
-    
-    handlebars_ast_list_foreach(params, item, tmp) {
-        handlebars_compiler_push_param(compiler, item->data);
+    if( params != NULL ) {
+        struct handlebars_ast_list_item * item;
+        struct handlebars_ast_list_item * tmp;
+        
+        handlebars_ast_list_foreach(params, item, tmp) {
+            handlebars_compiler_push_param(compiler, item->data);
+        }
     }
 }
 
@@ -295,21 +297,20 @@ static inline void handlebars_compiler_accept_program(
     struct handlebars_ast_list_item * tmp;
     struct handlebars_ast_list * list = node->node.program.statements;
     
-    assert(list != NULL);
-    
-    handlebars_ast_list_foreach(list, item, tmp) {
-        handlebars_compiler_accept(compiler, item->data);
+    if( list != NULL ) {
+        handlebars_ast_list_foreach(list, item, tmp) {
+            handlebars_compiler_accept(compiler, item->data);
+        }
     }
     
     // @todo sort depths?
 }
 
-static inline void handlebars_compiler_accept_block(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * block)
+
+static inline void handlebars_compiler_accept_block_internal(
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * mustache,
+        struct handlebars_ast_node * program, struct handlebars_ast_node * inverse)
 {
-    struct handlebars_ast_node * mustache = block->node.block.mustache;
-    struct handlebars_ast_node * program = block->node.block.program;
-    struct handlebars_ast_node * inverse = block->node.block.inverse;
     struct handlebars_ast_node * sexpr = mustache->node.mustache.sexpr;
     struct handlebars_ast_node * id;
     long programGuid = -1;
@@ -346,6 +347,15 @@ static inline void handlebars_compiler_accept_block(
     }
     
     __OPN(append);
+}
+
+static inline void handlebars_compiler_accept_block(
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * block)
+{
+    struct handlebars_ast_node * mustache = block->node.block.mustache;
+    struct handlebars_ast_node * program = block->node.block.program;
+    struct handlebars_ast_node * inverse = block->node.block.inverse;
+    handlebars_compiler_accept_block_internal(compiler, mustache, program, inverse);
 }
 
 static inline void handlebars_compiler_accept_hash(
@@ -407,7 +417,13 @@ static inline void handlebars_compiler_accept_partial(
     id = partial_name->node.partial_name.name;
     
     assert(id != NULL);
-    assert(id->type == HANDLEBARS_AST_NODE_ID);
+    
+    if( id->type == HANDLEBARS_AST_NODE_ID ) {
+        name = id->node.id.original;
+    } else {
+        // @todo might not be right
+        name = handlebars_ast_node_get_string_mode_value(id);
+    }
     
     name = id->node.id.original;
     
@@ -629,13 +645,15 @@ static inline void handlebars_compiler_accept_comment(
     assert(comment->type == HANDLEBARS_AST_NODE_COMMENT);
 }
 
-/*
 static inline void handlebars_compiler_accept_raw_block(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * raw_block)
 {
-    ;
+    struct handlebars_ast_node * mustache = raw_block->node.raw_block.mustache;
+    struct handlebars_ast_node * program = raw_block->node.raw_block.program;
+    handlebars_compiler_accept_block_internal(compiler, mustache, program, NULL);
 }
 
+/*
 static inline void handlebars_compiler_accept_hash_segment(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
@@ -687,9 +705,10 @@ static void handlebars_compiler_accept(
         case HANDLEBARS_AST_NODE_COMMENT:
             return handlebars_compiler_accept_comment(compiler, node);
         
-        /*
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
             return handlebars_compiler_accept_raw_block(compiler, node);
+        
+        /*
         case HANDLEBARS_AST_NODE_HASH_SEGMENT:
             return handlebars_compiler_accept_hash_segment(compiler, node);
         case HANDLEBARS_AST_NODE_PARTIAL_NAME:
@@ -700,6 +719,7 @@ static void handlebars_compiler_accept(
     }
     
     // Should never get here
+    fprintf(stderr, "SIGH %s\n", handlebars_ast_node_readable_type(node->type));
     assert(0);
 }
 

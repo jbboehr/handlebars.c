@@ -13,7 +13,8 @@ check_PROGRAMS = \
 	test_token_printer \
 	test_utils \
 	test_spec_handlebars_parser \
-	test_spec_handlebars_tokenizer
+	test_spec_handlebars_tokenizer \
+	test_spec_handlebars_compiler
 
 test_main_SOURCES = utils.c test_main.c
 test_ast_SOURCES = utils.c test_ast.c
@@ -29,6 +30,7 @@ test_token_printer_SOURCES = utils.c test_token_printer.c
 test_utils_SOURCES = utils.c test_utils.c
 test_spec_handlebars_parser_SOURCES = utils.c test_spec_handlebars_parser.c
 test_spec_handlebars_tokenizer_SOURCES = utils.c test_spec_handlebars_tokenizer.c
+test_spec_handlebars_compiler_SOURCES = utils.c test_spec_handlebars_compiler.c
 
 TESTS = \
 	test_main \
@@ -44,11 +46,13 @@ TESTS = \
 	test_token_printer \
 	test_utils \
 	test_spec_handlebars_parser \
-	test_spec_handlebars_tokenizer
+	test_spec_handlebars_tokenizer \
+	test_spec_handlebars_compiler
 
 TESTS_ENVIRONMENT = \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
+	handlebars_export_dir=$(top_srcdir)/spec/handlebars/export \
 	handlebars_spec_dir=$(top_srcdir)/spec/handlebars/spec \
 	handlebars_tokenizer_spec=$(top_srcdir)/spec/handlebars/spec/tokenizer.json \
 	handlebars_parser_spec=$(top_srcdir)/spec/handlebars/spec/parser.json \
