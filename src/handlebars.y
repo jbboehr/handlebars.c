@@ -274,13 +274,17 @@ mustache
   : OPEN sexpr CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
+      // @todo this won't work w/ whitespace
+      if( $1 && strlen($1) >= 3 && *($1 + 2) == '&' ) {
+        ast_node->node.mustache.unescaped = 1;
+      }
       // Todo: $1 $3
       $$ = ast_node;
     }
   | OPEN_UNESCAPED sexpr CLOSE_UNESCAPED {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
-      ast_node->node.mustache.escaped = -1;
+      ast_node->node.mustache.unescaped = 1;
       // Todo: $1 $3
       $$ = ast_node;
     }

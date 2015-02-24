@@ -53,7 +53,7 @@ struct handlebars_ast_node_program {
 
 struct handlebars_ast_node_mustache {
   struct handlebars_ast_node * sexpr;
-  short escaped;
+  short unescaped;
   // Deprecated: id params hash eligibleHelper isHelper
 };
 

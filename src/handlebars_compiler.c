@@ -404,6 +404,7 @@ static inline void handlebars_compiler_accept_partial(
     struct handlebars_ast_node * partial_name;
     struct handlebars_ast_node * id;
     char * name = NULL;
+    const char * indent = ""; // @todo implement indent
     
     assert(partial != NULL);
     assert(partial->type == HANDLEBARS_AST_NODE_PARTIAL);
@@ -440,7 +441,7 @@ static inline void handlebars_compiler_accept_partial(
         __OPN(push_context);
     }
     
-    __OPS(invoke_partial, name);
+    __OPS2(invoke_partial, name, indent);
     __OPN(append);
 }
 
@@ -464,7 +465,7 @@ static inline void handlebars_compiler_accept_mustache(
     
     handlebars_compiler_accept/*_sexpr*/(compiler, mustache->node.mustache.sexpr);
     
-    if( mustache->node.mustache.escaped != -1 && !compiler->no_escape ) {
+    if( !mustache->node.mustache.unescaped && !compiler->no_escape ) {
         __OPN(append_escaped);
     } else {
         __OPN(append);
@@ -523,7 +524,7 @@ static inline void handlebars_compiler_accept_sexpr_simple(
     if( id->type == HANDLEBARS_AST_NODE_DATA ) {
         handlebars_compiler_accept/*_data*/(compiler, id);
     } else if( id->type == HANDLEBARS_AST_NODE_ID ) {
-        if( id->node.id.parts ) {
+        if( handlebars_ast_list_count(id->node.id.parts) ) {
             handlebars_compiler_accept/*_id*/(compiler, id);
         } else {
             handlebars_compiler_add_depth(compiler, id->node.id.depth);
@@ -552,6 +553,8 @@ static inline void handlebars_compiler_accept_sexpr_helper(
     
     assert(id != NULL);
     assert(id->type == HANDLEBARS_AST_NODE_ID);
+    
+    name = handlebars_ast_node_get_id_part(id);
     
     if( handlebars_compiler_is_known_helper(compiler, id) ) {
         __OPLS(invoke_known_helper, handlebars_ast_list_count(params), name);
