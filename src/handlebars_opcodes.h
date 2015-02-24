@@ -127,6 +127,8 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type);
 
 enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char * type);
 
+short handlebars_opcode_num_operands(enum handlebars_opcode_type type);
+
 #ifdef	__cplusplus
 }
 #endif

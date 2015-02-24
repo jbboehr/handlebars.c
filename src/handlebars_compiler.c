@@ -575,7 +575,8 @@ static inline void handlebars_compiler_accept_sexpr_helper(
         
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invoke_helper);
         handlebars_operand_set_longval(&opcode->op1, handlebars_ast_list_count(params));
-        handlebars_operand_set_stringval(compiler, &opcode->op2, name);
+        //handlebars_operand_set_stringval(compiler, &opcode->op2, name);
+        handlebars_operand_set_stringval(compiler, &opcode->op2, id->node.id.original);
         handlebars_operand_set_boolval(&opcode->op3, is_simple);
         handlebars_compiler_opcode(compiler, opcode);
     }

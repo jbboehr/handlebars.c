@@ -247,3 +247,49 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
     // Unknown :(
     return -1;
 }
+
+short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
+{
+    switch( type ) {
+        default:
+        case handlebars_opcode_type_invalid:
+        
+        case handlebars_opcode_type_nil:
+        case handlebars_opcode_type_ambiguous_block_value:
+        case handlebars_opcode_type_append:
+        case handlebars_opcode_type_append_escaped:
+        case handlebars_opcode_type_empty_hash:
+        case handlebars_opcode_type_pop_hash:
+        case handlebars_opcode_type_push_context:
+        case handlebars_opcode_type_push_hash:
+        case handlebars_opcode_type_resolve_possible_lambda:
+            return 0;
+        
+        case handlebars_opcode_type_get_context:
+        case handlebars_opcode_type_push_program:
+        
+        case handlebars_opcode_type_append_content:
+        case handlebars_opcode_type_assign_to_hash:
+        case handlebars_opcode_type_block_value:
+        case handlebars_opcode_type_push:
+        case handlebars_opcode_type_push_literal:
+        case handlebars_opcode_type_push_string:
+            return 1;
+        
+        case handlebars_opcode_type_invoke_partial:
+        case handlebars_opcode_type_push_id:
+        case handlebars_opcode_type_push_string_param:
+        
+        case handlebars_opcode_type_invoke_ambiguous:
+        
+        case handlebars_opcode_type_invoke_known_helper:
+        
+        case handlebars_opcode_type_lookup_data:
+            return 2;
+            
+        case handlebars_opcode_type_invoke_helper:
+        
+        case handlebars_opcode_type_lookup_on_context:
+            return 3;
+    }
+}

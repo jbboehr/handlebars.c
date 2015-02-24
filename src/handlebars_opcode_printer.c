@@ -1,4 +1,9 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
 #include <string.h>
 
 #include "handlebars_compiler.h"
@@ -58,13 +63,27 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
 
 char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opcode)
 {
-    
     const char * name = handlebars_opcode_readable_type(opcode->type);
+    short num = handlebars_opcode_num_operands(opcode->type);
     
     str = handlebars_talloc_strdup_append(str, name);
-    str = handlebars_operand_print_append(str, &opcode->op1);
-    str = handlebars_operand_print_append(str, &opcode->op2);
-    str = handlebars_operand_print_append(str, &opcode->op3);
+    
+    // @todo add option to override this
+    if( num >= 1 ) {
+        str = handlebars_operand_print_append(str, &opcode->op1);
+    } else {
+        assert(opcode->op1.type == handlebars_operand_type_null);
+    }
+    if( num >= 2 ) {
+        str = handlebars_operand_print_append(str, &opcode->op2);
+    } else {
+        assert(opcode->op2.type == handlebars_operand_type_null);
+    }
+    if( num >= 3 ) {
+        str = handlebars_operand_print_append(str, &opcode->op3);
+    } else {
+        assert(opcode->op3.type == handlebars_operand_type_null);
+    }
     
     return str;
 }

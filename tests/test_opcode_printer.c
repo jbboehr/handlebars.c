@@ -86,7 +86,7 @@ START_TEST(test_opcode_print_1)
 {
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_ambiguous_block_value);
     char * str;
-    char * expected = "ambiguousBlockValue[NULL][NULL][NULL]";
+    char * expected = "ambiguousBlockValue";
     
     str = handlebars_opcode_print(ctx, opcode);
     
@@ -96,9 +96,9 @@ END_TEST
 
 START_TEST(test_opcode_print_2)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_append_content);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_get_context);
     char * str;
-    char * expected = "appendContent[LONG:2358][NULL][NULL]";
+    char * expected = "getContext[LONG:2358]";
     
     handlebars_operand_set_longval(&opcode->op1, 2358);
     str = handlebars_opcode_print(ctx, opcode);
@@ -109,9 +109,9 @@ END_TEST
 
 START_TEST(test_opcode_print_3)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_push_program);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_invoke_helper);
     char * str;
-    char * expected = "pushProgram[LONG:123][STRING:baz][LONG:456]";
+    char * expected = "invokeHelper[LONG:123][STRING:baz][LONG:456]";
     
     handlebars_operand_set_longval(&opcode->op1, 123);
     handlebars_operand_set_stringval(ctx, &opcode->op2, "baz");
@@ -127,7 +127,7 @@ START_TEST(test_opcode_array_print)
     struct handlebars_opcode * opcode1 = handlebars_opcode_ctor(ctx, handlebars_opcode_type_get_context);
     struct handlebars_opcode * opcode2 = handlebars_opcode_ctor(ctx, handlebars_opcode_type_push_context);
     struct handlebars_opcode ** opcodes = talloc_array(ctx, struct handlebars_opcode *, 3);
-    const char * expected = "getContext[LONG:2][NULL][NULL] pushContext[NULL][NULL][NULL]";
+    const char * expected = "getContext[LONG:2] pushContext";
     char * str;
     
     handlebars_operand_set_longval(&opcode1->op1, 2);
