@@ -386,7 +386,13 @@ START_TEST(handlebars_spec_compiler)
     //fprintf(stdout, "%s\n", printer->output);
     
     // Check
-    ck_assert_str_eq(printer->output, test->expected);
+    //ck_assert_str_eq(printer->output, test->expected);
+    if( strcmp(printer->output, test->expected) != 0 ) {
+        char * tmp = talloc_asprintf(rootctx, 
+            "Failed.\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+            test->tmpl, test->expected, printer->output);
+        ck_abort_msg(tmp);
+    }
     
     handlebars_context_dtor(ctx);
 }

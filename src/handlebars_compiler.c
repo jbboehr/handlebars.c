@@ -220,7 +220,7 @@ static inline void handlebars_compiler_push_param(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * param)
 {
     assert(param != NULL);
-    if( param ) {
+    if( !param ) {
         return;
     }
     
