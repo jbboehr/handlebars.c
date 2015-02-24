@@ -41,7 +41,7 @@ struct compiler_test {
     short opt_known_helpers_only;
     short opt_string_params;
     short opt_track_ids;
-    int flags;
+    long flags;
 };
 
 static const char * suite_names[] = {
@@ -445,8 +445,8 @@ START_TEST(handlebars_spec_compiler)
     //ck_assert_str_eq(printer->output, test->expected);
     if( strcmp(printer->output, test->expected) != 0 ) {
         char * tmp = talloc_asprintf(rootctx, 
-            "Failed.\nTest: %s - %s\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
-            test->description, test->it,
+            "Failed.\nTest: %s - %s\nFlags: %d\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+            test->description, test->it, test->flags,
             test->tmpl, test->expected, printer->output);
         ck_abort_msg(tmp);
     }
