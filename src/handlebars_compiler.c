@@ -639,7 +639,7 @@ static inline void handlebars_compiler_accept_data(
     
     compiler->use_data = 1;
     
-    opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_on_context);
+    opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_data);
     parts_arr = handlebars_ast_node_get_id_parts(opcode, id);
     
     handlebars_operand_set_longval(&opcode->op1, id->node.id.depth);
