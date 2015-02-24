@@ -227,6 +227,14 @@ const char * handlebars_ast_node_get_id_name(struct handlebars_ast_node * ast_no
 const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node);
 
 /**
+ * @brief Get an array of parts of an ID AST node.
+ * 
+ * @param[in] ast_node The AST node
+ * @return The string array
+ */
+char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node * ast_node);
+
+/**
  * @brief Get the string mode value of an AST node. Returns NULL if not 
  * applicable. Returns a pointer to the current buffer.
  * 

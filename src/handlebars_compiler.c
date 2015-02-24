@@ -464,7 +464,7 @@ static inline void handlebars_compiler_accept_mustache(
     
     handlebars_compiler_accept/*_sexpr*/(compiler, mustache->node.mustache.sexpr);
     
-    if( mustache->node.mustache.escaped && !compiler->no_escape ) {
+    if( mustache->node.mustache.escaped != -1 && !compiler->no_escape ) {
         __OPN(append_escaped);
     } else {
         __OPN(append);
@@ -496,7 +496,13 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
     
     handlebars_compiler_accept/*_id*/(compiler, id);
     
-    __OPSL(invoke_ambiguous, name, is_block);
+    do {
+        struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invoke_ambiguous);
+        handlebars_operand_set_stringval(opcode, &opcode->op1, name);
+        handlebars_operand_set_boolval(&opcode->op2, is_block);
+        __PUSH(opcode);
+        //__OPSL(invoke_ambiguous, name, is_block);
+    } while(0);
 }
 
 static inline void handlebars_compiler_accept_sexpr_simple(
@@ -600,15 +606,39 @@ static inline void handlebars_compiler_accept_id(
     if( name == NULL ) {
         __OPN(push_context);
     } else {
-        // @todo lookup on context
+        struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_on_context);
+        char ** parts_arr = handlebars_ast_node_get_id_parts(opcode, id);
+        opcode->op1.type = handlebars_operand_type_array;
+        opcode->op1.data.arrayval = parts_arr;
+        if( id->node.id.is_falsy ) {
+            handlebars_operand_set_boolval(&opcode->op2, id->node.id.is_falsy);
+        }
+        if( id->node.id.is_scoped ) {
+            handlebars_operand_set_boolval(&opcode->op3, id->node.id.is_scoped);
+        }
+        __PUSH(opcode);
     }
 }
 
 static inline void handlebars_compiler_accept_data(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * data)
 {
+    struct handlebars_opcode * opcode;
+    struct handlebars_ast_node * id = data->node.data.id;
+    char ** parts_arr;
+    
+    assert(id != NULL);
+    
     compiler->use_data = 1;
-    // @todo lookup data
+    
+    opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_on_context);
+    parts_arr = handlebars_ast_node_get_id_parts(opcode, id);
+    
+    handlebars_operand_set_longval(&opcode->op1, id->node.id.depth);
+    opcode->op2.type = handlebars_operand_type_array;
+    opcode->op2.data.arrayval = parts_arr;
+    
+    __PUSH(opcode);
 }
 
 static inline void handlebars_compiler_accept_string(

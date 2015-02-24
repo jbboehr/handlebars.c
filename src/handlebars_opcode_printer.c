@@ -39,10 +39,19 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
             handlebars_talloc_free(tmp);
             break;
         }
-        case handlebars_operand_type_array:
-            str = handlebars_talloc_strdup_append(str, "[ARRAY:]");
+        case handlebars_operand_type_array: {
+            char ** tmp = operand->data.arrayval;
+            str = handlebars_talloc_strdup_append(str, "[ARRAY:");
+            for( ; *tmp; ++tmp ) {
+                if( tmp != operand->data.arrayval ) {
+                    str = handlebars_talloc_strdup_append(str, ",");
+                }
+                str = handlebars_talloc_strdup_append(str, *tmp);
+            }
+            str = handlebars_talloc_strdup_append(str, "]");
             //str = talloc_asprintf_append(str, "[ARRAY:]");
             break;
+        }
     }
     return str;
 }

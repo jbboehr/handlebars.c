@@ -66,10 +66,22 @@ static int loadTestOpcodeOperand(struct handlebars_opcode * opcode,
         case json_type_int:
             handlebars_operand_set_longval(operand, json_object_get_int(object));
             break;
-        case json_type_array:
-            // @todo fix this
-            //operand->type = handlebars_operand_type_array;
+        case json_type_array: {
+            size_t array_len = json_object_array_length(object);
+            char ** arr = talloc_array(opcode, char *, array_len + 1);
+            char ** arrptr = arr;
+            json_object * array_item;
+            
+            // Iterate over array
+            for( int i = 0; i < array_len; i++ ) {
+                array_item = json_object_array_get_idx(object, i);
+                *arrptr++ = handlebars_talloc_strdup(opcode, json_object_get_string(array_item));
+            }
+            *arrptr++ = NULL;
+            operand->type = handlebars_operand_type_array;
+            operand->data.arrayval = arr;
             break;
+        }
         default:
             return 1;
             break;

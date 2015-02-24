@@ -79,6 +79,34 @@ const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_no
     return (const char *) path_segment->node.path_segment.part;
 }
 
+char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node * ast_node)
+{
+    size_t num;
+    char ** arr;
+    char ** arrptr;
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+    
+    if( !ast_node || ast_node->type != HANDLEBARS_AST_NODE_ID ) {
+        return NULL;
+    }
+    
+    num = handlebars_ast_list_count(ast_node->node.id.parts);
+    if( num <= 0 ) {
+        return NULL;
+    }
+    arrptr = arr = talloc_array(ctx, char *, num + 1);
+    
+    handlebars_ast_list_foreach(ast_node->node.id.parts, item, tmp) {
+        if( item->data && item->data->type == HANDLEBARS_AST_NODE_PATH_SEGMENT ) {
+            *arrptr++ = handlebars_talloc_strdup(ctx, item->data->node.path_segment.part);
+        }
+    }
+    *arrptr++ = NULL;
+    
+    return arr;
+}
+
 const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_node * ast_node)
 {
     const char * ret;
