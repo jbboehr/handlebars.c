@@ -299,6 +299,30 @@ START_TEST(test_operand_set_stringval_failed_alloc)
 }
 END_TEST
 
+START_TEST(test_operand_set_arrayval)
+{
+    struct handlebars_operand op;
+    const char * strs[] = {
+        "foo", "bar", "baz", "helicopter", NULL
+    };
+    int ret;
+    char ** ptr1;
+    char ** ptr2;
+    
+    ret = handlebars_operand_set_arrayval(ctx, &op, strs);
+    
+    ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
+    ck_assert_int_eq(handlebars_operand_type_array, op.type);
+    ck_assert_ptr_ne(NULL, op.data.arrayval);
+    
+    // Compare arrays
+    for( ptr1 = strs, ptr2 = op.data.arrayval; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
+        ck_assert_ptr_ne(*ptr1, *ptr2);
+        ck_assert_str_eq(*ptr1, *ptr2);
+    }
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("Opcodes");
@@ -322,6 +346,7 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_operand_set_longval, "Set operand longval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_stringval, "Set operand stringval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_stringval_failed_alloc, "Set operand stringval (failed alloc)");
+	REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval, "Set operand arrayval");
 	
 	
     return s;

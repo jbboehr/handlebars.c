@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#define HANDLEBARS_PACKI(i, n) ((i & (0xff << n)) >> n)
+#define HANDLEBARS_UNPACKI(i, n) (i << n)
+
 enum handlebars_opcode_type {
     handlebars_opcode_type_invalid = -1,
     
@@ -70,7 +73,7 @@ union handlebars_operand_internals {
     short boolval;
     long longval;   // these might only need int
     char * stringval;
-    void * arrayval; // maybe concat to string for string arrays
+    char ** arrayval;
 };
 
 struct handlebars_operand {
@@ -110,6 +113,8 @@ void handlebars_operand_set_boolval(struct handlebars_operand * operand, short a
 void handlebars_operand_set_longval(struct handlebars_operand * operand, long arg);
 
 int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg);
+
+int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * operand, const char ** arg);
 
 /**
  * @brief Get a string for the integral opcode type. Should match the 

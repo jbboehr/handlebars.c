@@ -104,6 +104,42 @@ int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * ope
     return HANDLEBARS_SUCCESS;
 }
 
+int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * operand, const char ** arg)
+{
+    char ** arr;
+    char ** arrptr;
+    const char ** ptr;
+    size_t num = 0;
+    
+    // Get number of items
+    for( ptr = arg; *ptr; ++ptr, ++num );
+    
+    // Allocate array
+    arrptr = arr = talloc_array(ctx, char *, num + 1);
+    if( !arr ) {
+        goto error;
+    }
+    
+    // Copy each item
+    for( ptr = arg; *ptr; ++ptr ) {
+        char * tmp = handlebars_talloc_strdup(arr, *ptr);
+        *arrptr++ = tmp;
+    }
+    *arrptr++ = NULL;
+    
+    // Assign to operand
+    operand->type = handlebars_operand_type_array;
+    operand->data.arrayval = arr;
+    
+    return HANDLEBARS_SUCCESS;
+    
+error:
+    if( arr ) {
+        handlebars_talloc_free(arr);
+    }
+    return HANDLEBARS_NOMEM;
+}
+
 const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
 {
 #define _RTYPE_STR(x) #x
