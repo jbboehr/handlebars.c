@@ -173,6 +173,10 @@ static inline long handlebars_compiler_compile_program(
         return -1;
     }
     
+    // copy compiler flags
+    handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
+    
+    // compile
     handlebars_compiler_compile(subcompiler, program);
     guid = compiler->guid++;
     

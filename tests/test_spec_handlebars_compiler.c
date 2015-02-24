@@ -35,6 +35,13 @@ struct compiler_test {
     char * expected;
     int exception;
     char * message;
+    
+    short opt_compat;
+    short opt_data;
+    short opt_known_helpers_only;
+    short opt_string_params;
+    short opt_track_ids;
+    int flags;
 };
 
 static const char * suite_names[] = {
@@ -223,6 +230,48 @@ error:
     return output;
 }
 
+static int loadSpecTestCompileOptions(struct compiler_test * test, json_object * object)
+{
+    json_object * cur = NULL;
+    
+    // Get compat
+    cur = json_object_object_get(object, "compat");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->opt_compat = json_object_get_boolean(cur);
+        test->flags |= handlebars_compiler_flag_compat;
+    }
+    
+    // Get data
+    cur = json_object_object_get(object, "data");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->opt_data = json_object_get_boolean(cur);
+        //test->flags |= handlebars_compiler_flag_compat;
+    }
+    
+    // Get knownHelpersOnly
+    cur = json_object_object_get(object, "knownHelpersOnly");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->opt_known_helpers_only = json_object_get_boolean(cur);
+        test->flags |= handlebars_compiler_flag_known_helpers_only;
+    }
+    
+    // Get string params
+    cur = json_object_object_get(object, "stringParams");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->opt_string_params = json_object_get_boolean(cur);
+        test->flags |= handlebars_compiler_flag_string_params;
+    }
+    
+    // Get track ids
+    cur = json_object_object_get(object, "trackIds");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->opt_track_ids = json_object_get_boolean(cur);
+        test->flags |= handlebars_compiler_flag_track_ids;
+    }
+    
+    return 0;
+}
+
 static int loadSpecTest(const char * name, json_object * object)
 {
     json_object * cur = NULL;
@@ -270,6 +319,12 @@ static int loadSpecTest(const char * name, json_object * object)
     if( cur && json_object_get_type(cur) == json_type_string ) {
         test->message = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
         nreq++;
+    }
+    
+    // Get compile options
+    cur = json_object_object_get(object, "compileOptions");
+    if( cur && json_object_get_type(cur) == json_type_object ) {
+        loadSpecTestCompileOptions(test, cur);
     }
     
     // Check
@@ -378,6 +433,7 @@ START_TEST(handlebars_spec_compiler)
     //ck_assert_int_eq(retval <= 0, test->exception > 0);
     
     // Compile
+    handlebars_compiler_set_flags(compiler, test->flags);
     handlebars_compiler_compile(compiler, ctx->program);
     ck_assert_int_eq(0, compiler->errnum);
     
