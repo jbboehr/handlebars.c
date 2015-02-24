@@ -389,7 +389,8 @@ START_TEST(handlebars_spec_compiler)
     //ck_assert_str_eq(printer->output, test->expected);
     if( strcmp(printer->output, test->expected) != 0 ) {
         char * tmp = talloc_asprintf(rootctx, 
-            "Failed.\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+            "Failed.\nTest: %s - %s\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+            test->description, test->it,
             test->tmpl, test->expected, printer->output);
         ck_abort_msg(tmp);
     }

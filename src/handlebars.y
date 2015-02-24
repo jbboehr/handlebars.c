@@ -115,6 +115,7 @@ int handlebars_yy_debug = 0;
 %type <ast_list> hash_segments
 %type <ast_node> hash_segment
 %type <ast_list> path_segments
+%type <text> content
 
 %left CLOSE CLOSE_UNESCAPED CONTENT END OPEN OPEN_BLOCK OPEN_ENDBLOCK
 %left OPEN_INVERSE OPEN_PARTIAL OPEN_UNESCAPED SEP ID BOOLEAN COMMENT DATA 
@@ -164,7 +165,7 @@ statement
   | partial {
       $$ = $1;
     }
-  | CONTENT {
+  | content {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_CONTENT, context);
       ast_node->node.content.string = $1;
       ast_node->node.content.length = strlen($1);
@@ -180,7 +181,7 @@ statement
 
 
 raw_block
-  : open_raw_block CONTENT END_RAW_BLOCK {
+  : open_raw_block content END_RAW_BLOCK {
       $$ = handlebars_ast_helper_prepare_raw_block(context, $1, $2, $3, &yylloc);
       __MEMCHECK($$);
     }
@@ -478,3 +479,11 @@ path_segments
       handlebars_ast_list_append($$, ast_node);
     }
   ;
+
+content
+  : content CONTENT {
+    $$ = handlebars_talloc_strdup_append($1, $2);
+  }
+  | CONTENT {
+    $$ = $1;
+  }
