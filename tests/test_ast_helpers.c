@@ -150,23 +150,22 @@ END_TEST
 
 START_TEST(test_ast_helper_set_strip_flags)
 {
-    struct handlebars_ast_strip_flags strip;
+    struct handlebars_ast_node node;
     const char * str1 = "{{";
     const char * str2 = "{{~";
     const char * str3 = "}}";
     const char * str4 = "~}}";
     
-    handlebars_ast_helper_set_strip_flags(&strip, str1, str3);
-    ck_assert_int_eq(0, strip.left);
-    ck_assert_int_eq(0, strip.right);
+    memset(&node, 0, sizeof(struct handlebars_ast_node));
     
-    handlebars_ast_helper_set_strip_flags(&strip, str2, str4);
-    ck_assert_int_eq(1, strip.left);
-    ck_assert_int_eq(1, strip.right);
+    handlebars_ast_helper_set_strip_flags(&node, str1, str3);
+    ck_assert_int_eq(1, node.strip);
     
-    handlebars_ast_helper_set_strip_flags(&strip, NULL, NULL);
-    ck_assert_int_eq(0, strip.left);
-    ck_assert_int_eq(0, strip.right);
+    handlebars_ast_helper_set_strip_flags(&node, str2, str4);
+    ck_assert_int_eq(7, node.strip);
+    
+    handlebars_ast_helper_set_strip_flags(&node, NULL, NULL);
+    ck_assert_int_eq(1, node.strip);
 }
 END_TEST
 

@@ -68,6 +68,9 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx);
  */
 void handlebars_ast_list_dtor(struct handlebars_ast_list * list);
 
+struct handlebars_ast_list_item * handlebars_ast_list_find(
+        struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+
 void handlebars_ast_list_insert_after(struct handlebars_ast_list * list, 
         struct handlebars_ast_list_item * item,
         struct handlebars_ast_list_item * new_item);

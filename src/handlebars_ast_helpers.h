@@ -43,6 +43,18 @@ int handlebars_ast_helper_check_block(struct handlebars_ast_node * ast_node,
 int handlebars_ast_helper_check_raw_block(struct handlebars_ast_node * ast_node, 
         struct handlebars_context * context, struct YYLTYPE * yylloc);
 
+int handlebars_ast_helper_is_next_whitespace(struct handlebars_ast_list * statements,
+        struct handlebars_ast_node * statement, short is_root);
+
+int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statements,
+        struct handlebars_ast_node * statement, short is_root);
+
+int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
+        struct handlebars_ast_node * statement, short multiple);
+
+int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
+        struct handlebars_ast_node * statement, short multiple);
+
 /**
  * @brief Prepare a block node.
  * 
@@ -71,6 +83,17 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
         struct handlebars_context * context, struct handlebars_ast_list * list);
 
 /**
+ * @brief Prepare a program node.
+ * 
+ * @param[in] context The handlebars context
+ * @param[in] program The program node
+ * @param[in] is_root Is this the root node?
+ * @return Returns an integer from enum handlebars_error_type
+ */
+int handlebars_ast_helper_prepare_program(struct handlebars_context * context, 
+        struct handlebars_ast_node * program, short is_root);
+        
+/**
  * @brief Prepare a block node.
  * 
  * @param[in] context The handlebars context
@@ -98,7 +121,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_sexpr(
         struct handlebars_ast_list * params, struct handlebars_ast_node * hash);
 
 void handlebars_ast_helper_set_strip_flags(
-        struct handlebars_ast_strip_flags * strip_flags, char * open, char * close);
+        struct handlebars_ast_node * ast_node, char * open, char * close);
 
 #ifdef	__cplusplus
 }

@@ -176,9 +176,16 @@ union handlebars_ast_internals {
     struct handlebars_ast_node_string string;
 };
 
-struct handlebars_ast_strip_flags {
-  short left;
-  short right;
+enum handlebars_ast_strip_flag {
+  handlebars_ast_strip_flag_none = 0,
+  handlebars_ast_strip_flag_set = (1 << 0),
+  handlebars_ast_strip_flag_left = (1 << 1),
+  handlebars_ast_strip_flag_right = (1 << 2),
+  handlebars_ast_strip_flag_open_standalone = (1 << 3),
+  handlebars_ast_strip_flag_close_standalone = (1 << 4),
+  handlebars_ast_strip_flag_inline_standalone = (1 << 5),
+  handlebars_ast_strip_flag_left_stripped = (1 << 6),
+  handlebars_ast_strip_flag_right_stripped = (1 << 7)
 };
 
 /**
@@ -193,7 +200,7 @@ struct handlebars_ast_node {
   /**
    * @brief Stores info about whitespace stripping 
    */
-  struct handlebars_ast_strip_flags strip;
+  unsigned strip;
   
   /**
    * @brief A union with structs of the different node types

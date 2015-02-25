@@ -56,6 +56,21 @@ void handlebars_ast_list_dtor(struct handlebars_ast_list * list)
    handlebars_talloc_free(list);
 }
 
+struct handlebars_ast_list_item * handlebars_ast_list_find(
+        struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
+{
+    struct handlebars_ast_list_item * item = NULL;
+    struct handlebars_ast_list_item * tmp = NULL;
+    
+    handlebars_ast_list_foreach(list, item, tmp) {
+        if( item->data == ast_node ) {
+            return item;
+        }
+    }
+    
+    return NULL;
+}
+
 void handlebars_ast_list_insert_after(struct handlebars_ast_list * list, 
         struct handlebars_ast_list_item * item,
         struct handlebars_ast_list_item * new_item)

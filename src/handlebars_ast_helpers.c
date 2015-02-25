@@ -1,4 +1,9 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <talloc.h>
@@ -140,6 +145,74 @@ int handlebars_ast_helper_check_raw_block(struct handlebars_ast_node * ast_node,
     }
     
     return cmp;
+}
+
+int handlebars_ast_helper_is_next_whitespace(struct handlebars_ast_list * statements,
+        struct handlebars_ast_node * statement, short is_root)
+{
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * next;
+    struct handlebars_ast_list_item * sibling;
+    
+    if( statement == NULL ) {
+        next = statements->first;
+    } else {
+        item = handlebars_ast_list_find(statements, statement);
+        next = (item ? item->next : NULL);
+    }
+    
+    if( !next || !next->data ) {
+        return (int) is_root;
+    }
+    
+    sibling = (next->next ? next->next->data : NULL);
+    
+    if( next->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
+        // @todo regex-y thing
+    }
+    
+    return 0;
+}
+
+int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statements,
+        struct handlebars_ast_node * statement, short is_root)
+{
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * prev;
+    struct handlebars_ast_list_item * sibling;
+    
+    if( statement == NULL ) {
+        prev = statements->last;
+    } else {
+        item = handlebars_ast_list_find(statements, statement);
+        prev = (item ? item->prev : NULL);
+    }
+    
+    if( !prev || !prev->data ) {
+        return (int) is_root;
+    }
+    
+    sibling = (prev->prev ? prev->prev->data : NULL);
+    
+    if( prev->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
+        // @todo regex-y thing
+    }
+    
+    return 0;
+}
+
+int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
+        struct handlebars_ast_node * statement, short multiple)
+{
+    // @todo
+    return 0;
+}
+
+int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
+        struct handlebars_ast_node * statement, short multiple)
+{
+    // @todo
+    return 0;
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
@@ -295,6 +368,67 @@ error:
     return ast_node;
 }
 
+int handlebars_ast_helper_prepare_program(struct handlebars_context * context, 
+        struct handlebars_ast_node * program, short is_root)
+{
+    int error = HANDLEBARS_SUCCESS;
+    struct handlebars_ast_list * statements = program->node.program.statements;
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+    
+    handlebars_ast_list_foreach(statements, item, tmp) {
+        struct handlebars_ast_node * current = item->data;
+        if( !current || !(current->strip & handlebars_ast_strip_flag_set) ) {
+            continue;
+        }
+        short is_prev_whitespace = handlebars_ast_helper_is_prev_whitespace(statements, current, is_root);
+        short is_next_whitespace = handlebars_ast_helper_is_next_whitespace(statements, current, is_root);
+        short open_standalone = (current->strip & handlebars_ast_strip_flag_open_standalone) && is_prev_whitespace;
+        short close_standalone = (current->strip & handlebars_ast_strip_flag_close_standalone) && is_next_whitespace;
+        short inline_standalone = (current->strip & handlebars_ast_strip_flag_inline_standalone) && is_prev_whitespace && is_next_whitespace;
+        
+        if( current->strip & handlebars_ast_strip_flag_right ) {
+            handlebars_ast_helper_omit_right(statements, current, 1);
+        }
+        if( current->strip & handlebars_ast_strip_flag_left ) {
+            handlebars_ast_helper_omit_left(statements, current, 1);
+        }
+        if( inline_standalone ) {
+            handlebars_ast_helper_omit_right(statements, current, 0);
+            if( handlebars_ast_helper_omit_left(statements, current, 0) ) {
+                // @todo save the indent info
+            }
+        }
+        if( open_standalone ) {
+            if( current->type == HANDLEBARS_AST_NODE_BLOCK ) {
+                if( current->node.block.program ) {
+                    assert(current->node.block.program->type == HANDLEBARS_AST_NODE_PROGRAM);
+                    handlebars_ast_helper_omit_right(current->node.block.program->node.program.statements, NULL, 0);
+                } else if( current->node.block.inverse ) {
+                    assert(current->node.block.inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
+                    handlebars_ast_helper_omit_right(current->node.block.inverse->node.program.statements, NULL, 0);
+                }
+            }
+            handlebars_ast_helper_omit_left(statements, current, 0);
+        }
+        if( close_standalone ) {
+            handlebars_ast_helper_omit_right(statements, current, 0);
+            if( current->type == HANDLEBARS_AST_NODE_BLOCK ) {
+                if( current->node.block.inverse ) {
+                    assert(current->node.block.inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
+                    handlebars_ast_helper_omit_left(current->node.block.inverse->node.program.statements, NULL, 0);
+                } else if( current->node.block.program ) {
+                    assert(current->node.block.program->type == HANDLEBARS_AST_NODE_PROGRAM);
+                    handlebars_ast_helper_omit_left(current->node.block.program->node.program.statements, NULL, 0);
+                }
+            }
+        }
+    }
+    
+//error:
+    return error;
+}
+
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
         struct handlebars_context * context, struct handlebars_ast_node * mustache, 
         const char * content, const char * close, struct YYLTYPE * yylloc)
@@ -376,17 +510,18 @@ error:
 }
 
 void handlebars_ast_helper_set_strip_flags(
-        struct handlebars_ast_strip_flags * strip_flags, char * open, char * close)
+        struct handlebars_ast_node * ast_node, char * open, char * close)
 {
     size_t close_length = close ? strlen(close) : 0;
     if( open && strlen(open) >= 3 && *(open + 2) == '~' ) {
-        strip_flags->left = 1;
+        ast_node->strip |= handlebars_ast_strip_flag_left;
     } else {
-        strip_flags->left = 0;
+        ast_node->strip &= ~handlebars_ast_strip_flag_left;
     }
     if( close_length && close_length >= 3 && *(close + close_length - 3) == '~' ) {
-        strip_flags->right = 1;
+        ast_node->strip |= handlebars_ast_strip_flag_right;
     } else {
-        strip_flags->right = 0;
+        ast_node->strip &= ~handlebars_ast_strip_flag_right;
     }
+    ast_node->strip |= handlebars_ast_strip_flag_set;
 }
