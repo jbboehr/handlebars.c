@@ -8,6 +8,7 @@ check_PROGRAMS = \
 	test_context \
 	test_opcode_printer \
 	test_opcodes \
+	test_scanners \
 	test_token \
 	test_token_list \
 	test_token_printer \
@@ -24,6 +25,7 @@ test_compiler_SOURCES = utils.c test_compiler.c
 test_context_SOURCES = utils.c test_context.c
 test_opcode_printer_SOURCES = utils.c test_opcode_printer.c
 test_opcodes_SOURCES = utils.c test_opcodes.c
+test_scanners_SOURCES = utils.c test_scanners.c
 test_token_SOURCES = utils.c test_token.c
 test_token_list_SOURCES = utils.c test_token_list.c
 test_token_printer_SOURCES = utils.c test_token_printer.c
@@ -41,6 +43,7 @@ TESTS = \
 	test_context \
 	test_opcode_printer \
 	test_opcodes \
+	test_scanners \
 	test_token \
 	test_token_list \
 	test_token_printer \
