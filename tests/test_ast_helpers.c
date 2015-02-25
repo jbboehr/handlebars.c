@@ -148,12 +148,35 @@ START_TEST(test_ast_helper_check_raw_block)
 }
 END_TEST
 
+START_TEST(test_ast_helper_set_strip_flags)
+{
+    struct handlebars_ast_strip_flags strip;
+    const char * str1 = "{{";
+    const char * str2 = "{{~";
+    const char * str3 = "}}";
+    const char * str4 = "~}}";
+    
+    handlebars_ast_helper_set_strip_flags(&strip, str1, str3);
+    ck_assert_int_eq(0, strip.left);
+    ck_assert_int_eq(0, strip.right);
+    
+    handlebars_ast_helper_set_strip_flags(&strip, str2, str4);
+    ck_assert_int_eq(1, strip.left);
+    ck_assert_int_eq(1, strip.right);
+    
+    handlebars_ast_helper_set_strip_flags(&strip, NULL, NULL);
+    ck_assert_int_eq(0, strip.left);
+    ck_assert_int_eq(0, strip.right);
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("AST Helpers");
     
     REGISTER_TEST_FIXTURE(s, test_ast_helper_check_block, "Check block AST node");
     REGISTER_TEST_FIXTURE(s, test_ast_helper_check_raw_block, "Check raw block AST node");
+    REGISTER_TEST_FIXTURE(s, test_ast_helper_set_strip_flags, "Set strip flags");
     
     return s;
 }

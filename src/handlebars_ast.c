@@ -15,7 +15,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_utils.h"
 
-struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type type, void * ctx)
+struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_ast_node_type type, void * ctx)
 {
     struct handlebars_ast_node * ast_node;
     

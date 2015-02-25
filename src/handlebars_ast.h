@@ -24,7 +24,7 @@ struct handlebars_ast_list;
 /**
  * @brief An enumeration of AST node types
  */
-enum handlebars_node_type
+enum handlebars_ast_node_type
 {
   HANDLEBARS_AST_NODE_NIL = 0,
   HANDLEBARS_AST_NODE_PROGRAM,
@@ -176,6 +176,11 @@ union handlebars_ast_internals {
     struct handlebars_ast_node_string string;
 };
 
+struct handlebars_ast_strip_flags {
+  short left;
+  short right;
+};
+
 /**
  * @brief The main AST node structure 
  */
@@ -183,7 +188,12 @@ struct handlebars_ast_node {
   /**
    * @brief Enum describing the type of node
    */
-  enum handlebars_node_type type;
+  enum handlebars_ast_node_type type;
+  
+  /**
+   * @brief Stores info about whitespace stripping 
+   */
+  struct handlebars_ast_strip_flags strip;
   
   /**
    * @brief A union with structs of the different node types
@@ -198,7 +208,7 @@ struct handlebars_ast_node {
  * @param[in] ctx The talloc context on which to allocate
  * @return the newly constructed AST node
  */
-struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_node_type type, void * ctx);
+struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_ast_node_type type, void * ctx);
 
 /**
  * @brief Destruct an AST node

@@ -374,3 +374,19 @@ error:
     //handlebars_talloc_free(ctx);
     return ast_node;
 }
+
+void handlebars_ast_helper_set_strip_flags(
+        struct handlebars_ast_strip_flags * strip_flags, char * open, char * close)
+{
+    size_t close_length = close ? strlen(close) : 0;
+    if( open && strlen(open) >= 3 && *(open + 2) == '~' ) {
+        strip_flags->left = 1;
+    } else {
+        strip_flags->left = 0;
+    }
+    if( close_length && close_length >= 3 && *(close + close_length - 3) == '~' ) {
+        strip_flags->right = 1;
+    } else {
+        strip_flags->right = 0;
+    }
+}

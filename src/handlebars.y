@@ -236,7 +236,7 @@ open_block
   : OPEN_BLOCK sexpr CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
-      // Todo: $1 $3
+      handlebars_ast_helper_set_strip_flags(&ast_node->strip, $1, $3);
       $$ = ast_node;
     }
   ;
@@ -245,15 +245,16 @@ open_inverse
   : OPEN_INVERSE sexpr CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
-      // Todo: $1 $3
+      handlebars_ast_helper_set_strip_flags(&ast_node->strip, $1, $3);
       $$ = ast_node;
     }
   ;
 
 inverse_and_program
   : INVERSE program {
-      // cough
+      // @todo might not be right
       $$ = $2;
+      handlebars_ast_helper_set_strip_flags(&$$->strip, $1, $1);
       // Original:
       // -> { strip: yy.stripFlags($1, $1), program: $2 }
     }
@@ -264,8 +265,9 @@ inverse_and_program
 
 close_block
   : OPEN_ENDBLOCK path CLOSE {
-      // this is kind of wrong
+      // @todo might not be right
       $$ = $2;
+      handlebars_ast_helper_set_strip_flags(&$$->strip, $1, $3);
       // Original:
       //-> {path: $2, strip: yy.stripFlags($1, $3)}
     }
@@ -279,14 +281,14 @@ mustache
       if( $1 && strlen($1) >= 3 && *($1 + 2) == '&' ) {
         ast_node->node.mustache.unescaped = 1;
       }
-      // Todo: $1 $3
+      handlebars_ast_helper_set_strip_flags(&ast_node->strip, $1, $3);
       $$ = ast_node;
     }
   | OPEN_UNESCAPED sexpr CLOSE_UNESCAPED {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
       ast_node->node.mustache.unescaped = 1;
-      // Todo: $1 $3
+      handlebars_ast_helper_set_strip_flags(&ast_node->strip, $1, $3);
       $$ = ast_node;
     }
   ;
@@ -296,7 +298,7 @@ partial
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
       ast_node->node.partial.partial_name = $2;
       ast_node->node.partial.context = $3;
-      // Todo: $1 $4
+      handlebars_ast_helper_set_strip_flags(&ast_node->strip, $1, $4);
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name param hash CLOSE {
@@ -304,20 +306,20 @@ partial
       ast_node->node.partial.partial_name = $2;
       ast_node->node.partial.context = $3;
       ast_node->node.partial.hash = $4;
-      // Todo: $1 $5
+      handlebars_ast_helper_set_strip_flags(&ast_node->strip, $1, $5);
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
       ast_node->node.partial.partial_name = $2;
-      // Todo: $1 $3
+      handlebars_ast_helper_set_strip_flags(&ast_node->strip, $1, $3);
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name hash CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
       ast_node->node.partial.partial_name = $2;
       ast_node->node.partial.hash = $3;
-      // Todo: $1 $4
+      handlebars_ast_helper_set_strip_flags(&ast_node->strip, $1, $4);
       $$ = ast_node;
     }
   ;
