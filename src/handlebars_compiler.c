@@ -443,7 +443,7 @@ static inline void handlebars_compiler_accept_partial(
         __OPN(push_context);
     }
     
-    __OPS2(invoke_partial, name, indent);
+    __OPS2(invoke_partial, name, partial->node.partial.indent ? partial->node.partial.indent : "");
     __OPN(append);
 }
 

@@ -204,7 +204,7 @@ int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statem
     sibling = (prev->prev ? prev->prev->data : NULL);
     
     if( prev->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        return handlebars_scanner_next_whitespace(prev->data->node.content.original, !sibling && is_root);
+        return handlebars_scanner_prev_whitespace(prev->data->node.content.original, !sibling && is_root);
     }
     
     return 0;
@@ -215,7 +215,6 @@ int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
 {
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
-    char * original;
 
     if( statement == NULL ) {
         current = statements->last ? statements->last->data : NULL;
@@ -229,8 +228,8 @@ int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
         (!multiple && (current->strip & handlebars_ast_strip_flag_left_stripped)) ) {
         return 0;
     }
-
-    original = current->node.content.string;
+    
+    size_t original_length = strlen(current->node.content.string);
 
     if( multiple ) {
         current->node.content.string = handlebars_rtrim(current->node.content.string, " \v\t\r\n");
@@ -238,13 +237,13 @@ int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
         current->node.content.string = handlebars_rtrim(current->node.content.string, " \t");
     }
 
-    if( strcmp(original, current->node.content.string) == 0 ) {
+    if( original_length == strlen(current->node.content.string) ) {
         current->strip &= ~handlebars_ast_strip_flag_left_stripped;
     } else {
         current->strip |= handlebars_ast_strip_flag_left_stripped;
     }
     current->strip |= handlebars_ast_strip_flag_set;
-
+    
     return 1 && (current->strip & handlebars_ast_strip_flag_left_stripped);
 }
 
@@ -253,7 +252,6 @@ int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
 {
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
-    char * original;
 
     if( statement == NULL ) {
         current = statements->first ? statements->first->data : NULL;
@@ -268,8 +266,8 @@ int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
         return 0;
     }
 
-    original = current->node.content.string;
-
+    size_t original_length = strlen(current->node.content.string);
+    
     if( multiple ) {
         current->node.content.string = handlebars_ltrim(current->node.content.string, " \v\t\r\n");
     } else {
@@ -282,7 +280,7 @@ int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
         }
     }
 
-    if( strcmp(original, current->node.content.string) == 0 ) {
+    if( original_length == strlen(current->node.content.string) ) {
         current->strip &= ~handlebars_ast_strip_flag_right_stripped;
     } else {
         current->strip |= handlebars_ast_strip_flag_right_stripped;
@@ -519,7 +517,25 @@ int handlebars_ast_helper_prepare_program(struct handlebars_context * context,
         if( inline_standalone ) {
             handlebars_ast_helper_omit_right(statements, current, 0);
             if( handlebars_ast_helper_omit_left(statements, current, 0) ) {
-                // @todo save the indent info
+                struct handlebars_ast_node * prev = item->prev ? item->prev->data : NULL;
+                if( current->type == HANDLEBARS_AST_NODE_PARTIAL &&
+                        prev && prev->type == HANDLEBARS_AST_NODE_CONTENT ) {
+                    char * start = prev->node.content.original;
+                    char * ptr;
+                    char * match = NULL;
+                    for( ptr = start; *ptr; ++ptr ) {
+                        if( *ptr == ' ' || *ptr == '\t' ) {
+                            if( !match ) {
+                                match = ptr;
+                            }
+                        } else if( *ptr ) {
+                            match = NULL;
+                        }
+                    }
+                    if( match ) {
+                        current->node.partial.indent = handlebars_talloc_strdup(current, match);
+                    }
+                }
             }
         }
         if( open_standalone ) {

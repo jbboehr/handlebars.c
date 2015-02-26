@@ -78,6 +78,13 @@ START_TEST(test_ltrim)
     handlebars_talloc_free(in);
 }
 {
+    char * in = handlebars_talloc_strdup(ctx, "\n  ");
+    char * ret = handlebars_ltrim(in, " \t");
+    ck_assert_str_eq(in, "\n  ");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+}
+{
     char * in = handlebars_talloc_strdup(ctx, "");
     char * ret = handlebars_ltrim(in, "");
     ck_assert_str_eq(in, "");

@@ -69,7 +69,7 @@ struct handlebars_ast_node_partial {
   struct handlebars_ast_node * partial_name;
   struct handlebars_ast_node * context;
   struct handlebars_ast_node * hash;
-  // Todo: strip
+  char * indent;
 };
 
 struct handlebars_ast_node_block {
