@@ -140,6 +140,7 @@ program :
   | "" {
       $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
       $$->node.program.statements = handlebars_ast_list_ctor($$);
+      handlebars_ast_helper_prepare_program(context, $$, 0);
   }
   ;
 
@@ -178,6 +179,7 @@ statement
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_COMMENT, context);
       ast_node->node.comment.comment = $1;
       ast_node->node.comment.length = strlen($1);
+      ast_node->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
       $$ = ast_node;
     }
   ;

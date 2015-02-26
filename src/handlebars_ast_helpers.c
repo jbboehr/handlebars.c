@@ -156,7 +156,7 @@ int handlebars_ast_helper_is_next_whitespace(struct handlebars_ast_list * statem
     struct handlebars_ast_list_item * sibling;
     
     if( !statements ) {
-        return 0;
+        return is_root;
     }
 
     if( statement == NULL ) {
@@ -187,7 +187,7 @@ int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statem
     struct handlebars_ast_list_item * sibling;
 
     if( !statements ) {
-        return 0;
+        return is_root;
     }
 
     if( statement == NULL ) {
@@ -243,6 +243,7 @@ int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
     } else {
         current->strip |= handlebars_ast_strip_flag_left_stripped;
     }
+    current->strip |= handlebars_ast_strip_flag_set;
 
     return 1 && (current->strip & handlebars_ast_strip_flag_left_stripped);
 }
@@ -286,6 +287,7 @@ int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
     } else {
         current->strip |= handlebars_ast_strip_flag_right_stripped;
     }
+    current->strip |= handlebars_ast_strip_flag_set;
 
     return 1 && (current->strip & handlebars_ast_strip_flag_right_stripped);
 }
@@ -351,20 +353,21 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     }
 
     // Save strip info
-    if( mustache && (mustache->strip & handlebars_ast_strip_flag_right) ) {
-        ast_node->strip |= handlebars_ast_strip_flag_right;
-    }
-    if( close && (close->strip & handlebars_ast_strip_flag_left) ) {
+    if( mustache && (mustache->strip & handlebars_ast_strip_flag_left) ) {
         ast_node->strip |= handlebars_ast_strip_flag_left;
+    }
+    if( close && (close->strip & handlebars_ast_strip_flag_right) ) {
+        ast_node->strip |= handlebars_ast_strip_flag_right;
     }
     if( program && handlebars_ast_helper_is_next_whitespace(program->node.program.statements, NULL, 0) ) {
         ast_node->strip |= handlebars_ast_strip_flag_open_standalone;
     }
-    if( (program || inverse) && handlebars_ast_helper_is_prev_whitespace((program ? program : inverse)->node.program.statements, NULL, 0) ) {
+    if( (program || inverse) && handlebars_ast_helper_is_prev_whitespace((inverse ? inverse : program)->node.program.statements, NULL, 0) ) {
         ast_node->strip |= handlebars_ast_strip_flag_close_standalone;
     }
+    ast_node->strip |= handlebars_ast_strip_flag_set;
 
-    // Now steal the raw block node so it won't be freed below
+    // Now steal the block node so it won't be freed below
     talloc_steal(context, ast_node);
     
 error:
@@ -642,6 +645,9 @@ void handlebars_ast_helper_set_strip_flags(
         ast_node->strip |= handlebars_ast_strip_flag_right;
     } else {
         ast_node->strip &= ~handlebars_ast_strip_flag_right;
+    }
+    if( ast_node->type == HANDLEBARS_AST_NODE_PARTIAL ) {
+        ast_node->strip |= handlebars_ast_strip_flag_inline_standalone;
     }
     ast_node->strip |= handlebars_ast_strip_flag_set;
 }
