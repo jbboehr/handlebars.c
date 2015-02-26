@@ -107,8 +107,10 @@ char * handlebars_rtrim(char * string, const char * what)
     }
     
     original = string + strlen(string);
-    while(original > string && flags[(unsigned char) *--original]);
-    *(original + 1) = '\0';
+    while(original >= string && flags[(unsigned char) *--original]) {
+        *original = '\0';
+    }
+    
     return string;
 }
 

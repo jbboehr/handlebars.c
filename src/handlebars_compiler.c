@@ -261,9 +261,29 @@ static inline void handlebars_compiler_push_param(
         }
     } else {
         if( compiler->track_ids ) {
+            struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_push_id);
+            handlebars_operand_set_stringval(opcode, &opcode->op1, handlebars_ast_node_readable_type(param->type));
+            char * tmp = handlebars_ast_node_get_id_name(param);
+            if( !tmp ) {
+                tmp = handlebars_ast_node_get_string_mode_value(param);
+            }
+            if( param->type == HANDLEBARS_AST_NODE_BOOLEAN ) {
+                handlebars_operand_set_boolval(&opcode->op2, strcmp(tmp, "true") == 0);
+            } else if( param->type == HANDLEBARS_AST_NODE_NUMBER ) {
+                long tmp2;
+                sscanf(tmp, "%ld", &tmp2);
+                handlebars_operand_set_longval(&opcode->op2, tmp2);
+            } else if( param->type == HANDLEBARS_AST_NODE_STRING ) {
+                handlebars_operand_set_stringval(opcode, &opcode->op2, tmp ? tmp : "");
+            } else {
+                handlebars_operand_set_stringval(opcode, &opcode->op2, tmp);
+            }
+            __PUSH(opcode);
+            /*
             __OPS2(push_id, 
-                    handlebars_ast_node_readable_type(param->type), 
-                    handlebars_ast_node_get_id_name(param));
+                    , 
+                    tmp);
+            */
         }
         handlebars_compiler_accept(compiler, param);
     }

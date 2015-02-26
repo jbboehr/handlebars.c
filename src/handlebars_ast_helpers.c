@@ -236,7 +236,7 @@ int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
     } else {
         current->node.content.string = handlebars_rtrim(current->node.content.string, " \t");
     }
-
+    
     if( original_length == strlen(current->node.content.string) ) {
         current->strip &= ~handlebars_ast_strip_flag_left_stripped;
     } else {
@@ -279,7 +279,7 @@ int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
             memmove(current->node.content.string, current->node.content.string + 1, strlen(current->node.content.string));
         }
     }
-
+    
     if( original_length == strlen(current->node.content.string) ) {
         current->strip &= ~handlebars_ast_strip_flag_right_stripped;
     } else {

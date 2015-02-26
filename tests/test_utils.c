@@ -101,6 +101,12 @@ START_TEST(test_rtrim)
     handlebars_talloc_free(in);
 }
 {
+    char * in = handlebars_talloc_strdup(ctx, "\n");
+    handlebars_rtrim(in, " \v\t\r\n");
+    ck_assert_str_eq(in, "");
+    handlebars_talloc_free(in);
+}
+{
     char * in = handlebars_talloc_strdup(ctx, "");
     handlebars_rtrim(in, "");
     ck_assert_str_eq(in, "");
