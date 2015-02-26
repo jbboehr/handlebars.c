@@ -430,8 +430,6 @@ static inline void handlebars_compiler_accept_partial(
         name = handlebars_ast_node_get_string_mode_value(id);
     }
     
-    name = id->node.id.original;
-    
     if( partial->node.partial.hash ) {
         handlebars_compiler_accept(compiler, partial->node.partial.hash);
     } else {
@@ -715,6 +713,9 @@ static inline void handlebars_compiler_accept_path_segment(
 static void handlebars_compiler_accept(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
+    if( !node ) {
+        return;
+    }
     switch( node->type ) {
         case HANDLEBARS_AST_NODE_PROGRAM:
             return handlebars_compiler_accept_program(compiler, node);
