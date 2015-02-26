@@ -349,7 +349,7 @@ ID    {IDC}+/{LOOKAHEAD}
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes(yylval->text, &yylval->length);
+										handlebars_stripcslashes_ex(yylval->text, &yylval->length);
                                    		return STRING;
                                  	}
 
@@ -358,7 +358,7 @@ ID    {IDC}+/{LOOKAHEAD}
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes(yylval->text, &yylval->length);
+										handlebars_stripcslashes_ex(yylval->text, &yylval->length);
 										return STRING;
                                 	}
                                  

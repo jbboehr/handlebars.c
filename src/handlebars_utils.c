@@ -12,7 +12,7 @@
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
-char * handlebars_addcslashes(const char * str, size_t str_length, const char * what, size_t what_length)
+char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char * what, size_t what_length)
 {
     char flags[256];
     char * source;
@@ -68,53 +68,63 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
     return new_str;
 }
 
-char * handlebars_ltrim(char * string, const char * what)
+char * handlebars_ltrim_ex(char * string, size_t * length, const char * what, size_t what_length)
 {
-    int i, l;
+    size_t i;
     char flags[256];
     char * ptr;
+    size_t len = length ? *length : strlen(string);
 
     // Make char mask
     memset(flags, 0, sizeof(flags));
-    for( i = 0, l = strlen(what); i < l; i++ ) {
+    for( i = 0; i < what_length; i++ ) {
         flags[(unsigned char) what[i]] = 1;
     }
 
-    l = strlen(string);
     ptr = string;
     while( *ptr && flags[(unsigned char) *ptr] ) {
         ++ptr;
-        --l;
+        --len;
     }
 
     if( ptr > string ) {
-        memmove(string, ptr, l + 1);
+        memmove(string, ptr, len + 1);
+    }
+    
+    if( length ) {
+        *length = len;
     }
 
     return string;
 }
 
-char * handlebars_rtrim(char * string, const char * what)
+char * handlebars_rtrim_ex(char * string, size_t * length, const char * what, size_t what_length)
 {
-    int i, l;
+    size_t i;
     char flags[256];
     char * original;
+    size_t len = length ? *length : strlen(string);
     
     // Make char mask
     memset(flags, 0, sizeof(flags));
-    for( i = 0, l = strlen(what); i < l; i++ ) {
+    for( i = 0; i < what_length; i++ ) {
         flags[(unsigned char) what[i]] = 1;
     }
     
-    original = string + strlen(string);
+    original = string + len;
     while(original >= string && flags[(unsigned char) *--original]) {
+        --len;
         *original = '\0';
+    }
+    
+    if( length ) {
+        *length = len;
     }
     
     return string;
 }
 
-void handlebars_stripcslashes(char * str, size_t * length)
+char * handlebars_stripcslashes_ex(char * str, size_t * length)
 {
     char *source, *target, *end;
     size_t nlen = (length == NULL ? strlen(str) : *length);
@@ -178,6 +188,8 @@ void handlebars_stripcslashes(char * str, size_t * length)
     if( length != NULL ) {
         *length = nlen;
     }
+    
+    return str;
 }
 
 

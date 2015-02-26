@@ -20,6 +20,11 @@ struct handlebars_context;
 struct YYLTYPE;
 union YYSTYPE;
 
+#define handlebars_addcslashes(str, what) handlebars_addcslashes_ex(str, strlen(str), what, strlen(what))
+#define handlebars_ltrim(str, what) handlebars_ltrim_ex(str, NULL, what, strlen(what))
+#define handlebars_rtrim(str, what) handlebars_rtrim_ex(str, NULL, what, strlen(what))
+#define handlebars_stripcslashes(str) handlebars_stripcslashes_ex(str, NULL)
+
 /**
  * @brief Adds slashes to as string for a list of specified characters. Returns a  
  *        newly allocated string, or NULL on failure.
@@ -30,17 +35,31 @@ union YYSTYPE;
  * @param[in] what_length The length of the character list
  * @return The string with escaped characters
  */
-char * handlebars_addcslashes(const char * str, size_t str_length, const char * what, size_t what_length);
+char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char * what, size_t what_length);
+
+/**
+ * @brief Trims a set of characters off the left end of string. Trims in
+ *        place by setting a null terminator and moving the contents
+ * 
+ * @param[in] str the string to trim
+ * @param[in] str_length The length of the input string
+ * @param[in] what the set of characters to trim
+ * @param[in] what_length The length of the character list
+ * @return the original pointer, with trimmed input characters
+ */
+char * handlebars_ltrim_ex(char * str, size_t * str_length, const char * what, size_t what_length);
 
 /**
  * @brief Trims a set of characters off the right end of string. Trims in
  *        place by setting a null terminator.
  * 
- * @param[in] string the string to trim
+ * @param[in] str the string to trim
+ * @param[in] str_length The length of the input string
  * @param[in] what the set of characters to trim
+ * @param[in] what_length The length of the character list
  * @return the original pointer, with null moved to trim input characters
  */
-char * handlebars_rtrim(char * string, const char * what);
+char * handlebars_rtrim_ex(char * str, size_t * str_length, const char * what, size_t what_length);
 
 /**
  * @brief Strips slashes from a string. Changes are done in-place. length accepts
@@ -50,7 +69,7 @@ char * handlebars_rtrim(char * string, const char * what);
  * @param[in] length The length of the input string
  * @return The original pointer, transformed
  */
-void handlebars_stripcslashes(char * str, size_t * length);
+char * handlebars_stripcslashes_ex(char * str, size_t * length);
 
 /**
  * @brief Handle an error in the parser. Prints message to stderr

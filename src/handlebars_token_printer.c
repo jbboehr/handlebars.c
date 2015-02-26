@@ -36,7 +36,7 @@ char * handlebars_token_print(struct handlebars_token * token, int flags)
     
     // Prepare token text
     if( token->text != NULL ) {
-        tmp = handlebars_addcslashes(token->text, token->length, ws, strlen(ws));
+        tmp = handlebars_addcslashes_ex(token->text, token->length, ws, strlen(ws));
         if( !tmp ) {
             return NULL;
         }

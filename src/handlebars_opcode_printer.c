@@ -10,6 +10,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
+#include "handlebars_utils.h"
 
 struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(void * ctx)
 {
@@ -38,8 +39,7 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
             str = talloc_asprintf_append(str, "[LONG:%ld]", operand->data.longval);
             break;
         case handlebars_operand_type_string: {
-            char * tmp = handlebars_addcslashes(operand->data.stringval, 
-                        strlen(operand->data.stringval), "\r\n\t", strlen("\r\n\t"));
+            char * tmp = handlebars_addcslashes(operand->data.stringval, "\r\n\t");
             str = talloc_asprintf_append(str, "[STRING:%s]", tmp);
             handlebars_talloc_free(tmp);
             break;
