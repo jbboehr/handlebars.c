@@ -283,8 +283,12 @@ mustache
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
       // @todo this won't work w/ whitespace
-      if( $1 && strlen($1) >= 3 && *($1 + 2) == '&' ) {
-        ast_node->node.mustache.unescaped = 1;
+      if( $1 ) {
+        if( strlen($1) >= 4 && *($1 + 3) == '&' ) {
+          ast_node->node.mustache.unescaped = 1;
+        } else if( strlen($1) >= 3 && *($1 + 2) == '&' ) {
+          ast_node->node.mustache.unescaped = 1;
+        }
       }
       handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
       $$ = ast_node;
