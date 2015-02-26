@@ -230,6 +230,7 @@ static inline void handlebars_compiler_push_param(
     
     if( compiler->string_params ) {
         int depth = 0;
+        struct handlebars_opcode * opcode;
         
         if( param->type == HANDLEBARS_AST_NODE_ID ) {
             depth = param->node.id.depth;
@@ -240,9 +241,20 @@ static inline void handlebars_compiler_push_param(
         }
         __OPL(get_context, depth);
         
+        // sigh
+        opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_push_string_param);
+        if( param->type == HANDLEBARS_AST_NODE_BOOLEAN ) {
+            handlebars_operand_set_boolval(&opcode->op1, strcmp(handlebars_ast_node_get_string_mode_value(param), "true") == 0);
+        } else {
+            handlebars_operand_set_stringval(opcode, &opcode->op1, handlebars_ast_node_get_string_mode_value(param));
+        }
+        handlebars_operand_set_stringval(opcode, &opcode->op2, handlebars_ast_node_readable_type(param->type));
+        __PUSH(opcode);
+        /*
         __OPS2(push_string_param, 
                 handlebars_ast_node_get_string_mode_value(param), 
                 handlebars_ast_node_readable_type(param->type));
+        */
         
         if( param->type == HANDLEBARS_AST_NODE_SEXPR ) {
             handlebars_compiler_accept/*_sexpr*/(compiler, param);

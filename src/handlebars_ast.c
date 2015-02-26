@@ -140,27 +140,27 @@ const char * handlebars_ast_node_readable_type(int type)
 {
 #define _RTYPE_STR(str) #str
 #define _RTYPE_MK(str) HANDLEBARS_AST_NODE_ ## str
-#define _RTYPE_CASE(str) \
-    case _RTYPE_MK(str): return _RTYPE_STR(str); break
+#define _RTYPE_CASE(str, name) \
+    case _RTYPE_MK(str): return _RTYPE_STR(name); break
   switch( type ) {
-    _RTYPE_CASE(NIL);
-    _RTYPE_CASE(PROGRAM);
-    _RTYPE_CASE(MUSTACHE);
-    _RTYPE_CASE(SEXPR);
-    _RTYPE_CASE(PARTIAL);
-    _RTYPE_CASE(BLOCK);
-    _RTYPE_CASE(RAW_BLOCK);
-    _RTYPE_CASE(CONTENT);
-    _RTYPE_CASE(HASH);
-    _RTYPE_CASE(HASH_SEGMENT);
-    _RTYPE_CASE(ID);
-    _RTYPE_CASE(PARTIAL_NAME);
-    _RTYPE_CASE(DATA);
-    _RTYPE_CASE(STRING);
-    _RTYPE_CASE(NUMBER);
-    _RTYPE_CASE(BOOLEAN);
-    _RTYPE_CASE(COMMENT);
-    _RTYPE_CASE(PATH_SEGMENT);
+    _RTYPE_CASE(NIL, NIL);
+    _RTYPE_CASE(PROGRAM, program);
+    _RTYPE_CASE(MUSTACHE, mustache);
+    _RTYPE_CASE(SEXPR, sexpr);
+    _RTYPE_CASE(PARTIAL, partial);
+    _RTYPE_CASE(BLOCK, block);
+    _RTYPE_CASE(RAW_BLOCK, raw_block);
+    _RTYPE_CASE(CONTENT, content);
+    _RTYPE_CASE(HASH, hash);
+    _RTYPE_CASE(HASH_SEGMENT, HASH_SEGMENT);
+    _RTYPE_CASE(ID, ID);
+    _RTYPE_CASE(PARTIAL_NAME, PARTIAL_NAME);
+    _RTYPE_CASE(DATA, DATA);
+    _RTYPE_CASE(STRING, STRING);
+    _RTYPE_CASE(NUMBER, NUMBER);
+    _RTYPE_CASE(BOOLEAN, BOOLEAN);
+    _RTYPE_CASE(COMMENT, comment);
+    _RTYPE_CASE(PATH_SEGMENT, PATH_SEGMENT);
   }
   
   return "UNKNOWN";
