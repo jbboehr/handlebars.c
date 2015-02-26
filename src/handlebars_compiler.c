@@ -46,7 +46,7 @@ static inline void handlebars_compiler_accept_hash(
 
 
 
-static const char * handlebars_builtins[] = {
+/*static*/ const char * handlebars_builtins[] = {
     "helperMissing", "blockHelperMissing", "each", "if",
     "unless", "with", "log", "lookup", NULL
 };
@@ -456,7 +456,7 @@ static inline void handlebars_compiler_accept_content(
     assert(content != NULL);
     assert(content->type == HANDLEBARS_AST_NODE_CONTENT);
     
-    if( content && content->node.content.string ) {
+    if( content && content->node.content.string && *content->node.content.string ) {
         __OPS(append_content, content->node.content.string);
     }
 }

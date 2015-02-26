@@ -43,7 +43,7 @@ error:
 
 int handlebars_ast_list_count(struct handlebars_ast_list * list)
 {
-    return list->count;
+    return list ? list->count : 0;
 }
 
 struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx)

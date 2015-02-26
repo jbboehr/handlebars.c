@@ -171,6 +171,7 @@ statement
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_CONTENT, context);
       ast_node->node.content.string = $1;
       ast_node->node.content.length = strlen($1);
+      ast_node->node.content.original = handlebars_talloc_strdup(ast_node, $1);
       $$ = ast_node;
     }
   | COMMENT {

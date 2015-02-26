@@ -68,6 +68,32 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
     return new_str;
 }
 
+char * handlebars_ltrim(char * string, const char * what)
+{
+    int i, l;
+    char flags[256];
+    char * ptr;
+
+    // Make char mask
+    memset(flags, 0, sizeof(flags));
+    for( i = 0, l = strlen(what); i < l; i++ ) {
+        flags[(unsigned char) what[i]] = 1;
+    }
+
+    l = strlen(string);
+    ptr = string;
+    while( *ptr && flags[(unsigned char) *ptr] ) {
+        ++ptr;
+        --l;
+    }
+
+    if( ptr > string ) {
+        memmove(string, ptr, l + 1);
+    }
+
+    return string;
+}
+
 char * handlebars_rtrim(char * string, const char * what)
 {
     int i, l;

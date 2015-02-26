@@ -16,6 +16,7 @@ extern "C" {
 
 struct handlebars_ast_node;
 
+extern const char * handlebars_builtins[];
 
 enum handlebars_compiler_flag {
     handlebars_compiler_flag_none = 0,

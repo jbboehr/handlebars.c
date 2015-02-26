@@ -14,6 +14,7 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
+#include "handlebars_scanners.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
@@ -154,6 +155,10 @@ int handlebars_ast_helper_is_next_whitespace(struct handlebars_ast_list * statem
     struct handlebars_ast_list_item * next;
     struct handlebars_ast_list_item * sibling;
     
+    if( !statements ) {
+        return 0;
+    }
+
     if( statement == NULL ) {
         next = statements->first;
     } else {
@@ -168,7 +173,7 @@ int handlebars_ast_helper_is_next_whitespace(struct handlebars_ast_list * statem
     sibling = (next->next ? next->next->data : NULL);
     
     if( next->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        // @todo regex-y thing
+        return handlebars_scanner_next_whitespace(next->data->node.content.original, !sibling && is_root);
     }
     
     return 0;
@@ -180,7 +185,11 @@ int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statem
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * prev;
     struct handlebars_ast_list_item * sibling;
-    
+
+    if( !statements ) {
+        return 0;
+    }
+
     if( statement == NULL ) {
         prev = statements->last;
     } else {
@@ -195,7 +204,7 @@ int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statem
     sibling = (prev->prev ? prev->prev->data : NULL);
     
     if( prev->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        // @todo regex-y thing
+        return handlebars_scanner_next_whitespace(prev->data->node.content.original, !sibling && is_root);
     }
     
     return 0;
@@ -204,15 +213,81 @@ int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statem
 int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
         struct handlebars_ast_node * statement, short multiple)
 {
-    // @todo
-    return 0;
+    struct handlebars_ast_node * current;
+    struct handlebars_ast_list_item * item;
+    char * original;
+
+    if( statement == NULL ) {
+        current = statements->last ? statements->last->data : NULL;
+    } else {
+        item = handlebars_ast_list_find(statements, statement);
+        current = item && item->prev ? item->prev->data : NULL;
+    }
+
+    if( !current ||
+        current->type != HANDLEBARS_AST_NODE_CONTENT ||
+        (!multiple && (current->strip & handlebars_ast_strip_flag_left_stripped)) ) {
+        return 0;
+    }
+
+    original = current->node.content.string;
+
+    if( multiple ) {
+        current->node.content.string = handlebars_rtrim(current->node.content.string, " \v\t\r\n");
+    } else {
+        current->node.content.string = handlebars_rtrim(current->node.content.string, " \t");
+    }
+
+    if( strcmp(original, current->node.content.string) == 0 ) {
+        current->strip &= ~handlebars_ast_strip_flag_left_stripped;
+    } else {
+        current->strip |= handlebars_ast_strip_flag_left_stripped;
+    }
+
+    return 1 && (current->strip & handlebars_ast_strip_flag_left_stripped);
 }
 
 int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
         struct handlebars_ast_node * statement, short multiple)
 {
-    // @todo
-    return 0;
+    struct handlebars_ast_node * current;
+    struct handlebars_ast_list_item * item;
+    char * original;
+
+    if( statement == NULL ) {
+        current = statements->first ? statements->first->data : NULL;
+    } else {
+        item = handlebars_ast_list_find(statements, statement);
+        current = item && item->next ? item->next->data : NULL;
+    }
+
+    if( !current ||
+        current->type != HANDLEBARS_AST_NODE_CONTENT ||
+        (!multiple && (current->strip & handlebars_ast_strip_flag_right_stripped)) ) {
+        return 0;
+    }
+
+    original = current->node.content.string;
+
+    if( multiple ) {
+        current->node.content.string = handlebars_ltrim(current->node.content.string, " \v\t\r\n");
+    } else {
+        current->node.content.string = handlebars_ltrim(current->node.content.string, " \t");
+        if( *current->node.content.string == '\r' ) {
+            memmove(current->node.content.string, current->node.content.string + 1, strlen(current->node.content.string));
+        }
+        if( *current->node.content.string == '\n' ) {
+            memmove(current->node.content.string, current->node.content.string + 1, strlen(current->node.content.string));
+        }
+    }
+
+    if( strcmp(original, current->node.content.string) == 0 ) {
+        current->strip &= ~handlebars_ast_strip_flag_right_stripped;
+    } else {
+        current->strip |= handlebars_ast_strip_flag_right_stripped;
+    }
+
+    return 1 && (current->strip & handlebars_ast_strip_flag_right_stripped);
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
@@ -222,6 +297,9 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
 {
     struct handlebars_ast_node * ast_node;
     TALLOC_CTX * ctx;
+
+    assert(!program || program->type == HANDLEBARS_AST_NODE_PROGRAM);
+    assert(!inverse || inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
     
     // Initialize temporary talloc context
     ctx = talloc_init(NULL);
@@ -244,6 +322,48 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         goto error;
     }
     
+    // Whitespace control
+    if( program && mustache && (mustache->strip & handlebars_ast_strip_flag_right) ) {
+       handlebars_ast_helper_omit_right(program->node.program.statements, NULL, 1);
+    }
+    if( inverse ) {
+        if( program && (inverse->strip & handlebars_ast_strip_flag_left) ) {
+            handlebars_ast_helper_omit_left(program->node.program.statements, NULL, 1);
+        }
+        if( (inverse->strip & handlebars_ast_strip_flag_right) ) {
+            handlebars_ast_helper_omit_right(inverse->node.program.statements, NULL, 1);
+        }
+        if( close && (close->strip & handlebars_ast_strip_flag_left) ) {
+            handlebars_ast_helper_omit_left(inverse->node.program.statements, NULL, 1);
+        }
+
+        // Find standalone else statments
+        if( program &&
+                handlebars_ast_helper_is_prev_whitespace(program->node.program.statements, NULL, 0) &&
+                handlebars_ast_helper_is_next_whitespace(inverse->node.program.statements, NULL, 0) ) {
+            handlebars_ast_helper_omit_left(program->node.program.statements, NULL, 0);
+            handlebars_ast_helper_omit_right(inverse->node.program.statements, NULL, 0);
+        }
+    } else {
+        if( close && (close->strip & handlebars_ast_strip_flag_left) ) {
+            handlebars_ast_helper_omit_left(program->node.program.statements, NULL, 1);
+        }
+    }
+
+    // Save strip info
+    if( mustache && (mustache->strip & handlebars_ast_strip_flag_right) ) {
+        ast_node->strip |= handlebars_ast_strip_flag_right;
+    }
+    if( close && (close->strip & handlebars_ast_strip_flag_left) ) {
+        ast_node->strip |= handlebars_ast_strip_flag_left;
+    }
+    if( program && handlebars_ast_helper_is_next_whitespace(program->node.program.statements, NULL, 0) ) {
+        ast_node->strip |= handlebars_ast_strip_flag_open_standalone;
+    }
+    if( (program || inverse) && handlebars_ast_helper_is_prev_whitespace((program ? program : inverse)->node.program.statements, NULL, 0) ) {
+        ast_node->strip |= handlebars_ast_strip_flag_close_standalone;
+    }
+
     // Now steal the raw block node so it won't be freed below
     talloc_steal(context, ast_node);
     

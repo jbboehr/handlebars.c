@@ -16,8 +16,8 @@ handlebars.lex.c:
 	${FLEX} $(FLEXFLAGS) -o handlebars.lex.c handlebars.l
 	
 # re2c
-DISTCLEANFILES = handlebars_scanners.c
 if RE2C
+DISTCLEANFILES = handlebars_scanners.c
 handlebars_scanners.c:
 	$(RE2C) -si -o handlebars_scanners.c handlebars_scanners.re
 endif

@@ -35,6 +35,7 @@ struct compiler_test {
     char * expected;
     int exception;
     char * message;
+    char ** known_helpers;
     
     short opt_compat;
     short opt_data;
@@ -132,10 +133,12 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
             array_item = json_object_array_get_idx(cur, 2);
             loadTestOpcodeOperand(opcode, &opcode->op3, array_item);
         }
+        /* no break */
         case 2: {
             array_item = json_object_array_get_idx(cur, 1);
             loadTestOpcodeOperand(opcode, &opcode->op2, array_item);
         }
+        /* no break */
         case 1: {
             array_item = json_object_array_get_idx(cur, 0);
             loadTestOpcodeOperand(opcode, &opcode->op1, array_item);
@@ -230,6 +233,32 @@ error:
     return output;
 }
 
+static int loadSpecTestKnownHelpers(struct compiler_test * test, json_object * object)
+{
+    struct json_object * array_item = NULL;
+    int array_len = 0;
+    // Let's just allocate a nice fat array >.>
+    char ** known_helpers = talloc_zero_array(rootctx, char *, 32);
+    char ** ptr = known_helpers;
+    char ** ptr2 = handlebars_builtins;
+
+    for( ptr2 = handlebars_builtins ; *ptr2 ; ++ptr2 ) {
+        *ptr = handlebars_talloc_strdup(rootctx, *ptr2);
+        ptr++;
+    }
+
+    json_object_object_foreach(object, key, value) {
+        *ptr = handlebars_talloc_strdup(rootctx, key);
+        ptr++;
+    }
+
+    *ptr++ = NULL;
+
+    test->known_helpers = known_helpers;
+
+    return 0;
+}
+
 static int loadSpecTestCompileOptions(struct compiler_test * test, json_object * object)
 {
     json_object * cur = NULL;
@@ -269,6 +298,12 @@ static int loadSpecTestCompileOptions(struct compiler_test * test, json_object *
         test->flags |= handlebars_compiler_flag_track_ids;
     }
     
+    // Get known helpers
+    cur = json_object_object_get(object, "knownHelpers");
+    if( cur && json_object_get_type(cur) == json_type_object ) {
+        loadSpecTestKnownHelpers(test, cur);
+    }
+
     return 0;
 }
 
@@ -279,6 +314,10 @@ static int loadSpecTest(const char * name, json_object * object)
     
     // Get test
     struct compiler_test * test = &(tests[tests_len++]);
+    memset(test, 0, sizeof(struct compiler_test));
+    test->suite_name = name;
+    test->known_helpers = NULL;
+    test->flags = 0;
     
     // Get description
     cur = json_object_object_get(object, "description");
@@ -326,7 +365,13 @@ static int loadSpecTest(const char * name, json_object * object)
     if( cur && json_object_get_type(cur) == json_type_object ) {
         loadSpecTestCompileOptions(test, cur);
     }
-    
+
+    // Get helpers
+    /*cur = json_object_object_get(object, "helpers");
+    if( cur && json_object_get_type(cur) == json_type_object ) {
+        loadSpecTestHelpers(test, cur);
+    }*/
+
     // Check
     if( nreq <= 0 ) {
         fprintf(stderr, "Warning: expected or exception/message must be specified\n");
@@ -434,6 +479,10 @@ START_TEST(handlebars_spec_compiler)
     
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
+    if( test->known_helpers ) {
+        compiler->known_helpers = test->known_helpers;
+    }
+
     handlebars_compiler_compile(compiler, ctx->program);
     ck_assert_int_eq(0, compiler->errnum);
     
@@ -442,14 +491,19 @@ START_TEST(handlebars_spec_compiler)
     //fprintf(stdout, "%s\n", printer->output);
     
     // Check
-    //ck_assert_str_eq(printer->output, test->expected);
-    if( strcmp(printer->output, test->expected) != 0 ) {
-        char * tmp = talloc_asprintf(rootctx, 
-            "Failed.\nTest: %s - %s\nFlags: %d\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
-            test->description, test->it, test->flags,
-            test->tmpl, test->expected, printer->output);
-        ck_abort_msg(tmp);
-    }
+    /*if( test->exception ) {
+       ck_assert_int_ne(0, compiler->errnum);
+    } else {*/
+        //ck_assert_str_eq(printer->output, test->expected);
+        if( strcmp(printer->output, test->expected) != 0 ) {
+            char * tmp = talloc_asprintf(rootctx,
+                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %d\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+                test->suite_name,
+                test->description, test->it, test->flags,
+                test->tmpl, test->expected, printer->output);
+            ck_abort_msg(tmp);
+        }
+    /* } */
     
     handlebars_context_dtor(ctx);
 }

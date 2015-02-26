@@ -91,7 +91,7 @@ struct handlebars_ast_node_raw_block {
 struct handlebars_ast_node_content {
   char * string;
   size_t length;
-  // Todo: original
+  char * original;
 };
 
 struct handlebars_ast_node_hash {
