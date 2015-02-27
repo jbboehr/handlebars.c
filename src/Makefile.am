@@ -17,9 +17,9 @@ handlebars.lex.c:
 	
 # re2c
 if RE2C
-DISTCLEANFILES = handlebars_scanners.c
+MAINTAINERCLEANFILES = handlebars_scanners.c
 handlebars_scanners.c:
-	$(RE2C) -si -o handlebars_scanners.c handlebars_scanners.re
+	$(RE2C) -si8 -o handlebars_scanners.c handlebars_scanners.re
 endif
 
 # Main
