@@ -61,6 +61,9 @@ static char * export_dir = NULL;
 static int loadTestOpcodeOperand(struct handlebars_opcode * opcode, 
         struct handlebars_operand * operand, json_object * object)
 {
+    if( !object ) {
+        return 0;
+    }
     switch( json_object_get_type(object) ) {
         case json_type_null:
             handlebars_operand_set_null(operand);
