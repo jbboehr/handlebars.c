@@ -114,6 +114,9 @@ const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_nod
     switch( ast_node->type ) {
         case HANDLEBARS_AST_NODE_ID:
             ret = (const char *) ast_node->node.id.string;
+            if( !ret ) {
+                ret = "";
+            }
             break;
         case HANDLEBARS_AST_NODE_DATA:
             //ret = talloc_asprintf(ast_node, "@%s", handlebars_ast_node_get_string_mode_value(ast_node->node.data.id));

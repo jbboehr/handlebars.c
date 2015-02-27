@@ -485,15 +485,17 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
     
     // Make idName and assign
     if( depth > 0 ) {
-        id_name_length = depth * 3 + 1;
+        id_name_length = depth * 3;
         id_name = handlebars_talloc_size(ast_node, id_name_length + string_length + 1);
         __MEMCHECK(id_name);
+        memset(id_name, 0, id_name_length + string_length + 1);
         memset(id_name, '.', id_name_length);
         for( i = 1; i <= depth; i++ ) {
             id_name[i * 3 - 1] = '/';
         }
         strncpy(id_name + id_name_length, string, string_length);
         id_name_length += string_length;
+        id_name[id_name_length] = 0;
         ast_node->node.id.id_name = id_name;
         ast_node->node.id.id_name_length = id_name_length;
     }
