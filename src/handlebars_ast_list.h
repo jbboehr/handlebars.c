@@ -19,6 +19,7 @@ struct handlebars_ast_node;
  */
 struct handlebars_ast_list_item {
     struct handlebars_ast_list_item * next;
+    struct handlebars_ast_list_item * prev;
     struct handlebars_ast_node * data;
 };
 
@@ -28,6 +29,7 @@ struct handlebars_ast_list_item {
 struct handlebars_ast_list {
     struct handlebars_ast_list_item * first;
     struct handlebars_ast_list_item * last;
+    size_t count;
 };
 
 #define handlebars_ast_list_foreach(list, el, tmp) \
@@ -41,6 +43,14 @@ struct handlebars_ast_list {
  * @return A return code from the handlebars_error_type enum. Success is zero.
  */
 int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+
+/**
+ * @brief Count the number of items in an AST list
+ * 
+ * @param[in] lust The list to count
+ * @return The number of items in the list
+ */
+int handlebars_ast_list_count(struct handlebars_ast_list * list);
 
 /**
  * @brief Contruct a new AST node list
@@ -57,6 +67,17 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx);
  * @return void
  */
 void handlebars_ast_list_dtor(struct handlebars_ast_list * list);
+
+struct handlebars_ast_list_item * handlebars_ast_list_find(
+        struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+
+void handlebars_ast_list_insert_after(struct handlebars_ast_list * list, 
+        struct handlebars_ast_list_item * item,
+        struct handlebars_ast_list_item * new_item);
+
+void handlebars_ast_list_insert_before(struct handlebars_ast_list * list, 
+        struct handlebars_ast_list_item * item,
+        struct handlebars_ast_list_item * new_item);
 
 /**
  * @brief Remove an AST node from a list

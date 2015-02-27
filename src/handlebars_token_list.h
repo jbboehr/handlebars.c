@@ -37,7 +37,7 @@ struct handlebars_token_list {
  * @brief Append a token to a list
  * 
  * @param[in] list The list to which to append
- * @param[in] ast_node The token to append
+ * @param[in] token The token to append
  * @return A return code from the handlebars_error_type enum. Success is zero.
  */
 int handlebars_token_list_append(struct handlebars_token_list * list, struct handlebars_token * token);

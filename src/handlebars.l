@@ -143,6 +143,11 @@ ID    {IDC}+/{LOOKAHEAD}
 										yy_push_state(mu, yyscanner);
 									}
 
+"\\"                                {
+										handlebars_yy_copy_lval();
+										return CONTENT;
+									}
+
 <emu>. 								{
 										// v2.0.0 handlebars.l line 47
 										handlebars_yy_unput_all;
@@ -344,7 +349,7 @@ ID    {IDC}+/{LOOKAHEAD}
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes(yylval->text, &yylval->length);
+										handlebars_stripcslashes_ex(yylval->text, &yylval->length);
                                    		return STRING;
                                  	}
 
@@ -353,7 +358,7 @@ ID    {IDC}+/{LOOKAHEAD}
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes(yylval->text, &yylval->length);
+										handlebars_stripcslashes_ex(yylval->text, &yylval->length);
 										return STRING;
                                 	}
                                  
@@ -402,9 +407,8 @@ ID    {IDC}+/{LOOKAHEAD}
 										return INVALID;
 									}
 
-<INITIAL,mu><<END>>              	{
+<<EOF>>              	            {
 										// v2.0.0 handlebars.l line 102
-										handlebars_yy_copy_lval();
 										return END;
 									}
 

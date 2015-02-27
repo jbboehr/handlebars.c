@@ -29,9 +29,9 @@ coverage-init:
 	$(LCOV) --directory . --zerocounters -q
 
 coverage-main:
-	$(LCOV) --capture --compat-libtool --directory . --output-file handlebars_c_test.info
-	$(LCOV) --remove handlebars_c_test.info "/usr*" --compat-libtool --output-file handlebars_c_test.info
-	genhtml -o test_coverage -t "handlebars.c test coverage" --num-spaces 4 handlebars_c_test.info
+	$(LCOV) --rc lcov_branch_coverage=1 --compat-libtool --directory . --capture --output-file handlebars_c_test.info
+	$(LCOV) --rc lcov_branch_coverage=1 --compat-libtool --directory . --remove handlebars_c_test.info "/usr*" --output-file handlebars_c_test.info
+	genhtml --rc genhtml_branch_coverage=1 -o test_coverage -t "handlebars.c test coverage" --num-spaces 4 handlebars_c_test.info
 
 coverage: all coverage-init test coverage-main
 

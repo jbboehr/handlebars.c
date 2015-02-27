@@ -346,6 +346,8 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
         case HANDLEBARS_AST_NODE_PATH_SEGMENT: 
             //return _handlebars_ast_print_path_segment(ast_node, ctx);
             break;
+        case HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM: 
+            break;
         case HANDLEBARS_AST_NODE_NIL:
             break;
         // LCOV_EXCL_STOP

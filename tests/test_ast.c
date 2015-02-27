@@ -70,32 +70,32 @@ START_TEST(test_ast_node_readable_type)
 {
 #define _RTYPE_STR(str) #str
 #define _RTYPE_MK(str) HANDLEBARS_AST_NODE_ ## str
-#define _RTYPE_TEST(str) \
+#define _RTYPE_TEST(str, name) \
         do { \
-			const char * expected = _RTYPE_STR(str); \
+			const char * expected = _RTYPE_STR(name); \
 			const char * actual = handlebars_ast_node_readable_type(_RTYPE_MK(str)); \
 			ck_assert_str_eq(expected, actual); \
 		} while(0)
     
-	_RTYPE_TEST(NIL);
-	_RTYPE_TEST(PROGRAM);
-    _RTYPE_TEST(PROGRAM);
-    _RTYPE_TEST(MUSTACHE);
-    _RTYPE_TEST(SEXPR);
-    _RTYPE_TEST(PARTIAL);
-    _RTYPE_TEST(BLOCK);
-    _RTYPE_TEST(RAW_BLOCK);
-    _RTYPE_TEST(CONTENT);
-    _RTYPE_TEST(HASH);
-    _RTYPE_TEST(HASH_SEGMENT);
-    _RTYPE_TEST(ID);
-    _RTYPE_TEST(PARTIAL_NAME);
-    _RTYPE_TEST(DATA);
-    _RTYPE_TEST(STRING);
-    _RTYPE_TEST(NUMBER);
-    _RTYPE_TEST(BOOLEAN);
-    _RTYPE_TEST(COMMENT);
-    _RTYPE_TEST(PATH_SEGMENT);
+	_RTYPE_TEST(NIL, NIL);
+	_RTYPE_TEST(PROGRAM, program);
+    _RTYPE_TEST(MUSTACHE, mustache);
+    _RTYPE_TEST(SEXPR, sexpr);
+    _RTYPE_TEST(PARTIAL, partial);
+    _RTYPE_TEST(BLOCK, block);
+    _RTYPE_TEST(RAW_BLOCK, raw_block);
+    _RTYPE_TEST(CONTENT, content);
+    _RTYPE_TEST(HASH, hash);
+    _RTYPE_TEST(HASH_SEGMENT, HASH_SEGMENT);
+    _RTYPE_TEST(ID, ID);
+    _RTYPE_TEST(PARTIAL_NAME, PARTIAL_NAME);
+    _RTYPE_TEST(DATA, DATA);
+    _RTYPE_TEST(STRING, STRING);
+    _RTYPE_TEST(NUMBER, NUMBER);
+    _RTYPE_TEST(BOOLEAN, BOOLEAN);
+    _RTYPE_TEST(COMMENT, comment);
+    _RTYPE_TEST(PATH_SEGMENT, PATH_SEGMENT);
+    _RTYPE_TEST(INVERSE_AND_PROGRAM, INVERSE_AND_PROGRAM);
     ck_assert_str_eq("UNKNOWN", handlebars_ast_node_readable_type(-1));
 }
 END_TEST

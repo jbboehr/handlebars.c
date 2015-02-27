@@ -26,58 +26,88 @@ static void teardown(void)
 
 START_TEST(test_addcslashes)
 {
-	const char * what = "";
-	const char * input = "";
-	const char * expected = "";
-	char * actual = handlebars_addcslashes(input, strlen(input), what, strlen(what));
-	ck_assert_str_eq(expected, actual);
+    const char * what = "";
+    const char * input = "";
+    const char * expected = "";
+    char * actual = handlebars_addcslashes(input, what);
+    ck_assert_str_eq(expected, actual);
 }
 {
-	const char * what = "\r\n\t";
-	const char * input = "\ttest\rlines\n";
-	const char * expected = "\\ttest\\rlines\\n";
-	char * actual = handlebars_addcslashes(input, strlen(input), what, strlen(what));
-	ck_assert_str_eq(expected, actual);
+    const char * what = "\r\n\t";
+    const char * input = "\ttest\rlines\n";
+    const char * expected = "\\ttest\\rlines\\n";
+    char * actual = handlebars_addcslashes(input, what);
+    ck_assert_str_eq(expected, actual);
 }
 {
-	const char * what = "abc";
-	const char * input = "amazing biscuit circus";
-	const char * expected = "\\am\\azing \\bis\\cuit \\cir\\cus";
-	char * actual = handlebars_addcslashes(input, strlen(input), what, strlen(what));
-	ck_assert_str_eq(expected, actual);
+    const char * what = "abc";
+    const char * input = "amazing biscuit circus";
+    const char * expected = "\\am\\azing \\bis\\cuit \\cir\\cus";
+    char * actual = handlebars_addcslashes(input, what);
+    ck_assert_str_eq(expected, actual);
 }
 {
-	const char * what = "";
-	const char * input = "kaboemkara!";
-	const char * expected = "kaboemkara!";
-	char * actual = handlebars_addcslashes(input, strlen(input), what, strlen(what));
-	ck_assert_str_eq(expected, actual);
+    const char * what = "";
+    const char * input = "kaboemkara!";
+    const char * expected = "kaboemkara!";
+    char * actual = handlebars_addcslashes(input, what);
+    ck_assert_str_eq(expected, actual);
 }
 {
-	const char * what = "bar";
-	const char * input = "foobarbaz";
-	const char * expected = "foo\\b\\a\\r\\b\\az";
-	char * actual = handlebars_addcslashes(input, strlen(input), what, strlen(what));
-	ck_assert_str_eq(expected, actual);
+    const char * what = "bar";
+    const char * input = "foobarbaz";
+    const char * expected = "foo\\b\\a\\r\\b\\az";
+    char * actual = handlebars_addcslashes(input, what);
+    ck_assert_str_eq(expected, actual);
 }
 {
-	const char * what = "\a\v\b\f\x3";
-	const char * input = "\a\v\b\f\x3";
-	const char * expected = "\\a\\v\\b\\f\\003";
-	char * actual = handlebars_addcslashes(input, strlen(input), what, strlen(what));
-	ck_assert_str_eq(expected, actual);
+    const char * what = "\a\v\b\f\x3";
+    const char * input = "\a\v\b\f\x3";
+    const char * expected = "\\a\\v\\b\\f\\003";
+    char * actual = handlebars_addcslashes(input, what);
+    ck_assert_str_eq(expected, actual);
+}
+END_TEST
+
+START_TEST(test_ltrim)
+{
+    char * in = handlebars_talloc_strdup(ctx, " \n \r test ");
+    char * ret = handlebars_ltrim(in, " \t\r\n");
+    ck_assert_str_eq(in, "test ");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+}
+{
+    char * in = handlebars_talloc_strdup(ctx, "\n  ");
+    char * ret = handlebars_ltrim(in, " \t");
+    ck_assert_str_eq(in, "\n  ");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+}
+{
+    char * in = handlebars_talloc_strdup(ctx, "");
+    char * ret = handlebars_ltrim(in, "");
+    ck_assert_str_eq(in, "");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
 }
 END_TEST
 
 START_TEST(test_rtrim)
 {
-    char * in = handlebars_talloc_strdup(NULL, "test \n \r ");
+    char * in = handlebars_talloc_strdup(ctx, "test \n \r ");
     handlebars_rtrim(in, " \t\r\n");
     ck_assert_str_eq(in, "test");
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(NULL, "");
+    char * in = handlebars_talloc_strdup(ctx, "\n");
+    handlebars_rtrim(in, " \v\t\r\n");
+    ck_assert_str_eq(in, "");
+    handlebars_talloc_free(in);
+}
+{
+    char * in = handlebars_talloc_strdup(ctx, "");
     handlebars_rtrim(in, "");
     ck_assert_str_eq(in, "");
     handlebars_talloc_free(in);
@@ -86,64 +116,64 @@ END_TEST
 
 START_TEST(test_stripcslashes)
 {
-	char * input = strdup("\\n\\r");
-	size_t input_len = strlen(input);
-	const char * expected = "\n\r";
-	handlebars_stripcslashes(input, &input_len);
-	ck_assert_str_eq(expected, input);
-	free(input);
+    char * input = strdup("\\n\\r");
+    size_t input_len = strlen(input);
+    const char * expected = "\n\r";
+    handlebars_stripcslashes_ex(input, &input_len);
+    ck_assert_str_eq(expected, input);
+    free(input);
 }
 {
-	char * input = strdup("\\065\\x64");
-	size_t input_len = strlen(input);
-	const char * expected = "5d";
-	handlebars_stripcslashes(input, &input_len);
-	ck_assert_str_eq(expected, input);
-	free(input);
+    char * input = strdup("\\065\\x64");
+    size_t input_len = strlen(input);
+    const char * expected = "5d";
+    handlebars_stripcslashes_ex(input, &input_len);
+    ck_assert_str_eq(expected, input);
+    free(input);
 }
 {
-	char * input = strdup("");
-	size_t input_len = strlen(input);
-	const char * expected = "";
-	handlebars_stripcslashes(input, &input_len);
-	ck_assert_str_eq(expected, input);
-	free(input);
+    char * input = strdup("");
+    size_t input_len = strlen(input);
+    const char * expected = "";
+    handlebars_stripcslashes_ex(input, &input_len);
+    ck_assert_str_eq(expected, input);
+    free(input);
 }
 {
-	char * input = strdup("\\{");
-	size_t input_len = strlen(input);
-	const char * expected = "{";
-	handlebars_stripcslashes(input, &input_len);
-	ck_assert_str_eq(expected, input);
-	free(input);
+    char * input = strdup("\\{");
+    size_t input_len = strlen(input);
+    const char * expected = "{";
+    handlebars_stripcslashes_ex(input, &input_len);
+    ck_assert_str_eq(expected, input);
+    free(input);
 }
 {
-	char * input = strdup("\\a\\t\\v\\b\\f\\\\");
-	size_t input_len = strlen(input);
-	const char * expected = "\a\t\v\b\f\\";
-	handlebars_stripcslashes(input, &input_len);
-	ck_assert_str_eq(expected, input);
-	free(input);
+    char * input = strdup("\\a\\t\\v\\b\\f\\\\");
+    size_t input_len = strlen(input);
+    const char * expected = "\a\t\v\b\f\\";
+    handlebars_stripcslashes_ex(input, &input_len);
+    ck_assert_str_eq(expected, input);
+    free(input);
 }
 {
-	char * input = strdup("\\x3");
-	size_t input_len = strlen(input);
-	const char * expected = "\x3";
-	handlebars_stripcslashes(input, &input_len);
-	ck_assert_str_eq(expected, input);
-	free(input);
+    char * input = strdup("\\x3");
+    size_t input_len = strlen(input);
+    const char * expected = "\x3";
+    handlebars_stripcslashes_ex(input, &input_len);
+    ck_assert_str_eq(expected, input);
+    free(input);
 }
 {
-	char * input = strdup("\\0test");
-	size_t input_len = 6;
-	
-	handlebars_stripcslashes(input, &input_len);
-	
-	ck_assert_int_eq(0, input[0]);
-	ck_assert_int_eq('t', input[1]);
-	ck_assert_int_eq(0, input[5]);
-	
-	free(input);
+    char * input = strdup("\\0test");
+    size_t input_len = 6;
+
+    handlebars_stripcslashes_ex(input, &input_len);
+
+    ck_assert_int_eq(0, input[0]);
+    ck_assert_int_eq('t', input[1]);
+    ck_assert_int_eq(0, input[5]);
+
+    free(input);
 }
 END_TEST
 
@@ -231,19 +261,20 @@ END_TEST
 
 Suite * parser_suite(void)
 {
-	Suite * s = suite_create("Utils");
+    Suite * s = suite_create("Utils");
 
-	REGISTER_TEST_FIXTURE(s, test_addcslashes, "addcslashes");
-	REGISTER_TEST_FIXTURE(s, test_rtrim, "rtrim");
-	REGISTER_TEST_FIXTURE(s, test_stripcslashes, "stripcslashes");
-	REGISTER_TEST_FIXTURE(s, test_yy_error, "yy_error");
-	REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
-	REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");
-	REGISTER_TEST_FIXTURE(s, test_yy_print, "yy_print");
-	REGISTER_TEST_FIXTURE(s, test_yy_realloc, "yy_realloc");
-	REGISTER_TEST_FIXTURE(s, test_yy_realloc_failed_alloc, "yy_realloc (failed alloc)");
+    REGISTER_TEST_FIXTURE(s, test_addcslashes, "addcslashes");
+    REGISTER_TEST_FIXTURE(s, test_ltrim, "ltrim");
+    REGISTER_TEST_FIXTURE(s, test_rtrim, "rtrim");
+    REGISTER_TEST_FIXTURE(s, test_stripcslashes, "stripcslashes");
+    REGISTER_TEST_FIXTURE(s, test_yy_error, "yy_error");
+    REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
+    REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");
+    REGISTER_TEST_FIXTURE(s, test_yy_print, "yy_print");
+    REGISTER_TEST_FIXTURE(s, test_yy_realloc, "yy_realloc");
+    REGISTER_TEST_FIXTURE(s, test_yy_realloc_failed_alloc, "yy_realloc (failed alloc)");
 
-	return s;
+    return s;
 }
 
 int main(void)

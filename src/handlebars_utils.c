@@ -12,13 +12,12 @@
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
-char * handlebars_addcslashes(const char * str, size_t str_length, const char * what, size_t what_length)
+char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char * what, size_t what_length)
 {
     char flags[256];
     char * source;
     char * target;
     char * end;
-    char c;
     size_t i;
     char * new_str;
     size_t new_str_length;
@@ -38,7 +37,7 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
     target = new_str;
     end = source + str_length;
     for( ; source < end ; source++ ) {
-        c = *source;
+        char c = *source;
         if( flags[(unsigned char) c] ) {
             if ((unsigned char) c < 32 || (unsigned char) c > 126) {
             *target++ = '\\';
@@ -69,25 +68,63 @@ char * handlebars_addcslashes(const char * str, size_t str_length, const char * 
     return new_str;
 }
 
-char * handlebars_rtrim(char * string, const char * what)
+char * handlebars_ltrim_ex(char * string, size_t * length, const char * what, size_t what_length)
 {
-    int i, l;
+    size_t i;
     char flags[256];
-    char * original;
-    
+    char * ptr;
+    size_t len = length ? *length : strlen(string);
+
     // Make char mask
     memset(flags, 0, sizeof(flags));
-    for( i = 0, l = strlen(what); i < l; i++ ) {
+    for( i = 0; i < what_length; i++ ) {
         flags[(unsigned char) what[i]] = 1;
     }
+
+    ptr = string;
+    while( *ptr && flags[(unsigned char) *ptr] ) {
+        ++ptr;
+        --len;
+    }
+
+    if( ptr > string ) {
+        memmove(string, ptr, len + 1);
+    }
     
-    original = string + strlen(string);
-    while(original > string && flags[(unsigned char) *--original]);
-    *(original + 1) = '\0';
+    if( length ) {
+        *length = len;
+    }
+
     return string;
 }
 
-void handlebars_stripcslashes(char * str, size_t * length)
+char * handlebars_rtrim_ex(char * string, size_t * length, const char * what, size_t what_length)
+{
+    size_t i;
+    char flags[256];
+    char * original;
+    size_t len = length ? *length : strlen(string);
+    
+    // Make char mask
+    memset(flags, 0, sizeof(flags));
+    for( i = 0; i < what_length; i++ ) {
+        flags[(unsigned char) what[i]] = 1;
+    }
+    
+    original = string + len;
+    while(original >= string && flags[(unsigned char) *--original]) {
+        --len;
+        *original = '\0';
+    }
+    
+    if( length ) {
+        *length = len;
+    }
+    
+    return string;
+}
+
+char * handlebars_stripcslashes_ex(char * str, size_t * length)
 {
     char *source, *target, *end;
     size_t nlen = (length == NULL ? strlen(str) : *length);
@@ -151,6 +188,8 @@ void handlebars_stripcslashes(char * str, size_t * length)
     if( length != NULL ) {
         *length = nlen;
     }
+    
+    return str;
 }
 
 

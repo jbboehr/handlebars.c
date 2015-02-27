@@ -9,11 +9,18 @@ else
 	FLEXFLAGS = -Cfra # --align --full
 endif
 
-# Flex/bison
+# flex/bison
 handlebars.tab.c: handlebars.lex.c
 	${BISON} $(BISONFLAGS) -b handlebars handlebars.y
 handlebars.lex.c:
 	${FLEX} $(FLEXFLAGS) -o handlebars.lex.c handlebars.l
+	
+# re2c
+if RE2C
+MAINTAINERCLEANFILES = handlebars_scanners.c
+handlebars_scanners.c:
+	$(RE2C) -si8 -o handlebars_scanners.c handlebars_scanners.re
+endif
 
 # Main
 include_HEADERS = \
@@ -22,8 +29,12 @@ include_HEADERS = \
 	handlebars_ast_helpers.h \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
+	handlebars_compiler.h \
 	handlebars_context.h \
 	handlebars_memory.h \
+	handlebars_opcode_printer.h \
+	handlebars_opcodes.h \
+	handlebars_scanners.h \
 	handlebars_token.h \
 	handlebars_token_list.h \
 	handlebars_token_printer.h \
@@ -51,8 +62,16 @@ libhandlebars_la_SOURCES = \
 	handlebars_ast_list.c \
 	handlebars_ast_printer.h \
 	handlebars_ast_printer.c \
+	handlebars_compiler.h \
+	handlebars_compiler.c \
 	handlebars_context.h \
 	handlebars_context.c \
+	handlebars_opcode_printer.h \
+	handlebars_opcode_printer.c \
+	handlebars_opcodes.h \
+	handlebars_opcodes.c \
+	handlebars_scanners.h \
+	handlebars_scanners.c \
 	handlebars_token.h \
 	handlebars_token.c \
 	handlebars_token_list.h \

@@ -24,28 +24,34 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
 {
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
-    YYSTYPE * lval;
-    char * text;
-    int token_int = 0;
     struct handlebars_token_list * list;
-    struct handlebars_token * token = NULL;
     
     // Prepare token list
     list = handlebars_token_list_ctor(ctx);
     
     // Run
     do {
+        YYSTYPE * lval;
+        char * text;
+        struct handlebars_token * token;
+        int token_int;
+        
         token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, ctx->scanner);
-        if( token_int == END || token_int == INVALID ) break;
+        if( token_int == END || token_int == INVALID ) {
+            break;
+        }
         lval = handlebars_yy_get_lval(ctx->scanner);
         
         // Make token object
         text = (lval->text == NULL ? "" : lval->text);
         token = handlebars_token_ctor(token_int, text, strlen(text), list);
+        if( !token ) {
+            break;
+        }
         
         // Append
         handlebars_token_list_append(list, token);
-    } while( token );
+    } while( 1 );
     
     return list;
 }

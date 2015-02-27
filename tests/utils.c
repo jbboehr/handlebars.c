@@ -61,11 +61,11 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 		//if( strlen(ent->d_name) < 5 ) continue;
 		//if( strcmp(ent->d_name + strlen(ent->d_name) - 4, ".yml") != 0 ) continue;
 		//if( *(ent->d_name) == '~' ) continue; // Ignore lambdas
-		if( strlen(ent->d_name) >= 100 ) continue; // fear
+		if( strlen(ent->d_name) + strlen(dirname) + 1 >= 128 ) continue; // fear
 		
 		// Make filename
-		char filename[100];
-		snprintf(filename, 100, "%s/%s", dirname, filename);
+		char filename[128];
+		snprintf(filename, 128, "%s/%s", dirname, ent->d_name);
 		
 		// Callback
 		cb(filename);

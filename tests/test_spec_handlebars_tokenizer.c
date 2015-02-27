@@ -50,10 +50,8 @@ static size_t tests_size = 0;
 
 static void loadSpecTestExpected(struct tokenizer_test * test, json_object * object)
 {
-    struct json_object * array_item = NULL;
     int array_len = 0;
     json_object * cur = NULL;
-    struct tokenizer_test_tokens * expected_token = NULL;
     int token_int = -1;
     const char * name = NULL;
     const char * text = NULL;
@@ -67,7 +65,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
-        array_item = json_object_array_get_idx(object, i);
+        struct json_object * array_item = json_object_array_get_idx(object, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: expected token was not an object\n");
             continue;

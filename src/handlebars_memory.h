@@ -61,7 +61,7 @@ typedef char * (*handlebars_talloc_strndup_append_buffer_func)(char *s, const ch
 typedef void * (*handlebars_talloc_zero_func)(const void * ctx, size_t size, const char * name);
 
 // Typedefs for other function pointers
-typedef void * (*handlebars_exit_func)(int exit_code);
+typedef void (*handlebars_exit_func)(int exit_code);
 
 // Memory function pointers
 extern handlebars_talloc_free_func _handlebars_talloc_free;

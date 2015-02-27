@@ -34,6 +34,8 @@ START_TEST(test_ast_list_append)
     ck_assert_ptr_eq(list->first->data, node1);
     ck_assert_ptr_eq(list->first->next->data, node2);
     ck_assert_ptr_eq(list->last->data, node2);
+    ck_assert_ptr_eq(list->last->prev->data, node1);
+    ck_assert_int_eq(list->count, 2);
     
     handlebars_ast_list_dtor(list);
 }
@@ -96,6 +98,8 @@ START_TEST(test_ast_list_prepend)
     ck_assert_ptr_eq(list->first->data, node2);
     ck_assert_ptr_eq(list->first->next->data, node1);
     ck_assert_ptr_eq(list->last->data, node1);
+    ck_assert_ptr_eq(list->last->prev->data, node2);
+    ck_assert_int_eq(list->count, 2);
     
     handlebars_ast_list_dtor(list);
 }
@@ -136,6 +140,7 @@ START_TEST(test_ast_list_remove_single)
     
     ck_assert_ptr_eq(list->first, NULL);
     ck_assert_ptr_eq(list->last, NULL);
+    ck_assert_int_eq(list->count, 0);
     
     handlebars_ast_list_dtor(list);
 }
@@ -154,6 +159,9 @@ START_TEST(test_ast_list_remove_first)
     
     ck_assert_ptr_eq(list->first->data, node2);
     ck_assert_ptr_eq(list->last->data, node2);
+    ck_assert_ptr_eq(list->first->prev, NULL);
+    ck_assert_ptr_eq(list->last->next, NULL);
+    ck_assert_int_eq(list->count, 1);
     
     handlebars_ast_list_dtor(list);
 }
@@ -174,6 +182,8 @@ START_TEST(test_ast_list_remove_middle)
     ck_assert_ptr_eq(list->first->data, node1);
     ck_assert_ptr_eq(list->last->data, node3);
     ck_assert_ptr_eq(list->first->next->data, node3);
+    ck_assert_ptr_eq(list->last->prev->data, node1);
+    ck_assert_int_eq(list->count, 2);
     
     handlebars_ast_list_dtor(list);
 }
@@ -191,6 +201,9 @@ START_TEST(test_ast_list_remove_last)
     
     ck_assert_ptr_eq(list->first->data, node1);
     ck_assert_ptr_eq(list->last->data, node1);
+    ck_assert_ptr_eq(list->first->prev, NULL);
+    ck_assert_ptr_eq(list->last->next, NULL);
+    ck_assert_int_eq(list->count, 1);
     
     handlebars_ast_list_dtor(list);
 }

@@ -115,6 +115,7 @@ int handlebars_yy_debug = 0;
 %type <ast_list> hash_segments
 %type <ast_node> hash_segment
 %type <ast_list> path_segments
+%type <text> content
 
 %left CLOSE CLOSE_UNESCAPED CONTENT END OPEN OPEN_BLOCK OPEN_ENDBLOCK
 %left OPEN_INVERSE OPEN_PARTIAL OPEN_UNESCAPED SEP ID BOOLEAN COMMENT DATA 
@@ -124,6 +125,7 @@ int handlebars_yy_debug = 0;
 
 start : 
     program END {
+      handlebars_ast_helper_prepare_program(context, $1, 1);
       context->program = $1;
       return 1;
     }
@@ -133,10 +135,12 @@ program :
     statements {
       $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
       $$->node.program.statements = $1;
+      handlebars_ast_helper_prepare_program(context, $$, 0);
     }
   | "" {
       $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
       $$->node.program.statements = handlebars_ast_list_ctor($$);
+      handlebars_ast_helper_prepare_program(context, $$, 0);
   }
   ;
 
@@ -164,23 +168,25 @@ statement
   | partial {
       $$ = $1;
     }
-  | CONTENT {
+  | content {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_CONTENT, context);
       ast_node->node.content.string = $1;
       ast_node->node.content.length = strlen($1);
+      ast_node->node.content.original = handlebars_talloc_strdup(ast_node, $1);
       $$ = ast_node;
     }
   | COMMENT {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_COMMENT, context);
       ast_node->node.comment.comment = $1;
       ast_node->node.comment.length = strlen($1);
+      ast_node->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
       $$ = ast_node;
     }
   ;
 
 
 raw_block
-  : open_raw_block CONTENT END_RAW_BLOCK {
+  : open_raw_block content END_RAW_BLOCK {
       $$ = handlebars_ast_helper_prepare_raw_block(context, $1, $2, $3, &yylloc);
       __MEMCHECK($$);
     }
@@ -214,15 +220,16 @@ block
       __MEMCHECK($$);
     }
   | open_inverse program inverse_and_program close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, $3, $2, $4, 1, &yylloc);
+      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, $3, $4, 1, &yylloc);
       __MEMCHECK($$);
     }
   | open_inverse inverse_and_program close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, NULL, $3, 1, &yylloc);
+      struct handlebars_ast_node * program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      $$ = handlebars_ast_helper_prepare_block(context, $1, program, $2, $3, 1, &yylloc);
       __MEMCHECK($$);
     }
   | open_inverse program close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, NULL, $2, $3, 1, &yylloc);
+      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, NULL, $3, 1, &yylloc);
       __MEMCHECK($$);
     }
   | open_inverse close_block {
@@ -235,7 +242,7 @@ open_block
   : OPEN_BLOCK sexpr CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
-      // Todo: $1 $3
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
       $$ = ast_node;
     }
   ;
@@ -244,27 +251,31 @@ open_inverse
   : OPEN_INVERSE sexpr CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
-      // Todo: $1 $3
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
       $$ = ast_node;
     }
   ;
 
 inverse_and_program
   : INVERSE program {
-      // cough
-      $$ = $2;
-      // Original:
-      // -> { strip: yy.stripFlags($1, $1), program: $2 }
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM, context);
+      ast_node->node.inverse_and_program.program = $2;
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $1);
+      $$ = ast_node;
     }
   | INVERSE {
-      $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM, context);
+      ast_node->node.inverse_and_program.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $1);
+      $$ = ast_node;
     }
   ;
 
 close_block
   : OPEN_ENDBLOCK path CLOSE {
-      // this is kind of wrong
+      // @todo might not be right
       $$ = $2;
+      handlebars_ast_helper_set_strip_flags($$, $1, $3);
       // Original:
       //-> {path: $2, strip: yy.stripFlags($1, $3)}
     }
@@ -274,14 +285,22 @@ mustache
   : OPEN sexpr CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
-      // Todo: $1 $3
+      // @todo this won't work w/ whitespace
+      if( $1 ) {
+        if( strlen($1) >= 4 && *($1 + 3) == '&' ) {
+          ast_node->node.mustache.unescaped = 1;
+        } else if( strlen($1) >= 3 && *($1 + 2) == '&' ) {
+          ast_node->node.mustache.unescaped = 1;
+        }
+      }
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
       $$ = ast_node;
     }
   | OPEN_UNESCAPED sexpr CLOSE_UNESCAPED {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
       ast_node->node.mustache.sexpr = $2;
-      ast_node->node.mustache.escaped = -1;
-      // Todo: $1 $3
+      ast_node->node.mustache.unescaped = 1;
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
       $$ = ast_node;
     }
   ;
@@ -291,7 +310,7 @@ partial
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
       ast_node->node.partial.partial_name = $2;
       ast_node->node.partial.context = $3;
-      // Todo: $1 $4
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $4);
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name param hash CLOSE {
@@ -299,53 +318,44 @@ partial
       ast_node->node.partial.partial_name = $2;
       ast_node->node.partial.context = $3;
       ast_node->node.partial.hash = $4;
-      // Todo: $1 $5
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $5);
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
       ast_node->node.partial.partial_name = $2;
-      // Todo: $1 $3
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
       $$ = ast_node;
     }
   | OPEN_PARTIAL partial_name hash CLOSE {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
       ast_node->node.partial.partial_name = $2;
       ast_node->node.partial.hash = $3;
-      // Todo: $1 $4
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $4);
       $$ = ast_node;
     }
   ;
 
 sexpr
   : path {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, NULL);
+      __MEMCHECK($$);
     }
   | path hash {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      ast_node->node.sexpr.hash = $2;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, $2);
+      __MEMCHECK($$);
     }
   | path params hash {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      ast_node->node.sexpr.params = $2;
-      ast_node->node.sexpr.hash = $3;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, $2, $3);
+      __MEMCHECK($$);
     }
   | path params {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      ast_node->node.sexpr.params = $2;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, $2, NULL);
+      __MEMCHECK($$);
     }
   | data_name {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-      ast_node->node.sexpr.id = $1;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, NULL);
+      __MEMCHECK($$);
     }
   ;
 
@@ -387,7 +397,7 @@ param
     }
   | OPEN_SEXPR sexpr CLOSE_SEXPR {
       $$ = $2;
-      // {$2.isHelper = true; $$ = $2;}
+      $$->node.sexpr.is_helper = 1;
     }
   ;
 
@@ -483,3 +493,11 @@ path_segments
       handlebars_ast_list_append($$, ast_node);
     }
   ;
+
+content
+  : content CONTENT {
+    $$ = handlebars_talloc_strdup_append($1, $2);
+  }
+  | CONTENT {
+    $$ = $1;
+  }

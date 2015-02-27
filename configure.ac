@@ -50,6 +50,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_AWK
 AC_PROG_CC
 AC_PROG_CC_STDC
+AC_PROG_CC_C99
 AC_PROG_INSTALL
 AC_PROG_LEX
 AC_PROG_LIBTOOL
@@ -59,8 +60,10 @@ AC_PATH_PROGS(BISON, [bison], no)
 AC_PATH_PROGS(FLEX, [flex], no)
 AC_PATH_PROGS(DOXYGEN, [doxygen], no)
 AC_PATH_PROGS(LCOV, [lcov], no)
+AC_PATH_PROGS(RE2C, [re2c], no)
 AM_CONDITIONAL([GCC], [test x$GCC = xyes])
 AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
+AM_CONDITIONAL([RE2C], [test x$RE2C != xno])
 AM_CONDITIONAL(HAVE_DOXYGEN, [test "x$DOXYGEN" != "xno"])
 AS_IF([test "x$DOXYGEN" = "xno"], [
   AC_MSG_WARN([Doxygen not found - continuing without Doxygen support])
@@ -80,6 +83,8 @@ AC_CHECK_FUNC(snprintf, , AC_MSG_ERROR([snprintf is required]))
 
 # Checks for typedefs, structures, and compiler characteristics
 AC_C_CONST
+AC_C_INLINE
+AC_C_STRINGIZE
 AC_TYPE_SIZE_T
 
 # Checks for system
@@ -157,6 +162,18 @@ AS_IF([test "x$enable_yaml" != "xno"], [
 ])
 
 # Options
+AC_DEFINE([YY_NO_UNISTD_H], [1], [Disable usage of unistd.h])
+
+# debug
+AC_ARG_ENABLE([debug], 
+  [AS_HELP_STRING([--enable-debug], [compile with debug functions])], [])
+
+AS_IF([test "x$enable_debug" == "xyes"], [
+  AC_DEFINE([DEBUG], [1], [Defined if debug functions requested])
+], [
+  AC_DEFINE([NDEBUG], [1], [Defined if debug functions NOT requested])
+])
+AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # gcov
 AC_ARG_ENABLE([gcov], AS_HELP_STRING([--enable-gcov], [compile with gcov]))
@@ -167,8 +184,10 @@ AS_IF([test "x$enable_gcov" == "xyes"], [
   ])
 
   AC_SUBST([LIBGCOV_LIBS], ["-lgcov -coverage"])
-  LIBGCOV_CFLAGS="-g -O0 -coverage" # -disable-shared
-  CFLAGS="$CFLAGS $LIBGCOV_CFLAGS"
+  LIBGCOV_CFLAGS="-g -O0 --coverage" # -disable-shared
+  LIBGCOV_LDFLAGS="--coverage"
+  CFLAGS+=" $LIBGCOV_CFLAGS"
+  LDFLAGS+=" $LIBGCOV_LDFLAGS"
 ])
 
 AM_CONDITIONAL([GCOV], [test x$enable_gcov = xyes])
