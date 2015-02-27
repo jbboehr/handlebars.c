@@ -220,15 +220,16 @@ block
       __MEMCHECK($$);
     }
   | open_inverse program inverse_and_program close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, $3, $2, $4, 1, &yylloc);
+      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, $3, $4, 1, &yylloc);
       __MEMCHECK($$);
     }
   | open_inverse inverse_and_program close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, NULL, $3, 1, &yylloc);
+      struct handlebars_ast_node * program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      $$ = handlebars_ast_helper_prepare_block(context, $1, program, $2, $3, 1, &yylloc);
       __MEMCHECK($$);
     }
   | open_inverse program close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, NULL, $2, $3, 1, &yylloc);
+      $$ = handlebars_ast_helper_prepare_block(context, $1, $2, NULL, $3, 1, &yylloc);
       __MEMCHECK($$);
     }
   | open_inverse close_block {
@@ -257,14 +258,16 @@ open_inverse
 
 inverse_and_program
   : INVERSE program {
-      // @todo might not be right
-      $$ = $2;
-      handlebars_ast_helper_set_strip_flags($$, $1, $1);
-      // Original:
-      // -> { strip: yy.stripFlags($1, $1), program: $2 }
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM, context);
+      ast_node->node.inverse_and_program.program = $2;
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $1);
+      $$ = ast_node;
     }
   | INVERSE {
-      $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM, context);
+      ast_node->node.inverse_and_program.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      handlebars_ast_helper_set_strip_flags(ast_node, $1, $1);
+      $$ = ast_node;
     }
   ;
 

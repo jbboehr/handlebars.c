@@ -161,6 +161,7 @@ const char * handlebars_ast_node_readable_type(int type)
     _RTYPE_CASE(BOOLEAN, BOOLEAN);
     _RTYPE_CASE(COMMENT, comment);
     _RTYPE_CASE(PATH_SEGMENT, PATH_SEGMENT);
+    _RTYPE_CASE(INVERSE_AND_PROGRAM, INVERSE_AND_PROGRAM);
   }
   
   return "UNKNOWN";

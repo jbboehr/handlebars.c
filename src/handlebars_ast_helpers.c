@@ -298,12 +298,23 @@ int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         struct handlebars_context * context, struct handlebars_ast_node * mustache,
-        struct handlebars_ast_node * program, struct handlebars_ast_node * inverse,
+        struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_and_program,
         struct handlebars_ast_node * close, int inverted, struct YYLTYPE * yylloc)
 {
     struct handlebars_ast_node * ast_node;
+    struct handlebars_ast_node * inverse;
+    long inverse_strip;
     TALLOC_CTX * ctx;
 
+    if( inverse_and_program ) {
+        inverse = inverse_and_program->node.inverse_and_program.program;
+        inverse_strip = inverse_and_program->strip;
+    } else {
+        inverse = NULL;
+        inverse_strip = 0;
+    }
+    
+    assert(!inverse_and_program || inverse_and_program->type == HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM);
     assert(!program || program->type == HANDLEBARS_AST_NODE_PROGRAM);
     assert(!inverse || inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
     
@@ -317,8 +328,8 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     // Assign
     // @todo maybe we should reparent these
     ast_node->node.block.mustache = mustache;
-    ast_node->node.block.program = program;
-    ast_node->node.block.inverse = inverse;
+    ast_node->node.block.program = inverted ? inverse : program;
+    ast_node->node.block.inverse = inverted ? program : inverse;
     ast_node->node.block.close = close;
     ast_node->node.block.inverted = inverted;
     
@@ -333,10 +344,10 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
        handlebars_ast_helper_omit_right(program->node.program.statements, NULL, 1);
     }
     if( inverse ) {
-        if( program && (inverse->strip & handlebars_ast_strip_flag_left) ) {
+        if( program && (inverse_strip & handlebars_ast_strip_flag_left) ) {
             handlebars_ast_helper_omit_left(program->node.program.statements, NULL, 1);
         }
-        if( (inverse->strip & handlebars_ast_strip_flag_right) ) {
+        if( (inverse_strip & handlebars_ast_strip_flag_right) ) {
             handlebars_ast_helper_omit_right(inverse->node.program.statements, NULL, 1);
         }
         if( close && (close->strip & handlebars_ast_strip_flag_left) ) {

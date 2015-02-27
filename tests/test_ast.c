@@ -95,6 +95,7 @@ START_TEST(test_ast_node_readable_type)
     _RTYPE_TEST(BOOLEAN, BOOLEAN);
     _RTYPE_TEST(COMMENT, comment);
     _RTYPE_TEST(PATH_SEGMENT, PATH_SEGMENT);
+    _RTYPE_TEST(INVERSE_AND_PROGRAM, INVERSE_AND_PROGRAM);
     ck_assert_str_eq("UNKNOWN", handlebars_ast_node_readable_type(-1));
 }
 END_TEST

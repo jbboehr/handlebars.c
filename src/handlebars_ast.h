@@ -43,7 +43,8 @@ enum handlebars_ast_node_type
   HANDLEBARS_AST_NODE_NUMBER,
   HANDLEBARS_AST_NODE_BOOLEAN,
   HANDLEBARS_AST_NODE_COMMENT,
-  HANDLEBARS_AST_NODE_PATH_SEGMENT
+  HANDLEBARS_AST_NODE_PATH_SEGMENT,
+  HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM
 };
 
 struct handlebars_ast_node_program {
@@ -156,6 +157,10 @@ struct handlebars_ast_node_path_segment {
   size_t separator_length;
 };
 
+struct handlebars_ast_node_inverse_and_program {
+  struct handlebars_ast_node * program;
+};
+
 union handlebars_ast_internals {
     struct handlebars_ast_node_block block;
     struct handlebars_ast_node_boolean boolean;
@@ -174,6 +179,7 @@ union handlebars_ast_internals {
     struct handlebars_ast_node_raw_block raw_block;
     struct handlebars_ast_node_sexpr sexpr;
     struct handlebars_ast_node_string string;
+    struct handlebars_ast_node_inverse_and_program inverse_and_program;
 };
 
 enum handlebars_ast_strip_flag {
