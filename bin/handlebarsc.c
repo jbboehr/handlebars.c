@@ -4,6 +4,9 @@
 #include <string.h>
 #include <talloc.h>
 
+#include <getopt.h>
+
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
@@ -18,39 +21,158 @@
 #include "handlebars.lex.h"
 
 #define __BUFF_SIZE 1024
-char * stdin_buf;
-size_t stdin_buf_length;
 
-static void readStdin(void)
+char * input_name = NULL;
+char * input_buf = NULL;
+size_t input_buf_length = 0;
+int compiler_flags = 0;
+
+enum handlebarsc_mode {
+    handlebarsc_mode_usage = 0,
+    handlebarsc_mode_version,
+    handlebarsc_mode_lex,
+    handlebarsc_mode_parse,
+    handlebarsc_mode_compile
+};
+
+static enum handlebarsc_mode mode;
+
+/**
+ * http://linux.die.net/man/3/getopt_long 
+ */
+static void readOpts(int argc, char * argv[])
+{
+    int c;
+    int digit_optind = 0;
+    int this_option_optind = optind ? optind : 1;
+    int option_index = 0;
+    
+    static struct option long_options[] = {
+        // modes
+        {"help",      no_argument,       0,  'h' },
+        {"lex",       no_argument,       0,  'l' },
+        {"parse",     no_argument,       0,  'p' },
+        {"compile",   no_argument,       0,  'c' },
+        {"version",   no_argument,       0,  'V' },
+        // input
+        {"template",  required_argument, 0,  't' },
+        // compiler flags
+        {"compat",    no_argument,       0,  'C' },
+        {"known-helpers-only", no_argument, 0,  'K' },
+        {"string-params", no_argument,   0,  'S' },
+        {"track-ids", no_argument,       0,  'T' },
+        {"no-escape", no_argument,       0,  'U' },
+        {0,           0,                 0,  0   }
+    };
+    
+start:
+    c = getopt_long(argc, argv, "hlpcVt:", long_options, &option_index);
+    if( c == -1 ) {
+        return;
+    }
+    
+    switch( c ) {
+        // modes
+        case 'h':
+            mode = handlebarsc_mode_usage;
+            break;
+        case 'l':
+            mode = handlebarsc_mode_lex;
+            break;
+        case 'p':
+            mode = handlebarsc_mode_parse;
+            break;
+        case 'c':
+            mode = handlebarsc_mode_compile;
+            break;
+        case 'V':
+            mode = handlebarsc_mode_version;
+            break;
+        
+        // compiler flags
+        case 'C':
+            compiler_flags |= handlebars_compiler_flag_compat;
+            break;
+        case 'K':
+            compiler_flags |= handlebars_compiler_flag_known_helpers_only;
+            break;
+        case 'S':
+            compiler_flags |= handlebars_compiler_flag_string_params;
+            break;
+        case 'T':
+            compiler_flags |= handlebars_compiler_flag_track_ids;
+            break;
+        case 'U':
+            compiler_flags |= handlebars_compiler_flag_no_escape;
+            break;
+        
+        // input
+        case 't':
+            input_name = optarg;
+            break;
+    }
+    
+    goto start;
+}
+
+static void readInput(void)
 {
     char buffer[__BUFF_SIZE];
     char * tmp;
+    FILE * in;
+    int close = 1;
     
-    stdin_buf = talloc_strdup(NULL, "");
-    if( stdin_buf == NULL ) {
+    // No input file?
+    if( !input_name ) {
+        fprintf(stderr, "No input file!\n");
         exit(1);
     }
     
-    while (fgets(buffer, __BUFF_SIZE, stdin) != NULL) {
-        stdin_buf = talloc_strdup_append_buffer(stdin_buf, buffer);
+    // Read from stdin
+    if( strcmp(input_name, "-") == 0 ) {
+        in = stdin;
+        close = 0;
+    } else {
+        in = fopen(input_name, "r");
     }
-    stdin_buf_length = strlen(stdin_buf);
+    
+    // Initialize buffer
+    input_buf = talloc_strdup(NULL, "");
+    if( input_buf == NULL ) {
+        exit(1);
+    }
+    
+    // Read
+    while( fgets(buffer, __BUFF_SIZE, in) != NULL ) {
+        input_buf = talloc_strdup_append_buffer(input_buf, buffer);
+    }
+    input_buf_length = strlen(input_buf);
     
     // Trim the newline off the end >.>
-    tmp = stdin_buf + stdin_buf_length - 1;
-    while( stdin_buf_length > 0 && (*tmp == '\n' || *tmp == '\r') ) {
+    tmp = input_buf + input_buf_length - 1;
+    while( input_buf_length > 0 && (*tmp == '\n' || *tmp == '\r') ) {
         *tmp = 0;
-        stdin_buf_length--;
+        input_buf_length--;
     }
     
-    if( stdin_buf_length <= 0 ) {
+    if( close ) {
+        fclose(in);
+    }
+    
+    if( input_buf_length <= 0 ) {
         exit(1);
     }
 }
 
 static int do_usage(void)
 {
-    fprintf(stderr, "Usage: handlebarsc [lex|parse|compile] [TEMPLATE]\n");
+    fprintf(stderr, "Usage: handlebarsc [--lex|--parse|--compile] [TEMPLATE]\n");
+    return 0;
+}
+
+static int do_version(void)
+{
+    fprintf(stderr, "handlebarsc v%s\n", handlebars_version_string());
     return 0;
 }
 
@@ -60,9 +182,9 @@ static int do_lex(void)
     struct handlebars_token * token = NULL;
     int token_int = 0;
     
-    readStdin();
+    readInput();
     ctx = handlebars_context_ctor();
-    ctx->tmpl = stdin_buf;
+    ctx->tmpl = input_buf;
     
     // Run
     do {
@@ -98,9 +220,9 @@ static int do_parse(void)
     //int retval;
     int error = 0;
     
-    readStdin();
+    readInput();
     ctx = handlebars_context_ctor();
-    ctx->tmpl = stdin_buf;
+    ctx->tmpl = input_buf;
     
     /*retval =*/ handlebars_yy_parse(ctx);
     
@@ -137,9 +259,11 @@ static int do_compile(void)
     compiler = handlebars_compiler_ctor(ctx);
     printer = handlebars_opcode_printer_ctor(ctx);
     
+    handlebars_compiler_set_flags(compiler, compiler_flags);
+    
     // Read
-    readStdin();
-    ctx->tmpl = stdin_buf;
+    readInput();
+    ctx->tmpl = input_buf;
     
     // Parse
     /*retval =*/ handlebars_yy_parse(ctx);
@@ -159,19 +283,26 @@ error:
     return error;
 }
 
-int main( int argc, char * argv[])
+int main(int argc, char * argv[])
 {
     if( argc <= 1 ) {
         return do_usage();
     }
     
-    if( strcmp(argv[1], "lex") == 0 ) {
-        return do_lex();
-    } else if( strcmp(argv[1], "parse") == 0 ) {
-        return do_parse();
-    } else if( strcmp(argv[1], "compile") == 0 ) {
-        return do_compile();
-    } else {
-        return do_usage();
+    readOpts(argc, argv);
+    
+    if( optind < argc ) {
+        while( optind < argc ) {
+            input_name = argv[optind++];
+            break;
+        }
+    }
+    
+    switch( mode ) {
+        case handlebarsc_mode_version: return do_version();
+        case handlebarsc_mode_lex: return do_lex();
+        case handlebarsc_mode_parse: return do_parse();
+        case handlebarsc_mode_compile: return do_compile();
+        default: return do_usage();
     }
 }
