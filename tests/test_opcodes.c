@@ -17,7 +17,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
@@ -30,8 +30,11 @@ static void teardown(void)
 START_TEST(test_opcode_ctor)
 {
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_append);
+    
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append, opcode->type);
+    
+    handlebars_talloc_free(opcode);
 }
 END_TEST
 
@@ -55,6 +58,8 @@ START_TEST(test_opcode_ctor_long)
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
     ck_assert_int_eq(1, opcode->op1.data.longval);
+    
+    handlebars_talloc_free(opcode);
 }
 END_TEST
 
@@ -81,6 +86,8 @@ START_TEST(test_opcode_ctor_long_string)
     ck_assert_int_eq(1, opcode->op1.data.longval);
     ck_assert_ptr_ne(NULL, opcode->op2.data.stringval);
     ck_assert_str_eq(str, opcode->op2.data.stringval);
+    
+    handlebars_talloc_free(opcode);
 }
 END_TEST
 
@@ -107,6 +114,8 @@ START_TEST(test_opcode_ctor_string)
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
     ck_assert_str_eq(str, opcode->op1.data.stringval);
     ck_assert_ptr_ne(str, opcode->op1.data.stringval);
+    
+    handlebars_talloc_free(opcode);
 }
 END_TEST
 
@@ -136,6 +145,8 @@ START_TEST(test_opcode_ctor_string2)
     ck_assert_ptr_ne(str1, opcode->op1.data.stringval);
     ck_assert_str_eq(str2, opcode->op2.data.stringval);
     ck_assert_ptr_ne(str2, opcode->op2.data.stringval);
+    
+    handlebars_talloc_free(opcode);
 }
 END_TEST
 
@@ -164,6 +175,8 @@ START_TEST(test_opcode_ctor_string_long)
     ck_assert_str_eq(str, opcode->op1.data.stringval);
     ck_assert_ptr_ne(str, opcode->op1.data.stringval);
     ck_assert_int_eq(3, opcode->op2.data.longval);
+    
+    handlebars_talloc_free(opcode);
 }
 END_TEST
 

@@ -13,7 +13,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
@@ -33,6 +33,8 @@ START_TEST(test_token_ctor)
     ck_assert_int_eq(OPEN, token->token);
     ck_assert_str_eq(token->text, text);
     ck_assert_uint_eq(sizeof(text), token->length);
+    
+    handlebars_token_dtor(token);
 }
 END_TEST
 
@@ -72,8 +74,11 @@ START_TEST(test_token_get_type)
 {
     const char * text = "{{";
     struct handlebars_token * token = handlebars_token_ctor(OPEN, text, strlen(text), ctx);
+    
     ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
     ck_assert_int_eq(-1, handlebars_token_get_type(NULL));
+    
+    handlebars_token_dtor(token);
 }
 END_TEST
 
@@ -81,8 +86,11 @@ START_TEST(test_token_get_text)
 {
     const char * text = "{{";
     struct handlebars_token * token = handlebars_token_ctor(OPEN, text, strlen(text), ctx);
+    
     ck_assert_str_eq(text, handlebars_token_get_text(token));
     ck_assert_ptr_eq(NULL, handlebars_token_get_text(NULL));
+    
+    handlebars_token_dtor(token);
 }
 END_TEST
 
@@ -92,13 +100,17 @@ START_TEST(test_token_get_text_ex)
     struct handlebars_token * token = handlebars_token_ctor(OPEN, text, strlen(text), ctx);
     const char * actual;
     size_t actual_length;
+    
     handlebars_token_get_text_ex(token, &actual, &actual_length);
+    
     ck_assert_uint_eq(actual_length, strlen(text));
     ck_assert_str_eq(text, actual);
     
     handlebars_token_get_text_ex(NULL, &actual, &actual_length);
     ck_assert_uint_eq(0, actual_length);
     ck_assert_ptr_eq(NULL, actual);
+    
+    handlebars_token_dtor(token);
 }
 END_TEST
 

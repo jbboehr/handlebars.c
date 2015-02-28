@@ -44,6 +44,7 @@ static TALLOC_CTX * rootctx;
 static struct parser_test * tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
+static const char * spec_filename = NULL;
 
 static void loadSpecTest(json_object * object)
 {
@@ -247,7 +248,6 @@ int main(void)
     int number_failed;
     Suite * s;
     SRunner * sr;
-    char * spec_filename;
     int memdebug = 0;
     int iswin = 0;
     int error = 0;
@@ -264,6 +264,9 @@ int main(void)
     
     // Load the spec
     spec_filename = getenv("handlebars_parser_spec");
+    if( spec_filename == NULL ) {
+        spec_filename = "./spec/handlebars/spec/parser.json";
+    }
     error = loadSpec(spec_filename);
     if( error != 0 ) {
         goto error;

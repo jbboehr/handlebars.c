@@ -13,7 +13,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)

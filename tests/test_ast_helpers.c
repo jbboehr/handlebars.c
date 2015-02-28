@@ -16,7 +16,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
@@ -86,6 +86,8 @@ START_TEST(test_ast_helper_check_block)
 
     ret = handlebars_ast_helper_check_block(NULL, context, &loc);
     ck_assert_int_eq(1, ret);
+    
+    handlebars_context_dtor(context);
 }
 END_TEST
 
@@ -145,6 +147,8 @@ START_TEST(test_ast_helper_check_raw_block)
     raw_block = NULL;
     ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
     ck_assert_int_eq(1, ret);
+    
+    handlebars_context_dtor(context);
 }
 END_TEST
 

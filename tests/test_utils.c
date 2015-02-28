@@ -14,7 +14,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
@@ -31,6 +31,7 @@ START_TEST(test_addcslashes)
     const char * expected = "";
     char * actual = handlebars_addcslashes(input, what);
     ck_assert_str_eq(expected, actual);
+    handlebars_talloc_free(actual);
 }
 {
     const char * what = "\r\n\t";
@@ -38,6 +39,7 @@ START_TEST(test_addcslashes)
     const char * expected = "\\ttest\\rlines\\n";
     char * actual = handlebars_addcslashes(input, what);
     ck_assert_str_eq(expected, actual);
+    handlebars_talloc_free(actual);
 }
 {
     const char * what = "abc";
@@ -45,6 +47,7 @@ START_TEST(test_addcslashes)
     const char * expected = "\\am\\azing \\bis\\cuit \\cir\\cus";
     char * actual = handlebars_addcslashes(input, what);
     ck_assert_str_eq(expected, actual);
+    handlebars_talloc_free(actual);
 }
 {
     const char * what = "";
@@ -52,6 +55,7 @@ START_TEST(test_addcslashes)
     const char * expected = "kaboemkara!";
     char * actual = handlebars_addcslashes(input, what);
     ck_assert_str_eq(expected, actual);
+    handlebars_talloc_free(actual);
 }
 {
     const char * what = "bar";
@@ -59,6 +63,7 @@ START_TEST(test_addcslashes)
     const char * expected = "foo\\b\\a\\r\\b\\az";
     char * actual = handlebars_addcslashes(input, what);
     ck_assert_str_eq(expected, actual);
+    handlebars_talloc_free(actual);
 }
 {
     const char * what = "\a\v\b\f\x3";
@@ -66,6 +71,7 @@ START_TEST(test_addcslashes)
     const char * expected = "\\a\\v\\b\\f\\003";
     char * actual = handlebars_addcslashes(input, what);
     ck_assert_str_eq(expected, actual);
+    handlebars_talloc_free(actual);
 }
 END_TEST
 
@@ -116,55 +122,55 @@ END_TEST
 
 START_TEST(test_stripcslashes)
 {
-    char * input = strdup("\\n\\r");
+    char * input = handlebars_talloc_strdup(ctx, "\\n\\r");
     size_t input_len = strlen(input);
     const char * expected = "\n\r";
     handlebars_stripcslashes_ex(input, &input_len);
     ck_assert_str_eq(expected, input);
-    free(input);
+    handlebars_talloc_free(input);
 }
 {
-    char * input = strdup("\\065\\x64");
+    char * input = handlebars_talloc_strdup(ctx, "\\065\\x64");
     size_t input_len = strlen(input);
     const char * expected = "5d";
     handlebars_stripcslashes_ex(input, &input_len);
     ck_assert_str_eq(expected, input);
-    free(input);
+    handlebars_talloc_free(input);
 }
 {
-    char * input = strdup("");
+    char * input = handlebars_talloc_strdup(ctx, "");
     size_t input_len = strlen(input);
     const char * expected = "";
     handlebars_stripcslashes_ex(input, &input_len);
     ck_assert_str_eq(expected, input);
-    free(input);
+    handlebars_talloc_free(input);
 }
 {
-    char * input = strdup("\\{");
+    char * input = handlebars_talloc_strdup(ctx, "\\{");
     size_t input_len = strlen(input);
     const char * expected = "{";
     handlebars_stripcslashes_ex(input, &input_len);
     ck_assert_str_eq(expected, input);
-    free(input);
+    handlebars_talloc_free(input);
 }
 {
-    char * input = strdup("\\a\\t\\v\\b\\f\\\\");
+    char * input = handlebars_talloc_strdup(ctx, "\\a\\t\\v\\b\\f\\\\");
     size_t input_len = strlen(input);
     const char * expected = "\a\t\v\b\f\\";
     handlebars_stripcslashes_ex(input, &input_len);
     ck_assert_str_eq(expected, input);
-    free(input);
+    handlebars_talloc_free(input);
 }
 {
-    char * input = strdup("\\x3");
+    char * input = handlebars_talloc_strdup(ctx, "\\x3");
     size_t input_len = strlen(input);
     const char * expected = "\x3";
     handlebars_stripcslashes_ex(input, &input_len);
     ck_assert_str_eq(expected, input);
-    free(input);
+    handlebars_talloc_free(input);
 }
 {
-    char * input = strdup("\\0test");
+    char * input = handlebars_talloc_strdup(ctx, "\\0test");
     size_t input_len = 6;
 
     handlebars_stripcslashes_ex(input, &input_len);
@@ -173,7 +179,7 @@ START_TEST(test_stripcslashes)
     ck_assert_int_eq('t', input[1]);
     ck_assert_int_eq(0, input[5]);
 
-    free(input);
+    handlebars_talloc_free(input);
 }
 END_TEST
 
@@ -195,6 +201,8 @@ START_TEST(test_yy_error)
     ck_assert_int_eq(context->errloc->first_column, loc.first_column);
     ck_assert_int_eq(context->errloc->last_line, loc.last_line);
     ck_assert_int_eq(context->errloc->last_column, loc.last_column);
+    
+    handlebars_context_dtor(context);
 }
 END_TEST
 
@@ -223,6 +231,8 @@ START_TEST(test_yy_free)
     handlebars_memory_fail_disable();
     
     ck_assert_int_eq(1, count);
+    
+    handlebars_talloc_free(tmp);
 }
 END_TEST
 
@@ -243,18 +253,24 @@ START_TEST(test_yy_realloc)
     tmp[8] = '0';
     
     ck_assert_int_eq(10, talloc_get_size(tmp));
+    
+    handlebars_talloc_free(tmp);
 }
 END_TEST
 
 START_TEST(test_yy_realloc_failed_alloc)
 {
     char * tmp = handlebars_talloc_strdup(ctx, "");
+    char * tmp2;
     
     handlebars_memory_fail_enable();
-    tmp = handlebars_yy_realloc(tmp, 10, NULL);
+    tmp2 = handlebars_yy_realloc(tmp, 10, NULL);
     handlebars_memory_fail_disable();
     
-    ck_assert_ptr_eq(NULL, tmp);
+    ck_assert_ptr_eq(NULL, tmp2);
+    
+    // (it's not actually getting freed in the realloc)
+    handlebars_talloc_free(tmp);
 }
 END_TEST
 

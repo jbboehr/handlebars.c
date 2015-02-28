@@ -18,7 +18,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
@@ -37,6 +37,8 @@ START_TEST(test_operand_print_append_null)
     str = handlebars_operand_print_append(str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[NULL]", str);
+    
+    handlebars_talloc_free(str);
 }
 END_TEST
 
@@ -49,6 +51,8 @@ START_TEST(test_operand_print_append_boolean)
     str = handlebars_operand_print_append(str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[BOOLEAN:1]", str);
+    
+    handlebars_talloc_free(str);
 }
 END_TEST
 
@@ -61,6 +65,8 @@ START_TEST(test_operand_print_append_long)
     str = handlebars_operand_print_append(str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[LONG:2358]", str);
+    
+    handlebars_talloc_free(str);
 }
 END_TEST
 
@@ -73,6 +79,8 @@ START_TEST(test_operand_print_append_string)
     str = handlebars_operand_print_append(str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[STRING:baz]", str);
+    
+    handlebars_talloc_free(str);
 }
 END_TEST
 
@@ -91,6 +99,9 @@ START_TEST(test_opcode_print_1)
     str = handlebars_opcode_print(ctx, opcode);
     
     ck_assert_str_eq(expected, str);
+    
+    handlebars_talloc_free(opcode);
+    handlebars_talloc_free(str);
 }
 END_TEST
 
@@ -104,6 +115,9 @@ START_TEST(test_opcode_print_2)
     str = handlebars_opcode_print(ctx, opcode);
     
     ck_assert_str_eq(expected, str);
+    
+    handlebars_talloc_free(opcode);
+    handlebars_talloc_free(str);
 }
 END_TEST
 
@@ -114,11 +128,14 @@ START_TEST(test_opcode_print_3)
     char * expected = "invokeHelper[LONG:123][STRING:baz][LONG:456]";
     
     handlebars_operand_set_longval(&opcode->op1, 123);
-    handlebars_operand_set_stringval(ctx, &opcode->op2, "baz");
+    handlebars_operand_set_stringval(opcode, &opcode->op2, "baz");
     handlebars_operand_set_longval(&opcode->op3, 456);
     str = handlebars_opcode_print(ctx, opcode);
     
     ck_assert_str_eq(expected, str);
+    
+    handlebars_talloc_free(opcode);
+    handlebars_talloc_free(str);
 }
 END_TEST
 
@@ -137,6 +154,11 @@ START_TEST(test_opcode_array_print)
     str = handlebars_opcode_array_print(ctx, opcodes, 2);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq(expected, str);
+    
+    handlebars_talloc_free(opcode1);
+    handlebars_talloc_free(opcode2);
+    handlebars_talloc_free(opcodes);
+    handlebars_talloc_free(str);
 }
 END_TEST
 
