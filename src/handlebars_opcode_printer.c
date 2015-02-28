@@ -150,14 +150,13 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
 void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
 {
     size_t i;
-    struct handlebars_compiler * child;
     
     printer->opcodes = compiler->opcodes;
     printer->opcodes_length = compiler->opcodes_length;
     handlebars_opcode_printer_array_print(printer);
     
     for( i = 0; i < compiler->children_length; i++ ) {
-        child = *(compiler->children + i);
+        struct handlebars_compiler * child = *(compiler->children + i);
         printer->indent++;
         handlebars_opcode_printer_print(printer, child);
         printer->indent--;

@@ -271,7 +271,7 @@ static inline void handlebars_compiler_push_param(
                 handlebars_operand_set_boolval(&opcode->op2, strcmp(tmp, "true") == 0);
             } else if( param->type == HANDLEBARS_AST_NODE_NUMBER ) {
                 long tmp2;
-                sscanf(tmp, "%ld", &tmp2);
+                sscanf(tmp, "%10ld", &tmp2);
                 handlebars_operand_set_longval(&opcode->op2, tmp2);
             } else if( param->type == HANDLEBARS_AST_NODE_STRING ) {
                 handlebars_operand_set_stringval(opcode, &opcode->op2, tmp ? tmp : "");
@@ -329,11 +329,12 @@ static inline struct handlebars_ast_list * handlebars_compiler_setup_full_mustac
 static inline void handlebars_compiler_accept_program(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
-    struct handlebars_ast_list_item * item;
-    struct handlebars_ast_list_item * tmp;
     struct handlebars_ast_list * list = node->node.program.statements;
     
     if( list != NULL ) {
+        struct handlebars_ast_list_item * item;
+        struct handlebars_ast_list_item * tmp;
+        
         handlebars_ast_list_foreach(list, item, tmp) {
             handlebars_compiler_accept(compiler, item->data);
         }
@@ -418,7 +419,7 @@ static inline void handlebars_compiler_accept_hash(
         assert(hash_segment != NULL);
         assert(hash_segment->type == HANDLEBARS_AST_NODE_HASH_SEGMENT);
         
-        if( hash_segment && hash_segment->type == HANDLEBARS_AST_NODE_HASH_SEGMENT ) {
+        if( /* hash_segment && */ hash_segment->type == HANDLEBARS_AST_NODE_HASH_SEGMENT ) {
             handlebars_compiler_push_param(compiler, hash_segment->node.hash_segment.value);
             keys[i++] = hash_segment->node.hash_segment.key;
         }
@@ -439,7 +440,6 @@ static inline void handlebars_compiler_accept_partial(
     struct handlebars_ast_node * partial_name;
     struct handlebars_ast_node * id;
     char * name = NULL;
-    const char * indent = ""; // @todo implement indent
     
     assert(partial != NULL);
     assert(partial->type == HANDLEBARS_AST_NODE_PARTIAL);
@@ -481,11 +481,10 @@ static inline void handlebars_compiler_accept_partial(
 static inline void handlebars_compiler_accept_content(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * content)
 {
-    // @todo might be null
     assert(content != NULL);
     assert(content->type == HANDLEBARS_AST_NODE_CONTENT);
     
-    if( content && content->node.content.string && *content->node.content.string ) {
+    if( /* content && */ content->node.content.string && *content->node.content.string ) {
         __OPS(append_content, content->node.content.string);
     }
 }
@@ -512,7 +511,6 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
     struct handlebars_ast_node * id;
     char * name = NULL;
     int is_block = (programGuid >= 0 || inverseGuid >= 0);
-    int depth = 0;
     
     assert(sexpr != NULL);
     assert(sexpr->type == HANDLEBARS_AST_NODE_SEXPR);

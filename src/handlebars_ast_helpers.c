@@ -488,7 +488,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
         id_name_length = depth * 3;
         id_name = handlebars_talloc_size(ast_node, id_name_length + string_length + 1);
         __MEMCHECK(id_name);
-        memset(id_name, 0, id_name_length + string_length + 1);
+        memset(id_name + id_name_length, 0, string_length + 1);
         memset(id_name, '.', id_name_length);
         for( i = 1; i <= depth; i++ ) {
             id_name[i * 3 - 1] = '/';

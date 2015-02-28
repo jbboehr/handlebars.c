@@ -232,8 +232,8 @@ void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * cont
 
 void handlebars_yy_fatal_error(const char * msg, void * yyscanner)
 {
-    // Suppress unused parameter warning
-    yyscanner = yyscanner;
+    // Suppress unused parameter warning?
+    //yyscanner = yyscanner;
     
     // Exit
     fprintf(stderr, "%s\n", msg);
@@ -243,8 +243,8 @@ void handlebars_yy_fatal_error(const char * msg, void * yyscanner)
 void handlebars_yy_print(FILE *file, int type, YYSTYPE value)
 {
     fprintf(file, "%d : \n", type);
-    // Suppress unused parameter warning
-    value = value;
+    // Suppress unused parameter warning?
+    //value = value;
 }
 
 
@@ -269,5 +269,5 @@ void handlebars_yy_free(void * ptr, void * yyscanner)
 {
     handlebars_talloc_free(ptr);
     // Suppress unused parameter warning
-    yyscanner = yyscanner;
+    //yyscanner = yyscanner;
 }
