@@ -79,7 +79,7 @@ static int loadTestOpcodeOperand(struct handlebars_opcode * opcode,
             break;
         case json_type_array: {
             size_t array_len = json_object_array_length(object);
-            char ** arr = talloc_array(opcode, char *, array_len + 1);
+            char ** arr = handlebars_talloc_array(opcode, char *, array_len + 1);
             char ** arrptr = arr;
             json_object * array_item;
             
@@ -385,7 +385,7 @@ static int loadSpecTest(const char * name, json_object * object)
 
 static int loadSpec(const char * name)
 {
-    char * filename = talloc_asprintf(rootctx, "%s/%s.json", export_dir, name);
+    char * filename = handlebars_talloc_asprintf(rootctx, "%s/%s.json", export_dir, name);
     int error = 0;
     char * data = NULL;
     size_t data_len = 0;
@@ -505,7 +505,7 @@ START_TEST(handlebars_spec_compiler)
     } else {*/
         //ck_assert_str_eq(printer->output, test->expected);
         if( strcmp(printer->output, test->expected) != 0 ) {
-            char * tmp = talloc_asprintf(rootctx,
+            char * tmp = handlebars_talloc_asprintf(rootctx,
                 "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %d\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                 test->suite_name,
                 test->description, test->it, test->flags,

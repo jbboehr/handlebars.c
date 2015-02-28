@@ -44,8 +44,7 @@ char * handlebars_token_print(struct handlebars_token * token, int flags)
     }
     
     // Make output string
-    // @todo mock this out
-    str = talloc_asprintf(token, "%s [%s]%c", name, tmp2, sep);
+    str = handlebars_talloc_asprintf(token, "%s [%s]%c", name, tmp2, sep);
     if( str == NULL ) {
         goto done; // LCOV_EXCL_LINE
     }

@@ -185,7 +185,7 @@ static inline long handlebars_compiler_compile_program(
     // Realloc children array
     if( compiler->children_size <= compiler->children_length ) {
         compiler->children_size += 2;
-        compiler->children = talloc_realloc(compiler, compiler->children, 
+        compiler->children = handlebars_talloc_realloc(compiler, compiler->children, 
                     struct handlebars_compiler *, compiler->children_size);
     }
     
@@ -212,7 +212,7 @@ static inline void handlebars_compiler_opcode(
     // Realloc opcode array
     if( compiler->opcodes_size <= compiler->opcodes_length ) {
         compiler->opcodes_size += 32;
-        compiler->opcodes = talloc_realloc(compiler, compiler->opcodes,
+        compiler->opcodes = handlebars_talloc_realloc(compiler, compiler->opcodes,
                     struct handlebars_opcode *, compiler->opcodes_size);
     }
     
@@ -404,8 +404,7 @@ static inline void handlebars_compiler_accept_hash(
     struct handlebars_ast_list_item * tmp;
     char ** keys;
     
-    // @todo wrap talloc function
-    keys = talloc_array(compiler, char *, len);
+    keys = handlebars_talloc_array(compiler, char *, len);
     if( !keys ) {
         compiler->errnum = handlebars_compiler_error_nomem;
         return;
@@ -594,7 +593,7 @@ static inline void handlebars_compiler_accept_sexpr_helper(
         __OPLS(invoke_known_helper, handlebars_ast_list_count(params), name);
     } else if( compiler->known_helpers_only ) {
         compiler->errnum = handlebars_compiler_error_unknown_helper;
-        compiler->error = talloc_asprintf(compiler, 
+        compiler->error = handlebars_talloc_asprintf(compiler, 
                 "You specified knownHelpersOnly, but used the unknown helper %s", name);
     } else {
         struct handlebars_opcode * opcode;

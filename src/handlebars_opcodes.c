@@ -115,7 +115,7 @@ int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * oper
     for( ptr = arg; *ptr; ++ptr, ++num );
     
     // Allocate array
-    arrptr = arr = talloc_array(ctx, char *, num + 1);
+    arrptr = arr = handlebars_talloc_array(ctx, char *, num + 1);
     if( !arr ) {
         goto error;
     }
