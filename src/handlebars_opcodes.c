@@ -196,7 +196,6 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
     if( strcmp(type, _RTYPE_REV_STR(str2)) == 0 ) { \
         return _RTYPE_MK(str); \
     }
-    int l = strlen(type);
     
     switch( type[0] ) {
         case 'a':

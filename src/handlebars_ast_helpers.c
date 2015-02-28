@@ -153,7 +153,7 @@ int handlebars_ast_helper_is_next_whitespace(struct handlebars_ast_list * statem
 {
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * next;
-    struct handlebars_ast_list_item * sibling;
+    struct handlebars_ast_node * sibling;
     
     if( !statements ) {
         return is_root;
@@ -184,7 +184,7 @@ int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statem
 {
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * prev;
-    struct handlebars_ast_list_item * sibling;
+    struct handlebars_ast_node * sibling;
 
     if( !statements ) {
         return is_root;
@@ -215,7 +215,8 @@ int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
 {
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
-
+    size_t original_length;
+    
     if( statement == NULL ) {
         current = statements->last ? statements->last->data : NULL;
     } else {
@@ -229,7 +230,7 @@ int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
         return 0;
     }
     
-    size_t original_length = strlen(current->node.content.string);
+    original_length = strlen(current->node.content.string);
 
     if( multiple ) {
         current->node.content.string = handlebars_rtrim_ex(current->node.content.string, 
@@ -254,7 +255,8 @@ int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
 {
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
-
+    size_t original_length;
+    
     if( statement == NULL ) {
         current = statements->first ? statements->first->data : NULL;
     } else {
@@ -268,7 +270,7 @@ int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
         return 0;
     }
 
-    size_t original_length = strlen(current->node.content.string);
+    original_length = strlen(current->node.content.string);
     
     if( multiple ) {
         current->node.content.string = handlebars_ltrim_ex(current->node.content.string, 
@@ -458,8 +460,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
             // I guess we're supposed to remove it from parts
             handlebars_ast_list_remove(list, item->data);
         } else {
-            // @todo mock this out
-            string = handlebars_talloc_asprintf_append_buffer(string, "%.*s.", part_length, part);
+            string = handlebars_talloc_asprintf_append_buffer(string, "%.*s.", (int) part_length, part);
             __MEMCHECK(string);
             string_length += part_length + 1;
             count++;
@@ -488,7 +489,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
         id_name_length = depth * 3;
         id_name = handlebars_talloc_size(ast_node, id_name_length + string_length + 1);
         __MEMCHECK(id_name);
-        memset(id_name, 0, id_name_length + string_length + 1);
+        memset(id_name + id_name_length, 0, string_length + 1);
         memset(id_name, '.', id_name_length);
         for( i = 1; i <= depth; i++ ) {
             id_name[i * 3 - 1] = '/';
@@ -508,7 +509,8 @@ error:
     return ast_node;
 }
 
-int handlebars_ast_helper_prepare_program(struct handlebars_context * context, 
+int handlebars_ast_helper_prepare_program(
+        HANDLEBARS_ATTR_UNUSED struct handlebars_context * context, 
         struct handlebars_ast_node * program, short is_root)
 {
     int error = HANDLEBARS_SUCCESS;
@@ -518,14 +520,16 @@ int handlebars_ast_helper_prepare_program(struct handlebars_context * context,
     
     handlebars_ast_list_foreach(statements, item, tmp) {
         struct handlebars_ast_node * current = item->data;
+        short is_prev_whitespace, is_next_whitespace, open_standalone,
+              close_standalone, inline_standalone;
         if( !current || !(current->strip & handlebars_ast_strip_flag_set) ) {
             continue;
         }
-        short is_prev_whitespace = handlebars_ast_helper_is_prev_whitespace(statements, current, is_root);
-        short is_next_whitespace = handlebars_ast_helper_is_next_whitespace(statements, current, is_root);
-        short open_standalone = (current->strip & handlebars_ast_strip_flag_open_standalone) && is_prev_whitespace;
-        short close_standalone = (current->strip & handlebars_ast_strip_flag_close_standalone) && is_next_whitespace;
-        short inline_standalone = (current->strip & handlebars_ast_strip_flag_inline_standalone) && is_prev_whitespace && is_next_whitespace;
+        is_prev_whitespace = handlebars_ast_helper_is_prev_whitespace(statements, current, is_root);
+        is_next_whitespace = handlebars_ast_helper_is_next_whitespace(statements, current, is_root);
+        open_standalone = (current->strip & handlebars_ast_strip_flag_open_standalone) && is_prev_whitespace;
+        close_standalone = (current->strip & handlebars_ast_strip_flag_close_standalone) && is_next_whitespace;
+        inline_standalone = (current->strip & handlebars_ast_strip_flag_inline_standalone) && is_prev_whitespace && is_next_whitespace;
         
         if( current->strip & handlebars_ast_strip_flag_right ) {
             handlebars_ast_helper_omit_right(statements, current, 1);
@@ -668,7 +672,7 @@ error:
 }
 
 void handlebars_ast_helper_set_strip_flags(
-        struct handlebars_ast_node * ast_node, char * open, char * close)
+        struct handlebars_ast_node * ast_node, const char * open, const char * close)
 {
     size_t close_length = close ? strlen(close) : 0;
     if( open && strlen(open) >= 3 && *(open + 2) == '~' ) {

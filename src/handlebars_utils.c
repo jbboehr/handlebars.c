@@ -230,21 +230,16 @@ void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * cont
     memcpy(context->errloc, lloc, sizeof(YYLTYPE));
 }
 
-void handlebars_yy_fatal_error(const char * msg, void * yyscanner)
+void handlebars_yy_fatal_error(const char * msg, HANDLEBARS_ATTR_UNUSED void * yyscanner)
 {
-    // Suppress unused parameter warning
-    yyscanner = yyscanner;
-    
     // Exit
     fprintf(stderr, "%s\n", msg);
     handlebars_exit(2);
 }
 
-void handlebars_yy_print(FILE *file, int type, YYSTYPE value)
+void handlebars_yy_print(FILE *file, int type, HANDLEBARS_ATTR_UNUSED YYSTYPE value)
 {
     fprintf(file, "%d : \n", type);
-    // Suppress unused parameter warning
-    value = value;
 }
 
 
@@ -265,9 +260,7 @@ void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
     return (void *) handlebars_talloc_realloc(ctx, ptr, char, bytes);
 }
 
-void handlebars_yy_free(void * ptr, void * yyscanner)
+void handlebars_yy_free(void * ptr, HANDLEBARS_ATTR_UNUSED void * yyscanner)
 {
     handlebars_talloc_free(ptr);
-    // Suppress unused parameter warning
-    yyscanner = yyscanner;
 }

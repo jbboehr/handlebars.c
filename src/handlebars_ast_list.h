@@ -47,7 +47,7 @@ int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handleb
 /**
  * @brief Count the number of items in an AST list
  * 
- * @param[in] lust The list to count
+ * @param[in] list The list to count
  * @return The number of items in the list
  */
 int handlebars_ast_list_count(struct handlebars_ast_list * list);

@@ -92,7 +92,7 @@ char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node 
     }
     
     num = handlebars_ast_list_count(ast_node->node.id.parts);
-    if( num <= 0 ) {
+    if( num == 0 ) {
         return NULL;
     }
     arrptr = arr = handlebars_talloc_array(ctx, char *, num + 1);

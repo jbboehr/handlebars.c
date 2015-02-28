@@ -121,7 +121,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_sexpr(
         struct handlebars_ast_list * params, struct handlebars_ast_node * hash);
 
 void handlebars_ast_helper_set_strip_flags(
-        struct handlebars_ast_node * ast_node, char * open, char * close);
+        struct handlebars_ast_node * ast_node, const char * open, const char * close);
 
 #ifdef	__cplusplus
 }

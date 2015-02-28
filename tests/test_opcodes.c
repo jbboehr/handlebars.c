@@ -319,7 +319,7 @@ START_TEST(test_operand_set_arrayval)
         "foo", "bar", "baz", "helicopter", NULL
     };
     int ret;
-    char ** ptr1;
+    const char ** ptr1;
     char ** ptr2;
     
     ret = handlebars_operand_set_arrayval(ctx, &op, strs);

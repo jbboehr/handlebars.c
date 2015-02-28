@@ -7,6 +7,7 @@
 #include "config.h"
 #endif
 
+#include "handlebars_memory.h"
 #include "handlebars_scanners.h"
 #include "utils.h"
 

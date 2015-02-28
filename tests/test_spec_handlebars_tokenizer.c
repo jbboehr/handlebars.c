@@ -144,7 +144,7 @@ static void loadSpecTest(json_object * object)
     }
 }
 
-static int loadSpec(char * filename) {
+static int loadSpec(const char * filename) {
     int error = 0;
     char * data = NULL;
     size_t data_len = 0;
@@ -153,7 +153,7 @@ static int loadSpec(char * filename) {
     int array_len = 0;
     
     // Read JSON file
-    error = file_get_contents((const char *) filename, &data, &data_len);
+    error = file_get_contents(filename, &data, &data_len);
     if( error != 0 ) {
         fprintf(stderr, "Failed to read spec file: %s, code: %d\n", filename, error);
         goto error;

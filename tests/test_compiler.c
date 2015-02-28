@@ -136,19 +136,19 @@ START_TEST(test_compiler_is_known_helper)
     handlebars_ast_list_append(parts, path_segment);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment->node.path_segment.part = helper1;
+    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper1);
     path_segment->node.path_segment.part_length = strlen(helper1);
     ck_assert_int_eq(1, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment->node.path_segment.part = helper2;
+    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper2);
     path_segment->node.path_segment.part_length = strlen(helper2);
     ck_assert_int_eq(1, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment->node.path_segment.part = helper3;
+    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper3);
     path_segment->node.path_segment.part_length = strlen(helper3);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment->node.path_segment.part = helper4;
+    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper4);
     path_segment->node.path_segment.part_length = strlen(helper4);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
@@ -181,14 +181,14 @@ START_TEST(test_compiler_classify_sexpr)
     id->node.id.parts = parts = handlebars_ast_list_ctor(compiler);
     path_segment = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, compiler);
     handlebars_ast_list_append(parts, path_segment);
-    path_segment->node.path_segment.part = helper1;
+    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper1);
     path_segment->node.path_segment.part_length = strlen(helper1);
     sexpr->node.sexpr.id = id;
     
     ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
     ck_assert_int_eq(handlebars_compiler_sexpr_type_helper, ret);
     
-    path_segment->node.path_segment.part = helper2;
+    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper2);
     path_segment->node.path_segment.part_length = strlen(helper2);
     
     ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
