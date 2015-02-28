@@ -319,7 +319,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     assert(!inverse || inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
     
     // Initialize temporary talloc context
-    ctx = talloc_init(NULL);
+    ctx = handlebars_talloc_size(NULL, 0);
     
     // Create the block node
     ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, ctx);
@@ -412,7 +412,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
     int i = 0;
     
     // Initialize temporary talloc context
-    ctx = talloc_init(NULL);
+    ctx = handlebars_talloc_size(NULL, 0);
     
     // Create the block node
     ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, ctx);
@@ -459,7 +459,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
             handlebars_ast_list_remove(list, item->data);
         } else {
             // @todo mock this out
-            string = talloc_asprintf_append_buffer(string, "%.*s.", part_length, part);
+            string = handlebars_talloc_asprintf_append_buffer(string, "%.*s.", part_length, part);
             __MEMCHECK(string);
             string_length += part_length + 1;
             count++;
@@ -597,7 +597,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     TALLOC_CTX * ctx;
     
     // Initialize temporary talloc context
-    ctx = talloc_init(NULL);
+    ctx = handlebars_talloc_size(NULL, 0);
     
     // Create the raw block node
     ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_RAW_BLOCK, ctx);

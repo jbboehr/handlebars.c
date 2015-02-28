@@ -46,7 +46,7 @@ const char * handlebars_ast_node_get_id_name(struct handlebars_ast_node * ast_no
         case HANDLEBARS_AST_NODE_DATA: {
             if( ast_node->node.data.id_name == NULL ) {
                 const char * id_string_mode_value = handlebars_ast_node_get_string_mode_value(ast_node->node.data.id);
-                ast_node->node.data.id_name = talloc_asprintf(ast_node, "@%s", id_string_mode_value ? id_string_mode_value : "");
+                ast_node->node.data.id_name = handlebars_talloc_asprintf(ast_node, "@%s", id_string_mode_value ? id_string_mode_value : "");
             }
             ret = ast_node->node.data.id_name;
             break;
@@ -95,7 +95,7 @@ char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node 
     if( num <= 0 ) {
         return NULL;
     }
-    arrptr = arr = talloc_array(ctx, char *, num + 1);
+    arrptr = arr = handlebars_talloc_array(ctx, char *, num + 1);
     
     handlebars_ast_list_foreach(ast_node->node.id.parts, item, tmp) {
         if( item->data && item->data->type == HANDLEBARS_AST_NODE_PATH_SEGMENT ) {
@@ -119,7 +119,7 @@ const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_nod
             }
             break;
         case HANDLEBARS_AST_NODE_DATA:
-            //ret = talloc_asprintf(ast_node, "@%s", handlebars_ast_node_get_string_mode_value(ast_node->node.data.id));
+            //ret = handlebars_talloc_asprintf(ast_node, "@%s", handlebars_ast_node_get_string_mode_value(ast_node->node.data.id));
             ret = handlebars_ast_node_get_string_mode_value(ast_node->node.data.id);
             break;
         case HANDLEBARS_AST_NODE_STRING:

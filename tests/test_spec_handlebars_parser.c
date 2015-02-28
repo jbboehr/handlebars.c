@@ -137,7 +137,7 @@ static int loadSpec(char * filename) {
     
     // Allocate tests array
     tests_size = array_len + 1;
-    tests = talloc_array(rootctx, struct parser_test, tests_size);
+    tests = handlebars_talloc_array(rootctx, struct parser_test, tests_size);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {

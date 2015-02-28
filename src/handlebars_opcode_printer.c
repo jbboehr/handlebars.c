@@ -33,14 +33,14 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
             str = handlebars_talloc_strdup_append(str, "[NULL]");
             break;
         case handlebars_operand_type_boolean:
-            str = talloc_asprintf_append(str, "[BOOLEAN:%d]", operand->data.boolval);
+            str = handlebars_talloc_asprintf_append(str, "[BOOLEAN:%d]", operand->data.boolval);
             break;
         case handlebars_operand_type_long:
-            str = talloc_asprintf_append(str, "[LONG:%ld]", operand->data.longval);
+            str = handlebars_talloc_asprintf_append(str, "[LONG:%ld]", operand->data.longval);
             break;
         case handlebars_operand_type_string: {
             char * tmp = handlebars_addcslashes(operand->data.stringval, "\r\n\t");
-            str = talloc_asprintf_append(str, "[STRING:%s]", tmp);
+            str = handlebars_talloc_asprintf_append(str, "[STRING:%s]", tmp);
             handlebars_talloc_free(tmp);
             break;
         }
@@ -54,7 +54,7 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
                 str = handlebars_talloc_strdup_append(str, *tmp);
             }
             str = handlebars_talloc_strdup_append(str, "]");
-            //str = talloc_asprintf_append(str, "[ARRAY:]");
+            //str = handlebars_talloc_asprintf_append(str, "[ARRAY:]");
             break;
         }
     }
@@ -104,7 +104,7 @@ char * handlebars_opcode_array_print(void * ctx, struct handlebars_opcode ** opc
         tmp = handlebars_opcode_print(ctx, *opcodes);
         if( tmp ) {
             if( str ) {
-                str = talloc_asprintf_append(str, " %s", tmp);
+                str = handlebars_talloc_asprintf_append(str, " %s", tmp);
                 handlebars_talloc_free(tmp);
             } else {
                 str = tmp;
@@ -133,7 +133,7 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
     memset(&indentbuf, ' ', indent);
     indentbuf[indent] = 0;
     
-    //printer->output = talloc_asprintf_append(printer->output, "%s[\n", indentbuf);
+    //printer->output = handlebars_talloc_asprintf_append(printer->output, "%s[\n", indentbuf);
     
     for( i = 0; i < count; i++, opcodes++ ) {
         //if( i != 0 ) {
@@ -144,7 +144,7 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
         printer->output = handlebars_talloc_strdup_append(printer->output, "\n");
     }
     
-    printer->output = talloc_asprintf_append(printer->output, "%s-----\n", indentbuf);
+    printer->output = handlebars_talloc_asprintf_append(printer->output, "%s-----\n", indentbuf);
 }
 
 void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)

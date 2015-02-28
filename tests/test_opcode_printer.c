@@ -126,7 +126,7 @@ START_TEST(test_opcode_array_print)
 {
     struct handlebars_opcode * opcode1 = handlebars_opcode_ctor(ctx, handlebars_opcode_type_get_context);
     struct handlebars_opcode * opcode2 = handlebars_opcode_ctor(ctx, handlebars_opcode_type_push_context);
-    struct handlebars_opcode ** opcodes = talloc_array(ctx, struct handlebars_opcode *, 3);
+    struct handlebars_opcode ** opcodes = handlebars_talloc_array(ctx, struct handlebars_opcode *, 3);
     const char * expected = "getContext[LONG:2] pushContext";
     char * str;
     
