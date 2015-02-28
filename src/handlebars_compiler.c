@@ -7,6 +7,7 @@
 #include <string.h>
 #include <talloc.h>
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
@@ -36,8 +37,7 @@ static inline void handlebars_compiler_accept_sexpr_helper(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
         long programGuid, long inverseGuid);
 static inline void handlebars_compiler_accept_sexpr_simple(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
-        long programGuid, long inverseGuid);
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr);
 static inline void handlebars_compiler_accept_sexpr_ambiguous(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
         long programGuid, long inverseGuid);
@@ -185,7 +185,8 @@ static inline long handlebars_compiler_compile_program(
     // Realloc children array
     if( compiler->children_size <= compiler->children_length ) {
         compiler->children_size += 2;
-        compiler->children = handlebars_talloc_realloc(compiler, compiler->children, 
+        compiler->children = (struct handlebars_compiler **)
+            handlebars_talloc_realloc(compiler, compiler->children, 
                     struct handlebars_compiler *, compiler->children_size);
     }
     
@@ -261,9 +262,10 @@ static inline void handlebars_compiler_push_param(
         }
     } else {
         if( compiler->track_ids ) {
+            const char * tmp;
             struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_push_id);
             handlebars_operand_set_stringval(opcode, &opcode->op1, handlebars_ast_node_readable_type(param->type));
-            char * tmp = handlebars_ast_node_get_id_name(param);
+            tmp = handlebars_ast_node_get_id_name(param);
             if( !tmp ) {
                 tmp = handlebars_ast_node_get_string_mode_value(param);
             }
@@ -366,7 +368,7 @@ static inline void handlebars_compiler_accept_block_internal(
             handlebars_compiler_accept_sexpr_helper(compiler, sexpr, programGuid, inverseGuid);
             break;
         case handlebars_compiler_sexpr_type_simple:
-            handlebars_compiler_accept_sexpr_simple(compiler, sexpr, programGuid, inverseGuid);
+            handlebars_compiler_accept_sexpr_simple(compiler, sexpr);
             programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
             inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
             __OPN(empty_hash);
@@ -439,7 +441,7 @@ static inline void handlebars_compiler_accept_partial(
 {
     struct handlebars_ast_node * partial_name;
     struct handlebars_ast_node * id;
-    char * name = NULL;
+    const char * name = NULL;
     
     assert(partial != NULL);
     assert(partial->type == HANDLEBARS_AST_NODE_PARTIAL);
@@ -509,7 +511,7 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
         long programGuid, long inverseGuid)
 {
     struct handlebars_ast_node * id;
-    char * name = NULL;
+    const char * name;
     int is_block = (programGuid >= 0 || inverseGuid >= 0);
     
     assert(sexpr != NULL);
@@ -538,8 +540,7 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
 }
 
 static inline void handlebars_compiler_accept_sexpr_simple(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
-        long programGuid, long inverseGuid)
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr)
 {
     struct handlebars_ast_node * id;
     
@@ -573,7 +574,7 @@ static inline void handlebars_compiler_accept_sexpr_helper(
 {
     struct handlebars_ast_list * params;
     struct handlebars_ast_node * id;
-    char * name = NULL;
+    const char * name;
     
     assert(sexpr != NULL);
     assert(sexpr->type == HANDLEBARS_AST_NODE_SEXPR);
@@ -617,7 +618,7 @@ static inline void handlebars_compiler_accept_sexpr(
             handlebars_compiler_accept_sexpr_helper(compiler, sexpr, -1, -1);
             break;
         case handlebars_compiler_sexpr_type_simple:
-            handlebars_compiler_accept_sexpr_simple(compiler, sexpr, -1, -1);
+            handlebars_compiler_accept_sexpr_simple(compiler, sexpr);
             break;
         case handlebars_compiler_sexpr_type_ambiguous:
             handlebars_compiler_accept_sexpr_ambiguous(compiler, sexpr, -1, -1);
@@ -628,7 +629,7 @@ static inline void handlebars_compiler_accept_sexpr(
 static inline void handlebars_compiler_accept_id(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * id)
 {
-    char * name = NULL;
+    const char * name;
     
     assert(id != NULL);
     assert(id->type == HANDLEBARS_AST_NODE_ID);
@@ -704,7 +705,8 @@ static inline void handlebars_compiler_accept_boolean(
 }
 
 static inline void handlebars_compiler_accept_comment(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * comment)
+        HANDLEBARS_ATTR_UNUSED struct handlebars_compiler * compiler, 
+        HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * comment)
 {
     assert(comment != NULL);
     assert(comment->type == HANDLEBARS_AST_NODE_COMMENT);
@@ -772,23 +774,14 @@ static void handlebars_compiler_accept(
             return handlebars_compiler_accept_boolean(compiler, node);
         case HANDLEBARS_AST_NODE_COMMENT:
             return handlebars_compiler_accept_comment(compiler, node);
-        
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
             return handlebars_compiler_accept_raw_block(compiler, node);
         
-        /*
-        case HANDLEBARS_AST_NODE_HASH_SEGMENT:
-            return handlebars_compiler_accept_hash_segment(compiler, node);
-        case HANDLEBARS_AST_NODE_PARTIAL_NAME:
-            return handlebars_compiler_accept_partial_name(compiler, node);
-        case HANDLEBARS_AST_NODE_PATH_SEGMENT:
-            return handlebars_compiler_accept_path_segment(compiler, node);
-        */
+        // Should never get here
+        default:
+            assert(0);
+            break;
     }
-    
-    // Should never get here
-    fprintf(stderr, "SIGH %s\n", handlebars_ast_node_readable_type(node->type));
-    assert(0);
 }
 
 void handlebars_compiler_compile(

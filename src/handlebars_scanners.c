@@ -2,11 +2,11 @@
 
 #include "handlebars_scanners.h"
 
-#define YYCTYPE char
+#define YYCTYPE unsigned char
 
 short handlebars_scanner_next_whitespace(const char * s, short def)
 {
-    const YYCTYPE * YYCURSOR = s;
+    const YYCTYPE * YYCURSOR = (const unsigned char *) s;
     
     for (;;) {
         
@@ -98,7 +98,7 @@ yy16:
 
 short handlebars_scanner_prev_whitespace(const char * s, short def)
 {
-    const YYCTYPE * YYCURSOR = s;
+    const YYCTYPE * YYCURSOR = (const unsigned char *) s;
     short match = def;
     
     for (;;) {

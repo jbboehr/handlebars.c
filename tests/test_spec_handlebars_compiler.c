@@ -28,7 +28,7 @@
 #include "utils.h"
 
 struct compiler_test {
-    char * suite_name;
+    const char * suite_name;
     char * description;
     char * it;
     char * tmpl;
@@ -172,7 +172,7 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     
     // Allocate opcodes array
     compiler->opcodes_size += array_len;
-    compiler->opcodes = talloc_zero_array(compiler, struct handlebars_opcode, compiler->opcodes_size);
+    compiler->opcodes = talloc_zero_array(compiler, struct handlebars_opcode *, compiler->opcodes_size);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -197,7 +197,7 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     
     // Allocate children array
     compiler->children_size += array_len;
-    compiler->children = talloc_zero_array(compiler, struct handlebars_compiler, compiler->children_size);
+    compiler->children = talloc_zero_array(compiler, struct handlebars_compiler *, compiler->children_size);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -243,7 +243,7 @@ static int loadSpecTestKnownHelpers(struct compiler_test * test, json_object * o
     // Let's just allocate a nice fat array >.>
     char ** known_helpers = talloc_zero_array(rootctx, char *, 32);
     char ** ptr = known_helpers;
-    char ** ptr2 = handlebars_builtins;
+    const char ** ptr2 = handlebars_builtins;
 
     for( ptr2 = handlebars_builtins ; *ptr2 ; ++ptr2 ) {
         *ptr = handlebars_talloc_strdup(rootctx, *ptr2);
@@ -448,7 +448,7 @@ error:
 
 static int loadAllSpecs()
 {
-    char ** suite_name_ptr;
+    const char ** suite_name_ptr;
     int error = 0;
     
     for( suite_name_ptr = suite_names; *suite_name_ptr != NULL; suite_name_ptr++ ) {
@@ -489,7 +489,7 @@ START_TEST(handlebars_spec_compiler)
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
     if( test->known_helpers ) {
-        compiler->known_helpers = test->known_helpers;
+        compiler->known_helpers = (const char **) test->known_helpers;
     }
 
     handlebars_compiler_compile(compiler, ctx->program);
@@ -506,7 +506,7 @@ START_TEST(handlebars_spec_compiler)
         //ck_assert_str_eq(printer->output, test->expected);
         if( strcmp(printer->output, test->expected) != 0 ) {
             char * tmp = handlebars_talloc_asprintf(rootctx,
-                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %d\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                 test->suite_name,
                 test->description, test->it, test->flags,
                 test->tmpl, test->expected, printer->output);

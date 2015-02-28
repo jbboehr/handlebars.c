@@ -252,6 +252,7 @@ const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_no
 /**
  * @brief Get an array of parts of an ID AST node.
  * 
+ * @param[in] ctx The talloc memory context
  * @param[in] ast_node The AST node
  * @return The string array
  */

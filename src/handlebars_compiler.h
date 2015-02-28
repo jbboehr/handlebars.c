@@ -13,8 +13,9 @@ extern "C" {
 
 #include <stddef.h>
 
-
 struct handlebars_ast_node;
+struct handlebars_compiler;
+struct handlebars_opcode;
 
 extern const char * handlebars_builtins[];
 
@@ -57,7 +58,7 @@ struct handlebars_compiler {
     size_t opcodes_length;
     size_t opcodes_size;
     
-    struct handlebar_compiler ** children;
+    struct handlebars_compiler ** children;
     size_t children_length;
     size_t children_size;
     

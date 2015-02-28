@@ -15,6 +15,14 @@ extern "C" {
 struct handlebars_context;
 struct handlebars_token_list;
 
+// Macros
+
+#ifdef __GNUC__
+#  define HANDLEBARS_ATTR_UNUSED __attribute__((__unused__))
+#else
+#  define HANDLEBARS_ATTR_UNUSED 
+#endif
+
 /**
  * @brief Enumeration of error types
  */

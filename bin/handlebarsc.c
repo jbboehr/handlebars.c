@@ -43,8 +43,8 @@ static enum handlebarsc_mode mode;
 static void readOpts(int argc, char * argv[])
 {
     int c;
-    int digit_optind = 0;
-    int this_option_optind = optind ? optind : 1;
+    //int digit_optind = 0;
+    //int this_option_optind = optind ? optind : 1;
     int option_index = 0;
     
     static struct option long_options[] = {
@@ -251,7 +251,6 @@ static int do_compile(void)
     struct handlebars_context * ctx;
     struct handlebars_compiler * compiler;
     struct handlebars_opcode_printer * printer;
-    char * output;
     //int retval;
     int error = 0;
     

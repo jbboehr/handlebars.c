@@ -1,6 +1,6 @@
 
 %defines
-%name-prefix="handlebars_yy_"
+%name-prefix "handlebars_yy_"
 %pure-parser
 %error-verbose
 
