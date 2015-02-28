@@ -1,4 +1,9 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,6 +27,8 @@ char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char
     char * new_str;
     size_t new_str_length;
 
+    assert(str != NULL);
+    
     // Make char mask
     memset(flags, 0, sizeof(flags));
     for( i = 0; i < what_length; i++ ) {
@@ -75,6 +82,8 @@ char * handlebars_ltrim_ex(char * string, size_t * length, const char * what, si
     char * ptr;
     size_t len = length ? *length : strlen(string);
 
+    assert(string != NULL);
+    
     // Make char mask
     memset(flags, 0, sizeof(flags));
     for( i = 0; i < what_length; i++ ) {
@@ -104,6 +113,8 @@ char * handlebars_rtrim_ex(char * string, size_t * length, const char * what, si
     char flags[256];
     char * original;
     size_t len = length ? *length : strlen(string);
+    
+    assert(string != NULL);
     
     // Make char mask
     memset(flags, 0, sizeof(flags));

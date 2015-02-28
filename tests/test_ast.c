@@ -14,7 +14,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
@@ -30,6 +30,8 @@ START_TEST(test_ast_node_ctor)
     
     ck_assert_ptr_ne(NULL, node);
     ck_assert_int_eq(HANDLEBARS_AST_NODE_PROGRAM, node->type);
+    
+    handlebars_talloc_free(node);
 }
 END_TEST
 
@@ -63,6 +65,8 @@ START_TEST(test_ast_node_dtor_failed_alloc)
     handlebars_memory_fail_disable();
     
     ck_assert_int_eq(1, call_count);
+    
+    handlebars_talloc_free(node);
 }
 END_TEST
     

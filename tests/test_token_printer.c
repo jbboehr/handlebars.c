@@ -15,7 +15,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
@@ -27,7 +27,8 @@ static void teardown(void)
 
 START_TEST(test_token_print)
 {
-	struct handlebars_token * tok = talloc(NULL, struct handlebars_token);
+	struct handlebars_token * tok = handlebars_talloc(ctx, struct handlebars_token);
+	
 	tok->token = OPEN;
 	tok->text = "{{";
 	tok->length = strlen(tok->text);
@@ -36,13 +37,13 @@ START_TEST(test_token_print)
 	char * expected = "OPEN [{{] ";
 	ck_assert_str_eq(expected, actual);
 
-	talloc_free(tok);
+	handlebars_talloc_free(tok);
 }
 END_TEST
 
 START_TEST(test_token_print2)
 {
-	struct handlebars_token * tok = talloc(NULL, struct handlebars_token);
+	struct handlebars_token * tok = handlebars_talloc(ctx, struct handlebars_token);
 	tok->token = CONTENT;
 	tok->text = "this\nis\ra\ttest";
 	tok->length = strlen(tok->text);
@@ -51,13 +52,13 @@ START_TEST(test_token_print2)
 	char * expected = "CONTENT [this\\nis\\ra\\ttest] ";
 	ck_assert_str_eq(expected, actual);
 
-	talloc_free(tok);
+	handlebars_talloc_free(tok);
 }
 END_TEST
 
 START_TEST(test_token_print3)
 {
-	struct handlebars_token * tok = talloc(NULL, struct handlebars_token);
+	struct handlebars_token * tok = handlebars_talloc(ctx, struct handlebars_token);
 	tok->token = CONTENT;
 	tok->text = "this\nis\ra\ttest";
 	tok->length = strlen(tok->text);
@@ -66,7 +67,7 @@ START_TEST(test_token_print3)
 	char * expected = "CONTENT [this\\nis\\ra\\ttest]\n";
 	ck_assert_str_eq(expected, actual);
 
-	talloc_free(tok);
+	handlebars_talloc_free(tok);
 }
 END_TEST
 
@@ -81,7 +82,7 @@ START_TEST(test_token_print_failed_alloc)
     
     ck_assert_ptr_eq(NULL, expected);
     
-	talloc_free(tok);
+	handlebars_token_dtor(tok);
 }
 END_TEST
 
@@ -94,8 +95,8 @@ END_TEST
 START_TEST(test_token_list_print)
 {
     struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
-    struct handlebars_token * token1 = handlebars_token_ctor(CONTENT, "tok1", strlen("tok1"), ctx);
-    struct handlebars_token * token2 = handlebars_token_ctor(CONTENT, "tok2", strlen("tok1"), ctx);
+    struct handlebars_token * token1 = handlebars_token_ctor(CONTENT, "tok1", strlen("tok1"), list);
+    struct handlebars_token * token2 = handlebars_token_ctor(CONTENT, "tok2", strlen("tok1"), list);
     
     handlebars_token_list_append(list, token1);
     handlebars_token_list_append(list, token2);
@@ -103,14 +104,16 @@ START_TEST(test_token_list_print)
 	char * actual = handlebars_token_list_print(list, 0);
 	char * expected = "CONTENT [tok1] CONTENT [tok2]";
 	ck_assert_str_eq(expected, actual);
+	
+	handlebars_token_list_dtor(list);
 }
 END_TEST
 
 START_TEST(test_token_list_print_null_item)
 {
     struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
-    struct handlebars_token * token1 = handlebars_token_ctor(CONTENT, "tok1", strlen("tok1"), ctx);
-    struct handlebars_token * token2 = handlebars_token_ctor(CONTENT, "tok2", strlen("tok1"), ctx);
+    struct handlebars_token * token1 = handlebars_token_ctor(CONTENT, "tok1", strlen("tok1"), list);
+    struct handlebars_token * token2 = handlebars_token_ctor(CONTENT, "tok2", strlen("tok1"), list);
     
     handlebars_token_list_append(list, token1);
     handlebars_token_list_append(list, token2);
@@ -119,6 +122,8 @@ START_TEST(test_token_list_print_null_item)
 	char * actual = handlebars_token_list_print(list, 0);
 	char * expected = "CONTENT [tok1]";
 	ck_assert_str_eq(expected, actual);
+	
+	handlebars_token_list_dtor(list);
 }
 END_TEST
 

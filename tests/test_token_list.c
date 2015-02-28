@@ -9,19 +9,24 @@
 #include "handlebars.tab.h"
 #include "utils.h"
 
+static TALLOC_CTX * ctx;
+
 static void setup(void)
 {
-	 handlebars_memory_fail_disable();
+    handlebars_memory_fail_disable();
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
 {
-	 handlebars_memory_fail_disable();
+    handlebars_memory_fail_disable();
+    talloc_free(ctx);
+    ctx = NULL;
 }
 
 START_TEST(test_token_list_append)
 {
-	struct handlebars_token_list * list = handlebars_token_list_ctor(NULL);
+	struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
 	struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
 	struct handlebars_token * node2 = handlebars_talloc(list, struct handlebars_token);
 	handlebars_token_list_append(list, node1);
@@ -37,7 +42,7 @@ END_TEST
 
 START_TEST(test_token_list_append_failed_alloc)
 {
-	struct handlebars_token_list * list = handlebars_token_list_ctor(NULL);
+	struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
 	struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
 	int retval;
 	
@@ -61,7 +66,7 @@ END_TEST
 
 START_TEST(test_token_list_ctor)
 {
-	struct handlebars_token_list * list = handlebars_token_list_ctor(NULL);
+	struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
 	
 	ck_assert_ptr_ne(list, NULL);
 	
@@ -74,7 +79,7 @@ START_TEST(test_token_list_ctor_failed_alloc)
 	struct handlebars_token_list * list;
 	
 	handlebars_memory_fail_enable();
-	list = handlebars_token_list_ctor(NULL);
+	list = handlebars_token_list_ctor(ctx);
 	handlebars_memory_fail_disable();
 	
 	ck_assert_ptr_eq(list, NULL);
@@ -83,7 +88,7 @@ END_TEST
 
 START_TEST(test_token_list_prepend)
 {
-	struct handlebars_token_list * list = handlebars_token_list_ctor(NULL);
+	struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
 	struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
 	struct handlebars_token * node2 = handlebars_talloc(list, struct handlebars_token);
 	handlebars_token_list_prepend(list, node1);
@@ -99,7 +104,7 @@ END_TEST
 
 START_TEST(test_token_list_prepend_failed_alloc)
 {
-	struct handlebars_token_list * list = handlebars_token_list_ctor(NULL);
+	struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
 	struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
 	int retval;
 	

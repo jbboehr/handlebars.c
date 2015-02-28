@@ -24,7 +24,7 @@ static TALLOC_CTX * ctx;
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_init(NULL);
+    ctx = talloc_new(NULL);
 }
 
 static void teardown(void)
@@ -78,6 +78,8 @@ START_TEST(test_compiler_get_flags)
     compiler->flags = handlebars_compiler_flag_all;
     
     ck_assert_int_eq(handlebars_compiler_flag_all, handlebars_compiler_get_flags(compiler));
+    
+    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 
@@ -105,6 +107,8 @@ START_TEST(test_compiler_set_flags)
     // Make sure it can't change result flags pt 2
     handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_use_partial);
     ck_assert_int_eq(0, compiler->flags);
+    
+    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 
@@ -147,6 +151,8 @@ START_TEST(test_compiler_is_known_helper)
     path_segment->node.path_segment.part = helper4;
     path_segment->node.path_segment.part_length = strlen(helper4);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
+    
+    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 
@@ -196,6 +202,8 @@ START_TEST(test_compiler_classify_sexpr)
     sexpr->node.sexpr.is_helper = 1;
     ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
     ck_assert_int_eq(handlebars_compiler_sexpr_type_helper, ret);
+    
+    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 
@@ -220,6 +228,8 @@ START_TEST(test_compiler_opcode)
     ck_assert_int_ne(0, compiler->opcodes_size);
     ck_assert_int_eq(2, compiler->opcodes_length);
     ck_assert_ptr_eq(op2, *(compiler->opcodes + 1));
+    
+    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 
