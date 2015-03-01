@@ -13,6 +13,7 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_utils.h"
 
 struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_ast_node_type type, void * ctx)
@@ -20,7 +21,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_ast_node_t
     struct handlebars_ast_node * ast_node;
     
     ast_node = handlebars_talloc_zero(ctx, struct handlebars_ast_node);
-    if( ast_node == NULL ) {
+    if( unlikely(ast_node == NULL) ) {
         errno = ENOMEM;
         goto done;
     }
@@ -32,6 +33,7 @@ done:
 
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node)
 {
+    assert(ast_node != NULL);
     handlebars_talloc_free(ast_node);
 }
 
@@ -39,6 +41,8 @@ const char * handlebars_ast_node_get_id_name(struct handlebars_ast_node * ast_no
 {
     const char * ret;
     
+    assert(ast_node != NULL);
+
     switch( ast_node->type ) {
         case HANDLEBARS_AST_NODE_ID:
             ret = (const char *) ast_node->node.id.id_name;
@@ -95,11 +99,21 @@ char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node 
     if( num == 0 ) {
         return NULL;
     }
+
     arrptr = arr = handlebars_talloc_array(ctx, char *, num + 1);
+    if( unlikely(arr == NULL) ) {
+        return NULL;
+    }
     
     handlebars_ast_list_foreach(ast_node->node.id.parts, item, tmp) {
-        if( item->data && item->data->type == HANDLEBARS_AST_NODE_PATH_SEGMENT ) {
-            *arrptr++ = handlebars_talloc_strdup(ctx, item->data->node.path_segment.part);
+        assert(item->data);
+        if( likely(item->data->type == HANDLEBARS_AST_NODE_PATH_SEGMENT) ) {
+            *arrptr = handlebars_talloc_strdup(arr, item->data->node.path_segment.part);
+            if( unlikely(*arrptr == NULL) ) {
+                handlebars_talloc_free(arr);
+                return NULL;
+            }
+            ++arrptr;
         }
     }
     *arrptr++ = NULL;
@@ -114,7 +128,7 @@ const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_nod
     switch( ast_node->type ) {
         case HANDLEBARS_AST_NODE_ID:
             ret = (const char *) ast_node->node.id.string;
-            if( !ret ) {
+            if( unlikely(ret == NULL) ) {
                 ret = "";
             }
             break;

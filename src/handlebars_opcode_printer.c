@@ -10,12 +10,13 @@
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
+#include "handlebars_private.h"
 #include "handlebars_utils.h"
 
 struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(void * ctx)
 {
     struct handlebars_opcode_printer * printer = handlebars_talloc_zero(ctx, struct handlebars_opcode_printer);
-    if( printer ) {
+    if( likely(printer != NULL) ) {
         printer->output = handlebars_talloc_strdup(printer, "");
     }
     return printer;
@@ -23,11 +24,16 @@ struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(void * ctx)
 
 void handlebars_opcode_printer_dtor(struct handlebars_opcode_printer * printer)
 {
+    assert(printer != NULL);
+
     handlebars_talloc_free(printer);
 }
 
 char * handlebars_operand_print_append(char * str, struct handlebars_operand * operand)
 {
+    assert(str != NULL);
+    assert(operand != NULL);
+
     switch( operand->type ) {
         case handlebars_operand_type_null:
             str = handlebars_talloc_strdup_append(str, "[NULL]");
@@ -40,8 +46,10 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
             break;
         case handlebars_operand_type_string: {
             char * tmp = handlebars_addcslashes(operand->data.stringval, "\r\n\t");
-            str = handlebars_talloc_asprintf_append(str, "[STRING:%s]", tmp);
-            handlebars_talloc_free(tmp);
+            if( likely(tmp != NULL) ) {
+                str = handlebars_talloc_asprintf_append(str, "[STRING:%s]", tmp);
+                handlebars_talloc_free(tmp);
+            }
             break;
         }
         case handlebars_operand_type_array: {
@@ -102,7 +110,7 @@ char * handlebars_opcode_array_print(void * ctx, struct handlebars_opcode ** opc
     
     for( i = 0; i < count; i++, opcodes++ ) {
         tmp = handlebars_opcode_print(ctx, *opcodes);
-        if( tmp ) {
+        if( likely(tmp != NULL) ) {
             if( str ) {
                 str = handlebars_talloc_asprintf_append(str, " %s", tmp);
                 handlebars_talloc_free(tmp);

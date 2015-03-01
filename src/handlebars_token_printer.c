@@ -1,10 +1,16 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <talloc.h>
 
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
 #include "handlebars_token_printer.h"
@@ -20,7 +26,7 @@ char * handlebars_token_print(struct handlebars_token * token, int flags)
     char sep;
     
     // Sanity check
-    if( token == NULL ) {
+    if( unlikely(token == NULL) ) {
         goto done;
     }
     
@@ -35,9 +41,9 @@ char * handlebars_token_print(struct handlebars_token * token, int flags)
     }
     
     // Prepare token text
-    if( token->text != NULL ) {
+    if( likely(token->text != NULL) ) {
         tmp = handlebars_addcslashes_ex(token->text, token->length, ws, strlen(ws));
-        if( !tmp ) {
+        if( unlikely(tmp == NULL) ) {
             return NULL;
         }
         tmp2 = (const char *) tmp;
@@ -45,7 +51,7 @@ char * handlebars_token_print(struct handlebars_token * token, int flags)
     
     // Make output string
     str = handlebars_talloc_asprintf(token, "%s [%s]%c", name, tmp2, sep);
-    if( str == NULL ) {
+    if( unlikely(str == NULL) ) {
         goto done; // LCOV_EXCL_LINE
     }
     
@@ -65,11 +71,21 @@ char * handlebars_token_list_print(struct handlebars_token_list * list, int flag
     struct handlebars_token_list_item * tmp = NULL;
     char * output = NULL;
     
+    assert(list != NULL);
+
     output = handlebars_talloc_strdup(list, "");
+    if( unlikely(output == NULL) ) {
+        return NULL;
+    }
+
     handlebars_token_list_foreach(list, el, tmp) {
         struct handlebars_token * token = el->data;
-        char * token_str = token_str = handlebars_token_print(token, flags);
-        if( token_str != NULL ) {
+        char * token_str;
+
+        //assert(token != NULL);
+
+        token_str = handlebars_token_print(token, flags);
+        if( likely(token_str != NULL) ) {
             output = handlebars_talloc_strdup_append(output, token_str);
         }
     }

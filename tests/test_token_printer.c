@@ -119,11 +119,11 @@ START_TEST(test_token_list_print_null_item)
     handlebars_token_list_append(list, token2);
     list->last->data = NULL;
     
-	char * actual = handlebars_token_list_print(list, 0);
-	char * expected = "CONTENT [tok1]";
-	ck_assert_str_eq(expected, actual);
-	
-	handlebars_token_list_dtor(list);
+    char * actual = handlebars_token_list_print(list, 0);
+    char * expected = "CONTENT [tok1]";
+    ck_assert_str_eq(expected, actual);
+
+    handlebars_token_list_dtor(list);
 }
 END_TEST
 

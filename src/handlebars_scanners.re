@@ -1,4 +1,11 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
+#include <stdlib.h>
+
 #include "handlebars_scanners.h"
 
 #define YYCTYPE unsigned char
@@ -6,6 +13,8 @@
 short handlebars_scanner_next_whitespace(const char * s, short def)
 {
     const YYCTYPE * YYCURSOR = (const unsigned char *) s;
+    
+    assert(s != NULL);
     
     for (;;) {
         /*!re2c
@@ -26,6 +35,8 @@ short handlebars_scanner_prev_whitespace(const char * s, short def)
 {
     const YYCTYPE * YYCURSOR = (const unsigned char *) s;
     short match = def;
+    
+    assert(s != NULL);
     
     for (;;) {
         /*!re2c

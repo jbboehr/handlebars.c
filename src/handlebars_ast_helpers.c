@@ -22,7 +22,7 @@
 
 #define __MEMCHECK(ptr) \
     do { \
-        if( !ptr ) { \
+        if( unlikely(ptr == NULL) ) { \
             ast_node = NULL; \
             context->errnum = HANDLEBARS_NOMEM; \
             goto error; \
@@ -42,7 +42,7 @@ static inline char * _handlebars_ast_helper_append_buffer(char ** a, size_t * a_
         return NULL;
     }
     *a = handlebars_talloc_strndup_append_buffer(*a, b, b_len);
-    if( !*a ) {
+    if( unlikely(*a == NULL) ) {
         *a_len = 0;
     } else {
         *a_len += b_len;
@@ -94,7 +94,7 @@ int handlebars_ast_helper_check_block(struct handlebars_ast_node * ast_node,
     
     cmp = strcmp(open, close);
     
-    if( cmp != 0 ) {
+    if( unlikely(cmp != 0) ) {
         char errmsgtmp[256];
         snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s", open, close);
         handlebars_yy_error(yylloc, context, errmsgtmp);
@@ -140,7 +140,7 @@ int handlebars_ast_helper_check_raw_block(struct handlebars_ast_node * ast_node,
     
     cmp = strcmp(open, close);
     
-    if( cmp != 0 ) {
+    if( unlikely(cmp != 0) ) {
         char errmsgtmp[256];
         snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s", open, close);
         handlebars_yy_error(yylloc, context, errmsgtmp);
@@ -323,6 +323,9 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     
     // Initialize temporary talloc context
     ctx = handlebars_talloc_size(NULL, 0);
+    if( unlikely(ctx == NULL) ) {
+        return NULL;
+    }
     
     // Create the block node
     ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, ctx);
@@ -416,6 +419,9 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
     
     // Initialize temporary talloc context
     ctx = handlebars_talloc_size(NULL, 0);
+    if( unlikely(ctx == NULL) ) {
+        return NULL;
+    }
     
     // Create the block node
     ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, ctx);
@@ -434,7 +440,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
     handlebars_ast_list_foreach(list, item, tmp) {
         part = item->data->node.path_segment.part;
         part_length = item->data->node.path_segment.part_length;
-        if( !part ) {
+        if( unlikely(part == NULL) ) {
             continue;
         }
         
@@ -478,7 +484,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
     ast_node->node.id.is_simple = (count == 1 && !is_scoped && depth == 0);
     
     // Trim the last period off the end of string and assign
-    if( count ) {
+    if( likely(count) ) {
         string[string_length - 1] = 0;
         string_length--;
         ast_node->node.id.string = string;
@@ -603,6 +609,9 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     
     // Initialize temporary talloc context
     ctx = handlebars_talloc_size(NULL, 0);
+    if( unlikely(ctx == NULL) ) {
+        return NULL;
+    }
     
     // Create the raw block node
     ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_RAW_BLOCK, ctx);

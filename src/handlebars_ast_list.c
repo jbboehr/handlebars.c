@@ -6,6 +6,7 @@
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
 
 int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {
@@ -13,14 +14,14 @@ int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handleb
     struct handlebars_ast_list_item * item = NULL;
     
     // Check args
-    if( list == NULL || ast_node == NULL ) {
+    if( unlikely(list == NULL || ast_node == NULL) ) {
         error = HANDLEBARS_NULLARG;
         goto error;
     }
     
     // Initialize list item
     item = handlebars_talloc_zero(list, struct handlebars_ast_list_item);
-    if( item == NULL ) {
+    if( unlikely(item == NULL) ) {
         error = HANDLEBARS_NOMEM; 
         goto error;
     }
@@ -43,7 +44,11 @@ error:
 
 int handlebars_ast_list_count(struct handlebars_ast_list * list)
 {
-    return list ? list->count : 0;
+    if( unlikely(list == NULL) ) {
+        return 0;
+    } else {
+        return list->count;
+    }
 }
 
 struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx)
@@ -143,14 +148,14 @@ int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handle
     struct handlebars_ast_list_item * item = NULL;
     
     // Check args
-    if( list == NULL || ast_node == NULL ) {
+    if( unlikely(list == NULL || ast_node == NULL) ) {
         error = HANDLEBARS_NULLARG;
         goto error;
     }
     
     // Initialize list item
     item = handlebars_talloc_zero(list, struct handlebars_ast_list_item);
-    if( item == NULL ) {
+    if( unlikely(item == NULL) ) {
         error = HANDLEBARS_NOMEM; 
         goto error;
     }

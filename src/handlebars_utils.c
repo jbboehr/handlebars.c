@@ -37,7 +37,7 @@ char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char
     }
 
     new_str = handlebars_talloc_zero_size(NULL, sizeof(char) * str_length * 4 + 1);
-    if( new_str == NULL ) {
+    if( unlikely(new_str == NULL) ) {
         return NULL;
     }
 
@@ -194,7 +194,7 @@ char * handlebars_stripcslashes_ex(char * str, size_t * length)
     }
 
     if (nlen != 0) {
-        *target='\0';
+        *target = '\0';
     }
     
     if( length != NULL ) {

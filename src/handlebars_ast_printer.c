@@ -11,6 +11,7 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_utils.h"
 
 
@@ -22,9 +23,9 @@ void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context
 
 #define __APPEND(ptr) \
     do { \
-        if( ptr != NULL ) { \
+        if( likely(ptr != NULL) ) { \
             ctx->output = _handlebars_talloc_strdup_append_buffer(ctx->output, ptr); \
-            if( ctx->output == NULL ) { \
+            if( unlikely(ctx->output == NULL) ) { \
                 ctx->error = errno = ENOMEM; \
                 return; \
             } \
@@ -64,7 +65,7 @@ static void _handlebars_ast_print_list(struct handlebars_ast_list * ast_list, st
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
     
-    if( ast_list == NULL ) {
+    if( unlikely(ast_list == NULL) ) {
         return;
     }
     
@@ -290,7 +291,7 @@ static void _handlebars_ast_print_hash_segment(struct handlebars_ast_node * ast_
 
 static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    if( ast_node == NULL ) {
+    if( unlikely(ast_node == NULL) ) {
         return;
     }
     
@@ -367,7 +368,7 @@ struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_as
     
     // Allocate initial string
     ctx.output = handlebars_talloc_strdup(NULL, "");
-    if( !ctx.output ) {
+    if( unlikely(ctx.output == NULL) ) {
         ctx.error = errno = ENOMEM;
         goto error;
     }
@@ -379,7 +380,7 @@ struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_as
     handlebars_rtrim(ctx.output, " \t\r\n");
     
     // Check for error and free
-    if( ctx.error && ctx.output != NULL )  {
+    if( unlikely(ctx.error && ctx.output != NULL) )  {
         handlebars_talloc_free(ctx.output);
         ctx.output = NULL;
     }
