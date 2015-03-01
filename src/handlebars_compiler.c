@@ -13,6 +13,8 @@
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
+#include "handlebars_private.h"
+
 
 
 
@@ -705,7 +707,7 @@ static inline void handlebars_compiler_accept_boolean(
 }
 
 static inline void handlebars_compiler_accept_comment(
-        HANDLEBARS_ATTR_UNUSED struct handlebars_compiler * compiler, 
+        HANDLEBARS_ATTR_UNUSED struct handlebars_compiler * compiler,
         HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * comment)
 {
     assert(comment != NULL);

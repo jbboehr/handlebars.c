@@ -14,6 +14,7 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_scanners.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
@@ -510,7 +511,7 @@ error:
 }
 
 int handlebars_ast_helper_prepare_program(
-        HANDLEBARS_ATTR_UNUSED struct handlebars_context * context, 
+        HANDLEBARS_ATTR_UNUSED struct handlebars_context * context,
         struct handlebars_ast_node * program, short is_root)
 {
     int error = HANDLEBARS_SUCCESS;

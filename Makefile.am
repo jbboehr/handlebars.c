@@ -3,7 +3,7 @@ SUBDIRS = src . doc bin tests
 
 EXTRA_DIST = LICENSE README.md
 
-ACLOCAL_AMFLAGS = -I m4
+ACLOCAL_AMFLAGS = -I m4 --install
 
 # These flags are gcc specific
 if GCC

@@ -26,6 +26,9 @@ AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([foreign -Wall -Werror subdir-objects])
 
+AX_CHECK_ENABLE_DEBUG([no])
+AX_CFLAGS_WARN_ALL
+
 # Define macro variables for the package version numbers.
 AC_DEFINE(HANDLEBARS_VERSION_MAJOR, HANDLEBARS_MAJOR, [Define the major version number.])
 AC_DEFINE(HANDLEBARS_VERSION_MINOR, HANDLEBARS_MINOR, [Define the minor version number.])
@@ -61,6 +64,8 @@ AC_PATH_PROGS(FLEX, [flex], no)
 AC_PATH_PROGS(DOXYGEN, [doxygen], no)
 AC_PATH_PROGS(LCOV, [lcov], no)
 AC_PATH_PROGS(RE2C, [re2c], no)
+
+AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 AM_CONDITIONAL([GCC], [test x$GCC = xyes])
 AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
 AM_CONDITIONAL([RE2C], [test x$RE2C != xno])
@@ -86,6 +91,8 @@ AC_C_CONST
 AC_C_INLINE
 AC_C_STRINGIZE
 AC_TYPE_SIZE_T
+AX_GCC_BUILTIN([__builtin_expect])
+AX_GCC_VAR_ATTRIBUTE([unused])
 
 # Checks for system
 AC_EXEEXT
@@ -163,17 +170,6 @@ AS_IF([test "x$enable_yaml" != "xno"], [
 
 # Options
 AC_DEFINE([YY_NO_UNISTD_H], [1], [Disable usage of unistd.h])
-
-# debug
-AC_ARG_ENABLE([debug], 
-  [AS_HELP_STRING([--enable-debug], [compile with debug functions])], [])
-
-AS_IF([test "x$enable_debug" == "xyes"], [
-  AC_DEFINE([DEBUG], [1], [Defined if debug functions requested])
-], [
-  AC_DEFINE([NDEBUG], [1], [Defined if debug functions NOT requested])
-])
-AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # gcov
 AC_ARG_ENABLE([gcov], AS_HELP_STRING([--enable-gcov], [compile with gcov]))
