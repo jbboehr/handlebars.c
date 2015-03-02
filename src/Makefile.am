@@ -84,7 +84,6 @@ libhandlebars_la_SOURCES = \
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libhandlebars_la_LDFLAGS = \
 	-no-undefined \
-	-module \
 	-shared \
 	-version-info $(HANDLEBARS_LT_CURRENT):$(HANDLEBARS_LT_REVISION):$(HANDLEBARS_LT_AGE)
 #	-export-symbols-regex '^_?handlebars' \
