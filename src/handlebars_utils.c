@@ -172,7 +172,7 @@ char * handlebars_stripcslashes_ex(char * str, size_t * length)
                     *target++=(char)strtol(numtmp, NULL, 16);
                     break;
                 }
-                /* break is left intentionally */
+                /* no break */
             default:
                 i=0;
                 while (source < end && *source >= '0' && *source <= '7' && i<3) {
@@ -253,20 +253,19 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
     // Note: it looks like the yyscanner is allocated before we can pass in
     // a handlebars context...
     // Also look into the performance hit for doing this
-    // Going to skip wrappers for now
     struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
-    return (void *) /*handlebars_*/talloc_size(ctx, bytes);
+    return (void *) _handlebars_yy_alloc(ctx, bytes, "handlebars_yy_alloc");
 }
 
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
     // Going to skip wrappers for now
     struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
-    return (void *) /*handlebars_*/talloc_realloc(ctx, ptr, char, bytes);
+    return (void *) _handlebars_yy_realloc(ctx, ptr, sizeof(char), bytes, "handlebars_yy_realloc");
 }
 
 void handlebars_yy_free(void * ptr, HANDLEBARS_ATTR_UNUSED void * yyscanner)
 {
     // Going to skip wrappers for now
-    /*handlebars_*/talloc_free(ptr);
+    _handlebars_yy_free(ptr, "handlebars_yy_free");
 }

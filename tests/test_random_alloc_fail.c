@@ -40,6 +40,8 @@ START_TEST(test_random_alloc_fail_tokenizer)
         talloc_steal(rootctx, ctx);
         ctx->tmpl = tmpl;
 
+        // For now, don't do yy alloc
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
         list = handlebars_lex(ctx);
         handlebars_memory_fail_disable();
@@ -59,6 +61,8 @@ START_TEST(test_random_alloc_fail_parser)
         talloc_steal(rootctx, ctx);
         ctx->tmpl = tmpl;
 
+        // For now, don't do yy alloc
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
         retval = handlebars_yy_parse(ctx);
         handlebars_memory_fail_disable();
@@ -80,6 +84,8 @@ START_TEST(test_random_alloc_fail_compiler)
         ctx->tmpl = tmpl;
         retval = handlebars_yy_parse(ctx);
 
+        // For now, don't do yy alloc
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
         handlebars_compiler_compile(compiler, ctx->program);
         handlebars_memory_fail_disable();

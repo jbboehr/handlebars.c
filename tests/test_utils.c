@@ -211,10 +211,10 @@ START_TEST(test_yy_fatal_error)
     const char * err = "test error";
     int exit_code;
     
-    handlebars_exit_fail_enable();
+    handlebars_memory_fail_enable();
     handlebars_yy_fatal_error(err, NULL);
     exit_code = handlebars_memory_get_last_exit_code();
-    handlebars_exit_fail_disable();
+    handlebars_memory_fail_disable();
     
     ck_assert_int_eq(exit_code, 2);
 }
@@ -222,7 +222,6 @@ END_TEST
 
 START_TEST(test_yy_free)
 {
-    /*
     char * tmp = handlebars_talloc_strdup(ctx, "");
     int count;
     
@@ -234,7 +233,6 @@ START_TEST(test_yy_free)
     ck_assert_int_eq(1, count);
     
     handlebars_talloc_free(tmp);
-    */
 }
 END_TEST
 
@@ -262,7 +260,6 @@ END_TEST
 
 START_TEST(test_yy_realloc_failed_alloc)
 {
-    /*
     char * tmp = handlebars_talloc_strdup(ctx, "");
     char * tmp2;
     
@@ -274,7 +271,6 @@ START_TEST(test_yy_realloc_failed_alloc)
     
     // (it's not actually getting freed in the realloc)
     handlebars_talloc_free(tmp);
-    */
 }
 END_TEST
 
