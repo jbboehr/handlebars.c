@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <talloc.h>
 
+#include "handlebars_compiler.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars.tab.h"
@@ -14,6 +15,9 @@
 #include "utils.h"
 
 static TALLOC_CTX * rootctx;
+
+// @todo try to get this to include every language feature
+static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}";
 
 static void setup(void)
 {
@@ -27,22 +31,19 @@ static void teardown(void)
 
 START_TEST(test_random_alloc_fail_tokenizer)
 {
-    // @todo try to get this to include every language feature
-    const char * tmpl = "{{#if foo}} {{bar}} {{/if}}";
     size_t i;
     int retval;
     struct handlebars_token_list * list;
 
-    for( i = 1; i < 100; i++ ) {
+    for( i = 1; i < 200; i++ ) {
         struct handlebars_context * ctx = handlebars_context_ctor();
         talloc_steal(rootctx, ctx);
         ctx->tmpl = tmpl;
+
         handlebars_memory_fail_counter(i);
         list = handlebars_lex(ctx);
         handlebars_memory_fail_disable();
-        if( list ) {
-            talloc_steal(ctx, list);
-        }
+
         handlebars_context_dtor(ctx);
     }
 }
@@ -50,18 +51,39 @@ END_TEST
 
 START_TEST(test_random_alloc_fail_parser)
 {
-    // @todo try to get this to include every language feature
-    const char * tmpl = "{{#if foo}} {{bar}} {{/if}}";
     size_t i;
     int retval;
-    
-    for( i = 1; i < 100; i++ ) {
+
+    for( i = 1; i < 200; i++ ) {
         struct handlebars_context * ctx = handlebars_context_ctor();
         talloc_steal(rootctx, ctx);
         ctx->tmpl = tmpl;
+
         handlebars_memory_fail_counter(i);
         retval = handlebars_yy_parse(ctx);
         handlebars_memory_fail_disable();
+
+        handlebars_context_dtor(ctx);
+    }
+}
+END_TEST
+
+START_TEST(test_random_alloc_fail_compiler)
+{
+    size_t i;
+    int retval;
+    
+    for( i = 1; i < 200; i++ ) {
+        struct handlebars_context * ctx = handlebars_context_ctor();
+        struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
+        talloc_steal(rootctx, ctx);
+        ctx->tmpl = tmpl;
+        retval = handlebars_yy_parse(ctx);
+
+        handlebars_memory_fail_counter(i);
+        handlebars_compiler_compile(compiler, ctx->program);
+        handlebars_memory_fail_disable();
+
         handlebars_context_dtor(ctx);
     }
 }
@@ -73,6 +95,7 @@ Suite * parser_suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_tokenizer, "Random Memory Allocation Failures (Tokenizer)");
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_parser, "Random Memory Allocation Failures (Parser)");
+    REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_compiler, "Random Memory Allocation Failures (Compiler)");
     
     return s;
 }

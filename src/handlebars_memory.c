@@ -323,9 +323,9 @@ void handlebars_memory_fail_disable(void)
 {
     if( _handlebars_memory_fail_enabled ) {
         _handlebars_memory_fail_enabled = 0;
-        _handlebars_memory_fail_counter = -1;
-        _handlebars_memory_last_exit_code = 0;
-        _handlebars_memory_call_counter = 0;
+        //_handlebars_memory_fail_counter = -1;
+        //_handlebars_memory_last_exit_code = 0;
+        //_handlebars_memory_call_counter = 0;
         _handlebars_talloc_array = &_talloc_array;
         _handlebars_talloc_asprintf = &talloc_asprintf;
         _handlebars_talloc_asprintf_append = &talloc_asprintf_append;
@@ -384,9 +384,9 @@ void handlebars_exit_fail_disable(void)
 {
     if( _handlebars_exit_fail_enabled ) {
         _handlebars_exit_fail_enabled = 0;
-        _handlebars_memory_fail_counter = -1;
-        _handlebars_memory_last_exit_code = 0;
-        _handlebars_memory_call_counter = 0;
+        //_handlebars_memory_fail_counter = -1;
+        //_handlebars_memory_last_exit_code = 0;
+        //_handlebars_memory_call_counter = 0;
         handlebars_exit = &_handlebars_exit;
     }
 }
