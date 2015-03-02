@@ -29,6 +29,10 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
     
     // Prepare token list
     list = handlebars_token_list_ctor(ctx);
+    if( unlikely(list == NULL) ) {
+        ctx->errnum = HANDLEBARS_NOMEM;
+        return NULL;
+    }
     
     // Run
     do {

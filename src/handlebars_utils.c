@@ -172,7 +172,7 @@ char * handlebars_stripcslashes_ex(char * str, size_t * length)
                     *target++=(char)strtol(numtmp, NULL, 16);
                     break;
                 }
-                /* break is left intentionally */
+                /* no break */
             default:
                 i=0;
                 while (source < end && *source >= '0' && *source <= '7' && i<3) {
@@ -222,13 +222,18 @@ void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, s
 
 void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * context, const char * err)
 {
+    assert(context != NULL);
+
 #if defined(YYDEBUG) && YYDEBUG
     fprintf(stderr, "%d : %s\n", lloc->first_line, err);
 #endif
+
     context->errnum = HANDLEBARS_PARSEERR;
     context->error = handlebars_talloc_strdup(context, err);
     context->errloc = handlebars_talloc_zero(context, YYLTYPE);
-    memcpy(context->errloc, lloc, sizeof(YYLTYPE));
+    if( likely(context->errloc != NULL) ) {
+        memcpy(context->errloc, lloc, sizeof(YYLTYPE));
+    }
 }
 
 void handlebars_yy_fatal_error(const char * msg, HANDLEBARS_ATTR_UNUSED void * yyscanner)
@@ -252,16 +257,18 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
     // a handlebars context...
     // Also look into the performance hit for doing this
     struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
-    return (void *) handlebars_talloc_size(ctx, bytes);
+    return (void *) _handlebars_yy_alloc(ctx, bytes, "handlebars_yy_alloc");
 }
 
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
+    // Going to skip wrappers for now
     struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
-    return (void *) handlebars_talloc_realloc(ctx, ptr, char, bytes);
+    return (void *) _handlebars_yy_realloc(ctx, ptr, sizeof(char), bytes, "handlebars_yy_realloc");
 }
 
 void handlebars_yy_free(void * ptr, HANDLEBARS_ATTR_UNUSED void * yyscanner)
 {
-    handlebars_talloc_free(ptr);
+    // Going to skip wrappers for now
+    _handlebars_yy_free(ptr, "handlebars_yy_free");
 }

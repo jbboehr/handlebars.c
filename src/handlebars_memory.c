@@ -9,6 +9,7 @@
 
 static int _handlebars_memory_fail_enabled = 0;
 static int _handlebars_memory_fail_counter = -1;
+static int _handlebars_memory_fail_flags = handlebars_memory_fail_flag_all;
 static int _handlebars_memory_last_exit_code = -1;
 static int _handlebars_memory_call_counter = 0;
 
@@ -28,6 +29,13 @@ handlebars_talloc_strdup_append_buffer_func _handlebars_talloc_strdup_append_buf
 handlebars_talloc_strndup_func _handlebars_talloc_strndup = &talloc_strndup;
 handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_append_buffer = &talloc_strndup_append_buffer;
 handlebars_talloc_zero_func _handlebars_talloc_zero = &_talloc_zero;
+
+// Setup memory function pointers for scanner
+handlebars_talloc_named_const_func _handlebars_yy_alloc = &talloc_named_const;
+handlebars_talloc_realloc_array_func _handlebars_yy_realloc = &_talloc_realloc_array;
+handlebars_talloc_free_func _handlebars_yy_free = &_talloc_free;
+
+// Setup other function pointers
 handlebars_exit_func handlebars_exit = &_handlebars_exit;
 
 // Overrides for memory functions
@@ -281,10 +289,22 @@ static void * _handlebars_memfail_talloc_zero(const void * ctx, size_t size, con
 }
 
 // Other function pointers
+// Disabling this for now
 static void _handlebars_memfail_exit(int exit_code)
 {
+    // Increment call counter
     _handlebars_memory_call_counter++;
     _handlebars_memory_last_exit_code = exit_code;
+
+    // Do counter, succeed unless last count
+    if( _handlebars_memory_fail_counter > -1 ) {
+        if( --_handlebars_memory_fail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            _handlebars_exit(exit_code);
+        }
+    }
 }
 
 static void _handlebars_exit(int exit_code)
@@ -296,16 +316,19 @@ static void _handlebars_exit(int exit_code)
 // Functions to manipulate memory allocation failures
 void handlebars_memory_fail_enable(void)
 {
-    if( !_handlebars_memory_fail_enabled ) {
-        _handlebars_memory_fail_enabled = 1;
-        _handlebars_memory_fail_counter = -1;
-        _handlebars_memory_last_exit_code = 0;
-        _handlebars_memory_call_counter = 0;
+    //if( _handlebars_memory_fail_enabled ) {
+    //    return;
+    //}
+
+    _handlebars_memory_fail_enabled = 1;
+    _handlebars_memory_fail_counter = -1;
+    _handlebars_memory_last_exit_code = 0;
+    _handlebars_memory_call_counter = 0;
+    if( _handlebars_memory_fail_flags & handlebars_memory_fail_flag_alloc ) {
         _handlebars_talloc_array = &_handlebars_memfail_talloc_array;
         _handlebars_talloc_asprintf = &_handlebars_memfail_talloc_asprintf;
         _handlebars_talloc_asprintf_append = &_handlebars_memfail_talloc_asprintf_append;
         _handlebars_talloc_asprintf_append_buffer = &_handlebars_memfail_talloc_asprintf_append_buffer;
-        _handlebars_talloc_free = &_handlebars_memfail_talloc_free;
         _handlebars_talloc_named_const = &_handlebars_memfail_talloc_named_const;
         _handlebars_talloc_realloc_array = &_handlebars_memfail_talloc_realloc_array;
         _handlebars_talloc_strdup = &_handlebars_memfail_talloc_strdup;
@@ -314,37 +337,58 @@ void handlebars_memory_fail_enable(void)
         _handlebars_talloc_strndup = &_handlebars_memfail_talloc_strndup;
         _handlebars_talloc_strndup_append_buffer = &_handlebars_memfail_talloc_strndup_append_buffer;
         _handlebars_talloc_zero = &_handlebars_memfail_talloc_zero;
+    }
+    if( _handlebars_memory_fail_flags & handlebars_memory_fail_flag_free ) {
+        _handlebars_talloc_free = &_handlebars_memfail_talloc_free;
+    }
+    if( _handlebars_memory_fail_flags & handlebars_memory_fail_flag_exit ) {
         handlebars_exit = &_handlebars_memfail_exit;
+    }
+    if( _handlebars_memory_fail_flags & handlebars_memory_fail_flag_yy ) {
+        _handlebars_yy_alloc = &_handlebars_memfail_talloc_named_const;
+        _handlebars_yy_realloc = &_handlebars_memfail_talloc_realloc_array;
+        _handlebars_yy_free = &_handlebars_memfail_talloc_free;
     }
 }
 
 void handlebars_memory_fail_disable(void)
 {
-    if( _handlebars_memory_fail_enabled ) {
-        _handlebars_memory_fail_enabled = 0;
-        _handlebars_memory_fail_counter = -1;
-        _handlebars_memory_last_exit_code = 0;
-        _handlebars_memory_call_counter = 0;
-        _handlebars_talloc_array = &_talloc_array;
-        _handlebars_talloc_asprintf = &talloc_asprintf;
-        _handlebars_talloc_asprintf_append = &talloc_asprintf_append;
-        _handlebars_talloc_asprintf_append_buffer = &talloc_asprintf_append_buffer;
-        _handlebars_talloc_free = &_talloc_free;
-        _handlebars_talloc_named_const = &talloc_named_const;
-        _handlebars_talloc_realloc_array = &_talloc_realloc_array;
-        _handlebars_talloc_strdup = &talloc_strdup;
-        _handlebars_talloc_strdup_append = &talloc_strdup_append;
-        _handlebars_talloc_strdup_append_buffer = &talloc_strdup_append_buffer;
-        _handlebars_talloc_strndup = &talloc_strndup;
-        _handlebars_talloc_strndup_append_buffer = &talloc_strndup_append_buffer;
-        _handlebars_talloc_zero = &_talloc_zero;
-        handlebars_exit = &_handlebars_exit;
-    }
+    //if( !_handlebars_memory_fail_enabled ) {
+    //    return;
+    //}
+
+    _handlebars_memory_fail_enabled = 0;
+    _handlebars_memory_fail_flags = handlebars_memory_fail_flag_all;
+    //_handlebars_memory_fail_counter = -1;
+    //_handlebars_memory_last_exit_code = 0;
+    //_handlebars_memory_call_counter = 0;
+    _handlebars_talloc_array = &_talloc_array;
+    _handlebars_talloc_asprintf = &talloc_asprintf;
+    _handlebars_talloc_asprintf_append = &talloc_asprintf_append;
+    _handlebars_talloc_asprintf_append_buffer = &talloc_asprintf_append_buffer;
+    _handlebars_talloc_free = &_talloc_free;
+    _handlebars_talloc_named_const = &talloc_named_const;
+    _handlebars_talloc_realloc_array = &_talloc_realloc_array;
+    _handlebars_talloc_strdup = &talloc_strdup;
+    _handlebars_talloc_strdup_append = &talloc_strdup_append;
+    _handlebars_talloc_strdup_append_buffer = &talloc_strdup_append_buffer;
+    _handlebars_talloc_strndup = &talloc_strndup;
+    _handlebars_talloc_strndup_append_buffer = &talloc_strndup_append_buffer;
+    _handlebars_talloc_zero = &_talloc_zero;
+    _handlebars_yy_alloc = &talloc_named_const;
+    _handlebars_yy_realloc = &_talloc_realloc_array;
+    _handlebars_yy_free = &_talloc_free;
+    handlebars_exit = &_handlebars_exit;
 }
 
 int handlebars_memory_fail_get_state(void)
 {
     return _handlebars_memory_fail_enabled;
+}
+
+void handlebars_memory_fail_set_flags(int flags)
+{
+    _handlebars_memory_fail_flags = flags;
 }
 
 void handlebars_memory_fail_counter(int count)
@@ -367,5 +411,6 @@ int handlebars_memory_get_call_counter(void)
 {
     return _handlebars_memory_call_counter;
 }
+
 
 // LCOV_EXCL_STOP

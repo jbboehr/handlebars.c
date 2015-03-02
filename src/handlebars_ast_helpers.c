@@ -322,7 +322,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     assert(!inverse || inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
     
     // Initialize temporary talloc context
-    ctx = handlebars_talloc_size(NULL, 0);
+    ctx = talloc_new(context);
     if( unlikely(ctx == NULL) ) {
         return NULL;
     }
@@ -418,7 +418,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
     int i = 0;
     
     // Initialize temporary talloc context
-    ctx = handlebars_talloc_size(NULL, 0);
+    ctx = talloc_new(context);
     if( unlikely(ctx == NULL) ) {
         return NULL;
     }
@@ -608,7 +608,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     TALLOC_CTX * ctx;
     
     // Initialize temporary talloc context
-    ctx = handlebars_talloc_size(NULL, 0);
+    ctx = talloc_new(context);
     if( unlikely(ctx == NULL) ) {
         return NULL;
     }

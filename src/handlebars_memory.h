@@ -85,19 +85,46 @@ extern handlebars_talloc_strndup_func _handlebars_talloc_strndup;
 extern handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_append_buffer;
 extern handlebars_talloc_zero_func _handlebars_talloc_zero;
 
+// Memory function pointers for scanner
+extern handlebars_talloc_named_const_func _handlebars_yy_alloc;
+extern handlebars_talloc_realloc_array_func _handlebars_yy_realloc;
+extern handlebars_talloc_free_func _handlebars_yy_free;
+
 // Other function pointers
 extern handlebars_exit_func handlebars_exit;
+
+/**
+ * @brief Flags to control the memory fail behaviour
+ */
+enum handlebars_memory_fail_flag {
+    handlebars_memory_fail_flag_none = 0,
+    handlebars_memory_fail_flag_alloc = (1 << 0),
+    handlebars_memory_fail_flag_free = (1 << 1),
+    handlebars_memory_fail_flag_exit = (1 << 2),
+    handlebars_memory_fail_flag_yy = (1 << 3),
+    handlebars_memory_fail_flag_all = (1 << 4) - 1,
+};
 
 // Functions to manipulate and mock memory allocations
 void handlebars_memory_fail_enable(void);
 void handlebars_memory_fail_disable(void);
 int handlebars_memory_fail_get_state(void);
 
+/**
+ * @brief Set the memory fail flags. Must be called before enable, and disable resets these flags to all
+ *
+ * @param[in] flags
+ */
+void handlebars_memory_fail_set_flags(int flags);
+
 void handlebars_memory_fail_counter(int count);
 int handlebars_memory_fail_get_counter(void);
 
 int handlebars_memory_get_last_exit_code(void);
 int handlebars_memory_get_call_counter(void);
+
+void handlebars_exit_fail_enable(void);
+void handlebars_exit_fail_disable(void);
 
 #ifdef	__cplusplus
 }

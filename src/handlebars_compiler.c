@@ -201,6 +201,11 @@ static inline long handlebars_compiler_compile_program(
     handlebars_compiler_compile(subcompiler, program);
     guid = compiler->guid++;
     
+    // copy
+    if( subcompiler->errnum != 0 && compiler->errnum == 0 ) {
+        compiler->errnum = subcompiler->errnum;
+    }
+
     compiler->use_partial |= subcompiler->use_partial;
     
     // Realloc children array
@@ -239,10 +244,10 @@ static inline void handlebars_compiler_opcode(
 
     // Realloc opcode array
     if( compiler->opcodes_size <= compiler->opcodes_length ) {
-        compiler->opcodes_size += 32;
         compiler->opcodes = handlebars_talloc_realloc(compiler, compiler->opcodes,
-                    struct handlebars_opcode *, compiler->opcodes_size);
+                    struct handlebars_opcode *, compiler->opcodes_size + 32);
         __MEMCHECK(compiler->opcodes);
+        compiler->opcodes_size += 32;
     }
     
     // Append opcode
