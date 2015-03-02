@@ -23,6 +23,10 @@ enum handlebars_ast_printer_flags
    * @brief Default printer behaviour 
    */
   HANDLEBARS_AST_PRINTER_FLAGS_NONE = 0,
+
+  /**
+   * @brief handlebars.js compatible printer behaviour
+   */
   HANDLEBARS_AST_PRINTER_FLAGS_COMPAT = 1
 };
 

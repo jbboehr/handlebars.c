@@ -102,34 +102,6 @@ char * handlebars_opcode_print(void * ctx, struct handlebars_opcode * opcode)
     return handlebars_opcode_print_append(str, opcode);
 }
 
-char * handlebars_opcode_array_print(void * ctx, struct handlebars_opcode ** opcodes, size_t count)
-{
-    char * str = NULL;
-    char * tmp;
-    size_t i;
-    
-    for( i = 0; i < count; i++, opcodes++ ) {
-        tmp = handlebars_opcode_print(ctx, *opcodes);
-        if( likely(tmp != NULL) ) {
-            if( str ) {
-                str = handlebars_talloc_asprintf_append(str, " %s", tmp);
-                handlebars_talloc_free(tmp);
-            } else {
-                str = tmp;
-            }
-        }
-    }
-    
-    return str;
-}
-
-
-
-
-
-
-
-
 static void handlebars_opcode_printer_array_print(struct handlebars_opcode_printer * printer)
 {
     int indent = printer->indent < 8 ? printer->indent * 2 : 16;
@@ -141,12 +113,7 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
     memset(&indentbuf, ' ', indent);
     indentbuf[indent] = 0;
     
-    //printer->output = handlebars_talloc_asprintf_append(printer->output, "%s[\n", indentbuf);
-    
     for( i = 0; i < count; i++, opcodes++ ) {
-        //if( i != 0 ) {
-        //    printer->output = handlebars_talloc_strdup_append(printer->output, "\n");
-        //}
         printer->output = handlebars_talloc_strdup_append(printer->output, indentbuf);
         printer->output = handlebars_opcode_print_append(printer->output, *opcodes);
         printer->output = handlebars_talloc_strdup_append(printer->output, "\n");

@@ -16,7 +16,7 @@ extern "C" {
 
 // Note: a little concerned this naughty stuff may cause problems with
 // different talloc versions, but let's see how it works for now
-// @todo maybe just alias them all with macros when disabled
+// @todo maybe just alias them all with macros when disabled or use LD_PRELOAD
 
 // Memory macros
 #define handlebars_talloc(ctx, type) \
@@ -106,8 +106,20 @@ enum handlebars_memory_fail_flag {
 };
 
 // Functions to manipulate and mock memory allocations
+
+/**
+ * @brief Enable memory failure behaviour
+ */
 void handlebars_memory_fail_enable(void);
+
+/**
+ * @brief Disable memory failure behaviour
+ */
 void handlebars_memory_fail_disable(void);
+
+/**
+ * @brief Get whether memory failure is enabled
+ */
 int handlebars_memory_fail_get_state(void);
 
 /**
@@ -117,14 +129,33 @@ int handlebars_memory_fail_get_state(void);
  */
 void handlebars_memory_fail_set_flags(int flags);
 
+/**
+ * @brief Trigger memory allocation failures after specified number of allocations
+ *
+ * @param[in] count The number of allocations after which to fail
+ */
 void handlebars_memory_fail_counter(int count);
+
+/**
+ * @brief Get the number of memory allocations at which to start failure
+ *
+ * @return The number of allocations after which to fail
+ */
 int handlebars_memory_fail_get_counter(void);
 
+/**
+ * @brief Get the last exit code when memory fail was enabled
+ *
+ * @return The exit code
+ */
 int handlebars_memory_get_last_exit_code(void);
-int handlebars_memory_get_call_counter(void);
 
-void handlebars_exit_fail_enable(void);
-void handlebars_exit_fail_disable(void);
+/**
+ * @brief Get the number of memory allocations since failure enabled
+ *
+ * @return The number of allocations
+ */
+int handlebars_memory_get_call_counter(void);
 
 #ifdef	__cplusplus
 }

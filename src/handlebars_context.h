@@ -44,7 +44,7 @@ struct handlebars_context
 struct handlebars_context * handlebars_context_ctor(void);
 
 /**
- * @brief Free a context and it's resouces.
+ * @brief Free a context and it's resources.
  * 
  * @param[in] context
  * @return void
@@ -60,7 +60,7 @@ void handlebars_context_dtor(struct handlebars_context * context);
 char * handlebars_context_get_errmsg(struct handlebars_context * context);
 
 /**
- * @brief Get the error message from a context, or NULL (compat for handlebars spec)
+ * @brief Get the error message from a context, or NULL (compatibility for handlebars specification)
  * 
  * @param[in] context
  * @return the error message

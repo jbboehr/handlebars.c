@@ -17,16 +17,45 @@ struct handlebars_ast_node;
 struct handlebars_compiler;
 struct handlebars_opcode;
 
+/**
+ * @brief Array of built-in helpers
+ */
 extern const char * handlebars_builtins[];
 
+/**
+ * @brief Flags to control compiler behaviour
+ */
 enum handlebars_compiler_flag {
+    /**
+     * @brief No flags
+     */
     handlebars_compiler_flag_none = 0,
     
     // Option flags
+
+    /**
+     * @brief Track depths
+     */
     handlebars_compiler_flag_use_depths = (1 << 0),
+
+    /**
+     * @brief Stringify parameters
+     */
     handlebars_compiler_flag_string_params = (1 << 1),
+
+    /**
+     * @brief Track IDs
+     */
     handlebars_compiler_flag_track_ids = (1 << 2),
+
+    /**
+     * @brief Disable all escaping
+     */
     handlebars_compiler_flag_no_escape = (1 << 3),
+
+    /**
+     * @brief Only allow known helpers
+     */
     handlebars_compiler_flag_known_helpers_only = (1 << 4),
     
     // Result flags
@@ -34,22 +63,47 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_is_simple = (1 << 9),
     
     // Composite option flags
+
+    /**
+     * @brief Mustache compatibility
+     */
     handlebars_compiler_flag_compat = (1 << 0),
+
+    /**
+     * @brief All flags
+     */
     handlebars_compiler_flag_all = ((1 << 5) - 1)
 };
 
+/**
+ * @brief Compiler error codes
+ */
 enum handlebars_compiler_error {
     handlebars_compiler_error_none = 0,
+
+    /**
+     * @brief The compiler encountered a memory allocation failure
+     */
     handlebars_compiler_error_nomem = 1,
+
+    /**
+     * @brief The compiler encountered an unknown helper in known helpers only mode
+     */
     handlebars_compiler_error_unknown_helper = 2
 };
 
+/**
+ * @brief Sexpr types
+ */
 enum handlebars_compiler_sexpr_type {
     handlebars_compiler_sexpr_type_ambiguous = 0,
     handlebars_compiler_sexpr_type_helper = 1,
     handlebars_compiler_sexpr_type_simple = 2
 };
 
+/**
+ * @brief Main compiler state struct
+ */
 struct handlebars_compiler {
     enum handlebars_compiler_error errnum;
     char * error;
@@ -62,14 +116,24 @@ struct handlebars_compiler {
     size_t children_length;
     size_t children_size;
     
+    /**
+     * @brief Bitfield of depths
+     */
     unsigned long depths;
     
+    /**
+     * @brief Array of known helpers
+     */
     const char ** known_helpers;
     
-    // Symbol counter
+    /**
+     * @brief Symbol index counter
+     */
     long guid;
     
-    // Flags
+    /**
+     * @brief Compiler flags
+     */
     int flags;
     
     // Option flags
@@ -85,6 +149,12 @@ struct handlebars_compiler {
     short use_data;
 };
 
+/**
+ * @brief Main compile function. Compiles an AST
+ *
+ * @param[in] compiler The compiler context
+ * @param[in] node The AST node to compile
+ */
 void handlebars_compiler_compile(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node);
 

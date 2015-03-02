@@ -120,6 +120,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_sexpr(
         struct handlebars_context * context, struct handlebars_ast_node * id,
         struct handlebars_ast_list * params, struct handlebars_ast_node * hash);
 
+/**
+ * @brief Set the strip flags of a node
+ *
+ * @param[in] ast_node The AST node
+ * @param[in] open The open tag
+ * @param[in] close The close tag
+ * @return void
+ */
 void handlebars_ast_helper_set_strip_flags(
         struct handlebars_ast_node * ast_node, const char * open, const char * close);
 

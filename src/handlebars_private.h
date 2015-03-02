@@ -6,6 +6,9 @@
 extern "C" {
 #endif
 
+#define HANDLEBARS_PACKI(i, n) ((i & (0xff << n)) >> n)
+#define HANDLEBARS_UNPACKI(i, n) (i << n)
+
 // Builtin expect
 #ifdef HAVE___BUILTIN_EXPECT
 #  define likely(x)   __builtin_expect(!!(x), 1)

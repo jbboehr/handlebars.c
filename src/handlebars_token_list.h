@@ -30,6 +30,13 @@ struct handlebars_token_list {
     struct handlebars_token_list_item * last;
 };
 
+/**
+ * @brief Iterate over a token list
+ *
+ * @param[in] list The list to iterate over
+ * @param[out] el The current element
+ * @param[out] tmp A temporary element
+ */
 #define handlebars_token_list_foreach(list, el, tmp) \
     for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
 

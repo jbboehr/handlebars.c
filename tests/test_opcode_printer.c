@@ -139,28 +139,6 @@ START_TEST(test_opcode_print_3)
 }
 END_TEST
 
-START_TEST(test_opcode_array_print)
-{
-    struct handlebars_opcode * opcode1 = handlebars_opcode_ctor(ctx, handlebars_opcode_type_get_context);
-    struct handlebars_opcode * opcode2 = handlebars_opcode_ctor(ctx, handlebars_opcode_type_push_context);
-    struct handlebars_opcode ** opcodes = handlebars_talloc_array(ctx, struct handlebars_opcode *, 3);
-    const char * expected = "getContext[LONG:2] pushContext";
-    char * str;
-    
-    handlebars_operand_set_longval(&opcode1->op1, 2);
-    opcodes[0] = opcode1;
-    opcodes[1] = opcode2;
-    opcodes[2] = NULL;
-    str = handlebars_opcode_array_print(ctx, opcodes, 2);
-    ck_assert_ptr_ne(NULL, str);
-    ck_assert_str_eq(expected, str);
-    
-    handlebars_talloc_free(opcode1);
-    handlebars_talloc_free(opcode2);
-    handlebars_talloc_free(opcodes);
-    handlebars_talloc_free(str);
-}
-END_TEST
 
 Suite * parser_suite(void)
 {
@@ -174,7 +152,6 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_opcode_print_1, "Opcode Print (1)");
     REGISTER_TEST_FIXTURE(s, test_opcode_print_2, "Opcode Print (2)");
     REGISTER_TEST_FIXTURE(s, test_opcode_print_3, "Opcode Print (3)");
-    REGISTER_TEST_FIXTURE(s, test_opcode_array_print, "Opcode Array Print");
 	
     return s;
 }

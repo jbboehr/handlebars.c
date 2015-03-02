@@ -32,6 +32,13 @@ struct handlebars_ast_list {
     size_t count;
 };
 
+/**
+ * @brief Iterate over an AST list
+ *
+ * @param[in] list The list to iterate over
+ * @param[out] el The current element
+ * @param[out] tmp A temporary element
+ */
 #define handlebars_ast_list_foreach(list, el, tmp) \
     for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
 
@@ -68,13 +75,36 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx);
  */
 void handlebars_ast_list_dtor(struct handlebars_ast_list * list);
 
+/**
+ * @brief Find a linked list node by its AST node
+ *
+ * @param[in] list The AST list
+ * @param[in] ast_node The AST node
+ * @return The linked list node, or NULL if not found
+ */
 struct handlebars_ast_list_item * handlebars_ast_list_find(
         struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
 
+/**
+ * @brief Insert a list node after the specified node
+ *
+ * @param[in] list The AST list
+ * @param[in] item The item after which to insert
+ * @param[in] new_item The new AST list item
+ * @return void
+ */
 void handlebars_ast_list_insert_after(struct handlebars_ast_list * list, 
         struct handlebars_ast_list_item * item,
         struct handlebars_ast_list_item * new_item);
 
+/**
+ * @brief Insert a list node before the specified node
+ *
+ * @param[in] list The AST list
+ * @param[in] item The item before which to insert
+ * @param[in] new_item The new AST list item
+ * @return void
+ */
 void handlebars_ast_list_insert_before(struct handlebars_ast_list * list, 
         struct handlebars_ast_list_item * item,
         struct handlebars_ast_list_item * new_item);

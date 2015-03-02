@@ -49,13 +49,11 @@ enum handlebars_ast_node_type
 
 struct handlebars_ast_node_program {
   struct handlebars_ast_list * statements;
-  // Todo: strip
 };
 
 struct handlebars_ast_node_mustache {
   struct handlebars_ast_node * sexpr;
   short unescaped;
-  // Deprecated: id params hash eligibleHelper isHelper
 };
 
 struct handlebars_ast_node_sexpr {
@@ -79,7 +77,6 @@ struct handlebars_ast_node_block {
   struct handlebars_ast_node * inverse;
   struct handlebars_ast_node * close;
   int inverted;
-  // Todo: strip isInverse
 };
 
 struct handlebars_ast_node_raw_block {
@@ -147,7 +144,6 @@ struct handlebars_ast_node_boolean {
 struct handlebars_ast_node_comment {
   char * comment;
   size_t length;
-  // Todo: strip
 };
 
 struct handlebars_ast_node_path_segment {
@@ -182,6 +178,9 @@ union handlebars_ast_internals {
     struct handlebars_ast_node_inverse_and_program inverse_and_program;
 };
 
+/**
+ * @brief Flags to control and about whitespace control
+ */
 enum handlebars_ast_strip_flag {
   handlebars_ast_strip_flag_none = 0,
   handlebars_ast_strip_flag_set = (1 << 0),
