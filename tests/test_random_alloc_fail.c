@@ -17,7 +17,9 @@
 static TALLOC_CTX * rootctx;
 
 // @todo try to get this to include every language feature
-static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}";
+static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} "
+        "{{#a}}{{^}}{{/a}} {{bar baz=foo}} {{> partial}} {{../depth}} {{this}} "
+        "{{#unless}}{{else}}{{/unless}} {{&unescaped}} {{~strip~}} ";
 
 static void setup(void)
 {
@@ -47,6 +49,7 @@ START_TEST(test_random_alloc_fail_tokenizer)
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);
+        ctx = NULL;
     }
 }
 END_TEST
@@ -68,6 +71,7 @@ START_TEST(test_random_alloc_fail_parser)
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);
+        ctx = NULL;
     }
 }
 END_TEST

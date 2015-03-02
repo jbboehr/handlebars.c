@@ -43,7 +43,7 @@
 #define __MEMCHECK(cond) \
   do { \
     if( unlikely(!cond) ) { \
-      struct handlebars_context * context = handlebars_yy_get_extra(yyscanner); \
+      struct handlebars_context * context = yyextra; \
       context->errnum = HANDLEBARS_NOMEM; \
       yyterminate(); \
     } \
@@ -55,11 +55,12 @@
 #define handlebars_yy_unput_n(n) \
 	do { \
 		int i; \
- 		char * yycopy = strdup( yytext ); \
- 		for ( i = yyleng - 1; i >= yyleng - n; --i ) { \
- 			unput( yycopy[i] ); \
- 		} \
-        free( yycopy ); \
+ 		char * yycopy = handlebars_talloc_strdup(yyextra, yytext); \
+ 		__MEMCHECK(yycopy); \
+		for ( i = yyleng - 1; i >= yyleng - n; --i ) { \
+			unput( yycopy[i] ); \
+		} \
+		handlebars_talloc_free(yycopy); \
     } while(0)
 
 #define handlebars_yy_copy_lval() \
@@ -133,7 +134,6 @@ ID    {IDC}+/{LOOKAHEAD}
 {EEMU} 								{
 										// v2.0.0 handlebars.l line 32
 										handlebars_yy_unput_n(2);
-										// @todo make sure this is safe
 										yytext = "\\";
 										yyleng = 1;
 										handlebars_yy_copy_lval();

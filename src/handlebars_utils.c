@@ -227,10 +227,13 @@ void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * cont
 #if defined(YYDEBUG) && YYDEBUG
     fprintf(stderr, "%d : %s\n", lloc->first_line, err);
 #endif
+
     context->errnum = HANDLEBARS_PARSEERR;
     context->error = handlebars_talloc_strdup(context, err);
     context->errloc = handlebars_talloc_zero(context, YYLTYPE);
-    memcpy(context->errloc, lloc, sizeof(YYLTYPE));
+    if( likely(context->errloc != NULL) ) {
+        memcpy(context->errloc, lloc, sizeof(YYLTYPE));
+    }
 }
 
 void handlebars_yy_fatal_error(const char * msg, HANDLEBARS_ATTR_UNUSED void * yyscanner)
