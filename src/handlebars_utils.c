@@ -222,6 +222,8 @@ void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, s
 
 void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * context, const char * err)
 {
+    assert(context != NULL);
+
 #if defined(YYDEBUG) && YYDEBUG
     fprintf(stderr, "%d : %s\n", lloc->first_line, err);
 #endif
@@ -251,17 +253,20 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
     // Note: it looks like the yyscanner is allocated before we can pass in
     // a handlebars context...
     // Also look into the performance hit for doing this
+    // Going to skip wrappers for now
     struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
-    return (void *) handlebars_talloc_size(ctx, bytes);
+    return (void *) /*handlebars_*/talloc_size(ctx, bytes);
 }
 
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
+    // Going to skip wrappers for now
     struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
-    return (void *) handlebars_talloc_realloc(ctx, ptr, char, bytes);
+    return (void *) /*handlebars_*/talloc_realloc(ctx, ptr, char, bytes);
 }
 
 void handlebars_yy_free(void * ptr, HANDLEBARS_ATTR_UNUSED void * yyscanner)
 {
-    handlebars_talloc_free(ptr);
+    // Going to skip wrappers for now
+    /*handlebars_*/talloc_free(ptr);
 }

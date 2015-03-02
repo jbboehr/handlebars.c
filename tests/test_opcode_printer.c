@@ -166,15 +166,15 @@ Suite * parser_suite(void)
 {
     Suite * s = suite_create("Opcode Printer");
     
-	REGISTER_TEST_FIXTURE(s, test_operand_print_append_null, "Operand Print Append (null)");
-	REGISTER_TEST_FIXTURE(s, test_operand_print_append_boolean, "Operand Print Append (boolean)");
-	REGISTER_TEST_FIXTURE(s, test_operand_print_append_long, "Operand Print Append (long)");
-	REGISTER_TEST_FIXTURE(s, test_operand_print_append_string, "Operand Print Append (string)");
-	REGISTER_TEST_FIXTURE(s, test_operand_print_append_array, "Operand Print Append (array)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_print_1, "Opcode Print (1)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_print_2, "Opcode Print (2)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_print_3, "Opcode Print (3)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_array_print, "Opcode Array Print");
+    REGISTER_TEST_FIXTURE(s, test_operand_print_append_null, "Operand Print Append (null)");
+    REGISTER_TEST_FIXTURE(s, test_operand_print_append_boolean, "Operand Print Append (boolean)");
+    REGISTER_TEST_FIXTURE(s, test_operand_print_append_long, "Operand Print Append (long)");
+    REGISTER_TEST_FIXTURE(s, test_operand_print_append_string, "Operand Print Append (string)");
+    REGISTER_TEST_FIXTURE(s, test_operand_print_append_array, "Operand Print Append (array)");
+    REGISTER_TEST_FIXTURE(s, test_opcode_print_1, "Opcode Print (1)");
+    REGISTER_TEST_FIXTURE(s, test_opcode_print_2, "Opcode Print (2)");
+    REGISTER_TEST_FIXTURE(s, test_opcode_print_3, "Opcode Print (3)");
+    REGISTER_TEST_FIXTURE(s, test_opcode_array_print, "Opcode Array Print");
 	
     return s;
 }

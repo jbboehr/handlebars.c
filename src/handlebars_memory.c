@@ -7,6 +7,7 @@
 
 // LCOV_EXCL_START
 
+static int _handlebars_exit_fail_enabled = 0;
 static int _handlebars_memory_fail_enabled = 0;
 static int _handlebars_memory_fail_counter = -1;
 static int _handlebars_memory_last_exit_code = -1;
@@ -281,6 +282,7 @@ static void * _handlebars_memfail_talloc_zero(const void * ctx, size_t size, con
 }
 
 // Other function pointers
+// Disabling this for now
 static void _handlebars_memfail_exit(int exit_code)
 {
     _handlebars_memory_call_counter++;
@@ -314,7 +316,6 @@ void handlebars_memory_fail_enable(void)
         _handlebars_talloc_strndup = &_handlebars_memfail_talloc_strndup;
         _handlebars_talloc_strndup_append_buffer = &_handlebars_memfail_talloc_strndup_append_buffer;
         _handlebars_talloc_zero = &_handlebars_memfail_talloc_zero;
-        handlebars_exit = &_handlebars_memfail_exit;
     }
 }
 
@@ -338,7 +339,6 @@ void handlebars_memory_fail_disable(void)
         _handlebars_talloc_strndup = &talloc_strndup;
         _handlebars_talloc_strndup_append_buffer = &talloc_strndup_append_buffer;
         _handlebars_talloc_zero = &_talloc_zero;
-        handlebars_exit = &_handlebars_exit;
     }
 }
 
@@ -366,6 +366,29 @@ int handlebars_memory_get_last_exit_code(void)
 int handlebars_memory_get_call_counter(void)
 {
     return _handlebars_memory_call_counter;
+}
+
+// Functions to manipulate other failures
+void handlebars_exit_fail_enable(void)
+{
+    if( !_handlebars_exit_fail_enabled ) {
+        _handlebars_exit_fail_enabled = 1;
+        _handlebars_memory_fail_counter = -1;
+        _handlebars_memory_last_exit_code = 0;
+        _handlebars_memory_call_counter = 0;
+        handlebars_exit = &_handlebars_memfail_exit;
+    }
+}
+
+void handlebars_exit_fail_disable(void)
+{
+    if( _handlebars_exit_fail_enabled ) {
+        _handlebars_exit_fail_enabled = 0;
+        _handlebars_memory_fail_counter = -1;
+        _handlebars_memory_last_exit_code = 0;
+        _handlebars_memory_call_counter = 0;
+        handlebars_exit = &_handlebars_exit;
+    }
 }
 
 // LCOV_EXCL_STOP

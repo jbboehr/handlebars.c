@@ -15,7 +15,8 @@ check_PROGRAMS = \
 	test_utils \
 	test_spec_handlebars_parser \
 	test_spec_handlebars_tokenizer \
-	test_spec_handlebars_compiler
+	test_spec_handlebars_compiler \
+	test_random_alloc_fail
 
 test_main_SOURCES = utils.c test_main.c
 test_ast_SOURCES = utils.c test_ast.c
@@ -33,6 +34,7 @@ test_utils_SOURCES = utils.c test_utils.c
 test_spec_handlebars_parser_SOURCES = utils.c test_spec_handlebars_parser.c
 test_spec_handlebars_tokenizer_SOURCES = utils.c test_spec_handlebars_tokenizer.c
 test_spec_handlebars_compiler_SOURCES = utils.c test_spec_handlebars_compiler.c
+test_random_alloc_fail_SOURCES = utils.c test_random_alloc_fail.c
 
 TESTS = \
 	test_main \
@@ -50,7 +52,8 @@ TESTS = \
 	test_utils \
 	test_spec_handlebars_parser \
 	test_spec_handlebars_tokenizer \
-	test_spec_handlebars_compiler
+	test_spec_handlebars_compiler \
+	test_random_alloc_fail
 
 TESTS_ENVIRONMENT = \
 	top_srcdir=$(top_srcdir) \

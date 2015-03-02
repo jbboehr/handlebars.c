@@ -99,6 +99,9 @@ int handlebars_memory_fail_get_counter(void);
 int handlebars_memory_get_last_exit_code(void);
 int handlebars_memory_get_call_counter(void);
 
+void handlebars_exit_fail_enable(void);
+void handlebars_exit_fail_disable(void);
+
 #ifdef	__cplusplus
 }
 #endif

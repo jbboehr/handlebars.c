@@ -10,6 +10,7 @@
 #include "handlebars.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
@@ -38,7 +39,16 @@
     if( yy_flex_debug ) { \
      	fprintf( stderr, "--initializing yylval\n" ); \
 	}
- 
+
+#define __MEMCHECK(cond) \
+  do { \
+    if( unlikely(!cond) ) { \
+      struct handlebars_context * context = handlebars_yy_get_extra(yyscanner); \
+      context->errnum = HANDLEBARS_NOMEM; \
+      yyterminate(); \
+    } \
+  } while(0)
+
 #define handlebars_yy_unput_all \
 	handlebars_yy_unput_n(yyleng)
  		
@@ -54,6 +64,7 @@
 
 #define handlebars_yy_copy_lval() \
 	yylval->text = handlebars_talloc_strndup(yyextra, yytext, yyleng); \
+    __MEMCHECK(yylval->text); \
 	yylval->length = yyleng
 
 #define YY_USER_ACTION \
@@ -77,6 +88,7 @@
 %option noyyalloc
 %option noyyrealloc
 %option noyyfree
+%option never-interactive
 
 %x mu
 %x emu
