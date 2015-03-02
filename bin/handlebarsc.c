@@ -240,7 +240,7 @@ static int do_parse(void)
         fprintf(stdout, "%s\n", output);
         handlebars_talloc_free(output);
         
-        errno = 0;
+        error = 0;
     }
     
     return error;

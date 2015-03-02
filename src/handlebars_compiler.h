@@ -97,7 +97,7 @@ void handlebars_compiler_compile(
 struct handlebars_compiler * handlebars_compiler_ctor(void * ctx);
 
 /**
- * @brief Free a compiler context and it's resouces.
+ * @brief Free a compiler context and it's resources.
  * 
  * @param[in] compiler
  * @return void
