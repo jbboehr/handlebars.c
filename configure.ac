@@ -122,12 +122,12 @@ AS_IF([test "x$enable_check" != "xno"], [
 #  ], [
 #    AC_MSG_FAILURE([check test failed (--disable-check to disable)])
 #  ])
-	AC_CHECK_LIB([m], [cos], [], [
-		AC_MSG_FAILURE([check required libm (--disable-check to disable)])
-	])
-	AC_CHECK_LIB([rt], [timer_create], [], [
-		AC_MSG_FAILURE([check required librt (--disable-check to disable)])
-	])
+    AC_CHECK_LIB([m], [cos], [], [
+        AC_MSG_FAILURE([check required libm (--disable-check to disable)])
+    ])
+    AC_CHECK_LIB([rt], [timer_create], [], [
+        AC_MSG_WARN([check required librt (--disable-check to disable)])
+    ])
 ])
 AM_CONDITIONAL([CHECK], [test x$enable_check = xyes])
 AM_CONDITIONAL([CHECK_HAS_TAP], [test "x$CHECK_HAS_TAP" == "xyes"])
@@ -153,19 +153,6 @@ AS_IF([test "x$enable_json" != "xno"], [
 # talloc
 AC_CHECK_LIB([talloc], [talloc_version_major], , [
   AC_MSG_FAILURE([talloc test failed, talloc is required])
-])
-
-# yaml
-AC_ARG_ENABLE([yaml], 
-	[AS_HELP_STRING([--disable-yaml], [disable support for yaml])], [])
-
-AS_IF([test "x$enable_yaml" != "xno"], [
-  AC_CHECK_HEADERS(yaml.h, [], [
-    AC_MSG_FAILURE([yaml.h missing (--disable-yaml to disable)])
-  ])
-  AC_CHECK_LIB([yaml], [yaml_get_version_string], , [
-    AC_MSG_FAILURE([yaml test failed (--disable-yaml to disable)])
-  ])
 ])
 
 # Options
