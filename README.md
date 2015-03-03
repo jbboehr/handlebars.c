@@ -14,7 +14,7 @@ lexer, parser, and compiler. Use with [php-handlebars](https://github.com/jbboeh
 ```bash
 sudo apt-add-repository ppa:jbboehr/handlebars
 sudo apt-get update
-sudo apt-get install handlebarsc
+sudo apt-get install handlebarsc libhandlebars-dev
 ```
 
 
