@@ -40,9 +40,9 @@ START_TEST(test_version_string)
     const char * version_string = handlebars_version_string();
 
     sscanf(version_string, "%3d.%3d.%3d", &maj, &min, &rev);
-    ck_assert_int_eq(maj, HANDLEBARS_VERSION_PATCH);
+    ck_assert_int_eq(maj, HANDLEBARS_VERSION_MAJOR);
     ck_assert_int_eq(min, HANDLEBARS_VERSION_MINOR);
-    ck_assert_int_eq(rev, HANDLEBARS_VERSION_MAJOR);
+    ck_assert_int_eq(rev, HANDLEBARS_VERSION_PATCH);
 }
 END_TEST
 
