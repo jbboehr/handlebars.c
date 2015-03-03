@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <talloc.h>
 
+#include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
