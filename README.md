@@ -13,8 +13,7 @@ lexer, parser, and compiler. Use with [php-handlebars](https://github.com/jbboeh
 ```bash
 # Install dependencies
 sudo apt-get install autoconf automake bison flex gawk gcc git-core \
-                     libjson0-dev libtalloc-dev libtool m4 make pkg-config \
-                     uthash-dev
+                     libjson0-dev libtalloc-dev libtool m4 make pkg-config
 
 # Install testing dependencies
 sudo apt-get install check gdb lcov
@@ -28,7 +27,6 @@ sudo apt-get install doxygen
 ```bash
 # Install dependencies
 brew install autoconf automake bison flex gcc json-c libtool pkg-config talloc
-brew install https://raw.githubusercontent.com/caktux/homebrew-bitcoin/master/uthash.rb
 
 # Install testing dependencies
 sudo brew install check lcov
