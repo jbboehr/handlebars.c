@@ -6,9 +6,22 @@ C implementation of the [handlebars.js](https://github.com/wycats/handlebars.js/
 lexer, parser, and compiler. Use with [php-handlebars](https://github.com/jbboehr/php-handlebars) and [handlebars.php](https://github.com/jbboehr/handlebars.php).
 
 
-## Requirements
+## Installation
 
-### Ubuntu
+
+### PPA
+
+```bash
+sudo apt-add-repository ppa:jbboehr/handlebars
+sudo apt-get update
+sudo apt-get install handlebarsc
+```
+
+
+### Source
+
+
+#### Ubuntu 
 
 ```bash
 # Install dependencies
@@ -20,37 +33,30 @@ sudo apt-get install check gdb lcov
 
 # Install doc dependencies
 sudo apt-get install doxygen
+
+# Compile
+git clone https://github.com/jbboehr/handlebars.c.git --recursive
+cd handlebars-c
+./boostrap && ./configure && make && sudo make install && sudo ldconfig
 ```
 
-### OS X
+
+#### OS X
 
 ```bash
 # Install dependencies
 brew install autoconf automake bison flex gcc json-c libtool pkg-config talloc
 
 # Install testing dependencies
-sudo brew install check lcov
+brew install check lcov
 
 # Install doc dependencies
-sudo brew install doxygen
-```
+brew install doxygen
 
-
-## Installation
-
-```bash
-# Clone
-git clone git://github.com/jbboehr/handlebars.c.git
-cd handlebars.c
-git submodule update --init --recursive
-
-# Build
-./bootstrap
-./configure
-make
-make test
-sudo make install
-sudo ldconfig
+# Compile
+git clone https://github.com/jbboehr/handlebars.c.git --recursive
+cd handlebars-c
+./boostrap && ./configure && make install
 ```
 
 
