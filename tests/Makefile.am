@@ -1,4 +1,6 @@
 
+EXTRA_DIST = utils.h
+
 check_PROGRAMS = \
 	test_main \
 	test_ast \

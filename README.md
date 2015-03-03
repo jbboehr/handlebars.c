@@ -23,6 +23,20 @@ sudo apt-get install check gdb lcov
 sudo apt-get install doxygen
 ```
 
+### OS X
+
+```bash
+# Install dependencies
+brew install autoconf automake bison flex gcc json-c libtool pkg-config talloc
+brew install https://raw.githubusercontent.com/caktux/homebrew-bitcoin/master/uthash.rb
+
+# Install testing dependencies
+sudo brew install check lcov
+
+# Install doc dependencies
+sudo brew install doxygen
+```
+
 
 ## Installation
 
