@@ -70,6 +70,7 @@ libhandlebars_la_SOURCES = \
 	handlebars_opcode_printer.c \
 	handlebars_opcodes.h \
 	handlebars_opcodes.c \
+	handlebars_private.h \
 	handlebars_scanners.h \
 	handlebars_scanners.c \
 	handlebars_token.h \

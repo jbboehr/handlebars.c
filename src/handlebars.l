@@ -57,7 +57,7 @@
 		int i; \
  		char * yycopy = handlebars_talloc_strdup(yyextra, yytext); \
  		__MEMCHECK(yycopy); \
-		for ( i = yyleng - 1; i >= yyleng - n; --i ) { \
+		for ( i = yyleng - 1; i >= yyleng - n && i >= 0; --i ) { \
 			unput( yycopy[i] ); \
 		} \
 		handlebars_talloc_free(yycopy); \
