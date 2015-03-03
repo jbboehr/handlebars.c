@@ -1,7 +1,7 @@
 
 SUBDIRS = src . doc bin tests
 
-EXTRA_DIST = LICENSE README.md
+EXTRA_DIST = LICENSE.md README.md spec/handlebars/export spec/handlebars/spec
 
 ACLOCAL_AMFLAGS = -I m4 --install
 

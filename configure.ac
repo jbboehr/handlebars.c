@@ -1,7 +1,7 @@
 
 # Define the package version numbers
 m4_define([HANDLEBARS_MAJOR], 0)
-m4_define([HANDLEBARS_MINOR], 1)
+m4_define([HANDLEBARS_MINOR], 2)
 m4_define([HANDLEBARS_PATCH], 0)
 
 # Define the libtool version numbers; check the Autobook, Section 11.4.
@@ -12,8 +12,8 @@ m4_define([HANDLEBARS_AGE], 0)
 
 # Initialize autoconf & automake.
 AC_PREREQ(2.61)
-AC_INIT([handlebars], [HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH], 
-        [jbboehr@gmail.com], [handlebars], 
+AC_INIT([handlebars-c], [HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH], 
+        [jbboehr@gmail.com], [handlebars-c], 
         [https://github.com/jbboehr/handlebars.c])
 
 AC_DEFINE([PACKAGE_DESCRIPTION], ["Library for handlebars"], [Description])

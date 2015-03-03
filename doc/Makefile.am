@@ -1,14 +1,11 @@
 
 if HAVE_DOXYGEN
 
-#directory = $(top_srcdir)/doc/man/man3/
-directory = man/man3
+dist_man_MANS = man html
+#dist_html_MANS = html
 
-dist_man_MANS = $(directory)/handlebars.h.3 \
-                $(directory)/handlebars_context.h.3
-
-$(directory)/handlebars.h.3: doxyfile.stamp
-$(directory)/handlebars_context.3: doxyfile.stamp
+man: doxyfile.stamp
+html: doxyfile.stamp
 
 doxyfile.stamp:
 	$(DOXYGEN) Doxyfile
