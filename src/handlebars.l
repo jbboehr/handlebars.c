@@ -155,7 +155,7 @@ ID    {IDC}+/{LOOKAHEAD}
 										yy_push_state(mu, yyscanner);
 									}
 
-"\\"                                {
+[\\{}]                              {
 										handlebars_yy_copy_lval();
 										return CONTENT;
 									}
