@@ -69,6 +69,7 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx);
 // Flex/Bison prototypes
 int handlebars_yy_get_column(void * yyscanner);
 void handlebars_yy_set_column(int column_no, void * yyscanner);
+int handlebars_yy_parse(struct handlebars_context * context);
 
 #ifdef	__cplusplus
 }
