@@ -71,7 +71,6 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 		cb(filename);
 	}
 	
-error:
 	if( dir != NULL) closedir(dir);
 	return error;
 }

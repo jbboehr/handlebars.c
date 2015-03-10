@@ -139,7 +139,7 @@ int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * oper
     // Copy each item
     for( ptr = arg; *ptr; ++ptr ) {
         *arrptr = handlebars_talloc_strdup(arr, *ptr);
-        if( unlikely(*arrptr) == NULL ) {
+        if( unlikely(*arrptr == NULL) ) {
             goto error;
         }
         ++arrptr;

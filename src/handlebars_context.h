@@ -26,7 +26,7 @@ extern struct handlebars_context * _handlebars_context_init_current;
  */
 struct handlebars_context
 {
-  char * tmpl;
+  const char * tmpl;
   int tmplReadOffset;
   void * scanner;
   struct handlebars_ast_node * program;
