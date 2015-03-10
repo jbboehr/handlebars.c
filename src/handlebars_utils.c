@@ -117,6 +117,10 @@ char * handlebars_rtrim_ex(char * string, size_t * length, const char * what, si
     
     assert(string != NULL);
     
+    if( unlikely(len <= 0) ) {
+        return string;
+    }
+    
     // Make char mask
     memset(flags, 0, sizeof(flags));
     for( i = 0; i < what_length; i++ ) {
@@ -124,7 +128,7 @@ char * handlebars_rtrim_ex(char * string, size_t * length, const char * what, si
     }
     
     original = string + len;
-    while(original >= string && flags[(unsigned char) *--original]) {
+    while(original > string && flags[(unsigned char) *--original]) {
         --len;
         *original = '\0';
     }
