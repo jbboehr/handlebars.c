@@ -114,8 +114,10 @@ static inline void handlebars_compiler_add_depth(
         struct handlebars_compiler * compiler, int depth)
 {
     assert(compiler != NULL);
-
-    compiler->depths |= (1 << depth);
+    
+    if( depth > 0 ) {
+        compiler->depths |= (1 << depth - 1);
+    }
 }
 
 static inline short handlebars_compiler_is_known_helper(
