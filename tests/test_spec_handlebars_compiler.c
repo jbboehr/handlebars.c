@@ -153,12 +153,38 @@ error:
     return opcode;
 }
 
+static int loadTestCompilerDepths(struct handlebars_compiler * compiler, json_object * object)
+{
+    int array_len = json_object_array_length(object);
+    struct json_object * array_item = NULL;
+    unsigned long depths = 0;
+    for( int i = 0; i < array_len; i++ ) {
+        array_item = json_object_array_get_idx(object, i);
+        int32_t v = json_object_get_int(array_item);
+        depths += (1 << v - 1);
+    }
+    compiler->depths = depths;
+}
+
 static int loadTestCompiler(struct handlebars_compiler * compiler, json_object * object)
 {
     int error = 0;
     json_object * cur = NULL;
     struct json_object * array_item = NULL;
     int array_len = 0;
+    
+    // Load depths
+    cur = json_object_object_get(object, "depths");
+    if( cur && json_object_get_type(cur) == json_type_object ) {
+        cur = json_object_object_get(cur, "list");
+        if( cur && json_object_get_type(cur) == json_type_array ) {
+            loadTestCompilerDepths(compiler, cur);
+        } else {
+            fprintf(stderr, "No depth list!\n");
+        }
+    } else {
+        fprintf(stderr, "No depth info!\n");
+    }
     
     // Load opcodes
     cur = json_object_object_get(object, "opcodes");

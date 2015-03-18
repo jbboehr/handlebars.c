@@ -125,15 +125,30 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
 void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
 {
     size_t i;
+    char indentbuf[17];
+    int indent;
     
+    // Make indent
+    indent = printer->indent < 8 ? printer->indent * 2 : 16;
+    memset(&indentbuf, ' ', indent);
+    indentbuf[indent] = 0;
+    
+    // Print misc
+    printer->output = handlebars_talloc_asprintf_append(printer->output, "%sDEPTHS=%lu\n", indentbuf, compiler->depths);
+    
+    // Print opcodes
     printer->opcodes = compiler->opcodes;
     printer->opcodes_length = compiler->opcodes_length;
     handlebars_opcode_printer_array_print(printer);
     
+    // Print children
+    printer->indent++;
+    
     for( i = 0; i < compiler->children_length; i++ ) {
         struct handlebars_compiler * child = *(compiler->children + i);
-        printer->indent++;
         handlebars_opcode_printer_print(printer, child);
-        printer->indent--;
+        
     }
+    
+    printer->indent--;
 }
