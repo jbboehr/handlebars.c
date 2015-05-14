@@ -37,7 +37,7 @@ sudo apt-get install doxygen
 # Compile
 git clone https://github.com/jbboehr/handlebars.c.git --recursive
 cd handlebars-c
-./boostrap && ./configure && make && sudo make install && sudo ldconfig
+./bootstrap && ./configure && make && sudo make install && sudo ldconfig
 ```
 
 
@@ -56,7 +56,7 @@ brew install doxygen
 # Compile
 git clone https://github.com/jbboehr/handlebars.c.git --recursive
 cd handlebars-c
-./boostrap && ./configure && make install
+./bootstrap && ./configure && make install
 ```
 
 
