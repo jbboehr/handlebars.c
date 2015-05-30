@@ -131,6 +131,19 @@ AS_IF([test "x$enable_check" != "xno"], [
 AM_CONDITIONAL([CHECK], [test x$enable_check = xyes])
 AM_CONDITIONAL([CHECK_HAS_TAP], [test "x$CHECK_HAS_TAP" == "xyes"])
 
+# handlebars-spec
+AC_ARG_WITH([handlebars-spec],
+	[AS_HELP_STRING([--with-handlebars-spec=SPEC_LOCATION], [location to find handlebars specification @<:@default=./spec/handlebars@>:@])],
+	[], [with_handlebars_spec=`pwd`/spec/handlebars])
+
+AS_IF([test "x$with_handlebars_spec" != "xno"], [
+  AC_CHECK_FILE([$with_handlebars_spec/spec/basic.json], [
+    AC_SUBST([HANDLEBARS_SPEC_DIR], [$with_handlebars_spec])
+  ], [
+    AC_MSG_FAILURE([handlebars spec missing (--without-handlebars-spec to disable)])
+  ])
+])
+
 # json
 AC_ARG_ENABLE([json],
 	[AS_HELP_STRING([--disable-json], [disable support for json])], [])
