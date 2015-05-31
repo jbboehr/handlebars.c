@@ -16,6 +16,9 @@
   struct handlebars_context; /* needed for bison 2.7 */
   #define YY_END_OF_BUFFER_CHAR 0
   #define YY_EXTRA_TYPE struct handlebars_context *
+  typedef struct handlebars_locinfo YYLTYPE;
+  #define YYLTYPE_IS_DECLARED 1
+  #define YYLTYPE_IS_TRIVIAL 1
 }
 
 %start  start
@@ -127,7 +130,7 @@ int handlebars_yy_debug = 0;
 
 start : 
     program END {
-      handlebars_ast_helper_prepare_program(context, $1, 1);
+      handlebars_ast_helper_prepare_program(context, $1, 1, NULL);
       context->program = $1;
       return 1;
     }
@@ -138,13 +141,13 @@ program :
       $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
       __MEMCHECK($$);
       $$->node.program.statements = $1;
-      handlebars_ast_helper_prepare_program(context, $$, 0);
+      handlebars_ast_helper_prepare_program(context, $$, 0, &yylloc);
     }
   | "" {
       $$ = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
       __MEMCHECK($$);
       $$->node.program.statements = handlebars_ast_list_ctor($$);
-      handlebars_ast_helper_prepare_program(context, $$, 0);
+      handlebars_ast_helper_prepare_program(context, $$, 0, &yylloc);
   }
   ;
 
@@ -174,21 +177,12 @@ statement
       $$ = $1;
     }
   | content {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_CONTENT, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.content.string = $1;
-      ast_node->node.content.length = strlen($1);
-      ast_node->node.content.original = handlebars_talloc_strdup(ast_node, $1);
-      __MEMCHECK(ast_node->node.content.original);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_content(context, $1, &yylloc);
+      __MEMCHECK($$);
     }
   | COMMENT {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_COMMENT, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.comment.comment = $1;
-      ast_node->node.comment.length = strlen($1);
-      ast_node->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_comment(context, $1, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
@@ -202,10 +196,8 @@ raw_block
 
 open_raw_block
   : OPEN_RAW_BLOCK sexpr CLOSE_RAW_BLOCK {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.mustache.sexpr = $2;
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_mustache(context, $2, $1, $3, -1, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
@@ -252,38 +244,28 @@ block
 
 open_block
   : OPEN_BLOCK sexpr CLOSE {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.mustache.sexpr = $2;
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_mustache(context, $2, $1, $3, -1, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
 open_inverse
   : OPEN_INVERSE sexpr CLOSE {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.mustache.sexpr = $2;
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_mustache(context, $2, $1, $3, -1, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
 inverse_and_program
   : INVERSE program {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.inverse_and_program.program = $2;
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $1);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_inverse_and_program(context, $2,
+              handlebars_ast_helper_strip_flags($1, $1), &yylloc);
+      __MEMCHECK($$);
     }
   | INVERSE {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.inverse_and_program.program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $1);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_inverse_and_program(context, NULL,
+              handlebars_ast_helper_strip_flags($1, $1), &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
@@ -299,84 +281,57 @@ close_block
 
 mustache
   : OPEN sexpr CLOSE {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.mustache.sexpr = $2;
-      // @todo this won't work w/ whitespace
-      if( $1 ) {
-        if( strlen($1) >= 4 && *($1 + 3) == '&' ) {
-          ast_node->node.mustache.unescaped = 1;
-        } else if( strlen($1) >= 3 && *($1 + 2) == '&' ) {
-          ast_node->node.mustache.unescaped = 1;
-        }
-      }
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_mustache(context, $2, $1, $3, 0, &yylloc);
+      __MEMCHECK($$);
     }
   | OPEN_UNESCAPED sexpr CLOSE_UNESCAPED {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.mustache.sexpr = $2;
-      ast_node->node.mustache.unescaped = 1;
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
-      $$ = ast_node;
+      $$ = handlebars_ast_helper_prepare_mustache(context, $2, $1, $3, 1, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
 partial
   : OPEN_PARTIAL partial_name param CLOSE {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.partial.partial_name = $2;
-      ast_node->node.partial.context = $3;
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $4);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_partial(context, $2, $3, NULL,
+              handlebars_ast_helper_strip_flags($1, $4), &yylloc);
+      __MEMCHECK($$);
     }
   | OPEN_PARTIAL partial_name param hash CLOSE {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.partial.partial_name = $2;
-      ast_node->node.partial.context = $3;
-      ast_node->node.partial.hash = $4;
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $5);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_partial(context, $2, $3, $4,
+              handlebars_ast_helper_strip_flags($1, $5), &yylloc);
+      __MEMCHECK($$);
     }
   | OPEN_PARTIAL partial_name CLOSE {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.partial.partial_name = $2;
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $3);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_partial(context, $2, NULL, NULL,
+              handlebars_ast_helper_strip_flags($1, $3), &yylloc);
+      __MEMCHECK($$);
     }
   | OPEN_PARTIAL partial_name hash CLOSE {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.partial.partial_name = $2;
-      ast_node->node.partial.hash = $3;
-      handlebars_ast_helper_set_strip_flags(ast_node, $1, $4);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_partial(context, $2, NULL, $3,
+              handlebars_ast_helper_strip_flags($1, $4), &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
 sexpr
   : path {
-      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, NULL);
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, NULL, &yylloc);
       __MEMCHECK($$);
     }
   | path hash {
-      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, $2);
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, $2, &yylloc);
       __MEMCHECK($$);
     }
   | path params hash {
-      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, $2, $3);
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, $2, $3, &yylloc);
       __MEMCHECK($$);
     }
   | path params {
-      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, $2, NULL);
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, $2, NULL, &yylloc);
       __MEMCHECK($$);
     }
   | data_name {
-      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, NULL);
+      $$ = handlebars_ast_helper_prepare_sexpr(context, $1, NULL, NULL, &yylloc);
       __MEMCHECK($$);
     }
   ;
@@ -398,28 +353,16 @@ param
       $$ = $1;
     }
   | STRING {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_STRING, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.string.string = handlebars_talloc_strdup(ast_node, $1);
-      __MEMCHECK(ast_node->node.string.string);
-      ast_node->node.string.length = strlen($1);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_string(context, $1, &yylloc);
+      __MEMCHECK($$);
     }
   | NUMBER {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_NUMBER, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.number.string = handlebars_talloc_strdup(ast_node, $1);
-      __MEMCHECK(ast_node->node.number.string);
-      ast_node->node.number.length = strlen($1);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_number(context, $1, &yylloc);
+      __MEMCHECK($$);
     }
   | BOOLEAN {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BOOLEAN, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.boolean.string = handlebars_talloc_strdup(ast_node, $1);
-      __MEMCHECK(ast_node->node.boolean.string);
-      ast_node->node.boolean.length = strlen($1);
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_boolean(context, $1, &yylloc);
+      __MEMCHECK($$);
     }
   | data_name {
       $$ = $1;
@@ -453,87 +396,58 @@ hash_segments
 
 hash_segment
   : ID EQUALS param {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_HASH_SEGMENT, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.hash_segment.key = handlebars_talloc_strdup(ast_node, $1);
-      __MEMCHECK(ast_node->node.hash_segment.key);
-      ast_node->node.hash_segment.key_length = strlen(ast_node->node.hash_segment.key);
-      ast_node->node.hash_segment.value = $3;
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_hash_segment(context, $1, $3, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
 partial_name
   : path {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.partial_name.name = $1;
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_partial_name(context, $1, &yylloc);
+      __MEMCHECK($$);
     }
   | STRING {
-      struct handlebars_ast_node * ast_node;
-      struct handlebars_ast_node * string_node;
-      
-      string_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_STRING, context);
+      struct handlebars_ast_node * string_node = handlebars_ast_node_ctor_string(context, $1, &yylloc);
       __MEMCHECK(string_node);
-      string_node->node.string.string = $1;
-      
-      ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.partial_name.name = string_node;
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_partial_name(context, string_node, &yylloc);
+      __MEMCHECK($$);
     }
   | NUMBER {
-      struct handlebars_ast_node * ast_node;
-      struct handlebars_ast_node * string_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_NUMBER, context);
+      struct handlebars_ast_node * string_node = handlebars_ast_node_ctor_number(context, $1, &yylloc);
       __MEMCHECK(string_node);
-      string_node->node.number.string = $1;
-      
-      ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_NAME, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.partial_name.name = string_node;
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_partial_name(context, string_node, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
 data_name
   : DATA path {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_DATA, context);
-  	  __MEMCHECK(ast_node);
-      ast_node->node.data.id = $2;
-      $$ = ast_node;
+      $$ = handlebars_ast_node_ctor_data(context, $2, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
 path
   : path_segments {
-      $$ = handlebars_ast_helper_prepare_id(context, $1);
+      $$ = handlebars_ast_helper_prepare_id(context, $1, &yylloc);
       __MEMCHECK($$);
     }
   ;
 
 path_segments
   : path_segments SEP ID {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH_SEGMENT, context);
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor_path_segment(context, $3, $2, &yylloc);
   	  __MEMCHECK(ast_node);
-      ast_node->node.path_segment.part = handlebars_talloc_strndup(ast_node, $3, strlen($3));
-      __MEMCHECK(ast_node->node.path_segment.part);
-      ast_node->node.path_segment.part_length = strlen($3);
-      ast_node->node.path_segment.separator = handlebars_talloc_strndup(ast_node, $2, strlen($2));
-      __MEMCHECK(ast_node->node.path_segment.separator);
-      ast_node->node.path_segment.separator_length = strlen($2);
       
       handlebars_ast_list_append($1, ast_node);
       $$ = $1;
     }
   | ID {
+      struct handlebars_ast_node * ast_node;
   	  __MEMCHECK($1); // this is weird
   	  
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH_SEGMENT, context);
-      __MEMCHECK(ast_node);
-      ast_node->node.path_segment.part = handlebars_talloc_strdup(ast_node, $1);
-      __MEMCHECK(ast_node->node.path_segment.part);
-      ast_node->node.path_segment.part_length = strlen($1);
+      ast_node = handlebars_ast_node_ctor_path_segment(context, $1, NULL, &yylloc);
+  	  __MEMCHECK(ast_node); // this is weird
       
       $$ = handlebars_ast_list_ctor(context);
   	  __MEMCHECK($$);

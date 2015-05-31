@@ -13,7 +13,7 @@ extern "C" {
 
 // Declarations
 struct handlebars_ast_node;
-struct YYLTYPE;
+struct handlebars_locinfo;
 
 /**
  * @brief Stores the context that is currently being allocated. Used for
@@ -33,7 +33,7 @@ struct handlebars_context
   int eof;
   int errnum;
   char * error;
-  struct YYLTYPE * errloc;
+  struct handlebars_locinfo * errloc;
 };
 
 /**
