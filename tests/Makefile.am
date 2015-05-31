@@ -60,10 +60,10 @@ TESTS = \
 TESTS_ENVIRONMENT = \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
-	handlebars_export_dir=$(top_srcdir)/spec/handlebars/export \
-	handlebars_spec_dir=$(top_srcdir)/spec/handlebars/spec \
-	handlebars_tokenizer_spec=$(top_srcdir)/spec/handlebars/spec/tokenizer.json \
-	handlebars_parser_spec=$(top_srcdir)/spec/handlebars/spec/parser.json \
+	handlebars_export_dir=@HANDLEBARS_SPEC_DIR@/export \
+	handlebars_spec_dir=@HANDLEBARS_SPEC_DIR@/spec \
+	handlebars_tokenizer_spec=@HANDLEBARS_SPEC_DIR@/spec/tokenizer.json \
+	handlebars_parser_spec=@HANDLEBARS_SPEC_DIR@/spec/parser.json \
 	CK_VERBOSITY=normal
 
 if CHECK_HAS_TAP
