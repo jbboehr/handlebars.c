@@ -11,6 +11,7 @@
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_ast.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -224,7 +225,7 @@ void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, s
     context->tmplReadOffset += numBytesToRead;
 }
 
-void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * context, const char * err)
+void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_context * context, const char * err)
 {
     assert(context != NULL);
 
@@ -234,9 +235,9 @@ void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * cont
 
     context->errnum = HANDLEBARS_PARSEERR;
     context->error = handlebars_talloc_strdup(context, err);
-    context->errloc = handlebars_talloc_zero(context, YYLTYPE);
+    context->errloc = handlebars_talloc_zero(context, handlebars_locinfo);
     if( likely(context->errloc != NULL) ) {
-        memcpy(context->errloc, lloc, sizeof(YYLTYPE));
+        memcpy(context->errloc, lloc, sizeof(handlebars_locinfo));
     }
 }
 

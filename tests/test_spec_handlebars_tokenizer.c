@@ -18,6 +18,7 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_ast.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_token.h"

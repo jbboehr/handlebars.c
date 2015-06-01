@@ -17,7 +17,7 @@ extern "C" {
  * Declarations
  */
 struct handlebars_context;
-struct YYLTYPE;
+struct handlebars_locinfo;
 union YYSTYPE;
 
 #define handlebars_addcslashes(str, what) handlebars_addcslashes_ex(str, strlen(str), what, strlen(what))

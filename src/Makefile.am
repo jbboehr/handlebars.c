@@ -10,10 +10,14 @@ else
 endif
 
 # flex/bison
-handlebars.tab.c: handlebars.lex.c
+if BISON
+handlebars.tab.c: handlebars.lex.c handlebars.y
 	${BISON} $(BISONFLAGS) -b handlebars handlebars.y
-handlebars.lex.c:
+endif
+if FLEX
+handlebars.lex.c: handlebars.l
 	${FLEX} $(FLEXFLAGS) -o handlebars.lex.c handlebars.l
+endif
 	
 # re2c
 if RE2C
