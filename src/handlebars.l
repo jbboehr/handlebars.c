@@ -101,7 +101,7 @@
 LEFT_STRIP    "~"
 RIGHT_STRIP   "~"
 
-LOOKAHEAD           [=~} \r\n\t\/.)]
+LOOKAHEAD           [=~} \r\n\t\/.)|]
 LITERAL_LOOKAHEAD   [~} \r\n\t)]
 
 MU \{\{\{?
@@ -181,8 +181,8 @@ ID    {IDC}+/{LOOKAHEAD}
 										return CONTENT;
 									}
 
-<com>[^\x00]+"--}}"					{
-										// v2.0.0 handlebars.l line 59
+<com>[^\x00]+"--"{RIGHT_STRIP}?"}}"	{
+										// v3.0.3 handlebars.l line 59
   										yy_pop_state(yyg);
   										yytext[yyleng -= 4] = 0;
   										yytext += 5, yyleng -= 5;
@@ -295,14 +295,14 @@ ID    {IDC}+/{LOOKAHEAD}
 										return OPEN;
                              		}
                              		
-<mu>"{{!--" 						{
+<mu>"{{"{LEFT_STRIP}?"!--" 			{
 										// v2.0.0 handlebars.l line 79
 										handlebars_yy_unput_all;
   										yy_pop_state(yyg);
   										yy_push_state(com, yyscanner);
 									}
 
-<mu>"{{!" 							{
+<mu>"{{"{LEFT_STRIP}?"!"  			{
 										// v2.0.0 handlebars.l line 80
   										yy_pop_state(yyg);
   										yy_push_state(com1, yyscanner);
@@ -391,6 +391,18 @@ ID    {IDC}+/{LOOKAHEAD}
 										// v2.0.0 handlebars.l line 94
 										handlebars_yy_copy_lval();
 										return BOOLEAN;
+									}
+
+<mu>"undefined"/{LITERAL_LOOKAHEAD}	{
+										// v3.0.3 handlebars.l line 105
+										handlebars_yy_copy_lval();
+										return UNDEFINED;
+									}
+
+<mu>"null"/{LITERAL_LOOKAHEAD}  	{
+										// v3.0.3 handlebars.l line 106
+										handlebars_yy_copy_lval();
+										return NUL;
 									}
 
 <mu>\-?[0-9]+(?:\.[0-9]+)?/{LITERAL_LOOKAHEAD} {

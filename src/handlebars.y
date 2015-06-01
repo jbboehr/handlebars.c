@@ -98,6 +98,13 @@ int handlebars_yy_debug = 0;
 %token <text> SEP
 %token <text> STRING
 
+// Added in v3
+%token <text> CLOSE_BLOCK_PARAMS
+%token <text> NUL
+%token <text> OPEN_BLOCK_PARAMS
+%token <text> OPEN_INVERSE_CHAIN
+%token <text> UNDEFINED
+
 %type <ast_node> program
 %type <ast_list> statements
 %type <ast_node> statement

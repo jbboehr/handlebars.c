@@ -85,7 +85,7 @@ const char * handlebars_token_readable_type(int type)
 {
 #define _RTYPE_STR(x) #x
 #define _RTYPE_CASE(str) \
-    case str: return _RTYPE_STR(str); break
+    case str: return _RTYPE_STR(str)
   switch( type ) {
     _RTYPE_CASE(BOOLEAN);
     _RTYPE_CASE(CLOSE);
@@ -112,6 +112,9 @@ const char * handlebars_token_readable_type(int type)
     _RTYPE_CASE(OPEN_UNESCAPED);
     _RTYPE_CASE(SEP);
     _RTYPE_CASE(STRING);
+    // Added in v3.0.3
+    _RTYPE_CASE(UNDEFINED);
+    case NUL: return "NULL";
   }
   
   return "UNKNOWN";
@@ -151,6 +154,9 @@ int handlebars_token_reverse_readable_type(const char * type)
             break;
         case 'N':
             _RTYPE_REV_CMP(NUMBER);
+            if( strcmp(type, "NULL") == 0 ) {
+                return NUL;
+            }
             break;
         case 'O':
             _RTYPE_REV_CMP(OPEN);
@@ -165,6 +171,9 @@ int handlebars_token_reverse_readable_type(const char * type)
         case 'S':
             _RTYPE_REV_CMP(SEP);
             _RTYPE_REV_CMP(STRING);
+            break;
+        case 'U':
+            _RTYPE_REV_CMP(UNDEFINED);
             break;
     }
     

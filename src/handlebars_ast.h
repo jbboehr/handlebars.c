@@ -55,7 +55,10 @@ enum handlebars_ast_node_type
     HANDLEBARS_AST_NODE_BOOLEAN,
     HANDLEBARS_AST_NODE_COMMENT,
     HANDLEBARS_AST_NODE_PATH_SEGMENT,
-    HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM
+    HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM,
+    // Added in v3.0.3
+    HANDLEBARS_AST_NODE_NUL,
+    HANDLEBARS_AST_NODE_UNDEFINED
 };
 
 struct handlebars_ast_node_program {
@@ -177,6 +180,9 @@ union handlebars_ast_internals {
     struct handlebars_ast_node_sexpr sexpr;
     struct handlebars_ast_node_literal string;
     struct handlebars_ast_node_inverse_and_program inverse_and_program;
+    // Added in v3.0.3
+    struct handlebars_ast_node_literal undefined;
+    struct handlebars_ast_node_literal nul;
 };
 
 /**

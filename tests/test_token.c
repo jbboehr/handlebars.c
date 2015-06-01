@@ -150,10 +150,14 @@ START_TEST(test_token_readable_type)
 	_RTYPE_TEST(SEP);
 	_RTYPE_TEST(STRING);
 	ck_assert_str_eq("UNKNOWN", handlebars_token_readable_type(-1));
+	
+	// Added in v3.0.3
+	ck_assert_str_eq("NULL", handlebars_token_readable_type(NUL));
+	_RTYPE_TEST(UNDEFINED);
 }
 END_TEST
 
-START_TEST(test_token_revere_readable_type)
+START_TEST(test_token_reverse_readable_type)
 {
 #define _RTYPE_REV_STR(str) #str
 #define _RTYPE_REV_TEST(str) \
@@ -190,6 +194,10 @@ START_TEST(test_token_revere_readable_type)
 	_RTYPE_REV_TEST(SEP);
 	_RTYPE_REV_TEST(STRING);
 	ck_assert_int_eq(-1, handlebars_token_reverse_readable_type("UNKNOWN"));
+	
+	// Added in v3.0.3
+	ck_assert_int_eq(NUL, handlebars_token_reverse_readable_type("NULL"));
+	_RTYPE_REV_TEST(UNDEFINED);
 }
 END_TEST
 	
@@ -205,7 +213,7 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_token_get_text, "Get text");
 	REGISTER_TEST_FIXTURE(s, test_token_get_text_ex, "Get text ex");
 	REGISTER_TEST_FIXTURE(s, test_token_readable_type, "Readable Type");
-	REGISTER_TEST_FIXTURE(s, test_token_revere_readable_type, "Reverse Readable Type");
+	REGISTER_TEST_FIXTURE(s, test_token_reverse_readable_type, "Reverse Readable Type");
 	
 	return s;
 }
