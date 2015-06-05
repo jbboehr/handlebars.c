@@ -113,6 +113,9 @@ const char * handlebars_token_readable_type(int type)
     _RTYPE_CASE(SEP);
     _RTYPE_CASE(STRING);
     // Added in v3.0.3
+    _RTYPE_CASE(CLOSE_BLOCK_PARAMS);
+    _RTYPE_CASE(OPEN_BLOCK_PARAMS);
+    _RTYPE_CASE(OPEN_INVERSE_CHAIN);
     _RTYPE_CASE(UNDEFINED);
     case NUL: return "NULL";
   }
@@ -138,6 +141,8 @@ int handlebars_token_reverse_readable_type(const char * type)
             _RTYPE_REV_CMP(CLOSE_UNESCAPED);
             _RTYPE_REV_CMP(COMMENT);
             _RTYPE_REV_CMP(CONTENT);
+            // Added in v3
+            _RTYPE_REV_CMP(CLOSE_BLOCK_PARAMS);
             break;
         case 'D':
             _RTYPE_REV_CMP(DATA);
@@ -167,12 +172,16 @@ int handlebars_token_reverse_readable_type(const char * type)
             _RTYPE_REV_CMP(OPEN_RAW_BLOCK);
             _RTYPE_REV_CMP(OPEN_SEXPR);
             _RTYPE_REV_CMP(OPEN_UNESCAPED);
+            // Added in v3
+            _RTYPE_REV_CMP(OPEN_INVERSE_CHAIN);
+            _RTYPE_REV_CMP(OPEN_BLOCK_PARAMS);
             break;
         case 'S':
             _RTYPE_REV_CMP(SEP);
             _RTYPE_REV_CMP(STRING);
             break;
         case 'U':
+        	// Added in v3
             _RTYPE_REV_CMP(UNDEFINED);
             break;
     }

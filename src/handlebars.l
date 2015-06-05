@@ -114,6 +114,7 @@ WHITESPACE [ \r\n\t]
 
 IDC	  [^ \r\n\t!\"#%-,\.\/;->@\[-\^`\{-~]
 ID    {IDC}+/{LOOKAHEAD}
+BLOCKPARAM [\x7C]
 
 
 %%
@@ -184,8 +185,8 @@ ID    {IDC}+/{LOOKAHEAD}
 <com>[^\x00]+"--"{RIGHT_STRIP}?"}}"	{
 										// v3.0.3 handlebars.l line 59
   										yy_pop_state(yyg);
-  										yytext[yyleng -= 4] = 0;
-  										yytext += 5, yyleng -= 5;
+  										//yytext[yyleng -= 4] = 0;
+  										//yytext += 5, yyleng -= 5;
 										handlebars_yy_copy_lval();
   										return COMMENT;
 									}
@@ -207,7 +208,7 @@ ID    {IDC}+/{LOOKAHEAD}
 									}
 
 <com1>[^\x00\}]*?"}}"				{
-  										yytext[yyleng -= 2] = 0;
+  										//yytext[yyleng -= 2] = 0;
   										yy_pop_state(yyg);
 										handlebars_yy_copy_lval();
   										return COMMENT;
@@ -280,7 +281,7 @@ ID    {IDC}+/{LOOKAHEAD}
 <mu>"{{"{LEFT_STRIP}?\s*"else"   	{
 										// v2.0.0 handlebars.l line 76
 										handlebars_yy_copy_lval();
-										return OPEN_INVERSE;
+										return OPEN_INVERSE_CHAIN;
                              		}
 
 <mu>"{{"{LEFT_STRIP}?"{"         	{
@@ -303,7 +304,8 @@ ID    {IDC}+/{LOOKAHEAD}
 									}
 
 <mu>"{{"{LEFT_STRIP}?"!"  			{
-										// v2.0.0 handlebars.l line 80
+										// v3.0.3 handlebars.l line 80
+										handlebars_yy_unput_all;
   										yy_pop_state(yyg);
   										yy_push_state(com1, yyscanner);
 									}
@@ -381,6 +383,18 @@ ID    {IDC}+/{LOOKAHEAD}
 										return DATA;
 									}
 
+<mu>"as"{WHITESPACE}"|"				{
+										// v3.0.3 handlebars.l line 108
+										handlebars_yy_copy_lval();
+										return OPEN_BLOCK_PARAMS;
+									}
+
+<mu>"|"								{
+										// v3.0.3 handlebars.l line 109
+										handlebars_yy_copy_lval();
+										return CLOSE_BLOCK_PARAMS;
+									}
+
 <mu>"true"/{LITERAL_LOOKAHEAD}   	{
 										// v2.0.0 handlebars.l line 93
 										handlebars_yy_copy_lval();
@@ -411,6 +425,7 @@ ID    {IDC}+/{LOOKAHEAD}
 										return NUMBER;
 									}
 
+
 <mu>{ID}                			{
 										// v2.0.0 handlebars.l line 97
 										handlebars_yy_copy_lval();
@@ -420,8 +435,8 @@ ID    {IDC}+/{LOOKAHEAD}
 <mu>"["[^\]]*"]"                	{
 										// v2.0.0 handlebars.l line 99
 										// yytext = strip(1,2);
-										yytext[--yyleng] = 0;
-										yytext++, yyleng--;
+										//yytext[--yyleng] = 0;
+										//yytext++, yyleng--;
 										handlebars_yy_copy_lval();
 										return ID;
 									}

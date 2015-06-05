@@ -151,9 +151,12 @@ START_TEST(test_token_readable_type)
 	_RTYPE_TEST(STRING);
 	ck_assert_str_eq("UNKNOWN", handlebars_token_readable_type(-1));
 	
-	// Added in v3.0.3
-	ck_assert_str_eq("NULL", handlebars_token_readable_type(NUL));
+	// Added in v3
+	_RTYPE_TEST(CLOSE_BLOCK_PARAMS);
+	_RTYPE_TEST(OPEN_BLOCK_PARAMS);
+	_RTYPE_TEST(OPEN_INVERSE_CHAIN);
 	_RTYPE_TEST(UNDEFINED);
+	ck_assert_str_eq("NULL", handlebars_token_readable_type(NUL));
 }
 END_TEST
 
@@ -195,9 +198,12 @@ START_TEST(test_token_reverse_readable_type)
 	_RTYPE_REV_TEST(STRING);
 	ck_assert_int_eq(-1, handlebars_token_reverse_readable_type("UNKNOWN"));
 	
-	// Added in v3.0.3
-	ck_assert_int_eq(NUL, handlebars_token_reverse_readable_type("NULL"));
+	// Added in v3
+	_RTYPE_REV_TEST(CLOSE_BLOCK_PARAMS);
+	_RTYPE_REV_TEST(OPEN_BLOCK_PARAMS);
+	_RTYPE_REV_TEST(OPEN_INVERSE_CHAIN);
 	_RTYPE_REV_TEST(UNDEFINED);
+	ck_assert_int_eq(NUL, handlebars_token_reverse_readable_type("NULL"));
 }
 END_TEST
 	
