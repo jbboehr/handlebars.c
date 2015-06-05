@@ -121,7 +121,7 @@ static inline void handlebars_compiler_add_depth(
 }
 
 static inline short handlebars_compiler_is_known_helper(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * id)
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * path)
 {
     struct handlebars_ast_list * parts;
     struct handlebars_ast_node * path_segment;
@@ -130,9 +130,9 @@ static inline short handlebars_compiler_is_known_helper(
     
     assert(compiler != NULL);
 
-    if( NULL == id ||
-        id->type != HANDLEBARS_AST_NODE_ID ||
-        NULL == (parts = id->node.id.parts) || 
+    if( NULL == path ||
+        path->type != HANDLEBARS_AST_NODE_PATH ||
+        NULL == (parts = path->node.path.parts) || 
         NULL == parts->first || 
         NULL == (path_segment = parts->first->data) ||
         NULL == (helper_name = path_segment->node.path_segment.part) ) {
@@ -151,16 +151,15 @@ static inline short handlebars_compiler_is_known_helper(
 static inline enum handlebars_compiler_sexpr_type handlebars_compiler_classify_sexpr(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr)
 {
-    short is_helper = sexpr->node.sexpr.is_helper;
-    short is_eligible = sexpr->node.sexpr.eligible_helper;
-    struct handlebars_ast_node * id = sexpr->node.sexpr.id;
+    //short is_helper = sexpr->node.sexpr.is_helper;
+    //short is_eligible = sexpr->node.sexpr.eligible_helper;
+    struct handlebars_ast_node * path = sexpr->node.sexpr.path;
 
     assert(compiler != NULL);
-    //assert(id != NULL);
-    //assert(id->type == HANDLEBARS_AST_NODE_ID);
-    //assert(id == NULL || id->type == HANDLEBARS_AST_NODE_ID);
+    assert(path != NULL);
+    assert(path->type == HANDLEBARS_AST_NODE_PATH);
     
-    if( is_eligible && !is_helper ) {
+    /*if( is_eligible && !is_helper ) {
         if( handlebars_compiler_is_known_helper(compiler, id) ) {
             is_helper = 1;
         } else if( compiler->known_helpers_only ) {
@@ -175,6 +174,7 @@ static inline enum handlebars_compiler_sexpr_type handlebars_compiler_classify_s
     } else {
         return handlebars_compiler_sexpr_type_simple;
     }
+    */
 }
 
 static inline long handlebars_compiler_compile_program(
@@ -269,8 +269,8 @@ static inline void handlebars_compiler_push_param(
         int depth = 0;
         struct handlebars_opcode * opcode;
         
-        if( param->type == HANDLEBARS_AST_NODE_ID ) {
-            depth = param->node.id.depth;
+        if( param->type == HANDLEBARS_AST_NODE_PATH ) {
+            depth = param->node.path.depth;
         }
         
         if( depth ) {
@@ -391,6 +391,8 @@ static inline void handlebars_compiler_accept_block_internal(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * mustache,
         struct handlebars_ast_node * program, struct handlebars_ast_node * inverse)
 {
+    // @todo this is broken
+    /*
     struct handlebars_ast_node * sexpr = mustache->node.mustache.sexpr;
     struct handlebars_ast_node * id;
     long programGuid = -1;
@@ -416,8 +418,8 @@ static inline void handlebars_compiler_accept_block_internal(
             inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
             __OPN(empty_hash);
             id = sexpr->node.sexpr.id;
-            assert(!id || id->type == HANDLEBARS_AST_NODE_ID);
-            __OPS(block_value, id ? id->node.id.original : "");
+            assert(!id || id->type == HANDLEBARS_AST_NODE_PATH);
+            __OPS(block_value, id ? id->node.path.original : "");
             break;
         case handlebars_compiler_sexpr_type_ambiguous:
             handlebars_compiler_accept_sexpr_ambiguous(compiler, sexpr, programGuid, inverseGuid);
@@ -429,11 +431,14 @@ static inline void handlebars_compiler_accept_block_internal(
     }
     
     __OPN(append);
+    */
 }
 
 static inline void handlebars_compiler_accept_block(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * block)
 {
+    // @todo this is broken
+    /*
     struct handlebars_ast_node * mustache = block->node.block.mustache;
     struct handlebars_ast_node * program = block->node.block.program;
     struct handlebars_ast_node * inverse = block->node.block.inverse;
@@ -441,12 +446,13 @@ static inline void handlebars_compiler_accept_block(
     assert(compiler != NULL);
 
     handlebars_compiler_accept_block_internal(compiler, mustache, program, inverse);
+    */
 }
 
 static inline void handlebars_compiler_accept_hash(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * hash)
 {
-    struct handlebars_ast_list * params = hash->node.hash.segments;
+    struct handlebars_ast_list * params = hash->node.hash.pairs;
     int len = handlebars_ast_list_count(params);
     int i = 0;
     struct handlebars_ast_list_item * item;
@@ -464,14 +470,14 @@ static inline void handlebars_compiler_accept_hash(
     __OPN(push_hash);
     
     handlebars_ast_list_foreach(params, item, tmp) {
-        struct handlebars_ast_node * hash_segment = item->data;
+        struct handlebars_ast_node * hash_pair = item->data;
         
-        assert(hash_segment != NULL);
-        assert(hash_segment->type == HANDLEBARS_AST_NODE_HASH_SEGMENT);
+        assert(hash_pair != NULL);
+        assert(hash_pair->type == HANDLEBARS_AST_NODE_HASH_PAIR);
         
-        if( likely(hash_segment->type == HANDLEBARS_AST_NODE_HASH_SEGMENT) ) {
-            handlebars_compiler_push_param(compiler, hash_segment->node.hash_segment.value);
-            keys[i++] = hash_segment->node.hash_segment.key;
+        if( likely(hash_pair->type == HANDLEBARS_AST_NODE_HASH_PAIR) ) {
+            handlebars_compiler_push_param(compiler, hash_pair->node.hash_pair.value);
+            keys[i++] = hash_pair->node.hash_pair.key;
         }
     }
     
@@ -487,30 +493,30 @@ static inline void handlebars_compiler_accept_hash(
 static inline void handlebars_compiler_accept_partial(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * partial)
 {
-    struct handlebars_ast_node * partial_name;
-    struct handlebars_ast_node * id;
+    /*
+    struct handlebars_ast_node * name;
+    struct handlebars_ast_node * path;
     const char * name = NULL;
 
     assert(compiler != NULL);
     assert(partial != NULL);
     assert(partial->type == HANDLEBARS_AST_NODE_PARTIAL);
     
-    partial_name = partial->node.partial.partial_name;
+    name = partial->node.partial.name;
     compiler->use_partial = 1;
     
-    assert(partial_name != NULL);
-    assert(partial_name->type == HANDLEBARS_AST_NODE_PARTIAL_NAME);
+    // @todo this is broken
+    //assert(partial_name != NULL);
+    //assert(partial_name->type == HANDLEBARS_AST_NODE_PARTIAL_NAME);
+    //id = partial_name->node.partial_name.name;
+    //assert(id != NULL);
     
-    id = partial_name->node.partial_name.name;
-    
-    assert(id != NULL);
-    
-    if( id->type == HANDLEBARS_AST_NODE_ID ) {
-        name = id->node.id.original;
-    } else {
+    //if( id->type == HANDLEBARS_AST_NODE_PATH ) {
+    //    name = id->node.path.original;
+    //} else {
         // @todo might not be right
         name = handlebars_ast_node_get_string_mode_value(id);
-    }
+    //}
     
     if( partial->node.partial.hash ) {
         handlebars_compiler_accept(compiler, partial->node.partial.hash);
@@ -527,6 +533,7 @@ static inline void handlebars_compiler_accept_partial(
     
     __OPS2(invoke_partial, name, partial->node.partial.indent ? partial->node.partial.indent : "");
     __OPN(append);
+    */
 }
 
 static inline void handlebars_compiler_accept_content(
@@ -536,8 +543,8 @@ static inline void handlebars_compiler_accept_content(
     assert(content != NULL);
     assert(content->type == HANDLEBARS_AST_NODE_CONTENT);
     
-    if( likely(/* content && */ content->node.content.string && *content->node.content.string) ) {
-        __OPS(append_content, content->node.content.string);
+    if( likely(/* content && */ content->node.content.value && *content->node.content.value) ) {
+        __OPS(append_content, content->node.content.value);
     }
 }
 
@@ -548,7 +555,8 @@ static inline void handlebars_compiler_accept_mustache(
     assert(mustache != NULL);
     assert(mustache->type == HANDLEBARS_AST_NODE_MUSTACHE);
     
-    handlebars_compiler_accept/*_sexpr*/(compiler, mustache->node.mustache.sexpr);
+    // @todo this is broken
+    //handlebars_compiler_accept/*_sexpr*/(compiler, mustache->node.mustache.sexpr);
     
     if( !mustache->node.mustache.unescaped && !compiler->no_escape ) {
         __OPN(append_escaped);
@@ -561,7 +569,7 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
         long programGuid, long inverseGuid)
 {
-    struct handlebars_ast_node * id;
+    struct handlebars_ast_node * path;
     const char * name;
     int is_block = (programGuid >= 0 || inverseGuid >= 0);
 
@@ -569,18 +577,18 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
     assert(sexpr != NULL);
     assert(sexpr->type == HANDLEBARS_AST_NODE_SEXPR);
     
-    id = sexpr->node.sexpr.id;
+    path = sexpr->node.sexpr.path;
     
-    assert(id != NULL);
-    assert(id->type == HANDLEBARS_AST_NODE_ID); // @todo might not be ID
+    assert(path != NULL);
+    assert(path->type == HANDLEBARS_AST_NODE_PATH);
     
-    name = handlebars_ast_node_get_id_part(id);
+    name = handlebars_ast_node_get_id_part(path);
     
-    __OPL(get_context, id->node.id.depth);
+    __OPL(get_context, path->node.path.depth);
     programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
     inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
     
-    handlebars_compiler_accept/*_id*/(compiler, id);
+    handlebars_compiler_accept/*_id*/(compiler, path);
     
     do {
         struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invoke_ambiguous);
@@ -595,26 +603,26 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
 static inline void handlebars_compiler_accept_sexpr_simple(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr)
 {
-    struct handlebars_ast_node * id;
+    struct handlebars_ast_node * path;
 
     assert(compiler != NULL);
     assert(sexpr != NULL);
     assert(sexpr->type == HANDLEBARS_AST_NODE_SEXPR);
     
-    id = sexpr->node.sexpr.id;
+    path = sexpr->node.sexpr.path;
     
-    assert(id != NULL);
-    assert(id->type == HANDLEBARS_AST_NODE_ID ||
-           id->type == HANDLEBARS_AST_NODE_DATA);
+    assert(path != NULL);
+    assert(path->type == HANDLEBARS_AST_NODE_PATH);
     
-    if( id->type == HANDLEBARS_AST_NODE_DATA ) {
-        handlebars_compiler_accept/*_data*/(compiler, id);
-    } else if( id->type == HANDLEBARS_AST_NODE_ID ) {
-        if( handlebars_ast_list_count(id->node.id.parts) ) {
-            handlebars_compiler_accept/*_id*/(compiler, id);
+    if( path->node.path.data ) {
+        // @todo probably broken
+        handlebars_compiler_accept/*_data*/(compiler, path);
+    } else {
+        if( handlebars_ast_list_count(path->node.path.parts) ) {
+            handlebars_compiler_accept/*_id*/(compiler, path);
         } else {
-            handlebars_compiler_add_depth(compiler, id->node.id.depth);
-            __OPL(get_context, id->node.id.depth);
+            handlebars_compiler_add_depth(compiler, path->node.path.depth);
+            __OPL(get_context, path->node.path.depth);
             __OPN(push_context);
         }
     }
@@ -626,8 +634,8 @@ static inline void handlebars_compiler_accept_sexpr_helper(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * sexpr,
         long programGuid, long inverseGuid)
 {
+    struct handlebars_ast_node * path;
     struct handlebars_ast_list * params;
-    struct handlebars_ast_node * id;
     const char * name;
 
     assert(compiler != NULL);
@@ -636,14 +644,14 @@ static inline void handlebars_compiler_accept_sexpr_helper(
     
     params = handlebars_compiler_setup_full_mustache_params(
                 compiler, sexpr, programGuid, inverseGuid);
-    id = sexpr->node.sexpr.id;
+    path = sexpr->node.sexpr.path;
     
-    assert(id != NULL);
-    assert(id->type == HANDLEBARS_AST_NODE_ID);
+    assert(path != NULL);
+    assert(path->type == HANDLEBARS_AST_NODE_PATH);
     
-    name = handlebars_ast_node_get_id_part(id);
+    name = handlebars_ast_node_get_id_part(path);
     
-    if( handlebars_compiler_is_known_helper(compiler, id) ) {
+    if( handlebars_compiler_is_known_helper(compiler, path) ) {
         __OPLS(invoke_known_helper, handlebars_ast_list_count(params), name);
     } else if( compiler->known_helpers_only ) {
         compiler->errnum = handlebars_compiler_error_unknown_helper;
@@ -652,17 +660,15 @@ static inline void handlebars_compiler_accept_sexpr_helper(
         __MEMCHECK(compiler->error);
     } else {
         struct handlebars_opcode * opcode;
-        short is_simple = (short) id->node.id.is_simple;
         
-        id->node.id.is_falsy = 1;
-        handlebars_compiler_accept/*_id*/(compiler, id);
+        handlebars_compiler_accept/*_id*/(compiler, path);
         
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invoke_helper);
         __MEMCHECK(opcode);
         handlebars_operand_set_longval(&opcode->op1, handlebars_ast_list_count(params));
         //handlebars_operand_set_stringval(compiler, &opcode->op2, name);
-        handlebars_operand_set_stringval(compiler, &opcode->op2, id->node.id.original);
-        handlebars_operand_set_boolval(&opcode->op3, is_simple);
+        handlebars_operand_set_stringval(compiler, &opcode->op2, path->node.path.original);
+        handlebars_operand_set_boolval(&opcode->op3, 0);
         handlebars_compiler_opcode(compiler, opcode);
     }
 }
@@ -686,19 +692,19 @@ static inline void handlebars_compiler_accept_sexpr(
     }
 }
 
-static inline void handlebars_compiler_accept_id(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * id)
+static inline void handlebars_compiler_accept_path(
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * path)
 {
     const char * name;
 
     assert(compiler != NULL);
-    assert(id != NULL);
-    assert(id->type == HANDLEBARS_AST_NODE_ID);
+    assert(path != NULL);
+    assert(path->type == HANDLEBARS_AST_NODE_PATH);
     
-    handlebars_compiler_add_depth(compiler, id->node.id.depth);
-    __OPL(get_context, id->node.id.depth);
+    handlebars_compiler_add_depth(compiler, path->node.path.depth);
+    __OPL(get_context, path->node.path.depth);
     
-    name = handlebars_ast_node_get_id_part(id);
+    name = handlebars_ast_node_get_id_part(path);
     
     if( name == NULL ) {
         __OPN(push_context);
@@ -707,41 +713,12 @@ static inline void handlebars_compiler_accept_id(
         char ** parts_arr;
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_on_context);
         __MEMCHECK(opcode);
-        parts_arr = handlebars_ast_node_get_id_parts(opcode, id);
+        parts_arr = handlebars_ast_node_get_id_parts(opcode, path);
         __MEMCHECK(parts_arr);
         opcode->op1.type = handlebars_operand_type_array;
         opcode->op1.data.arrayval = parts_arr;
-        if( id->node.id.is_falsy ) {
-            handlebars_operand_set_boolval(&opcode->op2, id->node.id.is_falsy);
-        }
-        if( id->node.id.is_scoped ) {
-            handlebars_operand_set_boolval(&opcode->op3, id->node.id.is_scoped);
-        }
         __PUSH(opcode);
     }
-}
-
-static inline void handlebars_compiler_accept_data(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * data)
-{
-    struct handlebars_opcode * opcode;
-    struct handlebars_ast_node * id = data->node.data.id;
-    char ** parts_arr;
-    
-    assert(id != NULL);
-    
-    compiler->use_data = 1;
-    
-    opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_data);
-    __MEMCHECK(opcode);
-    parts_arr = handlebars_ast_node_get_id_parts(opcode, id);
-    __MEMCHECK(parts_arr);
-    
-    handlebars_operand_set_longval(&opcode->op1, id->node.id.depth);
-    opcode->op2.type = handlebars_operand_type_array;
-    opcode->op2.data.arrayval = parts_arr;
-    
-    __PUSH(opcode);
 }
 
 static inline void handlebars_compiler_accept_string(
@@ -750,7 +727,7 @@ static inline void handlebars_compiler_accept_string(
     assert(string != NULL);
     assert(string->type == HANDLEBARS_AST_NODE_STRING);
     
-    __OPS(push_string, string->node.string.string);
+    __OPS(push_string, string->node.string.value);
 }
 
 static inline void handlebars_compiler_accept_number(
@@ -759,7 +736,7 @@ static inline void handlebars_compiler_accept_number(
     assert(number != NULL);
     assert(number->type == HANDLEBARS_AST_NODE_NUMBER);
     
-    __OPS(push_literal, number->node.number.string);
+    __OPS(push_literal, number->node.number.value);
 }
 
 static inline void handlebars_compiler_accept_boolean(
@@ -768,7 +745,7 @@ static inline void handlebars_compiler_accept_boolean(
     assert(boolean != NULL);
     assert(boolean->type == HANDLEBARS_AST_NODE_BOOLEAN);
     
-    __OPS(push_literal, boolean->node.boolean.string);
+    __OPS(push_literal, boolean->node.boolean.value);
 }
 
 static inline void handlebars_compiler_accept_comment(
@@ -782,31 +759,13 @@ static inline void handlebars_compiler_accept_comment(
 static inline void handlebars_compiler_accept_raw_block(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * raw_block)
 {
+    // @todo this is broken
+    /*
     struct handlebars_ast_node * mustache = raw_block->node.raw_block.mustache;
     struct handlebars_ast_node * program = raw_block->node.raw_block.program;
     handlebars_compiler_accept_block_internal(compiler, mustache, program, NULL);
+    */
 }
-
-/*
-static inline void handlebars_compiler_accept_hash_segment(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
-{
-    ;
-}
-
-static inline void handlebars_compiler_accept_partial_name(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
-{
-    ;
-}
-
-static inline void handlebars_compiler_accept_path_segment(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
-{
-    ;
-}
-*/
-
 
 static void handlebars_compiler_accept(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
@@ -829,10 +788,8 @@ static void handlebars_compiler_accept(
             return handlebars_compiler_accept_content(compiler, node);
         case HANDLEBARS_AST_NODE_HASH:
             return handlebars_compiler_accept_hash(compiler, node);
-        case HANDLEBARS_AST_NODE_ID:
-            return handlebars_compiler_accept_id(compiler, node);
-        case HANDLEBARS_AST_NODE_DATA:
-            return handlebars_compiler_accept_data(compiler, node);
+        case HANDLEBARS_AST_NODE_PATH:
+            return handlebars_compiler_accept_path(compiler, node);
         case HANDLEBARS_AST_NODE_STRING:
             return handlebars_compiler_accept_string(compiler, node);
         case HANDLEBARS_AST_NODE_NUMBER:

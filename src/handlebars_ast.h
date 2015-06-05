@@ -38,151 +38,130 @@ struct handlebars_locinfo
 enum handlebars_ast_node_type
 {
     HANDLEBARS_AST_NODE_NIL = 0,
-    HANDLEBARS_AST_NODE_PROGRAM,
-    HANDLEBARS_AST_NODE_MUSTACHE,
-    HANDLEBARS_AST_NODE_SEXPR,
-    HANDLEBARS_AST_NODE_PARTIAL,
     HANDLEBARS_AST_NODE_BLOCK,
-    HANDLEBARS_AST_NODE_RAW_BLOCK,
-    HANDLEBARS_AST_NODE_CONTENT,
-    HANDLEBARS_AST_NODE_HASH,
-    HANDLEBARS_AST_NODE_HASH_SEGMENT,
-    HANDLEBARS_AST_NODE_ID,
-    HANDLEBARS_AST_NODE_PARTIAL_NAME,
-    HANDLEBARS_AST_NODE_DATA,
-    HANDLEBARS_AST_NODE_STRING,
-    HANDLEBARS_AST_NODE_NUMBER,
     HANDLEBARS_AST_NODE_BOOLEAN,
     HANDLEBARS_AST_NODE_COMMENT,
-    HANDLEBARS_AST_NODE_PATH_SEGMENT,
-    HANDLEBARS_AST_NODE_INVERSE_AND_PROGRAM,
-    // Added in v3.0.3
+    HANDLEBARS_AST_NODE_CONTENT,
+    HANDLEBARS_AST_NODE_HASH,
+    HANDLEBARS_AST_NODE_HASH_PAIR,
+    HANDLEBARS_AST_NODE_INTERMEDIATE,
+    HANDLEBARS_AST_NODE_INVERSE,
+    HANDLEBARS_AST_NODE_MUSTACHE,
     HANDLEBARS_AST_NODE_NUL,
+    HANDLEBARS_AST_NODE_NUMBER,
+    HANDLEBARS_AST_NODE_PARTIAL,
+    HANDLEBARS_AST_NODE_PATH,
+    HANDLEBARS_AST_NODE_PATH_SEGMENT,
+    HANDLEBARS_AST_NODE_PROGRAM,
+    HANDLEBARS_AST_NODE_RAW_BLOCK,
+    HANDLEBARS_AST_NODE_SEXPR,
+    HANDLEBARS_AST_NODE_STRING,
     HANDLEBARS_AST_NODE_UNDEFINED
 };
 
-struct handlebars_ast_node_program {
-    struct handlebars_ast_list * statements;
+struct handlebars_ast_node_block {
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
+    struct handlebars_ast_node * program;
+    struct handlebars_ast_node * inverse;
+    unsigned open_strip;
+    unsigned inverse_strip;
+    unsigned close_strip;
+};
+
+struct handlebars_ast_node_comment {
+    char * value;
+};
+
+struct handlebars_ast_node_hash {
+    struct handlebars_ast_list * pairs;
+};
+
+struct handlebars_ast_node_hash_pair {
+    char * key;
+    struct handlebars_ast_node * value;
+};
+
+struct handlebars_ast_node_intermediate {
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
+    char * block_param1;
+    char * block_param2;
+};
+
+struct handlebars_ast_node_inverse {
+    struct handlebars_ast_node * program;
+    short chained;
+};
+
+struct handlebars_ast_node_literal {
+    char * value;
+    char * original;
 };
 
 struct handlebars_ast_node_mustache {
-    struct handlebars_ast_node * sexpr;
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
     short unescaped;
 };
 
-struct handlebars_ast_node_sexpr {
-    struct handlebars_ast_node * hash;
-    struct handlebars_ast_node * id;
-    struct handlebars_ast_list * params;
-    short is_helper;
-    short eligible_helper;
-};
-
 struct handlebars_ast_node_partial {
-    struct handlebars_ast_node * partial_name;
-    struct handlebars_ast_node * context;
+    struct handlebars_ast_node * name;
+    struct handlebars_ast_list * params;
     struct handlebars_ast_node * hash;
     char * indent;
 };
 
-struct handlebars_ast_node_block {
-    struct handlebars_ast_node * mustache;
-    struct handlebars_ast_node * program;
-    struct handlebars_ast_node * inverse;
-    struct handlebars_ast_node * close;
-    int inverted;
-};
-
-struct handlebars_ast_node_raw_block {
-    struct handlebars_ast_node * mustache;
-    struct handlebars_ast_node * program;
-    char * close;
-    // Note: program is just content
-};
-
-struct handlebars_ast_node_content {
-    char * string;
-    size_t length;
+struct handlebars_ast_node_path {
+    short data;
     char * original;
-};
-
-struct handlebars_ast_node_hash {
-    struct handlebars_ast_list * segments;
-};
-
-struct handlebars_ast_node_hash_segment {
-    char * key;
-    size_t key_length;
-    struct handlebars_ast_node * value;
-};
-
-struct handlebars_ast_node_id {
     struct handlebars_ast_list * parts;
     int depth;
-    int is_simple;
-    int is_scoped;
-    short is_falsy; /* used in the compiler */
-    size_t id_name_length;
-    char * id_name;
-    size_t string_length;
-    char * string;
-    size_t original_length;
-    char * original;
-};
-
-struct handlebars_ast_node_literal {
-    char * string;
-    size_t length;
-};
-
-struct handlebars_ast_node_partial_name {
-    struct handlebars_ast_node * name;
-};
-
-struct handlebars_ast_node_data {
-    struct handlebars_ast_node * id;
-    size_t id_name_length;
-    char * id_name;
-};
-
-struct handlebars_ast_node_comment {
-    char * comment;
-    size_t length;
 };
 
 struct handlebars_ast_node_path_segment {
     char * part;
-    size_t part_length;
     char * separator;
-    size_t separator_length;
 };
 
-struct handlebars_ast_node_inverse_and_program {
-    struct handlebars_ast_node * program;
+struct handlebars_ast_node_program {
+    struct handlebars_ast_list * statements;
+    short chained;
+    char * block_param1;
+    char * block_param2;
+};
+
+struct handlebars_ast_node_sexpr {
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
+    //short is_helper;
+    //short eligible_helper;
 };
 
 union handlebars_ast_internals {
     struct handlebars_ast_node_block block;
     struct handlebars_ast_node_literal boolean;
     struct handlebars_ast_node_comment comment;
-    struct handlebars_ast_node_content content;
-    struct handlebars_ast_node_data data;
+    struct handlebars_ast_node_literal content;
     struct handlebars_ast_node_hash hash;
-    struct handlebars_ast_node_hash_segment hash_segment;
-    struct handlebars_ast_node_id id;
+    struct handlebars_ast_node_hash_pair hash_pair;
+    struct handlebars_ast_node_intermediate intermediate;
+    struct handlebars_ast_node_inverse inverse;
     struct handlebars_ast_node_mustache mustache;
     struct handlebars_ast_node_literal number;
+    struct handlebars_ast_node_literal nul;
     struct handlebars_ast_node_partial partial;
-    struct handlebars_ast_node_partial_name partial_name;
+    struct handlebars_ast_node_path path;
     struct handlebars_ast_node_path_segment path_segment;
     struct handlebars_ast_node_program program;
-    struct handlebars_ast_node_raw_block raw_block;
+    struct handlebars_ast_node_block raw_block;
     struct handlebars_ast_node_sexpr sexpr;
     struct handlebars_ast_node_literal string;
-    struct handlebars_ast_node_inverse_and_program inverse_and_program;
-    // Added in v3.0.3
     struct handlebars_ast_node_literal undefined;
-    struct handlebars_ast_node_literal nul;
 };
 
 /**
@@ -288,6 +267,12 @@ const char * handlebars_ast_node_readable_type(int type);
 
 // Specialized constructors
 
+struct handlebars_ast_node * handlebars_ast_node_ctor_block(
+    struct handlebars_context * context, struct handlebars_ast_node * intermediate,
+    struct handlebars_ast_node * program, struct handlebars_ast_node * inverse,
+    unsigned open_strip, unsigned inverse_strip, unsigned close_strip,
+    struct handlebars_locinfo * locinfo);
+    
 struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
     struct handlebars_context * context, const char * boolean,
     struct handlebars_locinfo * locinfo);
@@ -300,21 +285,21 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_content(
     struct handlebars_context * context, const char * content,
     struct handlebars_locinfo * locinfo);
 
-struct handlebars_ast_node * handlebars_ast_node_ctor_data(
-    struct handlebars_context * context, struct handlebars_ast_node * id,
-    struct handlebars_locinfo * locinfo);
-
-struct handlebars_ast_node * handlebars_ast_node_ctor_hash_segment(
+struct handlebars_ast_node * handlebars_ast_node_ctor_hash_pair(
     struct handlebars_context * context, const char * key,
     struct handlebars_ast_node * value, struct handlebars_locinfo * locinfo);
 
-struct handlebars_ast_node * handlebars_ast_node_ctor_id(
-    struct handlebars_context * context, struct handlebars_ast_list * parts,
-    struct handlebars_locinfo * locinfo);
+struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
+	    struct handlebars_context * context, struct handlebars_ast_node * path,
+	    struct handlebars_ast_list * params, struct handlebars_ast_node * hash,
+	    unsigned strip, struct handlebars_locinfo * locinfo);
 
-struct handlebars_ast_node * handlebars_ast_node_ctor_inverse_and_program(
-    struct handlebars_context * context, struct handlebars_ast_node * program,
-    unsigned strip, struct handlebars_locinfo * locinfo);
+struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
+	    struct handlebars_context * context, struct handlebars_ast_node * program,
+	    short chained, unsigned strip, struct handlebars_locinfo * locinfo);
+
+struct handlebars_ast_node * handlebars_ast_node_ctor_null(
+    struct handlebars_context * context, struct handlebars_locinfo * locinfo);
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_number(
     struct handlebars_context * context, const char * number,
@@ -322,25 +307,37 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_number(
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
     struct handlebars_context * context, struct handlebars_ast_node * partial_name,
-    struct handlebars_ast_node * param, struct handlebars_ast_node * hash, 
+    struct handlebars_ast_list * params, struct handlebars_ast_node * hash,
     unsigned strip, struct handlebars_locinfo * locinfo);
 
-struct handlebars_ast_node * handlebars_ast_node_ctor_partial_name(
-    struct handlebars_context * context, struct handlebars_ast_node * name,
-    struct handlebars_locinfo * locinfo);
+struct handlebars_ast_node * handlebars_ast_node_ctor_program(
+    struct handlebars_context * context, struct handlebars_ast_list * statements,
+    char * block_param1, char * block_param2, unsigned strip, 
+    short chained, struct handlebars_locinfo * locinfo);
 
+struct handlebars_ast_node * handlebars_ast_node_ctor_path(
+    struct handlebars_context * context, struct handlebars_ast_list * parts,
+    char * original, int depth, short data, struct handlebars_locinfo * locinfo);
+    
 struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     struct handlebars_context * context, const char * part, const char * separator,
     struct handlebars_locinfo * locinfo);
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
-    struct handlebars_context * context, struct handlebars_ast_node * mustache, 
-    struct handlebars_ast_node * content, const char * close,
-    struct handlebars_locinfo * locinfo);
+    struct handlebars_context * context, struct handlebars_ast_node * intermediate,
+    struct handlebars_ast_node * content,  struct handlebars_locinfo * locinfo);
+
+struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
+	    struct handlebars_context * context,
+	    struct handlebars_ast_node * intermediate,
+	    struct handlebars_locinfo * locinfo);
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_string(
     struct handlebars_context * context, const char * string,
     struct handlebars_locinfo * locinfo);
+
+struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
+    struct handlebars_context * context, struct handlebars_locinfo * locinfo);
 
 #ifdef	__cplusplus
 }

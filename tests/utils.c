@@ -1,6 +1,10 @@
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <pcre.h>
+#include <talloc.h>
 
 #include <errno.h>
 #include <dirent.h>
@@ -73,4 +77,36 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 	
 	if( dir != NULL) closedir(dir);
 	return error;
+}
+
+int regex_compare(const char * regex, const char * string, char ** error)
+{
+    pcre * re;
+    char * errmsg = NULL;
+    int erroffset;
+    int ovector[30];
+    int rc, i, ret;
+    
+    re = pcre_compile(regex, 0, &errmsg, &erroffset, NULL);
+    
+    if( !re ) {
+        *error = talloc_asprintf(NULL, "Regex '%s' compilation failed at offset %d: %s\n", regex, erroffset, errmsg);
+        return 1;
+    } else if( errmsg ) {
+        *error = talloc_strdup(NULL, errmsg);
+        ret = 2;
+        goto error;
+    }
+    
+    rc = pcre_exec(re, NULL, string, (int) strlen(string), 0, 0, ovector, 30);
+    if( rc <= 0 ) {
+        ret = 2;
+        *error = talloc_asprintf(NULL, "Regex '%s' didn't match string '%s'", regex, string);
+    } else {
+        ret = 0;
+    }
+    
+error:
+    pcre_free(re);
+    return ret;
 }

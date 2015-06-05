@@ -4,6 +4,7 @@
 #include <string.h>
 #include <talloc.h>
 
+#include <assert.h>
 #include <getopt.h>
 
 #include "handlebars.h"

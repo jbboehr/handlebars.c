@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <check.h>
 #include <stdio.h>
+#include <pcre.h>
 #include <talloc.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
@@ -176,23 +177,29 @@ START_TEST(handlebars_spec_parser)
         char * errmsgjs = handlebars_context_get_errmsg_js(ctx);
         
         if( test->exception ) {
-            // It's a regexp, try to do substring search
-            if( test->message[0] == '/' && test->message[strlen(test->message) - 1] == '/' ) {
+            if( test->message == NULL ) {
+                // Just check if there was an error
+                ck_assert_str_ne("", errmsgjs ? errmsgjs : "");
+            } else if( test->message[0] == '/' && test->message[strlen(test->message) - 1] == '/' ) {
+                // It's a regex
                 char * tmp = strdup(test->message + 1);
                 tmp[strlen(test->message) - 2] = '\0';
-                char * found = strstr(errmsgjs, tmp);
-                if( found != NULL ) {
+                char * regex_error = NULL;
+                if( 0 == regex_compare(tmp, errmsgjs, &regex_error) ) {
                     // ok
                 } else {
-                    //ck_assert_msg(found != NULL, errmsg);
-                    ck_assert_str_eq(test->message, errmsgjs);
+                    ck_assert_msg(0, regex_error);
                 }
                 free(tmp);
             } else {
                 ck_assert_str_eq(test->message, errmsg);
             }
         } else {
-            char * lesigh = handlebars_talloc_strdup(ctx, errmsg);
+            char * lesigh = handlebars_talloc_strdup(ctx, "\nExpected: \n");
+            lesigh = handlebars_talloc_strdup_append(lesigh, test->expected);
+            lesigh = handlebars_talloc_strdup_append(lesigh, "\nActual (error): \n");
+            lesigh = handlebars_talloc_strdup_append(lesigh, errmsg);
+            lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
             lesigh = handlebars_talloc_strdup_append(lesigh, test->tmpl);
             ck_assert_msg(0, lesigh);
         }

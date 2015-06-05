@@ -26,132 +26,6 @@ static void teardown(void)
     ctx = NULL;
 }
 
-START_TEST(test_ast_helper_check_block)
-{
-    struct YYLTYPE loc;
-    struct handlebars_context * context = handlebars_context_ctor();
-    struct handlebars_ast_node * block = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, ctx);
-    struct handlebars_ast_node * mustache = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, ctx);
-    struct handlebars_ast_node * sexpr = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, ctx);
-    struct handlebars_ast_node * id = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, ctx);
-    struct handlebars_ast_node * id_close = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, ctx);
-    const char * original1 = "foo";
-    const char * original2 = "bar";
-    int ret;
-    
-    block->node.block.mustache = mustache;
-    mustache->node.mustache.sexpr = sexpr;
-    sexpr->node.sexpr.id = id;
-    block->node.block.close = id_close;
-    
-    memset(&loc, 0, sizeof(loc));
-    
-    // Test match
-    id->node.id.original = handlebars_talloc_strdup(ctx, original1);
-    id_close->node.id.original = handlebars_talloc_strdup(ctx, original1);
-    ret = handlebars_ast_helper_check_block(block, context, &loc);
-    ck_assert_int_eq(0, ret);
-    
-    // Test match failure
-    id->node.id.original = handlebars_talloc_strdup(ctx, original1);
-    id_close->node.id.original = handlebars_talloc_strdup(ctx, original2);
-    ret = handlebars_ast_helper_check_block(block, context, &loc);
-    ck_assert_int_ne(0, ret);
-    ck_assert_ptr_ne(NULL, context->error);
-    
-    // Test missing fields
-    id_close->node.id.original = NULL;
-    ret = handlebars_ast_helper_check_block(block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    block->node.block.close = NULL;
-    ret = handlebars_ast_helper_check_block(block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    id->node.id.original = NULL;
-    ret = handlebars_ast_helper_check_block(block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    sexpr->node.sexpr.id = NULL;
-    ret = handlebars_ast_helper_check_block(block, context, &loc);
-    ck_assert_int_eq(1, ret);
-
-    mustache->node.mustache.sexpr = NULL;
-    ret = handlebars_ast_helper_check_block(block, context, &loc);
-    ck_assert_int_eq(1, ret);
-
-    block->node.block.mustache = NULL;
-    ret = handlebars_ast_helper_check_block(block, context, &loc);
-    ck_assert_int_eq(1, ret);
-
-    ret = handlebars_ast_helper_check_block(NULL, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    handlebars_context_dtor(context);
-}
-END_TEST
-
-START_TEST(test_ast_helper_check_raw_block)
-{
-    struct YYLTYPE loc;
-    struct handlebars_context * context = handlebars_context_ctor();
-    struct handlebars_ast_node * raw_block = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_RAW_BLOCK, ctx);
-    struct handlebars_ast_node * mustache = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, ctx);
-    struct handlebars_ast_node * sexpr = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, ctx);
-    struct handlebars_ast_node * id = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_ID, ctx);
-    const char * original1 = "foo";
-    const char * original2 = "bar";
-    int ret;
-    
-    raw_block->node.raw_block.mustache = mustache;
-    mustache->node.mustache.sexpr = sexpr;
-    sexpr->node.sexpr.id = id;
-    //raw_block->node.raw_block.close = id_close;
-    
-    memset(&loc, 0, sizeof(loc));
-    
-    // Test match
-    id->node.id.original = handlebars_talloc_strdup(ctx, original1);
-    raw_block->node.raw_block.close = handlebars_talloc_strdup(ctx, original1);
-    ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
-    ck_assert_int_eq(0, ret);
-    
-    // Test match failure
-    id->node.id.original = handlebars_talloc_strdup(ctx, original1);
-    raw_block->node.raw_block.close = handlebars_talloc_strdup(ctx, original2);
-    ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
-    ck_assert_int_ne(0, ret);
-    ck_assert_ptr_ne(NULL, context->error);
-    
-    // Test missing fields
-    raw_block->node.raw_block.close = NULL;
-    ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    id->node.id.original = NULL;
-    ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    sexpr->node.sexpr.id = NULL;
-    ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    mustache->node.mustache.sexpr = NULL;
-    ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    raw_block->node.raw_block.mustache = NULL;
-    ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    raw_block = NULL;
-    ret = handlebars_ast_helper_check_raw_block(raw_block, context, &loc);
-    ck_assert_int_eq(1, ret);
-    
-    handlebars_context_dtor(context);
-}
-END_TEST
-
 START_TEST(test_ast_helper_set_strip_flags)
 {
     struct handlebars_ast_node node;
@@ -173,13 +47,66 @@ START_TEST(test_ast_helper_set_strip_flags)
 }
 END_TEST
 
+START_TEST(test_ast_helper_strip_comment)
+{
+    char * tmp;
+
+    tmp = handlebars_talloc_strdup(ctx, "");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, "");
+
+    tmp = handlebars_talloc_strdup(ctx, "blah");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, "blah");
+
+    tmp = handlebars_talloc_strdup(ctx, "{");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, "{");
+
+    tmp = handlebars_talloc_strdup(ctx, "{{!");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, "");
+
+    tmp = handlebars_talloc_strdup(ctx, "{{~!--");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, "");
+
+    tmp = handlebars_talloc_strdup(ctx, "{{!-- blah");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, " blah");
+
+    tmp = handlebars_talloc_strdup(ctx, "}}");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, "");
+
+    tmp = handlebars_talloc_strdup(ctx, "--}}");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, "");
+
+    tmp = handlebars_talloc_strdup(ctx, "{{!}}");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, "");
+
+    tmp = handlebars_talloc_strdup(ctx, "{{! foo }}");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, " foo ");
+
+    tmp = handlebars_talloc_strdup(ctx, "{{!-- bar --}}");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, " bar ");
+
+    tmp = handlebars_talloc_strdup(ctx, "{{~!-- baz --~}}");
+    handlebars_ast_helper_strip_comment(tmp);
+    ck_assert_str_eq(tmp, " baz ");
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("AST Helpers");
     
-    REGISTER_TEST_FIXTURE(s, test_ast_helper_check_block, "Check block AST node");
-    REGISTER_TEST_FIXTURE(s, test_ast_helper_check_raw_block, "Check raw block AST node");
     REGISTER_TEST_FIXTURE(s, test_ast_helper_set_strip_flags, "Set strip flags");
+    REGISTER_TEST_FIXTURE(s, test_ast_helper_strip_comment, "Strip comment");
     
     return s;
 }

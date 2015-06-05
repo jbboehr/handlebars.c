@@ -82,29 +82,26 @@ START_TEST(test_ast_node_readable_type)
 		} while(0)
     
 	_RTYPE_TEST(NIL, NIL);
-	_RTYPE_TEST(PROGRAM, program);
-    _RTYPE_TEST(MUSTACHE, mustache);
-    _RTYPE_TEST(SEXPR, sexpr);
-    _RTYPE_TEST(PARTIAL, partial);
     _RTYPE_TEST(BLOCK, block);
-    _RTYPE_TEST(RAW_BLOCK, raw_block);
-    _RTYPE_TEST(CONTENT, content);
-    _RTYPE_TEST(HASH, hash);
-    _RTYPE_TEST(HASH_SEGMENT, HASH_SEGMENT);
-    _RTYPE_TEST(ID, ID);
-    _RTYPE_TEST(PARTIAL_NAME, PARTIAL_NAME);
-    _RTYPE_TEST(DATA, DATA);
-    _RTYPE_TEST(STRING, STRING);
-    _RTYPE_TEST(NUMBER, NUMBER);
     _RTYPE_TEST(BOOLEAN, BOOLEAN);
     _RTYPE_TEST(COMMENT, comment);
+    _RTYPE_TEST(CONTENT, content);
+    _RTYPE_TEST(HASH, hash);
+    _RTYPE_TEST(HASH_PAIR, HASH_PAIR);
+    _RTYPE_TEST(INTERMEDIATE, INTERMEDIATE);
+    _RTYPE_TEST(INVERSE, INVERSE);
+    _RTYPE_TEST(MUSTACHE, mustache);
+    _RTYPE_TEST(NUMBER, NUMBER);
+    _RTYPE_TEST(PARTIAL, partial);
+    _RTYPE_TEST(PATH, PATH);
     _RTYPE_TEST(PATH_SEGMENT, PATH_SEGMENT);
-    _RTYPE_TEST(INVERSE_AND_PROGRAM, INVERSE_AND_PROGRAM);
-    ck_assert_str_eq("UNKNOWN", handlebars_ast_node_readable_type(-1));
-    
-    // Added in v3.0.3
-    ck_assert_str_eq("NULL", handlebars_ast_node_readable_type(HANDLEBARS_AST_NODE_NUL));
+	_RTYPE_TEST(PROGRAM, program);
+    _RTYPE_TEST(RAW_BLOCK, raw_block);
+    _RTYPE_TEST(SEXPR, sexpr);
+    _RTYPE_TEST(STRING, STRING);
     _RTYPE_TEST(UNDEFINED, UNDEFINED);
+    ck_assert_str_eq("NULL", handlebars_ast_node_readable_type(HANDLEBARS_AST_NODE_NUL));
+    ck_assert_str_eq("UNKNOWN", handlebars_ast_node_readable_type(-1));
 }
 END_TEST
 

@@ -5,7 +5,7 @@ compiler:
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq autoconf automake bison flex gawk gcc git-core lcov libjson0-dev libtalloc-dev libtool m4 make pkg-config
+  - sudo apt-get install -qq autoconf automake bison flex gawk gcc git-core lcov libjson0-dev libpcre3-dev libtalloc-dev libtool m4 make pkg-config
   - wget http://downloads.sourceforge.net/project/check/check/0.9.14/check-0.9.14.tar.gz
   - tar xfv check-0.9.14.tar.gz
   - cd check-0.9.14

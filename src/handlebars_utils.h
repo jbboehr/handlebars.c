@@ -79,7 +79,7 @@ char * handlebars_stripcslashes_ex(char * str, size_t * length);
  * @param[in] err The error message
  * @return void
  */
-void handlebars_yy_error(struct YYLTYPE * lloc, struct handlebars_context * context, const char * err);
+void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_context * context, const char * err);
 
 /**
  * @brief Handle a fatal error in the parser. Prints message to stderr and exits with code 2.

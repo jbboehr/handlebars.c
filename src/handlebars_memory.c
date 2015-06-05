@@ -1,4 +1,5 @@
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <talloc.h>

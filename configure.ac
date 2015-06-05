@@ -164,6 +164,9 @@ AS_IF([test "x$enable_json" != "xno"], [
   ])
 ])
 
+# pcre
+AC_CHECK_LIB([pcre], [pcre_version])
+
 # talloc
 AC_CHECK_LIB([talloc], [talloc_version_major], , [
   AC_MSG_FAILURE([talloc test failed, talloc is required])
