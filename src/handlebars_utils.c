@@ -77,6 +77,22 @@ char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char
     return new_str;
 }
 
+char * handlebars_implode(const char * sep, const char ** arr)
+{
+    const char ** ptr = arr;
+    char * val;
+    
+    if( *ptr ) {
+        val = handlebars_talloc_strdup(NULL, *ptr++);
+    } else {
+        return handlebars_talloc_strdup(NULL, "");
+    }
+    while( *ptr++ ) {
+        val = handlebars_talloc_asprintf_append(val, "%s%s", sep, *ptr);
+    }
+    return val;
+}
+
 char * handlebars_ltrim_ex(char * string, size_t * length, const char * what, size_t what_length)
 {
     size_t i;

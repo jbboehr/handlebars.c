@@ -43,6 +43,7 @@ include_HEADERS = \
 	handlebars_token_list.h \
 	handlebars_token_printer.h \
 	handlebars_utils.h \
+	handlebars_whitespace.h \
 	handlebars.tab.h \
 	handlebars.lex.h
 
@@ -84,7 +85,9 @@ libhandlebars_la_SOURCES = \
 	handlebars_token_printer.h \
 	handlebars_token_printer.c \
 	handlebars_utils.h \
-	handlebars_utils.c
+	handlebars_utils.c \
+	handlebars_whitespace.h \
+	handlebars_whitespace.c
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libhandlebars_la_LDFLAGS = \

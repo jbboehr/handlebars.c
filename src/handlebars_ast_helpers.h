@@ -21,19 +21,6 @@ struct handlebars_locinfo;
 struct handlebars_yy_intermediate5;
 struct handlebars_yy_inverse_and_program;
 
-
-int handlebars_ast_helper_is_next_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root);
-
-int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root);
-
-int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple);
-
-int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple);
-
 /**
  * @brief Prepare a block node.
  * 
@@ -52,7 +39,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         struct handlebars_ast_node * close, int inverted,
         struct handlebars_locinfo * locinfo);
 
-        
 /**
  * @brief Prepare an ID node.
  * 
@@ -68,19 +54,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
 struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
         struct handlebars_context * context, struct handlebars_ast_node * open_inverse_chain,
         struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_chain,
-        struct handlebars_locinfo * locinfo);
-
-/**
- * @brief Prepare a program node.
- * 
- * @param[in] context The handlebars context
- * @param[in] program The program node
- * @param[in] is_root Is this the root node?
- * @param[in] locinfo The parser location info
- * @return Returns an integer from enum handlebars_error_type
- */
-int handlebars_ast_helper_prepare_program(struct handlebars_context * context, 
-        struct handlebars_ast_node * program, short is_root,
         struct handlebars_locinfo * locinfo);
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
@@ -123,6 +96,8 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_sexpr(
 
 char * handlebars_ast_helper_strip_comment(char * comment);
 
+char * handlebars_ast_helper_strip_id_literal(char * comment);
+
 /**
  * @brief Set the strip flags of a node
  *
@@ -142,6 +117,12 @@ void handlebars_ast_helper_set_strip_flags(
  * @return unsigned
  */
 unsigned handlebars_ast_helper_strip_flags(const char * open, const char * close);
+
+short handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path);
+
+short handlebars_ast_helper_simple_id(struct handlebars_ast_node * path);
+
+short handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node);
 
 #ifdef	__cplusplus
 }

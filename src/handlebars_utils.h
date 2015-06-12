@@ -37,6 +37,8 @@ union YYSTYPE;
  */
 char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char * what, size_t what_length);
 
+char * handlebars_implode(const char * sep, const char ** arr);
+
 /**
  * @brief Trims a set of characters off the left end of string. Trims in
  *        place by setting a null terminator and moving the contents

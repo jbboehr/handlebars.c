@@ -21,6 +21,17 @@ struct handlebars_opcode * handlebars_opcode_ctor(
     return opcode;
 }
 
+struct handlebars_opcode * handlebars_opcode_ctor_boolean(
+        void * ctx, enum handlebars_opcode_type type, short arg)
+{
+    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
+    if( likely(opcode != NULL) ) {
+        opcode->type = type;
+        handlebars_operand_set_boolval(&opcode->op1, arg);
+    }
+    return opcode;
+}
+
 struct handlebars_opcode * handlebars_opcode_ctor_long(
         void * ctx, enum handlebars_opcode_type type, long arg)
 {
@@ -202,6 +213,9 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
         _RTYPE_CASE(lookup_data, lookupData);
         
         _RTYPE_CASE(invalid, invalid);
+        
+        // Added in v3
+        _RTYPE_CASE(lookup_block_param, lookupBlockParam);
     }
     
     return "invalid";
@@ -241,6 +255,7 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
             _RTYPE_REV_CMP(invalid, invalid);
             break;
         case 'l':
+            _RTYPE_REV_CMP(lookup_block_param, lookupBlockParam);
             _RTYPE_REV_CMP(lookup_on_context, lookupOnContext);
             _RTYPE_REV_CMP(lookup_data, lookupData);
             break;
@@ -272,12 +287,10 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
     switch( type ) {
         default:
         case handlebars_opcode_type_invalid:
-        
         case handlebars_opcode_type_nil:
         case handlebars_opcode_type_ambiguous_block_value:
         case handlebars_opcode_type_append:
         case handlebars_opcode_type_append_escaped:
-        case handlebars_opcode_type_empty_hash:
         case handlebars_opcode_type_pop_hash:
         case handlebars_opcode_type_push_context:
         case handlebars_opcode_type_push_hash:
@@ -286,29 +299,28 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
         
         case handlebars_opcode_type_get_context:
         case handlebars_opcode_type_push_program:
-        
         case handlebars_opcode_type_append_content:
         case handlebars_opcode_type_assign_to_hash:
         case handlebars_opcode_type_block_value:
         case handlebars_opcode_type_push:
         case handlebars_opcode_type_push_literal:
         case handlebars_opcode_type_push_string:
+        // In v3, empty_hash was changed from zero to zero or one
+        case handlebars_opcode_type_empty_hash:
             return 1;
         
-        case handlebars_opcode_type_invoke_partial:
-        case handlebars_opcode_type_push_id:
         case handlebars_opcode_type_push_string_param:
-        
         case handlebars_opcode_type_invoke_ambiguous:
-        
         case handlebars_opcode_type_invoke_known_helper:
-        
+        case handlebars_opcode_type_lookup_block_param:
         case handlebars_opcode_type_lookup_data:
             return 2;
             
         case handlebars_opcode_type_invoke_helper:
-        
         case handlebars_opcode_type_lookup_on_context:
+        // In v3 invoke_partial and push_id were changed from two to two or three
+        case handlebars_opcode_type_invoke_partial:
+        case handlebars_opcode_type_push_id:
             return 3;
     }
 }

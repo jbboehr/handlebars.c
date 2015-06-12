@@ -15,164 +15,25 @@
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
-#include "handlebars_scanners.h"
 #include "handlebars_utils.h"
+#include "handlebars_whitespace.h"
 #include "handlebars.tab.h"
 
 
-#define __MEMCHECK(ptr) \
+
+#define __S1(x) #x
+#define __S2(x) __S1(x)
+#define __MEMCHECK(cond) \
     do { \
-        assert(ptr); \
-        if( unlikely(ptr == NULL) ) { \
+        if( unlikely(!cond) ) { \
             ast_node = NULL; \
             context->errnum = HANDLEBARS_NOMEM; \
+            context->error = "Out of memory" __S2(__FUNCTION__) " [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
             goto error; \
         } \
     } while(0)
 
 
-
-int handlebars_ast_helper_is_next_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root)
-{
-    struct handlebars_ast_list_item * item;
-    struct handlebars_ast_list_item * next;
-    struct handlebars_ast_node * sibling;
-    
-    if( !statements ) {
-        return is_root;
-    }
-
-    if( statement == NULL ) {
-        next = statements->first;
-    } else {
-        item = handlebars_ast_list_find(statements, statement);
-        next = (item ? item->next : NULL);
-    }
-    
-    if( !next || !next->data ) {
-        return (int) is_root;
-    }
-    
-    sibling = (next->next ? next->next->data : NULL);
-    
-    if( next->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        return handlebars_scanner_next_whitespace(next->data->node.content.original, !sibling && is_root);
-    }
-    
-    return 0;
-}
-
-int handlebars_ast_helper_is_prev_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root)
-{
-    struct handlebars_ast_list_item * item;
-    struct handlebars_ast_list_item * prev;
-    struct handlebars_ast_node * sibling;
-
-    if( !statements ) {
-        return is_root;
-    }
-
-    if( statement == NULL ) {
-        prev = statements->last;
-    } else {
-        item = handlebars_ast_list_find(statements, statement);
-        prev = (item ? item->prev : NULL);
-    }
-    
-    if( !prev || !prev->data ) {
-        return (int) is_root;
-    }
-    
-    sibling = (prev->prev ? prev->prev->data : NULL);
-    
-    if( prev->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        return handlebars_scanner_prev_whitespace(prev->data->node.content.original, !sibling && is_root);
-    }
-    
-    return 0;
-}
-
-int handlebars_ast_helper_omit_left(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple)
-{
-    struct handlebars_ast_node * current;
-    struct handlebars_ast_list_item * item;
-    size_t original_length;
-    
-    if( statement == NULL ) {
-        current = statements->last ? statements->last->data : NULL;
-    } else {
-        item = handlebars_ast_list_find(statements, statement);
-        current = item && item->prev ? item->prev->data : NULL;
-    }
-
-    if( !current || current->type != HANDLEBARS_AST_NODE_CONTENT ||
-            (!multiple && (current->strip & handlebars_ast_strip_flag_left_stripped)) ) {
-        return 0;
-    }
-    
-    original_length = strlen(current->node.content.value);
-
-    if( multiple ) {
-        current->node.content.value = handlebars_rtrim(current->node.content.value, " \v\t\r\n");
-    } else {
-        current->node.content.value = handlebars_rtrim(current->node.content.value, " \t");
-    }
-    
-    if( original_length == strlen(current->node.content.value) ) {
-        current->strip &= ~handlebars_ast_strip_flag_left_stripped;
-    } else {
-        current->strip |= handlebars_ast_strip_flag_left_stripped;
-    }
-    current->strip |= handlebars_ast_strip_flag_set;
-    
-    return 1 && (current->strip & handlebars_ast_strip_flag_left_stripped);
-}
-
-int handlebars_ast_helper_omit_right(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple)
-{
-    struct handlebars_ast_node * current;
-    struct handlebars_ast_list_item * item;
-    size_t original_length;
-    
-    if( statement == NULL ) {
-        current = statements->first ? statements->first->data : NULL;
-    } else {
-        item = handlebars_ast_list_find(statements, statement);
-        current = item && item->next ? item->next->data : NULL;
-    }
-
-    if( !current || current->type != HANDLEBARS_AST_NODE_CONTENT ||
-            (!multiple && (current->strip & handlebars_ast_strip_flag_right_stripped)) ) {
-        return 0;
-    }
-
-    original_length = strlen(current->node.content.value);
-    
-    if( multiple ) {
-        current->node.content.value = handlebars_ltrim(current->node.content.value, " \v\t\r\n");
-    } else {
-        current->node.content.value = handlebars_ltrim(current->node.content.value, " \t");
-        if( *current->node.content.value == '\r' ) {
-            memmove(current->node.content.value, current->node.content.value + 1, strlen(current->node.content.value));
-        }
-        if( *current->node.content.value == '\n' ) {
-            memmove(current->node.content.value, current->node.content.value + 1, strlen(current->node.content.value));
-        }
-    }
-    
-    if( original_length == strlen(current->node.content.value) ) {
-        current->strip &= ~handlebars_ast_strip_flag_right_stripped;
-    } else {
-        current->strip |= handlebars_ast_strip_flag_right_stripped;
-    }
-    current->strip |= handlebars_ast_strip_flag_set;
-
-    return 1 && (current->strip & handlebars_ast_strip_flag_right_stripped);
-}
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         struct handlebars_context * context, struct handlebars_ast_node * open_block,
@@ -185,17 +46,20 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_ast_node * inverse = NULL;
     struct handlebars_ast_node * tmp;
     long inverse_strip;
+    char * open_str;
+    char * close_str;
     
     assert(open_block != NULL && open_block->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
     assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
     
     if( close && close->type == HANDLEBARS_AST_NODE_INTERMEDIATE ) {
         close_block_path = close->node.intermediate.path;
-        if( close_block_path && 0 != strcmp(open_block_path->node.path.original, close_block_path->node.path.original) ) {
+        open_str = handlebars_ast_node_get_string_mode_value(open_block_path);
+        close_str = handlebars_ast_node_get_string_mode_value(close_block_path);
+        if( close_block_path && 0 != strcmp(open_str, close_str) ) {
             char errmsgtmp[256];
-            snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s", 
-                    open_block_path->node.path.original, 
-                    close_block_path->node.path.original);
+            snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s",  open_str, 
+                    close_str);
             handlebars_yy_error(locinfo, context, errmsgtmp);
             return NULL;
         }
@@ -212,7 +76,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         assert(inverse_and_program->type == HANDLEBARS_AST_NODE_INVERSE);
 
         if( inverse_and_program->node.inverse.chained ) {
-            // inverseAndProgram.program.body[0].closeStrip = close.strip;
+            struct handlebars_ast_list * statements;
+            struct handlebars_ast_node * tmp;
+            if( (tmp = inverse_and_program->node.inverse.program) &&
+                (statements = tmp->node.program.statements) &&
+                    statements->first && (tmp = statements->first->data) &&
+                    tmp->type == HANDLEBARS_AST_NODE_BLOCK ) {
+                tmp->node.block.close_strip = close->strip;
+            }
         }
         
         inverse = inverse_and_program->node.inverse.program;
@@ -321,9 +192,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     
     // Initialize temporary talloc context
     ctx = talloc_new(context);
-    if( unlikely(ctx == NULL) ) {
-        return NULL;
-    }
+    __MEMCHECK(ctx);
     
     // Allocate the original strings
     original = handlebars_talloc_strdup(ctx, data ? "@" : "");
@@ -336,9 +205,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
             continue;
         }
         separator = item->data->node.path_segment.separator;
-        is_literal = 0;
-        // @todo implement
-        //is_literal = 0 == strcmp(part, item->data->node.path_segment.original);
+        is_literal = (0 != strcmp(part, item->data->node.path_segment.original));
         
         // Append to original
         if( separator ) {
@@ -351,6 +218,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         // Handle paths
         if( !is_literal && (strcmp(part, "..") == 0 || strcmp(part, ".") == 0 || strcmp(part, "this") == 0) ) {
             if( count > 0 ) {
+                context->errnum = HANDLEBARS_ERROR;
                 context->error = handlebars_talloc_asprintf(context, "Invalid path: %s", original);
                 context->errloc = locinfo;
                 ast_node = NULL;
@@ -368,95 +236,10 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     ast_node = handlebars_ast_node_ctor_path(context, parts, original, depth, data, locinfo);
     
 error:
-    handlebars_talloc_free(ctx);
+    if( ctx ) {
+        handlebars_talloc_free(ctx);
+    }
     return ast_node;
-}
-
-int handlebars_ast_helper_prepare_program(
-        HANDLEBARS_ATTR_UNUSED struct handlebars_context * context,
-        struct handlebars_ast_node * program, short is_root,
-        struct handlebars_locinfo * locinfo)
-{
-    int error = HANDLEBARS_SUCCESS;
-    struct handlebars_ast_list * statements = program->node.program.statements;
-    struct handlebars_ast_list_item * item;
-    struct handlebars_ast_list_item * tmp;
-    
-    if( locinfo ) {
-        program->loc = *locinfo;
-    }
-    
-    handlebars_ast_list_foreach(statements, item, tmp) {
-        struct handlebars_ast_node * current = item->data;
-        short is_prev_whitespace, is_next_whitespace, open_standalone,
-              close_standalone, inline_standalone;
-        if( !current || !(current->strip & handlebars_ast_strip_flag_set) ) {
-            continue;
-        }
-        is_prev_whitespace = handlebars_ast_helper_is_prev_whitespace(statements, current, is_root);
-        is_next_whitespace = handlebars_ast_helper_is_next_whitespace(statements, current, is_root);
-        open_standalone = (current->strip & handlebars_ast_strip_flag_open_standalone) && is_prev_whitespace;
-        close_standalone = (current->strip & handlebars_ast_strip_flag_close_standalone) && is_next_whitespace;
-        inline_standalone = (current->strip & handlebars_ast_strip_flag_inline_standalone) && is_prev_whitespace && is_next_whitespace;
-        
-        if( current->strip & handlebars_ast_strip_flag_right ) {
-            handlebars_ast_helper_omit_right(statements, current, 1);
-        }
-        if( current->strip & handlebars_ast_strip_flag_left ) {
-            handlebars_ast_helper_omit_left(statements, current, 1);
-        }
-        if( inline_standalone ) {
-            handlebars_ast_helper_omit_right(statements, current, 0);
-            if( handlebars_ast_helper_omit_left(statements, current, 0) ) {
-                struct handlebars_ast_node * prev = item->prev ? item->prev->data : NULL;
-                if( current->type == HANDLEBARS_AST_NODE_PARTIAL &&
-                        prev && prev->type == HANDLEBARS_AST_NODE_CONTENT ) {
-                    char * start = prev->node.content.original;
-                    char * ptr;
-                    char * match = NULL;
-                    for( ptr = start; *ptr; ++ptr ) {
-                        if( *ptr == ' ' || *ptr == '\t' ) {
-                            if( !match ) {
-                                match = ptr;
-                            }
-                        } else if( *ptr ) {
-                            match = NULL;
-                        }
-                    }
-                    if( match ) {
-                        current->node.partial.indent = handlebars_talloc_strdup(current, match);
-                    }
-                }
-            }
-        }
-        if( open_standalone ) {
-            if( current->type == HANDLEBARS_AST_NODE_BLOCK ) {
-                if( current->node.block.program ) {
-                    assert(current->node.block.program->type == HANDLEBARS_AST_NODE_PROGRAM);
-                    handlebars_ast_helper_omit_right(current->node.block.program->node.program.statements, NULL, 0);
-                } else if( current->node.block.inverse ) {
-                    assert(current->node.block.inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
-                    handlebars_ast_helper_omit_right(current->node.block.inverse->node.program.statements, NULL, 0);
-                }
-            }
-            handlebars_ast_helper_omit_left(statements, current, 0);
-        }
-        if( close_standalone ) {
-            handlebars_ast_helper_omit_right(statements, current, 0);
-            if( current->type == HANDLEBARS_AST_NODE_BLOCK ) {
-                if( current->node.block.inverse ) {
-                    assert(current->node.block.inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
-                    handlebars_ast_helper_omit_left(current->node.block.inverse->node.program.statements, NULL, 0);
-                } else if( current->node.block.program ) {
-                    assert(current->node.block.program->type == HANDLEBARS_AST_NODE_PROGRAM);
-                    handlebars_ast_helper_omit_left(current->node.block.program->node.program.statements, NULL, 0);
-                }
-            }
-        }
-    }
-    
-//error:
-    return error;
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
@@ -497,7 +280,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     ast_node = handlebars_ast_node_ctor_raw_block(context, open_raw_block, 
         content_node, locinfo);
     __MEMCHECK(ast_node);
-    talloc_steal(ctx, ast_node);
     
     // Steal the raw block node so it won't be freed below
     talloc_steal(context, ast_node);
@@ -590,6 +372,21 @@ char * handlebars_ast_helper_strip_comment(char * comment)
     return comment;
 }
 
+char * handlebars_ast_helper_strip_id_literal(char * comment)
+{
+	size_t len = strlen(comment);
+	if( *comment == '[' && *(comment + len - 1) == ']' ) {
+		if( len <= 2 ) {
+			*comment = 0;
+		} else {
+			memmove(comment, comment + 1, len - 2);
+			*(comment + len - 2) = 0;
+		}
+	}
+
+	return comment;
+}
+
 void handlebars_ast_helper_set_strip_flags(
         struct handlebars_ast_node * ast_node, const char * open, const char * close)
 {
@@ -615,4 +412,46 @@ unsigned handlebars_ast_helper_strip_flags(const char * open, const char * close
     }
     strip |= handlebars_ast_strip_flag_set;
     return strip;
+}
+
+short handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
+{
+    char * original;
+    char * found;
+    size_t len;
+    if( path && (original = path->node.path.original) ) {
+        len = strlen(original);
+        if( len >= 1 && *original == '.' ) {
+            return 1;
+        } else if( len == 4 && 0 == strcmp(original, "this") ) {
+            return 1;
+        } else if( len > 4 && NULL != (found = strstr(original, "this")) ) {
+        //} else if( len > 4 && 0 == strncmp(original, "this", 4) ) {
+            char c = *(found + 4);
+            // [^a-zA-Z0-9_]
+            return c < '0' || (c > '9' && c < 'A') || (c > 'Z' && c < '_') || (c > '_' && c < 'a') || c > 'z';
+        }
+    }
+    return 0;
+}
+
+short handlebars_ast_helper_simple_id(struct handlebars_ast_node * path)
+{
+    return ( path &&
+        path->node.path.parts && 
+        handlebars_ast_list_count(path->node.path.parts) == 1 &&
+        !handlebars_ast_helper_scoped_id(path) && 
+        !path->node.path.depth );
+}
+
+short handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node)
+{
+	struct handlebars_ast_list * params;
+	struct handlebars_ast_node * hash;
+    if( node->type == HANDLEBARS_AST_NODE_SEXPR ) {
+        return 1;
+    }
+    params = handlebars_ast_node_get_params(node);
+    hash = handlebars_ast_node_get_hash(node);
+	return hash || (params && handlebars_ast_list_count(params));
 }

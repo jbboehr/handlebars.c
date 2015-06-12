@@ -58,6 +58,11 @@ enum handlebars_compiler_flag {
      */
     handlebars_compiler_flag_known_helpers_only = (1 << 4),
     
+    /**
+     * @brief Prevent partial indent
+     */
+    handlebars_compiler_flag_prevent_indent = (1 << 5),
+
     // Result flags
     handlebars_compiler_flag_use_partial = (1 << 8),
     handlebars_compiler_flag_is_simple = (1 << 9),
@@ -72,7 +77,7 @@ enum handlebars_compiler_flag {
     /**
      * @brief All flags
      */
-    handlebars_compiler_flag_all = ((1 << 5) - 1)
+    handlebars_compiler_flag_all = ((1 << 6) - 1)
 };
 
 /**
@@ -89,7 +94,11 @@ enum handlebars_compiler_error {
     /**
      * @brief The compiler encountered an unknown helper in known helpers only mode
      */
-    handlebars_compiler_error_unknown_helper = 2
+    handlebars_compiler_error_unknown_helper = 2,
+
+    handlebars_compiler_error_unsupported_partial_args = 3,
+    
+    handlebars_compiler_error_block_param_stack_blown = 4
 };
 
 /**
@@ -99,6 +108,21 @@ enum handlebars_compiler_sexpr_type {
     handlebars_compiler_sexpr_type_ambiguous = 0,
     handlebars_compiler_sexpr_type_helper = 1,
     handlebars_compiler_sexpr_type_simple = 2
+};
+
+struct handlebars_block_param_stack {
+    /**
+     * @brief Block param stack
+     */
+    struct {
+        char * block_param1;
+        char * block_param2;
+    } s[32];
+    
+    /**
+     * @brief Block param stack index
+     */
+    int i;
 };
 
 /**
@@ -116,10 +140,7 @@ struct handlebars_compiler {
     size_t children_length;
     size_t children_size;
     
-    /**
-     * @brief Bitfield of depths
-     */
-    unsigned long depths;
+    struct handlebars_block_param_stack * bps;
     
     /**
      * @brief Array of known helpers
@@ -142,6 +163,7 @@ struct handlebars_compiler {
     short use_depths;
     short no_escape;
     short known_helpers_only;
+    short prevent_indent;
     
     // Result flags
     short is_simple;

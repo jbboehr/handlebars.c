@@ -16,15 +16,19 @@
 #include "handlebars_private.h"
 #include "handlebars_utils.h"
 
+#define __S1(x) #x
+#define __S2(x) __S1(x)
 #define __MEMCHECK(ptr) \
     do { \
-        assert(ptr); \
         if( unlikely(ptr == NULL) ) { \
             ast_node = NULL; \
             context->errnum = HANDLEBARS_NOMEM; \
+            context->error = "Out of memory [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
             goto error; \
         } \
     } while(0)
+
+
 
 struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_ast_node_type type, void * ctx)
 {
@@ -77,18 +81,17 @@ const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_no
 
 char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node * ast_node)
 {
-    /*
     size_t num;
     char ** arr;
     char ** arrptr;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
     
-    if( !ast_node || ast_node->type != HANDLEBARS_AST_NODE_ID ) {
+    if( !ast_node || ast_node->type != HANDLEBARS_AST_NODE_PATH ) {
         return NULL;
     }
     
-    num = handlebars_ast_list_count(ast_node->node.id.parts);
+    num = handlebars_ast_list_count(ast_node->node.path.parts);
     if( num == 0 ) {
         return NULL;
     }
@@ -98,7 +101,7 @@ char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node 
         return NULL;
     }
     
-    handlebars_ast_list_foreach(ast_node->node.id.parts, item, tmp) {
+    handlebars_ast_list_foreach(ast_node->node.path.parts, item, tmp) {
         assert(item->data);
         if( likely(item->data->type == HANDLEBARS_AST_NODE_PATH_SEGMENT) ) {
             *arrptr = handlebars_talloc_strdup(arr, item->data->node.path_segment.part);
@@ -112,36 +115,105 @@ char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node 
     *arrptr++ = NULL;
     
     return arr;
-    */
-    return NULL;
 }
 
-const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_node * ast_node)
+const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_node * node)
 {
     const char * ret;
     
-    switch( ast_node->type ) {
+    assert(node != NULL);
+    
+    switch( node->type ) {
         case HANDLEBARS_AST_NODE_PATH:
-            ret = (const char *) ast_node->node.path.original; // @todo was 'string'
-            if( unlikely(ret == NULL) ) {
-                ret = "";
-            }
+            ret = (const char *) node->node.path.original;
             break;
         case HANDLEBARS_AST_NODE_STRING:
-            ret = (const char *) ast_node->node.string.value;
+            ret = (const char *) node->node.string.value;
             break;
         case HANDLEBARS_AST_NODE_NUMBER:
-            ret = (const char *) ast_node->node.number.value;
+            ret = (const char *) node->node.number.value;
             break;
         case HANDLEBARS_AST_NODE_BOOLEAN:
-            ret = (const char *) ast_node->node.boolean.value;
+            ret = (const char *) node->node.boolean.value;
+            break;
+        case HANDLEBARS_AST_NODE_UNDEFINED:
+            //ret = (const char *) node->node.undefined.value;
+            ret = "undefined";
+            break;
+        case HANDLEBARS_AST_NODE_NUL:
+            //ret = (const char *) node->node.nul.value;
+            ret = "null";
             break;
         default:
             ret = NULL;
             break;
     }
     
-    return ret;
+    if( likely(ret != NULL) ) {
+        return ret;
+    } else {
+        return "";
+    }
+}
+
+struct handlebars_ast_node * handlebars_ast_node_get_path(struct handlebars_ast_node * node)
+{
+    switch( node->type ) {
+        case HANDLEBARS_AST_NODE_BLOCK:
+            return node->node.block.path;
+        case HANDLEBARS_AST_NODE_INTERMEDIATE:
+            return node->node.intermediate.path;
+        case HANDLEBARS_AST_NODE_MUSTACHE:
+            return node->node.mustache.path;
+        case HANDLEBARS_AST_NODE_PARTIAL:
+            return node->node.partial.name;
+        case HANDLEBARS_AST_NODE_SEXPR:
+            return node->node.sexpr.path;
+        case HANDLEBARS_AST_NODE_RAW_BLOCK:
+            return node->node.raw_block.path;
+        default:
+            return NULL;
+    }
+}
+
+struct handlebars_ast_list * handlebars_ast_node_get_params(struct handlebars_ast_node * node)
+{
+    switch( node->type ) {
+        case HANDLEBARS_AST_NODE_BLOCK:
+            return node->node.block.params;
+        case HANDLEBARS_AST_NODE_INTERMEDIATE:
+            return node->node.intermediate.params;
+        case HANDLEBARS_AST_NODE_MUSTACHE:
+            return node->node.mustache.params;
+        case HANDLEBARS_AST_NODE_PARTIAL:
+            return node->node.partial.params;
+        case HANDLEBARS_AST_NODE_SEXPR:
+            return node->node.sexpr.params;
+        case HANDLEBARS_AST_NODE_RAW_BLOCK:
+            return node->node.raw_block.params;
+        default:
+            return NULL;
+    }
+}
+
+struct handlebars_ast_node * handlebars_ast_node_get_hash(struct handlebars_ast_node * node)
+{
+    switch( node->type ) {
+        case HANDLEBARS_AST_NODE_BLOCK:
+            return node->node.block.hash;
+        case HANDLEBARS_AST_NODE_INTERMEDIATE:
+            return node->node.intermediate.hash;
+        case HANDLEBARS_AST_NODE_MUSTACHE:
+            return node->node.mustache.hash;
+        case HANDLEBARS_AST_NODE_PARTIAL:
+            return node->node.partial.hash;
+        case HANDLEBARS_AST_NODE_SEXPR:
+            return node->node.sexpr.hash;
+        case HANDLEBARS_AST_NODE_RAW_BLOCK:
+            return node->node.raw_block.hash;
+        default:
+            return NULL;
+    }
 }
 
 const char * handlebars_ast_node_readable_type(int type)
@@ -153,7 +225,7 @@ const char * handlebars_ast_node_readable_type(int type)
   switch( type ) {
     _RTYPE_CASE(NIL, NIL);
     _RTYPE_CASE(BLOCK, block);
-    _RTYPE_CASE(BOOLEAN, BOOLEAN);
+    _RTYPE_CASE(BOOLEAN, BooleanLiteral);
     _RTYPE_CASE(COMMENT, comment);
     _RTYPE_CASE(CONTENT, content);
     _RTYPE_CASE(HASH, hash);
@@ -161,14 +233,14 @@ const char * handlebars_ast_node_readable_type(int type)
     _RTYPE_CASE(INTERMEDIATE, INTERMEDIATE);
     _RTYPE_CASE(INVERSE, INVERSE);
     _RTYPE_CASE(MUSTACHE, mustache);
-    _RTYPE_CASE(NUMBER, NUMBER);
+    _RTYPE_CASE(NUMBER, NumberLiteral);
     _RTYPE_CASE(PARTIAL, partial);
-    _RTYPE_CASE(PATH, PATH);
+    _RTYPE_CASE(PATH, PathExpression);
     _RTYPE_CASE(PATH_SEGMENT, PATH_SEGMENT);
     _RTYPE_CASE(PROGRAM, program);
     _RTYPE_CASE(RAW_BLOCK, raw_block);
-    _RTYPE_CASE(SEXPR, sexpr);
-    _RTYPE_CASE(STRING, STRING);
+    _RTYPE_CASE(SEXPR, SubExpression);
+    _RTYPE_CASE(STRING, StringLiteral);
     _RTYPE_CASE(UNDEFINED, UNDEFINED);
     case HANDLEBARS_AST_NODE_NUL: return "NULL";
   }
@@ -493,7 +565,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
     struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
     __MEMCHECK(ast_node);
     ast_node->loc = *yylloc;
-    ast_node->strip = strip | handlebars_ast_strip_flag_inline_standalone;
+    ast_node->strip = strip;
     if( name ) {
         ast_node->node.partial.name = talloc_steal(ast_node, name);
     }
@@ -532,8 +604,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_program(
     if( statements ) {
         ast_node->node.program.statements = talloc_steal(ast_node, statements);
     }
-    ast_node->node.program.block_param1 = block_param1;
-    ast_node->node.program.block_param2 = block_param2;
+    if( block_param1 ) {
+        ast_node->node.program.block_param1 = talloc_steal(ast_node, block_param1);
+    }
+    if( block_param2 ) {
+        ast_node->node.program.block_param2 = talloc_steal(ast_node, block_param2);
+    }
     ast_node->node.program.chained = chained;
     
     // Steal the node so it won't be freed below
@@ -587,6 +663,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
+    char * newpart;
     TALLOC_CTX * ctx;
     
     // Initialize temporary talloc context
@@ -602,7 +679,13 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     ast_node->loc = *locinfo;
     
     // Assign the content
-    ast_node->node.path_segment.part = handlebars_talloc_strdup(ast_node, part);
+    ast_node->node.path_segment.original = handlebars_talloc_strdup(ast_node, part);
+    __MEMCHECK(ast_node->node.path_segment.original);
+
+    newpart = handlebars_talloc_strdup(ast_node, part);
+    __MEMCHECK(newpart);
+    newpart = handlebars_ast_helper_strip_id_literal(newpart);
+    ast_node->node.path_segment.part = newpart;
     __MEMCHECK(ast_node->node.path_segment.part);
     
     if( separator != NULL ) {
@@ -626,6 +709,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     struct handlebars_ast_node * path;
     struct handlebars_ast_list * params;
     struct handlebars_ast_node * hash;
+    struct handlebars_ast_node * program;
+    struct handlebars_ast_list * statements;
     TALLOC_CTX * ctx;
     
     // Initialize temporary talloc context
@@ -653,7 +738,17 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     assert(path == NULL || path->type == HANDLEBARS_AST_NODE_PATH);
     assert(hash == NULL || hash->type == HANDLEBARS_AST_NODE_HASH);
 
-    ast_node->node.raw_block.program = talloc_steal(ast_node, content);
+    // Create the program node
+    program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+    __MEMCHECK(program);
+    statements = handlebars_ast_list_ctor(ctx);
+    __MEMCHECK(statements);
+    program->node.program.statements = talloc_steal(program, statements);
+    handlebars_ast_list_append(statements, talloc_steal(program, content));
+    ast_node->node.raw_block.program = talloc_steal(ast_node, program);
+    //ast_node->node.raw_block.program = talloc_steal(ast_node, content);
+    
+    // Assign the other nodes
     if( path ) {
         ast_node->node.raw_block.path = talloc_steal(ast_node, path);
     }
@@ -703,7 +798,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
     hash = intermediate->node.intermediate.hash;
     
     assert(path != NULL);
-    assert(path->type == HANDLEBARS_AST_NODE_PATH);
+    // I guess this can be other than path...
+    //assert(path->type == HANDLEBARS_AST_NODE_PATH);
     assert(hash == NULL || hash->type == HANDLEBARS_AST_NODE_HASH);
 
     ast_node->node.sexpr.path = talloc_steal(ast_node, path);
@@ -767,3 +863,4 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
 error:
     return ast_node;
 }
+

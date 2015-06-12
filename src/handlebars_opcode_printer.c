@@ -133,9 +133,6 @@ void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer,
     memset(&indentbuf, ' ', indent);
     indentbuf[indent] = 0;
     
-    // Print misc
-    printer->output = handlebars_talloc_asprintf_append(printer->output, "%sDEPTHS=%lu\n", indentbuf, compiler->depths);
-    
     // Print opcodes
     printer->opcodes = compiler->opcodes;
     printer->opcodes_length = compiler->opcodes_length;

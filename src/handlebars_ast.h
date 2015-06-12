@@ -120,11 +120,13 @@ struct handlebars_ast_node_path {
     char * original;
     struct handlebars_ast_list * parts;
     int depth;
+    short falsy;
 };
 
 struct handlebars_ast_node_path_segment {
     char * part;
     char * separator;
+    char * original;
 };
 
 struct handlebars_ast_node_program {
@@ -256,6 +258,12 @@ char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node 
  * @return The string
  */
 const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_node * ast_node);
+
+struct handlebars_ast_node * handlebars_ast_node_get_path(struct handlebars_ast_node * node);
+
+struct handlebars_ast_list * handlebars_ast_node_get_params(struct handlebars_ast_node * node);
+
+struct handlebars_ast_node * handlebars_ast_node_get_hash(struct handlebars_ast_node * node);
 
 /**
  * @brief Get a string for the integral AST node type

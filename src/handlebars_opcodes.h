@@ -58,7 +58,10 @@ enum handlebars_opcode_type {
     handlebars_opcode_type_lookup_on_context = 23,
     
     // Takes one integer, one array argument
-    handlebars_opcode_type_lookup_data = 24
+    handlebars_opcode_type_lookup_data = 24,
+    
+    // Added in v3
+    handlebars_opcode_type_lookup_block_param = 25
 };
 
 /**
@@ -100,6 +103,17 @@ struct handlebars_opcode {
  */
 struct handlebars_opcode * handlebars_opcode_ctor(
         void * ctx, enum handlebars_opcode_type type);
+
+/**
+ * @brief Construct an opcode with a boolean operand
+ *
+ * @param[in] ctx The parent talloc memory context
+ * @param[in] type The opcode type
+ * @param[in] arg The boolean value
+ * @return The new opcode
+ */
+struct handlebars_opcode * handlebars_opcode_ctor_boolean(
+        void * ctx, enum handlebars_opcode_type type, short arg);
 
 /**
  * @brief Construct an opcode with a long operand

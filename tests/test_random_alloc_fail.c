@@ -20,7 +20,8 @@ static TALLOC_CTX * rootctx;
 // @todo try to get this to include every language feature
 static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} "
         "{{#a}}{{^}}{{/a}} {{bar baz=foo}} {{> partial}} {{../depth}} {{this}} "
-        "{{#unless}}{{else}}{{/unless}} {{&unescaped}} {{~strip~}} ";
+        "{{#unless}}{{else}}{{/unless}} {{&unescaped}} {{~strip~}}  "
+        "{{!-- comment --}} {{! coment }} {{blah (a (b)}}";
 
 static void setup(void)
 {
@@ -38,7 +39,7 @@ START_TEST(test_random_alloc_fail_tokenizer)
     int retval;
     struct handlebars_token_list * list;
 
-    for( i = 1; i < 200; i++ ) {
+    for( i = 1; i < 300; i++ ) {
         struct handlebars_context * ctx = handlebars_context_ctor();
         talloc_steal(rootctx, ctx);
         ctx->tmpl = tmpl;
@@ -60,7 +61,7 @@ START_TEST(test_random_alloc_fail_parser)
     size_t i;
     int retval;
 
-    for( i = 1; i < 200; i++ ) {
+    for( i = 1; i < 300; i++ ) {
         struct handlebars_context * ctx = handlebars_context_ctor();
         talloc_steal(rootctx, ctx);
         ctx->tmpl = tmpl;
@@ -82,7 +83,7 @@ START_TEST(test_random_alloc_fail_compiler)
     size_t i;
     int retval;
     
-    for( i = 1; i < 200; i++ ) {
+    for( i = 1; i < 300; i++ ) {
         struct handlebars_context * ctx = handlebars_context_ctor();
         struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
         talloc_steal(rootctx, ctx);

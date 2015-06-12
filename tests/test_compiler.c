@@ -152,57 +152,6 @@ START_TEST(test_compiler_is_known_helper)
 }
 END_TEST
 
-START_TEST(test_compiler_classify_sexpr)
-{
-    struct handlebars_compiler * compiler;
-    struct handlebars_ast_node * sexpr;
-    enum handlebars_compiler_sexpr_type ret;
-    const char * helper1 = "if";
-    const char * helper2 = "foo";
-    struct handlebars_ast_node * path;
-    struct handlebars_ast_list * parts;
-    struct handlebars_ast_node * path_segment;
-    
-    compiler = handlebars_compiler_ctor(ctx);
-    sexpr = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, ctx);
-    
-    ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-    //ck_assert_int_eq(handlebars_compiler_sexpr_type_simple, ret);
-    
-    path = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH, compiler);
-    
-    //sexpr->node.sexpr.eligible_helper = 1;
-    ck_assert_int_eq(handlebars_compiler_sexpr_type_simple, ret);
-    
-    path->node.path.parts = parts = handlebars_ast_list_ctor(compiler);
-    path_segment = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH, compiler);
-    handlebars_ast_list_append(parts, path_segment);
-    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper1);
-    sexpr->node.sexpr.path = path;
-    
-    ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-    ck_assert_int_eq(handlebars_compiler_sexpr_type_helper, ret);
-    
-    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper2);
-    
-    ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-    ck_assert_int_eq(handlebars_compiler_sexpr_type_ambiguous, ret);
-    
-    compiler->known_helpers_only = 1;
-    ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-    ck_assert_int_eq(handlebars_compiler_sexpr_type_simple, ret);
-    compiler->known_helpers_only = 0;
-    
-    /*
-    sexpr->node.sexpr.is_helper = 1;
-    ret = handlebars_compiler_classify_sexpr(compiler, sexpr);
-    ck_assert_int_eq(handlebars_compiler_sexpr_type_helper, ret);
-    */
-    
-    handlebars_compiler_dtor(compiler);
-}
-END_TEST
-
 START_TEST(test_compiler_opcode)
 {
     struct handlebars_compiler * compiler;
@@ -239,7 +188,6 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");
-	REGISTER_TEST_FIXTURE(s, test_compiler_classify_sexpr, "Classify Sexpr");
 	REGISTER_TEST_FIXTURE(s, test_compiler_opcode, "Push opcode");
 	
     return s;

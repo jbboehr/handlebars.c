@@ -42,6 +42,7 @@ struct compiler_test {
     short opt_known_helpers_only;
     short opt_string_params;
     short opt_track_ids;
+    short opt_prevent_indent;
     long flags;
 };
 
@@ -93,6 +94,13 @@ static int loadTestOpcodeOperand(struct handlebars_opcode * opcode,
             operand->data.arrayval = arr;
             break;
         }
+        case json_type_double: {
+            char tmp[64];
+            snprintf(tmp, 63, "%g", json_object_get_double(object));
+            handlebars_operand_set_stringval(opcode, operand, tmp);
+            //handlebars_operand_set_stringval(opcode, operand, json_object_get_string(object));
+            break;
+        }
         default:
             return 1;
             break;
@@ -109,11 +117,13 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
     struct json_object * cur = NULL;
     int array_len = 0;
     
-    
     // Get type
     cur = json_object_object_get(object, "opcode");
     if( cur && json_object_get_type(cur) == json_type_string ) {
         type = handlebars_opcode_reverse_readable_type(json_object_get_string(cur));
+        if( type < 0 ) {
+            fprintf(stderr, "Unknown opcode: %s\n", json_object_get_string(cur));
+        }
     } else {
         fprintf(stderr, "Opcode was not a string!\n");
         goto error;
@@ -153,6 +163,7 @@ error:
     return opcode;
 }
 
+/*
 static int loadTestCompilerDepths(struct handlebars_compiler * compiler, json_object * object)
 {
     int array_len = json_object_array_length(object);
@@ -165,6 +176,7 @@ static int loadTestCompilerDepths(struct handlebars_compiler * compiler, json_ob
     }
     compiler->depths = depths;
 }
+*/
 
 static int loadTestCompiler(struct handlebars_compiler * compiler, json_object * object)
 {
@@ -174,6 +186,7 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     int array_len = 0;
     
     // Load depths
+    /*
     cur = json_object_object_get(object, "depths");
     if( cur && json_object_get_type(cur) == json_type_object ) {
         cur = json_object_object_get(cur, "list");
@@ -185,6 +198,7 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     } else {
         fprintf(stderr, "No depth info!\n");
     }
+    */
     
     // Load opcodes
     cur = json_object_object_get(object, "opcodes");
@@ -296,7 +310,9 @@ static int loadSpecTestCompileOptions(struct compiler_test * test, json_object *
     cur = json_object_object_get(object, "compat");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->opt_compat = json_object_get_boolean(cur);
-        test->flags |= handlebars_compiler_flag_compat;
+        if( test->opt_compat ) {
+            test->flags |= handlebars_compiler_flag_compat;
+        }
     }
     
     // Get data
@@ -310,21 +326,36 @@ static int loadSpecTestCompileOptions(struct compiler_test * test, json_object *
     cur = json_object_object_get(object, "knownHelpersOnly");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->opt_known_helpers_only = json_object_get_boolean(cur);
-        test->flags |= handlebars_compiler_flag_known_helpers_only;
+        if( test->opt_known_helpers_only ) {
+            test->flags |= handlebars_compiler_flag_known_helpers_only;
+        }
     }
     
     // Get string params
     cur = json_object_object_get(object, "stringParams");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->opt_string_params = json_object_get_boolean(cur);
-        test->flags |= handlebars_compiler_flag_string_params;
+        if( test->opt_string_params ) {
+            test->flags |= handlebars_compiler_flag_string_params;
+        }
     }
     
     // Get track ids
     cur = json_object_object_get(object, "trackIds");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->opt_track_ids = json_object_get_boolean(cur);
-        test->flags |= handlebars_compiler_flag_track_ids;
+        if( test->opt_track_ids ) {
+            test->flags |= handlebars_compiler_flag_track_ids;
+        }
+    }
+    
+    // Get prevent indent
+    cur = json_object_object_get(object, "preventIndent");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->opt_prevent_indent = json_object_get_boolean(cur);
+        if( test->opt_prevent_indent ) {
+            test->flags |= handlebars_compiler_flag_prevent_indent;
+        }
     }
     
     // Get known helpers
@@ -506,10 +537,12 @@ START_TEST(handlebars_spec_compiler)
     compiler = handlebars_compiler_ctor(ctx);
     printer = handlebars_opcode_printer_ctor(ctx);
     
+    //printf("TEMPLATE: %s\n", test->tmpl);
+    
     // Parse
     ctx->tmpl = test->tmpl;
     retval = handlebars_yy_parse(ctx);
-    
+
     //ck_assert_int_eq(retval <= 0, test->exception > 0);
     
     // Compile

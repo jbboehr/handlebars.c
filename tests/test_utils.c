@@ -188,7 +188,7 @@ START_TEST(test_yy_error)
 {
     struct handlebars_context * context = handlebars_context_ctor();
     struct YYLTYPE loc;
-    const char * err = "test error";
+    const char * err = "sample error message";
     loc.first_line = 1;
     loc.first_column = 2;
     loc.last_line = 3;
@@ -209,7 +209,7 @@ END_TEST
 
 START_TEST(test_yy_fatal_error)
 {
-    const char * err = "test error";
+    const char * err = "sample error message";
     int exit_code;
     
     handlebars_memory_fail_enable();

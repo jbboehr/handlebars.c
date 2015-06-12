@@ -52,6 +52,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_utils.h"
+#include "handlebars_whitespace.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
@@ -62,11 +63,15 @@ int handlebars_yy_debug = 1;
 int handlebars_yy_debug = 0;
 #endif
 
+#define __S1(x) #x
+#define __S2(x) __S1(x)
 #define __MEMCHECK(cond) \
   do { \
-    assert(cond || context->error); \
     if( unlikely(!cond) ) { \
-      context->errnum = HANDLEBARS_NOMEM; \
+      if( !context->errnum ) { \
+        context->errnum = HANDLEBARS_NOMEM; \
+        context->error = "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
+      } \
       YYABORT; \
     } \
   } while(0)
@@ -162,6 +167,7 @@ int handlebars_yy_debug = 0;
 start : 
     program END {
       context->program = $1;
+      handlebars_whitespace_accept(context, context->program);
       return 1;
     }
   ;
@@ -172,8 +178,9 @@ program :
       __MEMCHECK($$);
     }
   | "" {
-      $$ = handlebars_ast_node_ctor_program(context, 
-              handlebars_ast_list_ctor(context), NULL, NULL, 0, 0, &yylloc);
+      struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+      __MEMCHECK(list);
+      $$ = handlebars_ast_node_ctor_program(context, list, NULL, NULL, 0, 0, &yylloc);
       __MEMCHECK($$);
     }
   ;
@@ -208,9 +215,12 @@ statement
       __MEMCHECK($$);
     }
   | COMMENT {
+      // Strip comment strips in place
+      unsigned strip = handlebars_ast_helper_strip_flags($1, $1);
       $$ = handlebars_ast_node_ctor_comment(context, 
       			handlebars_ast_helper_strip_comment($1), &yylloc);
       __MEMCHECK($$);
+      $$->strip = strip;
     }
   ;
 
@@ -414,15 +424,19 @@ intermediate4
 intermediate3
   : helper_name params hash {
       $$ = handlebars_ast_node_ctor_intermediate(context, $1, $2, $3, 0, &yylloc);
+      __MEMCHECK($$);
     }
   | helper_name hash {
       $$ = handlebars_ast_node_ctor_intermediate(context, $1, NULL, $2, 0, &yylloc);
+      __MEMCHECK($$);
     }
   | helper_name params {
       $$ = handlebars_ast_node_ctor_intermediate(context, $1, $2, NULL, 0, &yylloc);
+      __MEMCHECK($$);
     }
   | helper_name {
       $$ = handlebars_ast_node_ctor_intermediate(context, $1, NULL, NULL, 0, &yylloc);
+      __MEMCHECK($$);
     }
   ;
 
@@ -456,11 +470,14 @@ hash_pair
 
 block_params
   : OPEN_BLOCK_PARAMS ID ID CLOSE_BLOCK_PARAMS {
-      $$.block_param1 = $2;
-      $$.block_param2 = $3;
+      $$.block_param1 = handlebars_talloc_strdup(context, $2);
+      __MEMCHECK($$.block_param1);
+      $$.block_param2 = handlebars_talloc_strdup(context, $3);
+      __MEMCHECK($$.block_param2);
     }
   | OPEN_BLOCK_PARAMS ID CLOSE_BLOCK_PARAMS {
-      $$.block_param1 = $2;
+      $$.block_param1 = handlebars_talloc_strdup(context, $2);
+      __MEMCHECK($$.block_param1);
       $$.block_param2 = NULL;
     }
   ;
