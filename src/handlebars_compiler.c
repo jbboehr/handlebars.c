@@ -126,8 +126,8 @@ static inline void handlebars_compiler_add_depth(
     assert(compiler != NULL);
     
     if( depth > 0 ) {
-		compiler->flags |= handlebars_compiler_flag_use_depths;
-		compiler->use_depths = 1;
+        compiler->flags |= handlebars_compiler_flag_use_depths;
+        compiler->use_depths = 1;
     }
 }
 
@@ -232,6 +232,7 @@ static inline long handlebars_compiler_compile_program(
     }
 
     compiler->use_partial |= subcompiler->use_partial;
+    compiler->use_depths |= subcompiler->use_depths;
     
     // Realloc children array
     if( compiler->children_size <= compiler->children_length ) {
