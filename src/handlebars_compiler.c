@@ -199,14 +199,15 @@ static inline long handlebars_compiler_compile_program(
         return -1;
     }
     
-    // copy compiler flags
+    // copy compiler options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
+    subcompiler->known_helpers = compiler->known_helpers;
     
     // compile
     handlebars_compiler_compile(subcompiler, program);
     guid = compiler->guid++;
     
-    // copy
+    // copy compiler error
     if( (subcompiler->errnum != 0 && compiler->errnum == 0) ) {
         compiler->errnum = subcompiler->errnum;
         compiler->error = subcompiler->error;
