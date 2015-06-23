@@ -228,21 +228,16 @@ static int do_parse(void)
     
     if( ctx->error != NULL ) {
         output = handlebars_context_get_errmsg(ctx);
-        fprintf(stdout, "%s\n", output);
-        handlebars_talloc_free(output);
-        
-        error = 1;
-    } else {
-        //char * output = handlebars_ast_print(ctx->program, 0);
-        struct handlebars_ast_printer_context printctx = handlebars_ast_print2(ctx->program, 0);
-        //_handlebars_ast_print(ctx->program, &printctx);
-        char * output = printctx.output;
-        fprintf(stdout, "%s\n", output);
-        handlebars_talloc_free(output);
-        
-        error = 0;
+        fprintf(stderr, "%s\n", output);
+        error = ctx->errnum;
+        goto error;
     }
-    
+
+    struct handlebars_ast_printer_context printctx = handlebars_ast_print2(ctx->program, 0);
+    fprintf(stdout, "%s\n", printctx.output);
+
+error:
+    handlebars_context_dtor(ctx);
     return error;
 }
 
@@ -266,10 +261,27 @@ static int do_compile(void)
     
     // Parse
     /*retval =*/ handlebars_yy_parse(ctx);
+
+    if( ctx->error ) {
+        fprintf(stderr, "%s\n", ctx->error);
+        error = ctx->errnum;
+        goto error;
+    } else if( ctx->errnum ) {
+        fprintf(stderr, "Parser error %d\n", compiler->errnum);
+        error = ctx->errnum;
+        goto error;
+    }
     
     // Compile
     handlebars_compiler_compile(compiler, ctx->program);
-    if( compiler->errnum ) {
+
+    if( compiler->error ) {
+        fprintf(stderr, "%s\n", compiler->error);
+        error = compiler->errnum;
+        goto error;
+    } else if( compiler->errnum ) {
+        fprintf(stderr, "Compiler error %d\n", compiler->errnum);
+        error = compiler->errnum;
         goto error;
     }
     

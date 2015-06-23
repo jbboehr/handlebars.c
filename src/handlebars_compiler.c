@@ -28,10 +28,13 @@
 #define __OPS2(type, arg1, arg2) __PUSH(handlebars_opcode_ctor_string2(compiler, __MK(type), arg1, arg2))
 #define __OPSL(type, arg1, arg2) __PUSH(handlebars_opcode_ctor_string_long(compiler, __MK(type), arg1, arg2))
 
+#define __S1(x) #x
+#define __S2(x) __S1(x)
 #define __MEMCHECK(ptr) \
     do { \
         if( unlikely(ptr == NULL) ) { \
             compiler->errnum = handlebars_compiler_error_nomem; \
+            compiler->error = "Out of memory [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
             return; \
         } \
     } while(0)
@@ -204,8 +207,9 @@ static inline long handlebars_compiler_compile_program(
     guid = compiler->guid++;
     
     // copy
-    if( subcompiler->errnum != 0 && compiler->errnum == 0 ) {
+    if( (subcompiler->errnum != 0 && compiler->errnum == 0) ) {
         compiler->errnum = subcompiler->errnum;
+        compiler->error = subcompiler->error;
     }
 
     compiler->use_partial |= subcompiler->use_partial;
@@ -811,7 +815,7 @@ static inline void handlebars_compiler_accept_path_segment(
 static void handlebars_compiler_accept(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
-    if( !node ) {
+    if( !node || compiler->errnum ) {
         return;
     }
     switch( node->type ) {
