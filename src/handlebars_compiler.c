@@ -218,15 +218,16 @@ static inline long handlebars_compiler_compile_program(
         return -1;
     }
     
-    // copy compiler flags and bps
+    // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
     subcompiler->bps = compiler->bps;
+    subcompiler->known_helpers = compiler->known_helpers;
     
     // compile
     handlebars_compiler_compile(subcompiler, program);
     guid = compiler->guid++;
     
-    // copy
+    // copy compiler error
     if( (subcompiler->errnum != 0 && compiler->errnum == 0) ) {
         compiler->errnum = subcompiler->errnum;
         compiler->error = subcompiler->error;
