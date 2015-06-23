@@ -227,8 +227,9 @@ static inline long handlebars_compiler_compile_program(
     guid = compiler->guid++;
     
     // copy
-    if( subcompiler->errnum != 0 && compiler->errnum == 0 ) {
+    if( (subcompiler->errnum != 0 && compiler->errnum == 0) ) {
         compiler->errnum = subcompiler->errnum;
+        compiler->error = subcompiler->error;
     }
 
     compiler->result_flags |= subcompiler->result_flags;
@@ -1047,7 +1048,7 @@ static inline void handlebars_compiler_accept_raw_block(
 static void handlebars_compiler_accept(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
-    if( !node ) {
+    if( !node || compiler->errnum ) {
         return;
     }
     switch( node->type ) {
