@@ -8,6 +8,7 @@
 #define HANDLEBARS_AST_H
 
 #include <stddef.h>
+#include "handlebars.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -19,18 +20,6 @@ extern "C" {
 struct handlebars_context;
 struct handlebars_ast_node;
 struct handlebars_ast_list;
-
-/**
- * @brief Location type
- */
-struct handlebars_locinfo
-{
-    int first_line;
-    int first_column;
-    int last_line;
-    int last_column;
-};
-#define YYLTYPE handlebars_locinfo
 
 /**
  * @brief An enumeration of AST node types

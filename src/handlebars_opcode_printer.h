@@ -28,12 +28,19 @@ enum handlebars_opcode_printer_flag {
     /**
      * @brief Join with spaces instead of newlines
      */
-    handlebars_opcode_printer_flag_no_newlines,
+    handlebars_opcode_printer_flag_no_newlines = (1 << 0),
 
     /**
      * @brief Dump all operands (not implemented)
      */
-    handlebars_opcode_printer_flag_dump_all_operands
+    handlebars_opcode_printer_flag_dump_all_operands = (1 << 1),
+    
+    /**
+     * @brief Print locations
+     */
+    handlebars_opcode_printer_flag_locations = (1 << 2),
+    
+    handlebars_opcode_printer_flag_all = (1 << 3) - 1
 };
 
 /**
@@ -75,9 +82,10 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
  *
  * @param[in] str The string to which to append
  * @param[in] opcode The opcode to print
+ * @param[in] flags The print flags
  * @return The original pointer, or a new pointer if reallocated
  */
-char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opcode);
+char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opcode, int flags);
 
 /**
  * @brief Print an opcode and return the string

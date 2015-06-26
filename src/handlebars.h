@@ -47,6 +47,18 @@ enum handlebars_error_type
 };
 
 /**
+ * @brief Location type
+ */
+struct handlebars_locinfo
+{
+    int first_line;
+    int first_column;
+    int last_line;
+    int last_column;
+};
+#define YYLTYPE handlebars_locinfo
+
+/**
  * @brief Get the library version as an integer
  * @return The version of handlebars as an integer
  */

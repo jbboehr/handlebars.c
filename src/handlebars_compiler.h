@@ -13,6 +13,8 @@ extern "C" {
 
 #include <stddef.h>
 
+#define HANDLEBARS_COMPILER_STACK_SIZE 64
+
 struct handlebars_ast_node;
 struct handlebars_compiler;
 struct handlebars_opcode;
@@ -98,7 +100,9 @@ enum handlebars_compiler_error {
 
     handlebars_compiler_error_unsupported_partial_args = 3,
     
-    handlebars_compiler_error_block_param_stack_blown = 4
+    handlebars_compiler_error_block_param_stack_blown = 4,
+    
+    handlebars_compiler_error_source_node_stack_blown = 5
 };
 
 /**
@@ -117,10 +121,22 @@ struct handlebars_block_param_stack {
     struct {
         char * block_param1;
         char * block_param2;
-    } s[32];
+    } s[HANDLEBARS_COMPILER_STACK_SIZE];
     
     /**
      * @brief Block param stack index
+     */
+    int i;
+};
+
+struct handlebars_source_node_stack {
+    /**
+     * @brief Source node stack
+     */
+    struct handlebars_ast_node * s[HANDLEBARS_COMPILER_STACK_SIZE];
+    
+    /**
+     * @brief Source node stack index
      */
     int i;
 };
@@ -141,6 +157,7 @@ struct handlebars_compiler {
     size_t children_size;
     
     struct handlebars_block_param_stack * bps;
+    struct handlebars_source_node_stack sns;
     
     /**
      * @brief Array of known helpers

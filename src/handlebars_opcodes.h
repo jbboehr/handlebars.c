@@ -7,6 +7,8 @@
 #ifndef HANDLEBARS_OPCODES_H
 #define HANDLEBARS_OPCODES_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -92,6 +94,7 @@ struct handlebars_opcode {
     struct handlebars_operand op1;
     struct handlebars_operand op2;
     struct handlebars_operand op3;
+    struct handlebars_locinfo loc;
 };
 
 /**

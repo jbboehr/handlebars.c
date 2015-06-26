@@ -69,7 +69,7 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
     return str;
 }
 
-char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opcode)
+char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opcode, int flags)
 {
     const char * name = handlebars_opcode_readable_type(opcode->type);
     short num = handlebars_opcode_num_operands(opcode->type);
@@ -93,13 +93,20 @@ char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opc
         assert(opcode->op3.type == handlebars_operand_type_null);
     }
     
+    // Add location
+    if( flags & handlebars_opcode_printer_flag_locations ) {
+        str = handlebars_talloc_asprintf_append(str, " [%d:%d-%d:%d]", 
+                opcode->loc.first_line, opcode->loc.first_column,
+                opcode->loc.last_line, opcode->loc.last_column);
+    }
+    
     return str;
 }
 
 char * handlebars_opcode_print(void * ctx, struct handlebars_opcode * opcode)
 {
     char * str = handlebars_talloc_strdup(ctx, "");
-    return handlebars_opcode_print_append(str, opcode);
+    return handlebars_opcode_print_append(str, opcode, 0);
 }
 
 static void handlebars_opcode_printer_array_print(struct handlebars_opcode_printer * printer)
@@ -115,7 +122,7 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
     
     for( i = 0; i < count; i++, opcodes++ ) {
         printer->output = handlebars_talloc_strdup_append(printer->output, indentbuf);
-        printer->output = handlebars_opcode_print_append(printer->output, *opcodes);
+        printer->output = handlebars_opcode_print_append(printer->output, *opcodes, printer->flags);
         printer->output = handlebars_talloc_strdup_append(printer->output, "\n");
     }
     

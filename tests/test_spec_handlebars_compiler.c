@@ -57,6 +57,7 @@ static struct compiler_test * tests = NULL;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
 static char * export_dir = NULL;
+static const int opcode_printer_flags = 0; //handlebars_opcode_printer_flag_locations;
 
 
 static int loadTestOpcodeOperand(struct handlebars_opcode * opcode, 
@@ -109,6 +110,52 @@ static int loadTestOpcodeOperand(struct handlebars_opcode * opcode,
     return 0;
 }
 
+static int loadTestOpcodeLoc(struct handlebars_opcode * opcode, json_object * object)
+{
+    struct json_object * cur = NULL;
+    struct json_object * line = NULL;
+    struct json_object * column = NULL;
+    
+    // Get start
+    cur = json_object_object_get(object, "start");
+    if( !cur || json_object_get_type(cur) != json_type_object ) {
+        fprintf(stderr, "Opcode loc start was not an object!\n");
+        goto error;
+    } else {
+        line = json_object_object_get(cur, "line");
+        column = json_object_object_get(cur, "column");
+        if( line && column ) {
+            opcode->loc.first_line = json_object_get_int(line);
+            opcode->loc.first_column = json_object_get_int(column);
+        } else {
+            fprintf(stderr, "Opcode loc start was missing line or column!\n");
+            goto error;
+        }
+    }
+    
+    // Get end
+    cur = json_object_object_get(object, "end");
+    if( !cur || json_object_get_type(cur) != json_type_object ) {
+        fprintf(stderr, "Opcode loc end was not an object!\n");
+        goto error;
+    } else {
+        line = json_object_object_get(cur, "line");
+        column = json_object_object_get(cur, "column");
+        if( line && column ) {
+            opcode->loc.last_line = json_object_get_int(line);
+            opcode->loc.last_column = json_object_get_int(column);
+        } else {
+            fprintf(stderr, "Opcode loc end was missing line or column!\n");
+            goto error;
+        }
+    }
+    
+    return 0;
+    
+error:
+    return 1;
+}
+
 static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * compiler, json_object * object)
 {
     struct handlebars_opcode * opcode = NULL;
@@ -135,7 +182,7 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
     // Get args
     cur = json_object_object_get(object, "args");
     if( !cur || json_object_get_type(cur) != json_type_array ) {
-        fprintf(stderr, "Opcode arts was not an array!\n");
+        fprintf(stderr, "Opcode args was not an array!\n");
         goto error;
     }
     
@@ -157,6 +204,15 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
             loadTestOpcodeOperand(opcode, &opcode->op1, array_item);
             break;
         }
+    }
+    
+    // Get loc
+    cur = json_object_object_get(object, "loc");
+    if( !cur || json_object_get_type(cur) != json_type_object ) {
+        fprintf(stderr, "Opcode loc was not an object!\n");
+        goto error;
+    } else {
+        loadTestOpcodeLoc(opcode, cur);
     }
     
 error:
@@ -268,6 +324,7 @@ static char * loadTestOpcodesPrint(json_object * object)
     
     loadTestCompiler(compiler, object);
     
+    printer->flags = opcode_printer_flags;
     handlebars_opcode_printer_print(printer, compiler);
     output = talloc_steal(rootctx, printer->output);
     
@@ -555,6 +612,7 @@ START_TEST(handlebars_spec_compiler)
     ck_assert_int_eq(0, compiler->errnum);
     
     // Printer
+    printer->flags = opcode_printer_flags;
     handlebars_opcode_printer_print(printer, compiler);
     //fprintf(stdout, "%s\n", printer->output);
     

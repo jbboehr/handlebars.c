@@ -264,6 +264,11 @@ static inline void handlebars_compiler_opcode(
         compiler->opcodes_size += 32;
     }
     
+    // Get location from source node stack
+    if( compiler->sns.i > 0 ) {
+        opcode->loc = compiler->sns.s[compiler->sns.i - 1]->loc;
+    }
+    
     // Append opcode
     compiler->opcodes[compiler->opcodes_length++] = opcode;
 }
@@ -508,6 +513,11 @@ static inline void handlebars_compiler_accept_program(
 
     assert(compiler != NULL);
     
+    if( compiler->bps->i > HANDLEBARS_COMPILER_STACK_SIZE ) {
+        compiler->errnum = handlebars_compiler_error_block_param_stack_blown;
+        compiler->error = handlebars_talloc_strdup(compiler, "Block param stack blown");
+        return;
+    }
     compiler->bps->s[compiler->bps->i].block_param1 = block_param1;
     compiler->bps->s[compiler->bps->i].block_param2 = block_param2;
     compiler->bps->i++;
@@ -1043,43 +1053,72 @@ static void handlebars_compiler_accept(
     if( !node ) {
         return;
     }
+    
+    // Add node to source node stack
+    if( compiler->sns.i > HANDLEBARS_COMPILER_STACK_SIZE ) {
+        compiler->errnum = handlebars_compiler_error_source_node_stack_blown;
+        compiler->error = handlebars_talloc_strdup(compiler, "Source node stack blown");
+        return;
+    }
+    compiler->sns.s[compiler->sns.i] = node;
+    compiler->sns.i++;
+    
+    // Accept node
     switch( node->type ) {
 		case HANDLEBARS_AST_NODE_BLOCK:
-			return handlebars_compiler_accept_block(compiler, node);
+			handlebars_compiler_accept_block(compiler, node);
+			break;
 		case HANDLEBARS_AST_NODE_BOOLEAN:
-			return handlebars_compiler_accept_boolean(compiler, node);
+			handlebars_compiler_accept_boolean(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_COMMENT:
-            return handlebars_compiler_accept_comment(compiler, node);
+            handlebars_compiler_accept_comment(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_CONTENT:
-            return handlebars_compiler_accept_content(compiler, node);
+            handlebars_compiler_accept_content(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_HASH:
-            return handlebars_compiler_accept_hash(compiler, node);
+            handlebars_compiler_accept_hash(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_MUSTACHE:
-            return handlebars_compiler_accept_mustache(compiler, node);
+            handlebars_compiler_accept_mustache(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_NUMBER:
-            return handlebars_compiler_accept_number(compiler, node);
+            handlebars_compiler_accept_number(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_NUL:
-			return handlebars_compiler_accept_nul(compiler, node);
+			handlebars_compiler_accept_nul(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_PARTIAL:
-            return handlebars_compiler_accept_partial(compiler, node);
+            handlebars_compiler_accept_partial(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_PATH:
-            return handlebars_compiler_accept_path(compiler, node);
+            handlebars_compiler_accept_path(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_PROGRAM:
-            return handlebars_compiler_accept_program(compiler, node);
+            handlebars_compiler_accept_program(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_SEXPR:
-            return handlebars_compiler_accept_sexpr(compiler, node);
+            handlebars_compiler_accept_sexpr(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_STRING:
-            return handlebars_compiler_accept_string(compiler, node);
+            handlebars_compiler_accept_string(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
-            return handlebars_compiler_accept_raw_block(compiler, node);
+            handlebars_compiler_accept_raw_block(compiler, node);
+			break;
         case HANDLEBARS_AST_NODE_UNDEFINED:
-			return handlebars_compiler_accept_undefined(compiler, node);
+			handlebars_compiler_accept_undefined(compiler, node);
+			break;
         
         // Should never get here
         default:
             assert(0);
             break;
     }
+    
+    // Pop source node stack
+    compiler->sns.i--;
 }
 
 void handlebars_compiler_compile(

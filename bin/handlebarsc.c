@@ -275,6 +275,7 @@ static int do_compile(void)
     }
     
     // Printer
+    //printer->flags = handlebars_opcode_printer_flag_locations;
     handlebars_opcode_printer_print(printer, compiler);
     fprintf(stdout, "%s\n", printer->output);
     
