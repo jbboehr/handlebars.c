@@ -114,6 +114,7 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, int fl
     compiler->no_escape = 1 && (compiler->flags & handlebars_compiler_flag_no_escape);
     compiler->known_helpers_only = 1 && (compiler->flags & handlebars_compiler_flag_known_helpers_only);
     compiler->prevent_indent = 1 && (compiler->flags & handlebars_compiler_flag_prevent_indent);
+    compiler->use_data = 1 && (compiler->flags & handlebars_compiler_flag_use_data);
 }
 
 
@@ -126,8 +127,7 @@ static inline void handlebars_compiler_add_depth(
     assert(compiler != NULL);
     
     if( depth > 0 ) {
-		compiler->flags |= handlebars_compiler_flag_use_depths;
-		compiler->use_depths = 1;
+        compiler->result_flags |= handlebars_compiler_flag_use_depths;
     }
 }
 
@@ -218,20 +218,22 @@ static inline long handlebars_compiler_compile_program(
         return -1;
     }
     
-    // copy compiler flags and bps
+    // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
     subcompiler->bps = compiler->bps;
+    subcompiler->known_helpers = compiler->known_helpers;
     
     // compile
     handlebars_compiler_compile(subcompiler, program);
     guid = compiler->guid++;
     
-    // copy
-    if( subcompiler->errnum != 0 && compiler->errnum == 0 ) {
+    // copy compiler error
+    if( (subcompiler->errnum != 0 && compiler->errnum == 0) ) {
         compiler->errnum = subcompiler->errnum;
+        compiler->error = subcompiler->error;
     }
 
-    compiler->use_partial |= subcompiler->use_partial;
+    compiler->result_flags |= subcompiler->result_flags;
     
     // Realloc children array
     if( compiler->children_size <= compiler->children_length ) {
@@ -533,7 +535,16 @@ static inline void handlebars_compiler_accept_program(
     }
     
     compiler->bps->i--;
-    compiler->is_simple = (1 == statement_count);
+    if( 1 == statement_count ) {
+        compiler->result_flags |= handlebars_compiler_flag_is_simple;
+    }
+    if( block_param1 ) {
+        compiler->block_params++;
+    }
+    if( block_param2 ) {
+        compiler->block_params++;
+    }
+    // @todo fix
     // this.blockParams = program.blockParams ? program.blockParams.length : 0;
 }
 
@@ -636,7 +647,7 @@ static inline void handlebars_compiler_accept_partial(
     assert(partial != NULL);
     assert(partial->type == HANDLEBARS_AST_NODE_PARTIAL);
 
-    compiler->use_partial = 1;
+    compiler->result_flags |= handlebars_compiler_flag_use_partial;
 
     params = partial->node.partial.params;
     count = (params ? handlebars_ast_list_count(params) : 0);
@@ -895,8 +906,6 @@ static inline void handlebars_compiler_accept_path(
     } else if( name == NULL ) {
         __OPN(push_context);
     } else if( path->node.path.data ) {
-        compiler->use_data = 1;
-
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_data);
         __MEMCHECK(opcode);
         parts_arr = handlebars_ast_node_get_id_parts(opcode, path);
@@ -1050,7 +1059,7 @@ static inline void handlebars_compiler_accept_raw_block(
 static void handlebars_compiler_accept(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
-    if( !node ) {
+    if( !node || compiler->errnum ) {
         return;
     }
     

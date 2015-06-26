@@ -1,12 +1,12 @@
 
 # Define the package version numbers
 m4_define([HANDLEBARS_MAJOR], 0)
-m4_define([HANDLEBARS_MINOR], 2)
-m4_define([HANDLEBARS_PATCH], 3)
+m4_define([HANDLEBARS_MINOR], 3)
+m4_define([HANDLEBARS_PATCH], 0)
 
 # Define the libtool version numbers; check the Autobook, Section 11.4.
 # m4_define([HANDLEBARS_RELEASE], 0)
-m4_define([HANDLEBARS_CURRENT], 1)
+m4_define([HANDLEBARS_CURRENT], 2)
 m4_define([HANDLEBARS_REVISION], 0)
 m4_define([HANDLEBARS_AGE], 0)
 
@@ -83,6 +83,7 @@ AC_HEADER_DIRENT
 AC_CHECK_HEADERS(ctype.h, , AC_MSG_ERROR([ctype.h is required]))
 AC_CHECK_HEADERS(errno.h, , AC_MSG_ERROR([errno.h is required]))
 AC_CHECK_HEADERS(stdint.h, , AC_MSG_ERROR([stdint.h is required]))
+AC_CHECK_HEADERS(stdarg.h, , AC_MSG_ERROR([stdarg.h is required]))
 
 # Checks for functions
 AC_CHECK_FUNC(snprintf, , AC_MSG_ERROR([snprintf is required]))

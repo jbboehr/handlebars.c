@@ -65,6 +65,8 @@ enum handlebars_compiler_flag {
      */
     handlebars_compiler_flag_prevent_indent = (1 << 5),
 
+    handlebars_compiler_flag_use_data = (1 << 6),
+    
     // Result flags
     handlebars_compiler_flag_use_partial = (1 << 8),
     handlebars_compiler_flag_is_simple = (1 << 9),
@@ -79,7 +81,7 @@ enum handlebars_compiler_flag {
     /**
      * @brief All flags
      */
-    handlebars_compiler_flag_all = ((1 << 6) - 1)
+    handlebars_compiler_flag_all = ((1 << 7) - 1)
 };
 
 /**
@@ -181,11 +183,17 @@ struct handlebars_compiler {
     short no_escape;
     short known_helpers_only;
     short prevent_indent;
-    
-    // Result flags
-    short is_simple;
-    short use_partial;
     short use_data;
+    
+    /**
+     * @brief Result flags
+     */
+    int result_flags;
+    
+    /**
+     * @brief Number of block params used
+     */
+    int block_params;
 };
 
 /**
