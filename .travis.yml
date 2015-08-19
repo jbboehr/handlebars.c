@@ -3,22 +3,38 @@ language: c
 compiler:
   - gcc
 
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq autoconf automake bison flex gawk gcc git-core lcov libjson0-dev libtalloc-dev libtool m4 make pkg-config
-  - wget http://downloads.sourceforge.net/project/check/check/0.9.14/check-0.9.14.tar.gz
-  - tar xfv check-0.9.14.tar.gz
-  - cd check-0.9.14
-  - ./configure --prefix=/usr && make && sudo make install && sudo ldconfig
-  - cd ..
-  
-script:
-  - ./bootstrap
-  - ./configure
-  - make
-  - make test
-  - sudo make install
-
 branches:
   only:
     - master
+#    - handlebars-v3
+
+sudo: false
+
+# autoconf automake gawk gcc git-core libtool m4 make
+addons:
+  apt:
+    packages:
+      - bison
+      - flex
+      - lcov
+      - libjson0-dev
+      - libpcre3-dev
+      - libtalloc-dev
+      - pkg-config
+
+install:
+  - wget http://downloads.sourceforge.net/project/check/check/0.9.14/check-0.9.14.tar.gz
+  - tar xfv check-0.9.14.tar.gz
+  - cd check-0.9.14
+  - ./configure --prefix=$HOME/build
+  - make
+  - make install
+  - cd ..
+  
+script:
+  - export CFLAGS="-L$HOME/build/lib"
+  - export CPPFLAGS="-I$HOME/build/include"
+  - export PKG_CONFIG_PATH="$HOME/build/lib/pkgconfig"
+  - ./bootstrap
+  - ./configure --prefix=$HOME/build
+  - make all check install
