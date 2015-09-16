@@ -6,6 +6,7 @@ compiler:
 branches:
   only:
     - master
+    - travis-fix
 
 sudo: false
 
@@ -21,20 +22,18 @@ addons:
       - libtalloc-dev
       - pkg-config
 
+cache:
+  directories:
+    - $HOME/build
+
 install:
-  - wget http://downloads.sourceforge.net/project/check/check/0.9.14/check-0.9.14.tar.gz
-  - tar xfv check-0.9.14.tar.gz
-  - cd check-0.9.14
-  - ./configure --prefix=$HOME/build
-  - make
-  - make install
-  - cd ..
+  - ./.travis.sh
   
 script:
+  - export PATH="$HOME/build/bin:$PATH"
   - export CFLAGS="-L$HOME/build/lib"
   - export CPPFLAGS="-I$HOME/build/include"
   - export PKG_CONFIG_PATH="$HOME/build/lib/pkgconfig"
   - ./bootstrap
   - ./configure --prefix=$HOME/build
   - make all check install
-
