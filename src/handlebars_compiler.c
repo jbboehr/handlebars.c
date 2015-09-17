@@ -952,6 +952,7 @@ static inline void handlebars_compiler_accept_number(
 
     if( 0 == strcmp(val, "0") ) {
     	__OPL(push_literal, 0);
+        return;
     }
     
     // Convert to float and long
