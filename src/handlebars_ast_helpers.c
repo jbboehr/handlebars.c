@@ -48,6 +48,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     long inverse_strip;
     char * open_str;
     char * close_str;
+    short is_decorator = 0;
     
     assert(open_block != NULL && open_block->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
     assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
@@ -64,7 +65,11 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
             return NULL;
         }
     }
-    
+
+    if( open_block->node.intermediate.open && NULL != strchr(open_block->node.intermediate.open, '*') ) {
+    	is_decorator = 1;
+    }
+
     // @todo this isn't supposed to be null I think...
     if( !program ) {
         program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
@@ -107,8 +112,10 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         inverse = tmp;
     }
     
-    return handlebars_ast_node_ctor_block(context, open_block, program, inverse,
+    tmp = handlebars_ast_node_ctor_block(context, open_block, program, inverse,
                 open_block->strip, inverse_strip, close ? close->strip : 0, locinfo);
+    tmp->node.block.is_decorator = is_decorator;
+    return tmp;
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
@@ -164,6 +171,9 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
             c = *(open + 3);
         } else if( open_len >= 3 ) {
             c = *(open + 2);
+        }
+        if( NULL != strchr(open, '*') ) {
+        	ast_node->node.mustache.is_decorator = 1;
         }
     }
     ast_node->node.mustache.unescaped = (c == '{' || c == '&');
