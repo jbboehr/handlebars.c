@@ -112,11 +112,13 @@ const char * handlebars_token_readable_type(int type)
     _RTYPE_CASE(OPEN_UNESCAPED);
     _RTYPE_CASE(SEP);
     _RTYPE_CASE(STRING);
-    // Added in v3.0.3
+    // Added in v3
     _RTYPE_CASE(CLOSE_BLOCK_PARAMS);
     _RTYPE_CASE(OPEN_BLOCK_PARAMS);
     _RTYPE_CASE(OPEN_INVERSE_CHAIN);
     _RTYPE_CASE(UNDEFINED);
+    // Added in v4
+    _RTYPE_CASE(OPEN_PARTIAL_BLOCK);
     case NUL: return "NULL";
   }
   
@@ -175,6 +177,8 @@ int handlebars_token_reverse_readable_type(const char * type)
             // Added in v3
             _RTYPE_REV_CMP(OPEN_INVERSE_CHAIN);
             _RTYPE_REV_CMP(OPEN_BLOCK_PARAMS);
+            // Added in v4
+            _RTYPE_REV_CMP(OPEN_PARTIAL_BLOCK);
             break;
         case 'S':
             _RTYPE_REV_CMP(SEP);

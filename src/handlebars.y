@@ -125,6 +125,9 @@ int handlebars_yy_debug = 0;
 %token <text> OPEN_INVERSE_CHAIN
 %token <text> UNDEFINED "undefined"
 
+// Added in v4
+%token <text> OPEN_PARTIAL_BLOCK "{{#>"
+
 %type <ast_node> program
 %type <ast_list> statements
 %type <ast_node> statement
