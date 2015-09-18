@@ -61,6 +61,11 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
         struct handlebars_ast_node * block_params,
         char * open, unsigned strip, struct handlebars_locinfo * locinfo);
 
+struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
+    struct handlebars_context * context, struct handlebars_ast_node * open,
+    struct handlebars_ast_node * program, struct handlebars_ast_node * close,
+    struct handlebars_locinfo * locinfo);
+
 struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         struct handlebars_context * context, struct handlebars_ast_list * list,
         short data, struct handlebars_locinfo * locinfo);

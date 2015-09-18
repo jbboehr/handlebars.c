@@ -41,6 +41,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         struct handlebars_ast_node * close, int inverted,
         struct handlebars_locinfo * locinfo)
 {
+    struct handlebars_ast_node * ast_node;
     struct handlebars_ast_node * open_block_path = open_block->node.intermediate.path;
     struct handlebars_ast_node * close_block_path;
     struct handlebars_ast_node * inverse = NULL;
@@ -80,6 +81,11 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     if( inverse_and_program ) {
         assert(inverse_and_program->type == HANDLEBARS_AST_NODE_INVERSE);
 
+        if( is_decorator ) {
+            handlebars_yy_error(locinfo, context, "Unexpected inverse block on decorator");
+            return NULL;
+        }
+
         if( inverse_and_program->node.inverse.chained ) {
             struct handlebars_ast_list * statements;
             struct handlebars_ast_node * tmp;
@@ -112,10 +118,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         inverse = tmp;
     }
     
-    tmp = handlebars_ast_node_ctor_block(context, open_block, program, inverse,
+    ast_node = handlebars_ast_node_ctor_block(context, open_block, program, inverse,
                 open_block->strip, inverse_strip, close ? close->strip : 0, locinfo);
-    tmp->node.block.is_decorator = is_decorator;
-    return tmp;
+    __MEMCHECK(ast_node);
+
+    ast_node->node.block.is_decorator = is_decorator;
+error:
+    return ast_node;
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
@@ -183,6 +192,40 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     
 error:
     return ast_node;
+}
+
+struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
+    struct handlebars_context * context, struct handlebars_ast_node * open,
+    struct handlebars_ast_node * program, struct handlebars_ast_node * close,
+    struct handlebars_locinfo * locinfo)
+{
+    struct handlebars_ast_node * ast_node;
+    struct handlebars_ast_node * open_block_path = open->node.intermediate.path;
+    struct handlebars_ast_node * close_block_path;
+    struct handlebars_ast_node * inverse = NULL;
+    struct handlebars_ast_node * tmp;
+    long inverse_strip;
+    char * open_str;
+    char * close_str;
+    short is_decorator = 0;
+
+    assert(open != NULL && open->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
+    assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
+
+    if( close && close->type == HANDLEBARS_AST_NODE_INTERMEDIATE ) {
+        close_block_path = close->node.intermediate.path;
+        open_str = handlebars_ast_node_get_string_mode_value(open_block_path);
+        close_str = handlebars_ast_node_get_string_mode_value(close_block_path);
+        if( close_block_path && 0 != strcmp(open_str, close_str) ) {
+            char errmsgtmp[256];
+            snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s",  open_str,
+                    close_str);
+            handlebars_yy_error(locinfo, context, errmsgtmp);
+            return NULL;
+        }
+    }
+
+	return handlebars_ast_node_ctor_partial_block(context, open, program, close, locinfo);
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_path(

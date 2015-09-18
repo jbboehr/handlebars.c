@@ -114,6 +114,7 @@ struct handlebars_ast_node_path {
     struct handlebars_ast_list * parts;
     int depth;
     short falsy;
+    short strict;
 };
 
 struct handlebars_ast_node_path_segment {

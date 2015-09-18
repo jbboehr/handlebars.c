@@ -170,6 +170,7 @@ BLOCKPARAM [\x7C]
 
 <raw>"{{{{"/[^/]                    {
                                   		yy_push_state(raw, yyscanner);
+										handlebars_yy_copy_lval();
                                   		return CONTENT;
                                  	}
 
@@ -177,7 +178,7 @@ BLOCKPARAM [\x7C]
 										// v4.0.2 handlebars.l line 54
 										
 										yy_pop_state(yyg);
-										if( yy_top_state(yyg) == raw ) {
+										if( yyg->yy_start_stack_ptr > 0 && YY_START == raw ) {
 											handlebars_yy_copy_lval();
 											return CONTENT;
 										} else {
@@ -187,8 +188,13 @@ BLOCKPARAM [\x7C]
 										}
                                  	}
 
-<raw>[^\x00]+/("{{{{")         	    {
+<raw>[^\x00{]+         	            {
 										// v2.0.0 handlebars.l line 57
+										handlebars_yy_copy_lval();
+										return CONTENT;
+									}
+									
+<raw>"{"         	                {
 										handlebars_yy_copy_lval();
 										return CONTENT;
 									}

@@ -238,6 +238,8 @@ content
   : CONTENT content {
       $$ = handlebars_talloc_strdup_append($1, $2);
       __MEMCHECK($$);
+      $$ = talloc_steal(context, $$);
+      __MEMCHECK($$);
     }
   | CONTENT {
       $$ = $1;
@@ -397,7 +399,13 @@ partial
 
 partial_block
   : open_partial_block program close_block {
-      $$ = handlebars_ast_node_ctor_partial_block(context, $1, $2, $3, &@$);
+      $$ = handlebars_ast_helper_prepare_partial_block(context, $1, $2, $3, &@$);
+      __MEMCHECK($$);
+  }
+  | open_partial_block close_block {
+      struct handlebars_ast_node * program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      __MEMCHECK(program);
+      $$ = handlebars_ast_helper_prepare_partial_block(context, $1, program, $2, &@$);
       __MEMCHECK($$);
   }
 

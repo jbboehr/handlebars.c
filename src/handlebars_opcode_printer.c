@@ -92,6 +92,11 @@ char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opc
     } else {
         assert(opcode->op3.type == handlebars_operand_type_null);
     }
+    if( num >= 4 ) {
+        str = handlebars_operand_print_append(str, &opcode->op4);
+    } else {
+        assert(opcode->op4.type == handlebars_operand_type_null);
+    }
     
     // Add location
     if( flags & handlebars_opcode_printer_flag_locations ) {
