@@ -116,6 +116,7 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, int fl
     compiler->prevent_indent = 1 && (compiler->flags & handlebars_compiler_flag_prevent_indent);
     compiler->use_data = 1 && (compiler->flags & handlebars_compiler_flag_use_data);
     compiler->explicit_partial_context = 1 && (compiler->flags & handlebars_compiler_flag_explicit_partial_context);
+    compiler->ignore_standalone = 1 && (compiler->flags & handlebars_compiler_flag_ignore_standalone);
 }
 
 
@@ -128,7 +129,7 @@ static inline void handlebars_compiler_add_depth(
     assert(compiler != NULL);
     
     if( depth > 0 ) {
-        compiler->result_flags |= handlebars_compiler_flag_use_depths;
+        compiler->result_flags |= handlebars_compiler_result_flag_use_depths;
     }
 }
 
@@ -235,7 +236,7 @@ static inline long handlebars_compiler_compile_program(
     }
 
     // Don't propogate use_decorators
-    compiler->result_flags |= (subcompiler->result_flags & ~handlebars_compiler_flag_use_decorators);
+    compiler->result_flags |= (subcompiler->result_flags & ~handlebars_compiler_result_flag_use_decorators);
     
     // Realloc children array
     if( compiler->children_size <= compiler->children_length ) {
@@ -545,7 +546,7 @@ static inline void handlebars_compiler_accept_program(
     
     compiler->bps->i--;
     if( 1 == statement_count ) {
-        compiler->result_flags |= handlebars_compiler_flag_is_simple;
+        compiler->result_flags |= handlebars_compiler_result_flag_is_simple;
     }
     if( block_param1 ) {
         compiler->block_params++;
@@ -582,7 +583,7 @@ static inline void handlebars_compiler_accept_block(
     	original = handlebars_ast_node_get_string_mode_value(path);
     	params = handlebars_compiler_setup_full_mustache_params(
                     compiler, block, programGuid, inverseGuid, 0);
-        compiler->result_flags |= handlebars_compiler_flag_use_decorators;
+        compiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
         __OPLS(register_decorator, handlebars_ast_list_count(params), original);
     } else {
 		// Normal
@@ -668,7 +669,7 @@ static inline void _handlebars_compiler_accept_partial(
     assert(node != NULL);
     assert(name != NULL);
 
-    compiler->result_flags |= handlebars_compiler_flag_use_partial;
+    compiler->result_flags |= handlebars_compiler_result_flag_use_partial;
 
     count = (params ? handlebars_ast_list_count(params) : 0);
     
@@ -810,7 +811,7 @@ static inline void handlebars_compiler_accept_mustache(
     	original = handlebars_ast_node_get_string_mode_value(path);
     	params = handlebars_compiler_setup_full_mustache_params(
                     compiler, mustache, -1, -1, 0);
-        compiler->result_flags |= handlebars_compiler_flag_use_decorators;
+        compiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
         __OPLS(register_decorator, handlebars_ast_list_count(params), original);
     } else {
     	// Normal

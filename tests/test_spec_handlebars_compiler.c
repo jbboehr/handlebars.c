@@ -44,6 +44,7 @@ struct compiler_test {
     short opt_track_ids;
     short opt_prevent_indent;
     short opt_explicit_partial_context;
+    short opt_ignore_standalone;
     long flags;
 };
 
@@ -430,6 +431,15 @@ static int loadSpecTestCompileOptions(struct compiler_test * test, json_object *
             test->flags |= handlebars_compiler_flag_explicit_partial_context;
         }
     }
+    
+    // Get explicit partial context
+    cur = json_object_object_get(object, "ignoreStandalone");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->opt_ignore_standalone = json_object_get_boolean(cur);
+        if( test->opt_ignore_standalone ) {
+            test->flags |= handlebars_compiler_flag_ignore_standalone;
+        }
+    }
 
     // Get known helpers
     cur = json_object_object_get(object, "knownHelpers");
@@ -608,6 +618,7 @@ START_TEST(handlebars_spec_compiler)
 
     // Initialize
     ctx = handlebars_context_ctor();
+    ctx->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
     printer = handlebars_opcode_printer_ctor(ctx);
     

@@ -89,10 +89,6 @@ START_TEST(test_compiler_set_flags)
     
     compiler = handlebars_compiler_ctor(ctx);
     
-    // Make sure it can't change result flags
-    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_is_simple);
-    ck_assert_int_eq(0, compiler->flags);
-    
     // Make sure it changes option flags
     handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_string_params);
     ck_assert_int_eq(handlebars_compiler_flag_string_params, compiler->flags);
@@ -103,10 +99,6 @@ START_TEST(test_compiler_set_flags)
     ck_assert_int_eq(handlebars_compiler_flag_track_ids, compiler->flags);
     ck_assert_int_eq(0, compiler->string_params);
     ck_assert_int_eq(1, compiler->track_ids);
-    
-    // Make sure it can't change result flags pt 2
-    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_use_partial);
-    ck_assert_int_eq(0, compiler->flags);
     
     handlebars_compiler_dtor(compiler);
 }

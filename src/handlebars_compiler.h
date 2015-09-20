@@ -68,12 +68,9 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_use_data = (1 << 6),
 
     handlebars_compiler_flag_explicit_partial_context = (1 << 7),
-
-    // Result flags
-    handlebars_compiler_flag_use_partial = (1 << 8),
-    handlebars_compiler_flag_is_simple = (1 << 9),
-    handlebars_compiler_flag_use_decorators = (1 << 10),
     
+    handlebars_compiler_flag_ignore_standalone = (1 << 8),
+
     // Composite option flags
 
     /**
@@ -84,7 +81,18 @@ enum handlebars_compiler_flag {
     /**
      * @brief All flags
      */
-    handlebars_compiler_flag_all = ((1 << 8) - 1)
+    handlebars_compiler_flag_all = ((1 << 9) - 1)
+};
+
+enum handlebars_compiler_result_flag {
+    handlebars_compiler_result_flag_use_depths = (1 << 0),
+    handlebars_compiler_result_flag_use_partial = (1 << 1),
+    handlebars_compiler_result_flag_is_simple = (1 << 2),
+    handlebars_compiler_result_flag_use_decorators = (1 << 3),
+    /**
+     * @brief All flags
+     */
+    handlebars_compiler_result_flag_all = ((1 << 4) - 1)
 };
 
 /**
@@ -188,6 +196,7 @@ struct handlebars_compiler {
     short prevent_indent;
     short use_data;
     short explicit_partial_context;
+    short ignore_standalone;
     
     /**
      * @brief Result flags

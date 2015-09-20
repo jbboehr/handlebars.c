@@ -35,6 +35,7 @@ struct handlebars_context
   char * error;
   struct handlebars_locinfo * errloc;
   short whitespace_root_seen;
+  short ignore_standalone;
 };
 
 /**

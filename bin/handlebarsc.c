@@ -50,20 +50,21 @@ static void readOpts(int argc, char * argv[])
     
     static struct option long_options[] = {
         // modes
-        {"help",      no_argument,       0,  'h' },
-        {"lex",       no_argument,       0,  'l' },
-        {"parse",     no_argument,       0,  'p' },
-        {"compile",   no_argument,       0,  'c' },
-        {"version",   no_argument,       0,  'V' },
+        {"help",      no_argument,          0,  'h' },
+        {"lex",       no_argument,          0,  'l' },
+        {"parse",     no_argument,          0,  'p' },
+        {"compile",   no_argument,          0,  'c' },
+        {"version",   no_argument,          0,  'V' },
         // input
-        {"template",  required_argument, 0,  't' },
+        {"template",  required_argument,    0,  't' },
         // compiler flags
-        {"compat",    no_argument,       0,  'C' },
+        {"compat",    no_argument,          0,  'C' },
         {"known-helpers-only", no_argument, 0,  'K' },
-        {"string-params", no_argument,   0,  'S' },
-        {"track-ids", no_argument,       0,  'T' },
-        {"no-escape", no_argument,       0,  'U' },
-        {0,           0,                 0,  0   }
+        {"string-params", no_argument,      0,  'S' },
+        {"track-ids", no_argument,          0,  'T' },
+        {"no-escape", no_argument,          0,  'U' },
+        {"ignore-standalone", no_argument,  0,  'G' },
+        {0,           0,                    0,  0   }
     };
     
 start:
@@ -105,6 +106,9 @@ start:
             break;
         case 'U':
             compiler_flags |= handlebars_compiler_flag_no_escape;
+            break;
+        case 'G':
+            compiler_flags |= handlebars_compiler_flag_ignore_standalone;
             break;
         
         // input
@@ -225,6 +229,10 @@ static int do_parse(void)
     ctx = handlebars_context_ctor();
     ctx->tmpl = input_buf;
     
+    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
+        ctx->ignore_standalone = 1;
+    }
+    
     /*retval =*/ handlebars_yy_parse(ctx);
     
     if( ctx->error != NULL ) {
@@ -253,6 +261,10 @@ static int do_compile(void)
     ctx = handlebars_context_ctor();
     compiler = handlebars_compiler_ctor(ctx);
     printer = handlebars_opcode_printer_ctor(ctx);
+    
+    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
+        ctx->ignore_standalone = 1;
+    }
     
     handlebars_compiler_set_flags(compiler, compiler_flags);
     
