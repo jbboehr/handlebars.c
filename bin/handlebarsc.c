@@ -50,21 +50,22 @@ static void readOpts(int argc, char * argv[])
     
     static struct option long_options[] = {
         // modes
-        {"help",      no_argument,          0,  'h' },
-        {"lex",       no_argument,          0,  'l' },
-        {"parse",     no_argument,          0,  'p' },
-        {"compile",   no_argument,          0,  'c' },
-        {"version",   no_argument,          0,  'V' },
+        {"help",      no_argument,              0,  'h' },
+        {"lex",       no_argument,              0,  'l' },
+        {"parse",     no_argument,              0,  'p' },
+        {"compile",   no_argument,              0,  'c' },
+        {"version",   no_argument,              0,  'V' },
         // input
-        {"template",  required_argument,    0,  't' },
+        {"template",  required_argument,        0,  't' },
         // compiler flags
-        {"compat",    no_argument,          0,  'C' },
-        {"known-helpers-only", no_argument, 0,  'K' },
-        {"string-params", no_argument,      0,  'S' },
-        {"track-ids", no_argument,          0,  'T' },
-        {"no-escape", no_argument,          0,  'U' },
-        {"ignore-standalone", no_argument,  0,  'G' },
-        {0,           0,                    0,  0   }
+        {"compat",    no_argument,              0,  'C' },
+        {"known-helpers-only", no_argument,     0,  'K' },
+        {"string-params", no_argument,          0,  'S' },
+        {"track-ids", no_argument,              0,  'T' },
+        {"no-escape", no_argument,              0,  'U' },
+        {"ignore-standalone", no_argument,      0,  'G' },
+        {"alternate-decorators", no_argument,   0,  'A' },
+        {0,           0,                        0,  0   }
     };
     
 start:
@@ -109,6 +110,9 @@ start:
             break;
         case 'G':
             compiler_flags |= handlebars_compiler_flag_ignore_standalone;
+            break;
+        case 'A':
+            compiler_flags |= handlebars_compiler_flag_alternate_decorators;
             break;
         
         // input

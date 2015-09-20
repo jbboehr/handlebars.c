@@ -117,6 +117,7 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, int fl
     compiler->use_data = 1 && (compiler->flags & handlebars_compiler_flag_use_data);
     compiler->explicit_partial_context = 1 && (compiler->flags & handlebars_compiler_flag_explicit_partial_context);
     compiler->ignore_standalone = 1 && (compiler->flags & handlebars_compiler_flag_ignore_standalone);
+    compiler->alternate_decorators = 1 && (compiler->flags & handlebars_compiler_flag_alternate_decorators);
 }
 
 
@@ -795,6 +796,40 @@ static inline void handlebars_compiler_accept_content(
     }
 }
 
+static inline void handlebars_compiler_accept_decorator(
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * mustache)
+{
+    struct handlebars_ast_node * path = mustache->node.mustache.path;
+    struct handlebars_ast_node * params;
+    const char * original;
+    struct handlebars_compiler * origcompiler;
+    struct handlebars_compiler * subcompiler;
+    
+    if( compiler->alternate_decorators ) {
+        // Realloc decorators array
+        if( compiler->decorators_size <= compiler->decorators_length ) {
+            compiler->decorators = handlebars_talloc_realloc(compiler, compiler->decorators,
+                        struct handlebars_compiler *, compiler->decorators_size + 8);
+            __MEMCHECK(compiler->decorators);
+            compiler->decorators_size += 8;
+        }
+
+        origcompiler = compiler;
+        subcompiler = handlebars_compiler_ctor(compiler);
+        compiler->decorators[compiler->decorators_length++] = subcompiler;
+        compiler = subcompiler;
+        
+        origcompiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
+    } else {
+        compiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
+    }
+    
+	original = handlebars_ast_node_get_string_mode_value(path);
+	params = handlebars_compiler_setup_full_mustache_params(
+                compiler, mustache, -1, -1, 0);
+    __OPLS(register_decorator, handlebars_ast_list_count(params), original);
+}
+
 static inline void handlebars_compiler_accept_mustache(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * mustache)
 {
@@ -805,14 +840,7 @@ static inline void handlebars_compiler_accept_mustache(
     
     if( mustache->node.mustache.is_decorator ) {
         // Decorator
-        struct handlebars_ast_node * path = mustache->node.mustache.path;
-        struct handlebars_ast_node * params;
-        const char * original;
-    	original = handlebars_ast_node_get_string_mode_value(path);
-    	params = handlebars_compiler_setup_full_mustache_params(
-                    compiler, mustache, -1, -1, 0);
-        compiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
-        __OPLS(register_decorator, handlebars_ast_list_count(params), original);
+        handlebars_compiler_accept_decorator(compiler, mustache);
     } else {
     	// Normal
         handlebars_compiler_accept_sexpr(compiler, mustache);

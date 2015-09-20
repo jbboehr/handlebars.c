@@ -70,6 +70,8 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_explicit_partial_context = (1 << 7),
     
     handlebars_compiler_flag_ignore_standalone = (1 << 8),
+    
+    handlebars_compiler_flag_alternate_decorators = (1 << 9),
 
     // Composite option flags
 
@@ -81,7 +83,7 @@ enum handlebars_compiler_flag {
     /**
      * @brief All flags
      */
-    handlebars_compiler_flag_all = ((1 << 9) - 1)
+    handlebars_compiler_flag_all = ((1 << 10) - 1)
 };
 
 enum handlebars_compiler_result_flag {
@@ -169,6 +171,10 @@ struct handlebars_compiler {
     size_t children_length;
     size_t children_size;
     
+    struct handlebars_compiler ** decorators;
+    size_t decorators_length;
+    size_t decorators_size;
+    
     struct handlebars_block_param_stack * bps;
     struct handlebars_source_node_stack sns;
     
@@ -197,6 +203,7 @@ struct handlebars_compiler {
     short use_data;
     short explicit_partial_context;
     short ignore_standalone;
+    short alternate_decorators;
     
     /**
      * @brief Result flags

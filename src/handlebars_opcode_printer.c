@@ -150,13 +150,19 @@ void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer,
     printer->opcodes_length = compiler->opcodes_length;
     handlebars_opcode_printer_array_print(printer);
     
-    // Print children
     printer->indent++;
     
+    // Print decorators
+    for( i = 0; i < compiler->decorators_length; i++ ) {
+        printer->output = handlebars_talloc_asprintf_append(printer->output, "%sDECORATOR\n", indentbuf);
+        struct handlebars_compiler * child = *(compiler->decorators + i);
+        handlebars_opcode_printer_print(printer, child);
+    }
+    
+    // Print children
     for( i = 0; i < compiler->children_length; i++ ) {
         struct handlebars_compiler * child = *(compiler->children + i);
         handlebars_opcode_printer_print(printer, child);
-        
     }
     
     printer->indent--;
