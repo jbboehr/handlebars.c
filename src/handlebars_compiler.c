@@ -79,6 +79,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(void * ctx)
     
     if( likely(compiler != NULL) ) {
         compiler->known_helpers = handlebars_builtins;
+        compiler->bps = handlebars_talloc_zero(compiler, struct handlebars_block_param_stack);
     }
     
     return compiler;
@@ -1255,8 +1256,5 @@ static void handlebars_compiler_accept(
 void handlebars_compiler_compile(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
-    if( NULL == compiler->bps ) {
-        compiler->bps = handlebars_talloc_zero(compiler, struct handlebars_block_param_stack);
-    }
     handlebars_compiler_accept(compiler, node);
 }
