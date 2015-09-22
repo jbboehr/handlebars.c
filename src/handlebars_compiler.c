@@ -61,6 +61,9 @@ static inline void handlebars_compiler_accept_hash(
 static inline short handlebars_compiler_block_param_index(
         struct handlebars_compiler * compiler, const char * name, 
         int * depth, int * param);
+static inline void handlebars_compiler_accept_decorator(
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * ast_node,
+        int programGuid, int inverseGuid);
 
 
 
@@ -582,11 +585,12 @@ static inline void handlebars_compiler_accept_block(
     
     if( block->node.block.is_decorator ) {
         // Decorator
-    	original = handlebars_ast_node_get_string_mode_value(path);
+    	handlebars_compiler_accept_decorator(compiler, block, programGuid, inverseGuid);
+    	/* original = handlebars_ast_node_get_string_mode_value(path);
     	params = handlebars_compiler_setup_full_mustache_params(
                     compiler, block, programGuid, inverseGuid, 0);
         compiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
-        __OPLS(register_decorator, handlebars_ast_list_count(params), original);
+        __OPLS(register_decorator, handlebars_ast_list_count(params), original); */
     } else {
 		// Normal
 		if( inverse != NULL ) {
@@ -798,9 +802,10 @@ static inline void handlebars_compiler_accept_content(
 }
 
 static inline void handlebars_compiler_accept_decorator(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * mustache)
+        struct handlebars_compiler * compiler, struct handlebars_ast_node * ast_node,
+        int programGuid, int inverseGuid)
 {
-    struct handlebars_ast_node * path = mustache->node.mustache.path;
+    struct handlebars_ast_node * path = handlebars_ast_node_get_path(ast_node);
     struct handlebars_ast_node * params;
     const char * original;
     struct handlebars_compiler * origcompiler;
@@ -827,7 +832,7 @@ static inline void handlebars_compiler_accept_decorator(
     
 	original = handlebars_ast_node_get_string_mode_value(path);
 	params = handlebars_compiler_setup_full_mustache_params(
-                compiler, mustache, -1, -1, 0);
+                compiler, ast_node, programGuid, inverseGuid, 0);
     __OPLS(register_decorator, handlebars_ast_list_count(params), original);
 }
 
@@ -841,7 +846,7 @@ static inline void handlebars_compiler_accept_mustache(
     
     if( mustache->node.mustache.is_decorator ) {
         // Decorator
-        handlebars_compiler_accept_decorator(compiler, mustache);
+        handlebars_compiler_accept_decorator(compiler, mustache, -1, -1);
     } else {
     	// Normal
         handlebars_compiler_accept_sexpr(compiler, mustache);
