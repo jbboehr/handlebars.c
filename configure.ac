@@ -1,13 +1,13 @@
 
 # Define the package version numbers
 m4_define([HANDLEBARS_MAJOR], 0)
-m4_define([HANDLEBARS_MINOR], 3)
-m4_define([HANDLEBARS_PATCH], 2)
+m4_define([HANDLEBARS_MINOR], 4)
+m4_define([HANDLEBARS_PATCH], 0)
 
 # Define the libtool version numbers; check the Autobook, Section 11.4.
 # m4_define([HANDLEBARS_RELEASE], 0)
-m4_define([HANDLEBARS_CURRENT], 2)
-m4_define([HANDLEBARS_REVISION], 1)
+m4_define([HANDLEBARS_CURRENT], 3)
+m4_define([HANDLEBARS_REVISION], 0)
 m4_define([HANDLEBARS_AGE], 0)
 
 # Initialize autoconf & automake.

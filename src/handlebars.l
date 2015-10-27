@@ -168,16 +168,33 @@ BLOCKPARAM [\x7C]
                                    		yy_pop_state(yyg);
                                  	}
 
-<raw>"{{{{/"{IDC}+"}}}}" 			{
-										// v2.0.0 handlebars.l line 52
-										yytext += 5, yyleng -= 9;
-                                  		yy_pop_state(yyg);
+<raw>"{{{{"/[^/]                    {
+                                  		yy_push_state(raw, yyscanner);
 										handlebars_yy_copy_lval();
-                                  		return END_RAW_BLOCK;
+                                  		return CONTENT;
                                  	}
 
-<raw>[^\x00]+/("{{{{/")         	{
+<raw>"{{{{/"{IDC}+"}}}}" 			{
+										// v4.0.2 handlebars.l line 54
+										
+										yy_pop_state(yyg);
+										if( yyg->yy_start_stack_ptr > 0 && YY_START == raw ) {
+											handlebars_yy_copy_lval();
+											return CONTENT;
+										} else {
+											yytext += 5, yyleng -= 9;
+											handlebars_yy_copy_lval();
+	                                  		return END_RAW_BLOCK;
+										}
+                                 	}
+
+<raw>[^\x00{]+         	            {
 										// v2.0.0 handlebars.l line 57
+										handlebars_yy_copy_lval();
+										return CONTENT;
+									}
+									
+<raw>"{"         	                {
 										handlebars_yy_copy_lval();
 										return CONTENT;
 									}
@@ -246,7 +263,13 @@ BLOCKPARAM [\x7C]
 										return OPEN_PARTIAL;
                              		}
 
-<mu>"{{"{LEFT_STRIP}?"#"         	{
+<mu>"{{"{LEFT_STRIP}?"#>"         	{
+										// v4.0.2 handlebars.l line 83
+										handlebars_yy_copy_lval();
+										return OPEN_PARTIAL_BLOCK;
+                             		}
+
+<mu>"{{"{LEFT_STRIP}?"#""*"?        {
 										// v2.0.0 handlebars.l line 71
 										handlebars_yy_copy_lval();
 										return OPEN_BLOCK;
@@ -310,7 +333,7 @@ BLOCKPARAM [\x7C]
   										yy_push_state(com1, yyscanner);
 									}
 
-<mu>"{{"{LEFT_STRIP}?            	{
+<mu>"{{"{LEFT_STRIP}?"*"?           {
 										// v2.0.0 handlebars.l line 81
 										handlebars_yy_copy_lval();
 										return OPEN;

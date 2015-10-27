@@ -216,6 +216,9 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
         
         // Added in v3
         _RTYPE_CASE(lookup_block_param, lookupBlockParam);
+
+        // Added in v4
+        _RTYPE_CASE(register_decorator, registerDecorator);
     }
     
     return "invalid";
@@ -275,6 +278,7 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
             break;
         case 'r':
             _RTYPE_REV_CMP(resolve_possible_lambda, resolvePossibleLambda);
+            _RTYPE_REV_CMP(register_decorator, registerDecorator);
             break;
     }
     
@@ -313,14 +317,20 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
         case handlebars_opcode_type_invoke_ambiguous:
         case handlebars_opcode_type_invoke_known_helper:
         case handlebars_opcode_type_lookup_block_param:
-        case handlebars_opcode_type_lookup_data:
+        // Added in v4
+        case handlebars_opcode_type_register_decorator:
             return 2;
             
         case handlebars_opcode_type_invoke_helper:
-        case handlebars_opcode_type_lookup_on_context:
         // In v3 invoke_partial and push_id were changed from two to two or three
         case handlebars_opcode_type_invoke_partial:
         case handlebars_opcode_type_push_id:
+        // In v4 lookup_data was changed from 2 to 3 operands
+        case handlebars_opcode_type_lookup_data:
             return 3;
+
+        // In v4 lookup_on_context was changed from 3 to 4 operands
+        case handlebars_opcode_type_lookup_on_context:
+            return 4;
     }
 }

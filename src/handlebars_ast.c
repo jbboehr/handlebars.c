@@ -168,6 +168,8 @@ struct handlebars_ast_node * handlebars_ast_node_get_path(struct handlebars_ast_
             return node->node.mustache.path;
         case HANDLEBARS_AST_NODE_PARTIAL:
             return node->node.partial.name;
+        case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
+            return node->node.partial_block.path;
         case HANDLEBARS_AST_NODE_SEXPR:
             return node->node.sexpr.path;
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
@@ -188,6 +190,8 @@ struct handlebars_ast_list * handlebars_ast_node_get_params(struct handlebars_as
             return node->node.mustache.params;
         case HANDLEBARS_AST_NODE_PARTIAL:
             return node->node.partial.params;
+        case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
+            return node->node.partial_block.params;
         case HANDLEBARS_AST_NODE_SEXPR:
             return node->node.sexpr.params;
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
@@ -208,6 +212,8 @@ struct handlebars_ast_node * handlebars_ast_node_get_hash(struct handlebars_ast_
             return node->node.mustache.hash;
         case HANDLEBARS_AST_NODE_PARTIAL:
             return node->node.partial.hash;
+        case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
+            return node->node.partial_block.hash;
         case HANDLEBARS_AST_NODE_SEXPR:
             return node->node.sexpr.hash;
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
@@ -236,6 +242,7 @@ const char * handlebars_ast_node_readable_type(int type)
     _RTYPE_CASE(MUSTACHE, mustache);
     _RTYPE_CASE(NUMBER, NumberLiteral);
     _RTYPE_CASE(PARTIAL, partial);
+    _RTYPE_CASE(PARTIAL_BLOCK, PartialBlockStatement);
     _RTYPE_CASE(PATH, PathExpression);
     _RTYPE_CASE(PATH_SEGMENT, PATH_SEGMENT);
     _RTYPE_CASE(PROGRAM, program);
@@ -578,6 +585,76 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
     }
 error:
       return ast_node;
+}
+
+struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
+    struct handlebars_context * context, struct handlebars_ast_node * open,
+    struct handlebars_ast_node * program, struct handlebars_ast_node * close,
+    struct handlebars_locinfo * yylloc)
+{
+
+    struct handlebars_ast_node * ast_node;
+    TALLOC_CTX * ctx;
+
+    // Initialize temporary talloc context
+    ctx = talloc_new(context);
+    if( unlikely(ctx == NULL) ) {
+        return NULL;
+    }
+
+    // Construct the ast node
+    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_BLOCK, ctx);
+    __MEMCHECK(ast_node);
+
+    ast_node->loc = *yylloc;
+
+    // Assign the content
+    if( open ) {
+        if( open->node.intermediate.path ) {
+            ast_node->node.block.path = talloc_steal(ast_node, open->node.intermediate.path);
+        }
+        if( open->node.intermediate.params ) {
+            ast_node->node.block.params = talloc_steal(ast_node, open->node.intermediate.params);
+        }
+        if( open->node.intermediate.hash ) {
+            ast_node->node.block.hash = talloc_steal(ast_node, open->node.intermediate.hash);
+        }
+
+        // We can free the intermediate
+        // @todo it seems to not be safe to free it... used in prepare_block
+        //handlebars_talloc_free(intermediate);
+        talloc_steal(ast_node, open);
+    }
+    if( program ) {
+        ast_node->node.block.program = talloc_steal(ast_node, program);
+    }
+    ast_node->node.block.open_strip = open->strip;
+    ast_node->node.block.close_strip = close->strip;
+
+    // Steal the node so it won't be freed below
+    talloc_steal(context, ast_node);
+
+error:
+    handlebars_talloc_free(ctx);
+    return ast_node;
+
+	/*
+    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_BLOCK, context);
+    __MEMCHECK(ast_node);
+    ast_node->loc = *yylloc;
+    ast_node->strip = strip;
+    if( open->node.intermediate.path ) {
+        ast_node->node.partial_block.path = talloc_steal(ast_node, open->node.intermediate.path);
+    }
+    if( open->node.intermediate.params ) {
+        ast_node->node.partial_block.params = talloc_steal(ast_node, open->node.intermediate.params);
+    }
+    if( open->node.intermediate.hash ) {
+        ast_node->node.partial_block.hash = talloc_steal(ast_node, open->node.intermediate.hash);
+    }
+error:
+      return ast_node;
+    */
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_program(

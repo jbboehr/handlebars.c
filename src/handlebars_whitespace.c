@@ -173,6 +173,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_contex
     struct handlebars_ast_list * statements = program->node.program.statements;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
+    short do_standalone = 1; //!context->ignore_standalone;
     
     context->whitespace_root_seen = 1;
     
@@ -201,7 +202,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_contex
         if( current->strip & handlebars_ast_strip_flag_left ) {
             handlebars_whitespace_omit_left(statements, current, 1);
         }
-        if( inline_standalone ) {
+        if( do_standalone && inline_standalone ) {
             handlebars_whitespace_omit_right(statements, current, 0);
             if( handlebars_whitespace_omit_left(statements, current, 0) ) {
                 struct handlebars_ast_node * prev = item->prev ? item->prev->data : NULL;
@@ -225,7 +226,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_contex
                 }
             }
         }
-        if( open_standalone ) {
+        if( do_standalone && open_standalone ) {
             if( current->type == HANDLEBARS_AST_NODE_BLOCK ) {
                 if( current->node.block.program ) {
                     assert(current->node.block.program->type == HANDLEBARS_AST_NODE_PROGRAM);
@@ -237,7 +238,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_contex
             }
             handlebars_whitespace_omit_left(statements, current, 0);
         }
-        if( close_standalone ) {
+        if( do_standalone && close_standalone ) {
             handlebars_whitespace_omit_right(statements, current, 0);
             if( current->type == HANDLEBARS_AST_NODE_BLOCK ) {
                 if( current->node.block.inverse ) {
@@ -285,6 +286,7 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_context 
     struct handlebars_ast_node * firstInverse;
     struct handlebars_ast_node * lastInverse;
     unsigned strip = 0;
+    short do_standalone = 1; //!context->ignore_standalone;
     
     handlebars_whitespace_accept(context, block->node.block.program);
     handlebars_whitespace_accept(context, block->node.block.inverse);
@@ -334,7 +336,7 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_context 
         }
 
         // Find standalone else statments
-        if( program && firstInverse &&
+        if( do_standalone && program && firstInverse &&
                 handlebars_whitespace_is_prev_whitespace(program->node.program.statements, NULL, 0) &&
                 handlebars_whitespace_is_next_whitespace(firstInverse->node.program.statements, NULL, 0) ) {
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 0);

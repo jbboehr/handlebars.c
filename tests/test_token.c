@@ -157,6 +157,9 @@ START_TEST(test_token_readable_type)
 	_RTYPE_TEST(OPEN_INVERSE_CHAIN);
 	_RTYPE_TEST(UNDEFINED);
 	ck_assert_str_eq("NULL", handlebars_token_readable_type(NUL));
+
+	// Added in v4
+	_RTYPE_TEST(OPEN_PARTIAL_BLOCK);
 }
 END_TEST
 
@@ -204,6 +207,9 @@ START_TEST(test_token_reverse_readable_type)
 	_RTYPE_REV_TEST(OPEN_INVERSE_CHAIN);
 	_RTYPE_REV_TEST(UNDEFINED);
 	ck_assert_int_eq(NUL, handlebars_token_reverse_readable_type("NULL"));
+
+	// Added in v4
+	_RTYPE_REV_TEST(OPEN_PARTIAL_BLOCK);
 }
 END_TEST
 	

@@ -63,7 +63,10 @@ enum handlebars_opcode_type {
     handlebars_opcode_type_lookup_data = 24,
     
     // Added in v3
-    handlebars_opcode_type_lookup_block_param = 25
+    handlebars_opcode_type_lookup_block_param = 25,
+
+    // Added in v4
+    handlebars_opcode_type_register_decorator = 26
 };
 
 /**
@@ -94,6 +97,7 @@ struct handlebars_opcode {
     struct handlebars_operand op1;
     struct handlebars_operand op2;
     struct handlebars_operand op3;
+    struct handlebars_operand op4;
     struct handlebars_locinfo loc;
 };
 

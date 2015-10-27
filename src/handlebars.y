@@ -125,6 +125,9 @@ int handlebars_yy_debug = 0;
 %token <text> OPEN_INVERSE_CHAIN
 %token <text> UNDEFINED "undefined"
 
+// Added in v4
+%token <text> OPEN_PARTIAL_BLOCK "{{#>"
+
 %type <ast_node> program
 %type <ast_list> statements
 %type <ast_node> statement
@@ -159,6 +162,10 @@ int handlebars_yy_debug = 0;
 %type <ast_node> intermediate3
 %type <ast_node> intermediate4
 %type <block_intermediate> block_intermediate;
+
+// Added in v4
+%type <ast_node> partial_block
+%type <ast_node> open_partial_block
 
 %right CONTENT
 
@@ -210,6 +217,9 @@ statement
   | partial {
       $$ = $1;
     }
+  | partial_block {
+      $$ = $1;
+    }
   | content {
       $$ = handlebars_ast_node_ctor_content(context, $1, &@$);
       __MEMCHECK($$);
@@ -227,6 +237,8 @@ statement
 content
   : CONTENT content {
       $$ = handlebars_talloc_strdup_append($1, $2);
+      __MEMCHECK($$);
+      $$ = talloc_steal(context, $$);
       __MEMCHECK($$);
     }
   | CONTENT {
@@ -285,6 +297,7 @@ open_block
   : OPEN_BLOCK intermediate4 CLOSE {
       $$ = $2;
       $$->strip = handlebars_ast_helper_strip_flags($1, $3);
+      $$->node.intermediate.open = handlebars_talloc_strdup($$, $1);
     }
   ;
 
@@ -379,6 +392,41 @@ partial
     }
   | OPEN_PARTIAL partial_name CLOSE {
       $$ = handlebars_ast_node_ctor_partial(context, $2, NULL, NULL,
+              handlebars_ast_helper_strip_flags($1, $3), &@$);
+      __MEMCHECK($$);
+    }
+  ;
+
+partial_block
+  : open_partial_block program close_block {
+      $$ = handlebars_ast_helper_prepare_partial_block(context, $1, $2, $3, &@$);
+      __MEMCHECK($$);
+  }
+  | open_partial_block close_block {
+      struct handlebars_ast_node * program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+      __MEMCHECK(program);
+      $$ = handlebars_ast_helper_prepare_partial_block(context, $1, program, $2, &@$);
+      __MEMCHECK($$);
+  }
+
+open_partial_block
+  : OPEN_PARTIAL_BLOCK partial_name params hash CLOSE {
+      $$ = handlebars_ast_node_ctor_intermediate(context, $2, $3, $4,
+      			handlebars_ast_helper_strip_flags($1, $5), &@$);
+      __MEMCHECK($$);
+    }
+  | OPEN_PARTIAL_BLOCK partial_name params CLOSE {
+      $$ = handlebars_ast_node_ctor_intermediate(context, $2, $3, NULL,
+      			handlebars_ast_helper_strip_flags($1, $4), &@$);
+      __MEMCHECK($$);
+    }
+  | OPEN_PARTIAL_BLOCK partial_name hash CLOSE {
+      $$ = handlebars_ast_node_ctor_intermediate(context, $2, NULL, $3,
+              handlebars_ast_helper_strip_flags($1, $4), &@$);
+      __MEMCHECK($$);
+    }
+  | OPEN_PARTIAL_BLOCK partial_name CLOSE {
+      $$ = handlebars_ast_node_ctor_intermediate(context, $2, NULL, NULL,
               handlebars_ast_helper_strip_flags($1, $3), &@$);
       __MEMCHECK($$);
     }

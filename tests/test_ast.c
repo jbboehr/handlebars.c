@@ -93,6 +93,7 @@ START_TEST(test_ast_node_readable_type)
     _RTYPE_TEST(MUSTACHE, mustache);
     _RTYPE_TEST(NUMBER, NumberLiteral);
     _RTYPE_TEST(PARTIAL, partial);
+    _RTYPE_TEST(PARTIAL_BLOCK, PartialBlockStatement);
     _RTYPE_TEST(PATH, PathExpression);
     _RTYPE_TEST(PATH_SEGMENT, PATH_SEGMENT);
 	_RTYPE_TEST(PROGRAM, program);

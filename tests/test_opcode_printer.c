@@ -139,6 +139,25 @@ START_TEST(test_opcode_print_3)
 }
 END_TEST
 
+START_TEST(test_opcode_print_4)
+{
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_lookup_on_context);
+    char * str;
+    char * expected = "lookupOnContext[LONG:123][STRING:baz][LONG:456][STRING:bat]";
+
+    handlebars_operand_set_longval(&opcode->op1, 123);
+    handlebars_operand_set_stringval(opcode, &opcode->op2, "baz");
+    handlebars_operand_set_longval(&opcode->op3, 456);
+    handlebars_operand_set_stringval(opcode, &opcode->op4, "bat");
+    str = handlebars_opcode_print(ctx, opcode);
+
+    ck_assert_str_eq(expected, str);
+
+    handlebars_talloc_free(opcode);
+    handlebars_talloc_free(str);
+}
+END_TEST
+
 
 Suite * parser_suite(void)
 {
@@ -152,6 +171,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_opcode_print_1, "Opcode Print (1)");
     REGISTER_TEST_FIXTURE(s, test_opcode_print_2, "Opcode Print (2)");
     REGISTER_TEST_FIXTURE(s, test_opcode_print_3, "Opcode Print (3)");
+    REGISTER_TEST_FIXTURE(s, test_opcode_print_4, "Opcode Print (4)");
 	
     return s;
 }
