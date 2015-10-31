@@ -455,12 +455,13 @@ BLOCKPARAM [\x7C]
 										return ID;
 									}
 
-<mu>"["[^\]]*"]"                	{
-										// v2.0.0 handlebars.l line 99
+<mu>"["("\\]"|[^\]])*"]"            {
+										// v4.0.3 handlebars.l line 123
 										// yytext = strip(1,2);
 										//yytext[--yyleng] = 0;
 										//yytext++, yyleng--;
 										handlebars_yy_copy_lval();
+										handlebars_str_reduce(yylval->text, "\\]", "]");
 										return ID;
 									}
 

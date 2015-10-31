@@ -74,6 +74,16 @@ char * handlebars_rtrim_ex(char * str, size_t * str_length, const char * what, s
 char * handlebars_stripcslashes_ex(char * str, size_t * length);
 
 /**
+ * @brief Performs a string replace in-place (replacement must not be longer than search)
+ * 
+ * @param[in] string The input string
+ * @param[in] substr The search string
+ * @param[in] replacement The replacement string
+ * @return The original pointer, transformed
+ */
+char * handlebars_str_reduce(char * string, const char * substr, const char * replacement);
+
+/**
  * @brief Handle an error in the parser. Prints message to stderr
  * 
  * @param[in] lloc The parser location info
