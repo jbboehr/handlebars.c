@@ -184,6 +184,35 @@ START_TEST(test_stripcslashes)
 }
 END_TEST
 
+START_TEST(test_handlebars_str_reduce)
+{
+    char * input = handlebars_talloc_strdup(ctx, "abcdef");
+    const char * search = "bcd";
+    const char * replace = "qq";
+    const char * expected = "aqqef";
+    input = handlebars_str_reduce(input, search, replace);
+    ck_assert_str_eq(expected, input);
+    handlebars_talloc_free(input);
+}
+{
+    char * input = handlebars_talloc_strdup(ctx, "");
+    const char * search = "a";
+    const char * replace = "";
+    const char * expected = "";
+    input = handlebars_str_reduce(input, search, replace);
+    ck_assert_str_eq(expected, input);
+    handlebars_talloc_free(input);
+}
+/*{
+    char * input = handlebars_talloc_strdup(ctx, "");
+    const char * search = "asd";
+    const char * replace = "asdasd";
+    input = handlebars_str_reduce(input, search, replace);
+    ck_assert_ptr_eq(NULL, input);
+    handlebars_talloc_free(input);
+}*/
+END_TEST
+
 START_TEST(test_yy_error)
 {
     struct handlebars_context * context = handlebars_context_ctor();
@@ -284,6 +313,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_ltrim, "ltrim");
     REGISTER_TEST_FIXTURE(s, test_rtrim, "rtrim");
     REGISTER_TEST_FIXTURE(s, test_stripcslashes, "stripcslashes");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_str_reduce, "str_reduce");
     REGISTER_TEST_FIXTURE(s, test_yy_error, "yy_error");
     REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
     REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");

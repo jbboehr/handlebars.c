@@ -225,6 +225,35 @@ char * handlebars_stripcslashes_ex(char * str, size_t * length)
     return str;
 }
 
+char * handlebars_str_reduce(char * string, const char * substr, const char * replacement) {
+    char * tok;
+	char * orig = string;
+	int replacement_len = strlen(replacement);
+	int substr_len = strlen(substr);
+	int string_len = strlen(string);
+	
+	assert(replacement_len <= substr_len);
+	assert(substr_len > 0);
+	
+	if( replacement_len > substr_len ) {
+	    return NULL;
+	} else if( substr_len <= 0 || string_len <= 0 ) {
+	    return string;
+	}
+	
+	tok = string;
+	int counter = 0;
+	while( (tok = strstr(tok, substr)) ) {
+	    assert(++counter < 1000);
+	//while( (tok = strstr(string, substr)) ) {
+		memcpy(tok, replacement, replacement_len);
+		memcpy(tok + replacement_len, tok + substr_len, string_len - substr_len - (tok - string));
+		memset(string + string_len - substr_len + replacement_len, 0, 1);
+	}
+	
+	return orig;
+}
+
 
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_context * context)
 {
