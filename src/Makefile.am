@@ -51,14 +51,14 @@ include_HEADERS = \
 
 GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c
 CLEANFILES = $(GENSOURCE)
+BUILT_SOURCES = $(GENSOURCE)
 
 lib_LTLIBRARIES=libhandlebars.la
 
 libhandlebars_la_SOURCES = \
+	$(GENSOURCE) \
 	handlebars_memory.h \
 	handlebars_memory.c \
-	\
-	$(GENSOURCE) \
 	handlebars.h \
 	handlebars.c \
 	handlebars_ast.h \
