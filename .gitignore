@@ -60,10 +60,9 @@ stamp-h1
 *.tar
 *.zip
 
-# eclipse
+# ide
 .cproject
 .project
 .settings
-
-# cloud9
 .c9
+.idea
