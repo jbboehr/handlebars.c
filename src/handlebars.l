@@ -199,7 +199,7 @@ BLOCKPARAM [\x7C]
 										return CONTENT;
 									}
 
-<com>[^\x00]+"--"{RIGHT_STRIP}?"}}"	{
+<com>"{{"{LEFT_STRIP}?"!--"([-]?[^-])*"--"{RIGHT_STRIP}?"}}" {
 										// v3.0.3 handlebars.l line 59
   										yy_pop_state(yyg);
   										//yytext[yyleng -= 4] = 0;
@@ -208,23 +208,7 @@ BLOCKPARAM [\x7C]
   										return COMMENT;
 									}
 
-<com>[^\x00\}\-]+ 					{
-										// v2.0.0 handlebars.l line 59
-									}
-
-<com>"--}}"							{
-										// v2.0.0 handlebars.l line 59
-  										yy_pop_state(yyg);
-										handlebars_yy_copy_lval();
-  										return COMMENT;
-									}
-									
-<com>[\}\-]+						{
-										// v2.0.0 handlebars.l line 59
-										handlebars_yy_copy_lval();
-									}
-
-<com1>[^\x00\}]*?"}}"				{
+<com1>([}]?[^}])*"}}"				{
   										//yytext[yyleng -= 2] = 0;
   										yy_pop_state(yyg);
 										handlebars_yy_copy_lval();
