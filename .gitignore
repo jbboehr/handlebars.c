@@ -4,6 +4,7 @@
 #!*.*
 
 # specific
+coverage.info
 doc/Doxyfile
 doc/html
 doc/man
@@ -60,10 +61,9 @@ stamp-h1
 *.tar
 *.zip
 
-# eclipse
+# IDEs
 .cproject
+.idea
 .project
 .settings
-
-# cloud9
 .c9

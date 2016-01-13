@@ -1,6 +1,8 @@
 # handlebars.c
 
 [![Build Status](https://travis-ci.org/jbboehr/handlebars.c.svg?branch=master)](https://travis-ci.org/jbboehr/handlebars.c)
+[![Coverage Status](https://coveralls.io/repos/jbboehr/handlebars.c/badge.svg?branch=master&service=github)](https://coveralls.io/github/jbboehr/handlebars.c?branch=master)
+[![License](https://img.shields.io/badge/license-LGPLv3-brightgreen.svg)](LICENSE.md)
 
 C implementation of the [handlebars.js](https://github.com/wycats/handlebars.js/)
 lexer, parser, and compiler. Use with [php-handlebars](https://github.com/jbboehr/php-handlebars) and [handlebars.php](https://github.com/jbboehr/handlebars.php).

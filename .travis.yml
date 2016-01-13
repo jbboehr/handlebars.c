@@ -6,7 +6,7 @@ compiler:
 branches:
   only:
     - master
-    - travis-fix
+    - travis
 
 sudo: false
 
@@ -26,14 +26,31 @@ cache:
   directories:
     - $HOME/build
 
+before_install:
+  - travis_retry gem install coveralls-lcov
+
 install:
   - ./.travis.sh
-  
-script:
   - export PATH="$HOME/build/bin:$PATH"
   - export CFLAGS="-L$HOME/build/lib"
   - export CPPFLAGS="-I$HOME/build/include"
   - export PKG_CONFIG_PATH="$HOME/build/lib/pkgconfig"
   - ./bootstrap
-  - ./configure --prefix=$HOME/build
-  - make all check install
+  - ./configure --prefix=$HOME/build  CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
+  - make clean all
+
+before_script:
+  - lcov --directory . --zerocounters
+  - lcov --directory . --capture --compat-libtool --initial --output-file coverage.info
+
+script:
+  - make check install
+
+after_success:
+  - lcov --no-checksum --directory . --capture --compat-libtool --output-file coverage.info
+  - lcov --remove coverage.info "/usr*" --remove coverage.info "*/tests/*" --compat-libtool --output-file coverage.info
+  - coveralls-lcov coverage.info
+
+after_failure:
+  - for i in `find tests -name "*.log" 2>/dev/null`; do echo "-- START ${i}"; cat $i; echo "-- END"; done
+
