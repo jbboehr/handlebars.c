@@ -8,6 +8,7 @@ check_PROGRAMS = \
 	test_ast_list \
 	test_compiler \
 	test_context \
+	test_data \
 	test_opcode_printer \
 	test_opcodes \
 	test_scanners \
@@ -15,6 +16,7 @@ check_PROGRAMS = \
 	test_token_list \
 	test_token_printer \
 	test_utils \
+	test_vm \
 	test_spec_handlebars_parser \
 	test_spec_handlebars_tokenizer \
 	test_spec_handlebars_compiler \
