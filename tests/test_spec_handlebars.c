@@ -171,7 +171,7 @@ START_TEST(test_handlebars_spec)
     handlebars_compiler_compile(compiler, ctx->program);
     ck_assert_int_eq(0, compiler->errnum);
 
-    fprintf(stdout, "TMPL: %s\n", test->tmpl);
+    fprintf(stdout, "-----------\nTMPL: %s\n", test->tmpl);
 
     // Execute
     context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
@@ -179,6 +179,10 @@ START_TEST(test_handlebars_spec)
 
     ck_assert_ptr_ne(test->expected, NULL);
     ck_assert_ptr_ne(vm->buffer, NULL);
+
+    fprintf(stdout, "EXPECTED: %s\n", test->expected);
+    fprintf(stdout, "ACTUAL: %s\n", vm->buffer);
+    fprintf(stdout, "CMP: %d\n", strcmp(vm->buffer, test->expected));
 
     if( strcmp(vm->buffer, test->expected) != 0 ) {
         char * tmp = handlebars_talloc_asprintf(rootctx,

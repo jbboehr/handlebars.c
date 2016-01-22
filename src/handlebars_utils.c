@@ -77,6 +77,53 @@ char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char
     return new_str;
 }
 
+char * handlebars_htmlspecialchars(const char * str)
+{
+    const char * flags[256];
+    size_t newsize = 0;
+    const char * p;
+    char * newstr;
+    char * r;
+    size_t tmp;
+
+    // Build map
+    memset(flags, 0, sizeof(flags));
+    flags['&'] = "&amp;";
+    flags['"'] = "&quot;";
+    flags['\''] = "&#039;";
+    flags['<'] = "&lt;";
+    flags['>'] = "&gt;";
+
+    // Estimate new size
+    for( p = str; *p != NULL; p++ ) {
+        if( flags[*p] != NULL ) {
+            newsize += strlen(flags[*p]);
+        } else {
+            newsize++;
+        }
+    }
+
+    // Alloc new string
+    r = newstr = handlebars_talloc_array(NULL, char, newsize + 1);
+    memset(newstr, 0, newsize + 1);
+
+    // Copy
+    for( p = str; *p != NULL; p++ ) {
+        if( flags[*p] != NULL ) {
+            tmp = strlen(flags[*p]);
+            memcpy(r, flags[*p], tmp);
+            r += tmp;
+        } else {
+            *r = *p;
+            r++;
+        }
+    }
+
+    r = '\0';
+
+    return newstr;
+}
+
 char * handlebars_implode(const char * sep, const char ** arr)
 {
     const char ** ptr = arr;

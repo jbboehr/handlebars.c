@@ -3,6 +3,8 @@
 #include "config.h"
 #endif
 
+#include <assert.h>
+
 #if defined(HAVE_JSON_C_JSON_H)
 #include <json-c/json.h>
 #include <json-c/json_object.h>
@@ -14,6 +16,7 @@
 #endif
 
 #include "handlebars_memory.h"
+#include "handlebars_utils.h"
 
 #include "handlebars_data.h"
 
@@ -212,6 +215,57 @@ double handlebars_value_get_floatval(struct handlebars_value * value)
 	}
 
 	return 0;
+}
+
+
+
+
+
+char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape)
+{
+    char * ret;
+
+    switch( handlebars_value_get_type(value) ) {
+        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+            if( handlebars_value_get_boolval(value) ) {
+                ret = handlebars_talloc_strdup(ctx, "true");
+            } else {
+                ret = handlebars_talloc_strdup(ctx, "false");
+            }
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            ret = handlebars_talloc_asprintf(ctx, "%f", handlebars_value_get_floatval(value));
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            ret = handlebars_talloc_asprintf(ctx, "%ld", handlebars_value_get_intval(value));
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_NULL:
+            ret = handlebars_talloc_strdup(ctx, "");
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            ret = handlebars_talloc_strdup(ctx, handlebars_value_get_strval(value));
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+        case HANDLEBARS_VALUE_TYPE_MAP:
+        case HANDLEBARS_VALUE_TYPE_USER:
+            // assert(0);
+            //return NULL;
+            ret = handlebars_talloc_strdup(ctx, "");
+            break;
+    }
+
+    if( escape ) {
+        char * esc = handlebars_htmlspecialchars(ret);
+        handlebars_talloc_free(ret);
+        ret = esc;
+    }
+
+    return ret;
 }
 
 

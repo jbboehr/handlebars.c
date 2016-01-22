@@ -58,7 +58,9 @@ ACCEPT_FUNCTION(append) {
     struct handlebars_value * value = handlebars_stack_pop_type(vm->stack, struct handlebars_value);
 
     if( value ) {
-        frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, handlebars_value_get_strval(value));
+        char * tmp = handlebars_value_expression(vm, value, 0);
+        frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp);
+        handlebars_talloc_free(tmp);
     }
 }
 
@@ -67,8 +69,9 @@ ACCEPT_FUNCTION(append_escaped) {
     struct handlebars_value * value = handlebars_stack_pop_type(vm->stack, struct handlebars_value);
 
     if( value ) {
-        // @todo escape
-        frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, handlebars_value_get_strval(value));
+        char * tmp = handlebars_value_expression(vm, value, 1);
+        frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp);
+        handlebars_talloc_free(tmp);
     }
 }
 
@@ -93,6 +96,7 @@ ACCEPT_FUNCTION(get_context) {
     if( depth >= length ) {
         // error
         // @todo
+        vm->last_context = NULL;
         assert(0);
     } else if( depth == 0 ) {
         vm->last_context = handlebars_stack_top_type(vm->depths, struct handlebars_value);
@@ -170,6 +174,10 @@ ACCEPT_FUNCTION(push_literal) {
     struct literal * lit = handlebars_talloc(vm, struct literal);
     handlebars_stack_push(vm->stack, lit);
 }
+
+//ACCEPT_FUNCTION(resolve_possible_lambda) {
+//
+//}
 
 void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler * compiler)
 {
@@ -276,13 +284,15 @@ char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, str
 
 static void preprocess_opcode(struct handlebars_vm * vm, struct handlebars_opcode * opcode, struct handlebars_compiler * compiler)
 {
+    long program;
+    struct handlebars_compiler * child;
+
     if( opcode->type == handlebars_opcode_type_push_program ) {
         if( opcode->op1.type == handlebars_operand_type_long ) {
-            long program = opcode->op1.data.longval;
+            program = opcode->op1.data.longval;
             assert(program < compiler->children_length);
-            struct handlebars_compiler * child = compiler->children[program];
-            long guid = child->guid;
-            opcode->op1.data.longval = guid;
+            child = compiler->children[program];
+            opcode->op1.data.longval = child->guid;
         }
     }
 }

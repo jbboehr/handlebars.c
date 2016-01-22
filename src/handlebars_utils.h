@@ -37,6 +37,8 @@ union YYSTYPE;
  */
 char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char * what, size_t what_length);
 
+char * handlebars_htmlspecialchars(const char * str);
+
 char * handlebars_implode(const char * sep, const char ** arr);
 
 /**

@@ -76,6 +76,47 @@ START_TEST(test_addcslashes)
 }
 END_TEST
 
+START_TEST(test_htmlspecialchars)
+{
+    char * out = handlebars_htmlspecialchars("&");
+    talloc_steal(ctx, out);
+    ck_assert_str_eq("&amp;", out);
+    handlebars_talloc_free(out);
+}
+{
+    char * out = handlebars_htmlspecialchars("<");
+    talloc_steal(ctx, out);
+    ck_assert_str_eq("&lt;", out);
+    handlebars_talloc_free(out);
+}
+{
+    char * out = handlebars_htmlspecialchars(">");
+    talloc_steal(ctx, out);
+    ck_assert_str_eq("&gt;", out);
+    handlebars_talloc_free(out);
+}
+{
+    char * out = handlebars_htmlspecialchars("'");
+    talloc_steal(ctx, out);
+    ck_assert_str_eq("&#039;", out);
+    handlebars_talloc_free(out);
+}
+{
+    char * out = handlebars_htmlspecialchars("\"");
+    talloc_steal(ctx, out);
+    ck_assert_str_eq("&quot;", out);
+    handlebars_talloc_free(out);
+}
+{
+    const char * in = "a&b<c>d\'e\"f";
+    const char * exp = "a&amp;b&lt;c&gt;d&#039;e&quot;f";
+    char * out = handlebars_htmlspecialchars(in);
+    talloc_steal(ctx, out);
+    ck_assert_str_eq(exp, out);
+    handlebars_talloc_free(out);
+}
+END_TEST
+
 START_TEST(test_ltrim)
 {
     char * in = handlebars_talloc_strdup(ctx, " \n \r test ");
@@ -310,6 +351,7 @@ Suite * parser_suite(void)
     Suite * s = suite_create("Utils");
 
     REGISTER_TEST_FIXTURE(s, test_addcslashes, "addcslashes");
+    REGISTER_TEST_FIXTURE(s, test_htmlspecialchars, "htmlspecialchars");
     REGISTER_TEST_FIXTURE(s, test_ltrim, "ltrim");
     REGISTER_TEST_FIXTURE(s, test_rtrim, "rtrim");
     REGISTER_TEST_FIXTURE(s, test_stripcslashes, "stripcslashes");

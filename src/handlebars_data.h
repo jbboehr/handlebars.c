@@ -65,6 +65,9 @@ long handlebars_value_get_intval(struct handlebars_value * value);
 double handlebars_value_get_floatval(struct handlebars_value * value);
 
 
+char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape);
+
+
 
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void);
 
