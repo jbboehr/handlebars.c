@@ -83,6 +83,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_private.h \
 	handlebars_scanners.h \
 	handlebars_scanners.c \
+	handlebars_stack.h \
+	handlebars_stack.c \
 	handlebars_token.h \
 	handlebars_token.c \
 	handlebars_token_list.h \

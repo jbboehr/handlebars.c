@@ -6,16 +6,23 @@ struct handlebars_compiler;
 
 struct handlebars_vm_frame {
 	struct handlebars_value * context;
+	int program;
 	char * buffer;
+    struct handlebars_value * last_context;
 };
 
 struct handlebars_vm {
-	struct handlebars_compiler * opcodes;
+	//struct handlebars_compiler * opcodes;
+    struct handlebars_compiler ** programs;
+    size_t guid_index;
+
+    struct handlebars_value * last_context;
 	struct handlebars_value * context;
-	struct {
-		size_t s;
-		struct handlebars_vm_frame v[128];
-	} frameStack;
+	char * buffer;
+    struct handlebars_stack * frameStack;
+    struct handlebars_stack * depths;
+    struct handlebars_stack * stack;
+    struct handlebars_stack * hashStack;
 };
 
 struct handlebars_vm * handlebars_vm_ctor(void * ctx);

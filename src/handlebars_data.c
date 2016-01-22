@@ -225,7 +225,7 @@ struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct js
 {
 	struct handlebars_value * ret;
 
-	ret = handlebars_talloc(ctx, struct handlebars_value);
+	ret = handlebars_value_ctor(ctx);
 	if( ret ) {
 		ret->type = HANDLEBARS_VALUE_TYPE_USER;
 		ret->handlers = handlebars_value_get_std_json_handlers();
@@ -246,4 +246,9 @@ struct handlebars_value * handlebars_value_from_json_string(void *ctx, const cha
 		}
 	}
 	return ret;
+}
+
+struct handlebars_value * handlebars_value_ctor(void * ctx)
+{
+	return handlebars_talloc_zero(ctx, struct handlebars_value);
 }

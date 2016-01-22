@@ -70,5 +70,6 @@ struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void);
 
 struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json);
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
+struct handlebars_value * handlebars_value_ctor(void * ctx);
 
 #endif

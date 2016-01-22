@@ -17,7 +17,12 @@
 #include <json/json_tokener.h>
 #endif
 
+#include "handlebars_context.h"
+#include "handlebars_compiler.h"
 #include "handlebars_memory.h"
+#include "handlebars_vm.h"
+#include "handlebars.tab.h"
+#include "handlebars.lex.h"
 
 #include "utils.h"
 
@@ -25,8 +30,12 @@ struct generic_test {
     char * description;
     char * it;
     char * tmpl;
+    struct json_object * context;
     char * expected;
     TALLOC_CTX * mem_ctx;
+
+    char ** known_helpers;
+    long flags;
 };
 
 static TALLOC_CTX * rootctx;
@@ -65,6 +74,14 @@ static void loadSpecTest(json_object * object)
         test->expected = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
     } else {
         fprintf(stderr, "Warning: Expected was not a string\n");
+    }
+
+    // Get data
+    cur = json_object_object_get(object, "data");
+    if( cur ) {
+        test->context = cur;
+    } else {
+        fprintf(stderr, "Warning: Data was not set\n");
     }
 }
 
@@ -120,14 +137,59 @@ error:
         free(data);
     }
     if( result ) {
-        json_object_put(result);
+        // @todo free?
+        //json_object_put(result);
     }
     return error;
 }
 
 START_TEST(test_handlebars_spec)
 {
-	//ck_assert(0);
+    struct generic_test * test = &tests[_i];
+    struct handlebars_context * ctx;
+    struct handlebars_compiler * compiler;
+    struct handlebars_vm * vm;
+    struct handlebars_value * context;
+    int retval;
+
+    // Initialize
+    ctx = handlebars_context_ctor();
+    //ctx->ignore_standalone = test->opt_ignore_standalone;
+    compiler = handlebars_compiler_ctor(ctx);
+    vm = handlebars_vm_ctor(ctx);
+
+    // Parse
+    ctx->tmpl = test->tmpl;
+    retval = handlebars_yy_parse(ctx);
+
+    // Compile
+    handlebars_compiler_set_flags(compiler, test->flags);
+    /* if( test->known_helpers ) {
+        compiler->known_helpers = (const char **) test->known_helpers;
+    } */
+
+    handlebars_compiler_compile(compiler, ctx->program);
+    ck_assert_int_eq(0, compiler->errnum);
+
+    fprintf(stdout, "TMPL: %s\n", test->tmpl);
+
+    // Execute
+    context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
+    handlebars_vm_execute(vm, compiler, context);
+
+    ck_assert_ptr_ne(test->expected, NULL);
+    ck_assert_ptr_ne(vm->buffer, NULL);
+
+    if( strcmp(vm->buffer, test->expected) != 0 ) {
+        char * tmp = handlebars_talloc_asprintf(rootctx,
+                                                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+                                                "" /*test->suite_name*/,
+                                                test->description, test->it, test->flags,
+                                                test->tmpl, test->expected, vm->buffer);
+        ck_abort_msg(tmp);
+    }
+
+    //ck_assert_str_eq(vm->buffer, test->expected);
 }
 END_TEST
 
