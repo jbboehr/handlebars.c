@@ -21,7 +21,7 @@
 
 #include "handlebars_memory.h"
 
-#include "handlebars_data.h"
+#include "handlebars_value.h"
 
 static TALLOC_CTX * ctx;
 
@@ -166,7 +166,7 @@ END_TEST
 
 Suite * parser_suite(void)
 {
-    Suite * s = suite_create("Data");
+    Suite * s = suite_create("Value");
 
     REGISTER_TEST_FIXTURE(s, test_boolean, "Boolean");
     REGISTER_TEST_FIXTURE(s, test_int, "Integer");

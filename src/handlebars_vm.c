@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "handlebars_compiler.h"
-#include "handlebars_data.h"
+#include "handlebars_value.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"

@@ -15,7 +15,8 @@ enum handlebars_value_type {
 	HANDLEBARS_VALUE_TYPE_BOOLEAN,
 	HANDLEBARS_VALUE_TYPE_FLOAT,
 	HANDLEBARS_VALUE_TYPE_INTEGER,
-	HANDLEBARS_VALUE_TYPE_USER
+	HANDLEBARS_VALUE_TYPE_USER,
+	HANDLEBARS_VALUE_TYPE_PTR
 };
 
 typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
@@ -52,11 +53,12 @@ struct handlebars_value {
 		double dval;
 		short bval;
 		struct {
-			char * str;
-			size_t len;
+			size_t i;
+			char * v;
 		} strval;
         struct handlebars_map_entry * mapval;
 		void * usr;
+		void * ptr;
 	} v;
 };
 

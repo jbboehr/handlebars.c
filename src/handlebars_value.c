@@ -18,7 +18,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_utils.h"
 
-#include "handlebars_data.h"
+#include "handlebars_value.h"
 
 
 /* JSON object handers */

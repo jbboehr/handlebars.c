@@ -38,7 +38,7 @@ include_HEADERS = \
 	handlebars_builtins.h \
 	handlebars_compiler.h \
 	handlebars_context.h \
-	handlebars_data.h \
+	handlebars_value.h \
 	handlebars_helpers.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
@@ -78,8 +78,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_compiler.c \
 	handlebars_context.h \
 	handlebars_context.c \
-	handlebars_data.h \
-	handlebars_data.c \
+	handlebars_value.h \
+	handlebars_value.c \
 	handlebars_helpers.h \
 	handlebars_helpers.c \
 	handlebars_opcode_printer.h \
