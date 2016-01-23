@@ -38,6 +38,12 @@ struct handlebars_value_handlers {
 	handlebars_floatval_func floatval;
 };
 
+struct handlebars_map_entry {
+	char * key;
+	struct handlebars_value * value;
+    struct handlebars_map_entry * next;
+};
+
 struct handlebars_value {
 	enum handlebars_value_type type;
 	struct handlebars_value_handlers * handlers;
@@ -45,10 +51,11 @@ struct handlebars_value {
 		long lval;
 		double dval;
 		short bval;
-		union {
+		struct {
 			char * str;
 			size_t len;
 		} strval;
+        struct handlebars_map_entry * mapval;
 		void * usr;
 	} v;
 };

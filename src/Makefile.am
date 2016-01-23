@@ -35,9 +35,11 @@ include_HEADERS = \
 	handlebars_ast_helpers.h \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
+	handlebars_builtins.h \
 	handlebars_compiler.h \
 	handlebars_context.h \
 	handlebars_data.h \
+	handlebars_helpers.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcodes.h \
@@ -70,12 +72,16 @@ libhandlebars_la_SOURCES = \
 	handlebars_ast_list.c \
 	handlebars_ast_printer.h \
 	handlebars_ast_printer.c \
+	handlebars_builtins.h \
+	handlebars_builtins.c \
 	handlebars_compiler.h \
 	handlebars_compiler.c \
 	handlebars_context.h \
 	handlebars_context.c \
 	handlebars_data.h \
 	handlebars_data.c \
+	handlebars_helpers.h \
+	handlebars_helpers.c \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_printer.c \
 	handlebars_opcodes.h \

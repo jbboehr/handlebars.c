@@ -42,6 +42,7 @@ static TALLOC_CTX * rootctx;
 static struct generic_test * tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
+static char * spec_dir;
 
 static void loadSpecTest(json_object * object)
 {
@@ -85,13 +86,16 @@ static void loadSpecTest(json_object * object)
     }
 }
 
-static int loadSpec(const char * filename) {
+static int loadSpec(const char * spec) {
     int error = 0;
     char * data = NULL;
     size_t data_len = 0;
     struct json_object * result = NULL;
     struct json_object * array_item = NULL;
     int array_len = 0;
+    char filename[1024];
+
+    snprintf(filename, 1023, "%s/%s.json", spec_dir, spec);
 
     // Read JSON file
     error = file_get_contents(filename, &data, &data_len);
@@ -171,7 +175,6 @@ START_TEST(test_handlebars_spec)
     handlebars_compiler_compile(compiler, ctx->program);
     ck_assert_int_eq(0, compiler->errnum);
 
-    fprintf(stdout, "-----------\nTMPL: %s\n", test->tmpl);
 
     // Execute
     context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
@@ -180,9 +183,12 @@ START_TEST(test_handlebars_spec)
     ck_assert_ptr_ne(test->expected, NULL);
     ck_assert_ptr_ne(vm->buffer, NULL);
 
+#ifndef NDEBUG
+    fprintf(stdout, "-----------\nTMPL: %s\n", test->tmpl);
     fprintf(stdout, "EXPECTED: %s\n", test->expected);
     fprintf(stdout, "ACTUAL: %s\n", vm->buffer);
     fprintf(stdout, "CMP: %d\n", strcmp(vm->buffer, test->expected));
+#endif
 
     if( strcmp(vm->buffer, test->expected) != 0 ) {
         char * tmp = handlebars_talloc_asprintf(rootctx,
@@ -224,7 +230,12 @@ int main(void)
     rootctx = talloc_new(NULL);
 
     // Load specs
-    loadSpec("./spec/handlebars/spec/basic.json");
+    // Load the spec
+    spec_dir = getenv("handlebars_spec_dir");
+    if( spec_dir == NULL ) {
+        spec_dir = "./spec/handlebars/spec";
+    }
+    loadSpec("basic");
     /* loadSpec("./spec/handlebars/spec/bench.json");
     loadSpec("./spec/handlebars/spec/blocks.json");
     loadSpec("./spec/handlebars/spec/builtins.json");
@@ -248,6 +259,8 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+    fprintf(stderr, "ARGGGG %d %d\n", number_failed, error);
 
     // Generate report for memdebug
     if( memdebug ) {
