@@ -38,8 +38,8 @@ include_HEADERS = \
 	handlebars_builtins.h \
 	handlebars_compiler.h \
 	handlebars_context.h \
-	handlebars_value.h \
 	handlebars_helpers.h \
+	handlebars_map.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcodes.h \
@@ -48,6 +48,9 @@ include_HEADERS = \
 	handlebars_token_list.h \
 	handlebars_token_printer.h \
 	handlebars_utils.h \
+	handlebars_value.h \
+	handlebars_value_handlers.h \
+	handlebars_vm.h \
 	handlebars_whitespace.h \
 	handlebars.tab.h \
 	handlebars.lex.h
@@ -78,10 +81,10 @@ libhandlebars_la_SOURCES = \
 	handlebars_compiler.c \
 	handlebars_context.h \
 	handlebars_context.c \
-	handlebars_value.h \
-	handlebars_value.c \
 	handlebars_helpers.h \
 	handlebars_helpers.c \
+	handlebars_map.h \
+	handlebars_map.c \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_printer.c \
 	handlebars_opcodes.h \
@@ -99,6 +102,10 @@ libhandlebars_la_SOURCES = \
 	handlebars_token_printer.c \
 	handlebars_utils.h \
 	handlebars_utils.c \
+	handlebars_value.h \
+	handlebars_value.c \
+	handlebars_value_handlers.h \
+	handlebars_value_handlers.c \
 	handlebars_vm.h \
 	handlebars_vm.c \
 	handlebars_whitespace.h \

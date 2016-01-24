@@ -38,6 +38,31 @@ static void teardown(void)
     ctx = NULL;
 }
 
+START_TEST(test_boolean_true)
+{
+    //struct handlebars_value * value = handlebars_value_ctor();
+}
+END_TEST
+
+START_TEST(test_boolean_false)
+{
+
+}
+END_TEST
+
+START_TEST(test_boolean_json_true)
+{
+
+}
+END_TEST
+
+START_TEST(test_boolean_json_false)
+{
+
+}
+END_TEST
+
+
 START_TEST(test_boolean)
 {
 	struct handlebars_value * value = handlebars_value_from_json_string(ctx, "true");

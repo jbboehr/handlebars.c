@@ -1,10 +1,13 @@
 
-#ifndef HANDLEBARS_DATA_H
-#define HANDLEBARS_DATA_H
+#ifndef HANDLEBARS_VALUE_H
+#define HANDLEBARS_VALUE_H
 
 #include <stddef.h>
 
+struct handlebars_map;
+struct handlebars_stack;
 struct handlebars_value;
+struct handlebars_value_handlers;
 struct json_object;
 
 enum handlebars_value_type {
@@ -19,50 +22,32 @@ enum handlebars_value_type {
 	HANDLEBARS_VALUE_TYPE_PTR
 };
 
-typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
-typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, const char * key, size_t len);
-typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index);
-typedef const char * (*handlebars_strval_func)(struct handlebars_value * value);
-typedef size_t (*handlebars_strlen_func)(struct handlebars_value * value);
-typedef short (*handlebars_boolbal_func)(struct handlebars_value * value);
-typedef long (*handlebars_intval_func)(struct handlebars_value * value);
-typedef double (*handlebars_floatval_func)(struct handlebars_value * value);
-
-struct handlebars_value_handlers {
-	handlebars_value_type_func type;
-	handlebars_map_find_func map_find;
-	handlebars_array_find_func array_find;
-	handlebars_strval_func strval;
-	handlebars_strlen_func strlen;
-	handlebars_boolbal_func boolval;
-	handlebars_intval_func intval;
-	handlebars_floatval_func floatval;
-};
-
-struct handlebars_map_entry {
-	char * key;
-	struct handlebars_value * value;
-    struct handlebars_map_entry * next;
-};
-
 struct handlebars_value {
 	enum handlebars_value_type type;
 	struct handlebars_value_handlers * handlers;
 	union {
 		long lval;
+        short bval;
 		double dval;
-		short bval;
-		struct {
-			size_t i;
-			char * v;
-		} strval;
-        struct handlebars_map_entry * mapval;
+        char * strval;
+        struct handlebars_map * map;
+        struct handlebars_stack * stack;
 		void * usr;
 		void * ptr;
 	} v;
+    int refcount;
 };
 
+static inline void handlebars_value_addref(struct handlebars_value * value) {
+    ++value->refcount;
+}
 
+static inline void handlebars_value_delref(struct handlebars_value * value) {
+    --value->refcount;
+    if( value->refcount <= 0 ) {
+        handlebars_talloc_free(value);
+    }
+}
 
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
 struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key, size_t len);
@@ -73,15 +58,10 @@ short handlebars_value_get_boolval(struct handlebars_value * value);
 long handlebars_value_get_intval(struct handlebars_value * value);
 double handlebars_value_get_floatval(struct handlebars_value * value);
 
-
 char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape);
 
-
-
-struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void);
-
+struct handlebars_value * handlebars_value_ctor(void * ctx);
 struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json);
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
-struct handlebars_value * handlebars_value_ctor(void * ctx);
 
 #endif
