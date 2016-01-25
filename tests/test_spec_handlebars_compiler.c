@@ -20,6 +20,7 @@
 
 #include "handlebars_compiler.h"
 #include "handlebars_context.h"
+#include "handlebars_builtins.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
@@ -348,9 +349,9 @@ static int loadSpecTestKnownHelpers(struct compiler_test * test, json_object * o
     // Let's just allocate a nice fat array >.>
     char ** known_helpers = talloc_zero_array(rootctx, char *, 32);
     char ** ptr = known_helpers;
-    const char ** ptr2 = handlebars_builtins;
+    const char ** ptr2 = handlebars_builtins_names();
 
-    for( ptr2 = handlebars_builtins ; *ptr2 ; ++ptr2 ) {
+    for( ; *ptr2 ; ++ptr2 ) {
         *ptr = handlebars_talloc_strdup(rootctx, *ptr2);
         ptr++;
     }

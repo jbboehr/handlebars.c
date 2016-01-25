@@ -20,11 +20,6 @@ struct handlebars_compiler;
 struct handlebars_opcode;
 
 /**
- * @brief Array of built-in helpers
- */
-extern const char * handlebars_builtins[];
-
-/**
  * @brief Flags to control compiler behaviour
  */
 enum handlebars_compiler_flag {

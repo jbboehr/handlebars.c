@@ -1,11 +1,11 @@
 
-#include <check.h>
-#include <stdio.h>
-#include <talloc.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include <check.h>
+#include <stdio.h>
+#include <talloc.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
 #include <json-c/json.h>
@@ -19,6 +19,7 @@
 
 #include "handlebars_context.h"
 #include "handlebars_compiler.h"
+#include "handlebars_builtins.h"
 #include "handlebars_memory.h"
 #include "handlebars_vm.h"
 #include "handlebars.tab.h"
@@ -161,6 +162,9 @@ START_TEST(test_handlebars_spec)
     //ctx->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
     vm = handlebars_vm_ctor(ctx);
+
+    // Setup VM
+    vm->helpers = handlebars_builtins(vm);
 
     // Parse
     ctx->tmpl = test->tmpl;

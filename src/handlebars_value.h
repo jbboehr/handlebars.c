@@ -3,6 +3,7 @@
 #define HANDLEBARS_VALUE_H
 
 #include <stddef.h>
+#include "handlebars_helpers.h"
 
 struct handlebars_map;
 struct handlebars_stack;
@@ -19,7 +20,8 @@ enum handlebars_value_type {
 	HANDLEBARS_VALUE_TYPE_FLOAT,
 	HANDLEBARS_VALUE_TYPE_INTEGER,
 	HANDLEBARS_VALUE_TYPE_USER,
-	HANDLEBARS_VALUE_TYPE_PTR
+	HANDLEBARS_VALUE_TYPE_PTR,
+	HANDLEBARS_VALUE_TYPE_HELPER
 };
 
 struct handlebars_value {
@@ -34,6 +36,7 @@ struct handlebars_value {
         struct handlebars_stack * stack;
 		void * usr;
 		void * ptr;
+        handlebars_helper_func helper;
 	} v;
     int refcount;
 };

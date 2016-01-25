@@ -2,6 +2,8 @@
 #ifndef HANDLEBARS_HELPERS_H
 #define HANDLEBARS_HELPERS_H
 
+#include <stddef.h>
+
 struct handlebars_value;
 
 struct handlebars_options {

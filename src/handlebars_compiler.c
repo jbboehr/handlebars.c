@@ -11,6 +11,7 @@
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_ast_helpers.h"
+#include "handlebars_builtins.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
@@ -67,13 +68,6 @@ static inline void handlebars_compiler_accept_decorator(
 
 
 
-/*static*/ const char * handlebars_builtins[] = {
-    "helperMissing", "blockHelperMissing", "each", "if",
-    "unless", "with", "log", "lookup", NULL
-};
-
-
-
 struct handlebars_compiler * handlebars_compiler_ctor(void * ctx)
 {
     struct handlebars_compiler * compiler;
@@ -81,7 +75,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(void * ctx)
     compiler = handlebars_talloc_zero(ctx, struct handlebars_compiler);
     
     if( likely(compiler != NULL) ) {
-        compiler->known_helpers = handlebars_builtins;
+        compiler->known_helpers = handlebars_builtins_names();
         compiler->bps = handlebars_talloc_zero(compiler, struct handlebars_block_param_stack);
     }
     

@@ -3,6 +3,7 @@
 #define HANDLEBARS_VM_H
 
 struct handlebars_compiler;
+struct handlebars_map;
 
 struct handlebars_vm_frame {
 	struct handlebars_value * context;
@@ -15,6 +16,8 @@ struct handlebars_vm {
 	//struct handlebars_compiler * opcodes;
     struct handlebars_compiler ** programs;
     size_t guid_index;
+
+	struct handlebars_map * helpers;
 
     struct handlebars_value * last_context;
 	struct handlebars_value * context;
