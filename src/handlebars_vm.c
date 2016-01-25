@@ -32,7 +32,7 @@ ACCEPT_FUNCTION(push_context);
 
 struct handlebars_vm * handlebars_vm_ctor(void * ctx)
 {
-    TALLOC_CTX * tmp;
+    TALLOC_CTX * tmp = talloc_init(ctx);
 	struct handlebars_vm * vm = handlebars_talloc_zero(tmp, struct handlebars_vm);
     if( !vm ) {
         return NULL;
@@ -43,14 +43,14 @@ struct handlebars_vm * handlebars_vm_ctor(void * ctx)
     vm->stack = handlebars_stack_ctor(vm);
     vm->hashStack = handlebars_stack_ctor(vm);
     if( !vm->frameStack || !vm->depths || !vm->stack || !vm->hashStack ) {
+        vm = NULL;
         goto error;
     }
 
     talloc_steal(ctx, vm);
-    return vm;
 error:
     handlebars_talloc_free(tmp);
-    return NULL;
+    return vm;
 }
 
 ACCEPT_FUNCTION(append) {
@@ -93,6 +93,7 @@ ACCEPT_FUNCTION(get_context) {
     long depth = opcode->op1.data.longval;
 
     size_t length = handlebars_stack_length(vm->depths);
+    fprintf(stdout, "ARGGGGGGGGG %d %d\n", length, depth);
     if( depth >= length ) {
         // error
         // @todo
@@ -112,7 +113,7 @@ ACCEPT_FUNCTION(invoke_ambiguous) {
     // @todo helper >.>
 
     //frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, handlebars_value_get_strval(value));
-    handlebars_stack_push(vm->stack, value);
+    handlebars_stack_push_ptr(vm->stack, value);
 }
 
 ACCEPT_FUNCTION(lookup_on_context) {
@@ -143,8 +144,8 @@ ACCEPT_FUNCTION(lookup_on_context) {
 
     fprintf(stdout, "ARRGGGG %s\n", handlebars_value_get_strval(value));
 
-    handlebars_stack_pop(vm->stack);
-    handlebars_stack_push(vm->stack, value);
+    handlebars_stack_pop_ptr(vm->stack);
+    handlebars_stack_push_ptr(vm->stack, value);
 }
 
 ACCEPT_FUNCTION(push_context) {
@@ -152,7 +153,7 @@ ACCEPT_FUNCTION(push_context) {
 
     assert(vm->last_context != NULL);
 
-    handlebars_stack_push(vm->stack, vm->last_context);
+    handlebars_stack_push_ptr(vm->stack, vm->last_context);
 }
 
 ACCEPT_FUNCTION(push_program) {
@@ -167,12 +168,12 @@ ACCEPT_FUNCTION(push_program) {
         *program = -1;
     }
 
-    handlebars_stack_push(vm->stack, program);
+    handlebars_stack_push_ptr(vm->stack, program);
 }
 
 ACCEPT_FUNCTION(push_literal) {
     struct literal * lit = handlebars_talloc(vm, struct literal);
-    handlebars_stack_push(vm->stack, lit);
+    handlebars_stack_push_ptr(vm->stack, lit);
 }
 
 //ACCEPT_FUNCTION(resolve_possible_lambda) {
@@ -255,7 +256,7 @@ char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, str
 
     // Push the frame stack
 	struct handlebars_vm_frame * frame = handlebars_talloc_zero(vm, struct handlebars_vm_frame);
-    handlebars_stack_push(vm->frameStack, frame);
+    handlebars_stack_push_ptr(vm->frameStack, frame);
     frame->buffer = handlebars_talloc_strdup(vm, "");
 
     // Set program
@@ -265,7 +266,7 @@ char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, str
 	frame->context = context;
 
     // Push depths
-    handlebars_stack_push(vm->depths, context);
+    handlebars_stack_push_ptr(vm->depths, context);
 
     // Set data
     // @todo
@@ -277,7 +278,7 @@ char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, str
 	handlebars_vm_accept(vm, compiler);
 
     // Pop depths
-    handlebars_stack_pop(vm->depths);
+    handlebars_stack_pop_ptr(vm->depths);
 
     return frame->buffer;
 }
