@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 #include "handlebars_helpers.h"
+#include "handlebars_memory.h"
 
 struct handlebars_map;
 struct handlebars_stack;

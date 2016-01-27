@@ -258,6 +258,8 @@ int main(void)
     int memdebug = 0;
     int iswin = 0;
     int error = 0;
+
+    talloc_set_log_stderr();
     
 #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
     iswin = 1;

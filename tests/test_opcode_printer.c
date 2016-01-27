@@ -181,6 +181,8 @@ int main(void)
     int number_failed;
     int memdebug;
     int error;
+
+    talloc_set_log_stderr();
     
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;

@@ -20,7 +20,6 @@
 #include "utils.h"
 
 #include "handlebars_memory.h"
-
 #include "handlebars_value.h"
 
 static TALLOC_CTX * ctx;
@@ -232,6 +231,8 @@ int main(void)
     int number_failed;
     int memdebug;
     int error;
+
+    talloc_set_log_stderr();
 
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;

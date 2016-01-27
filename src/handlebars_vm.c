@@ -100,9 +100,9 @@ ACCEPT_FUNCTION(get_context) {
         vm->last_context = NULL;
         assert(0);
     } else if( depth == 0 ) {
-        vm->last_context = handlebars_stack_top_type(vm->depths, struct handlebars_value);
+        vm->last_context = handlebars_stack_top(vm->depths);
     } else {
-        vm->last_context = handlebars_stack_get_type(vm->depths, length - depth, struct handlebars_value);
+        vm->last_context = handlebars_stack_get(vm->depths, length - depth);
     }
 }
 
@@ -266,7 +266,7 @@ char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, str
 	frame->context = context;
 
     // Push depths
-    handlebars_stack_push_ptr(vm->depths, context);
+    handlebars_stack_push(vm->depths, context);
 
     // Set data
     // @todo
@@ -278,7 +278,7 @@ char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, str
 	handlebars_vm_accept(vm, compiler);
 
     // Pop depths
-    handlebars_stack_pop_ptr(vm->depths);
+    handlebars_stack_pop(vm->depths);
 
     return frame->buffer;
 }
@@ -329,8 +329,12 @@ void handlebars_vm_execute(
     preprocess_program(vm, compiler);
 
     // Save context
-	vm->context = context;
+    handlebars_value_addref(context);
+    vm->context = context;
 
     // Execute
-	vm->buffer = handlebars_vm_execute_program(vm, 0, context);
+    vm->buffer = handlebars_vm_execute_program(vm, 0, context);
+
+    // Release context
+    handlebars_value_delref(context);
 }
