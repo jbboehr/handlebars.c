@@ -3,11 +3,16 @@
 
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_value.h"
 
 struct handlebars_map * handlebars_map_ctor(void * ctx)
 {
-    return handlebars_talloc_zero(ctx, struct handlebars_map);
+    struct handlebars_map * map = handlebars_talloc_zero(ctx, struct handlebars_map);
+    if( likely(map != NULL) ) {
+        map->ctx = ctx;
+    }
+    return map;
 }
 
 void handlebars_map_dtor(struct handlebars_map * map)
@@ -24,7 +29,7 @@ short handlebars_map_add(struct handlebars_map * map, const char * key, struct h
     }
 
     entry->key = handlebars_talloc_strdup(entry, key);
-    entry->value = value; // @todo steal or refcount?
+    entry->value = value; // @todo steal?
     handlebars_value_addref(value);
 
     if( !map->first ) {
@@ -73,12 +78,18 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, const
 {
     struct handlebars_map_entry * entry;
     struct handlebars_map_entry * tmp;
+    struct handlebars_value * value = NULL;
 
     handlebars_map_foreach(map, entry, tmp) {
         if( 0 == strcmp(entry->key, key) ) {
-            return entry->value;
+            value = entry->value;
+            break;
         }
     }
 
-    return NULL;
+    if( value != NULL ) {
+        handlebars_value_addref(value);
+    }
+
+    return value;
 }

@@ -18,6 +18,7 @@
 #endif
 
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_utils.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
@@ -172,21 +173,55 @@ char * handlebars_value_expression(void * ctx, struct handlebars_value * value, 
 
 struct handlebars_value * handlebars_value_ctor(void * ctx)
 {
-	return handlebars_talloc_zero(ctx, struct handlebars_value);
+	struct handlebars_value * value = handlebars_talloc_zero(ctx, struct handlebars_value);
+	if( likely(value != NULL) ) {
+        value->ctx = ctx;
+		handlebars_value_addref(value);
+	}
+	return value;
 }
 
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json)
 {
-    struct handlebars_value * ret;
+    struct handlebars_value * value = handlebars_value_ctor(ctx);
 
-    ret = handlebars_value_ctor(ctx);
-    if( ret ) {
-        ret->type = HANDLEBARS_VALUE_TYPE_USER;
-        ret->handlers = handlebars_value_get_std_json_handlers();
-        ret->v.usr = (void *) json;
+    if( value ) {
+        switch( json_object_get_type(json) ) {
+            case json_type_null:
+                // do nothing
+                break;
+            case json_type_boolean:
+                value->type = HANDLEBARS_VALUE_TYPE_BOOLEAN;
+                value->v.bval = json_object_get_boolean(json);
+                break;
+            case json_type_double:
+                value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
+                value->v.dval = json_object_get_double(json);
+                break;
+            case json_type_int:
+                value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
+                // @todo make sure sizing is correct
+                value->v.lval = json_object_get_int64(json);
+                break;
+            case json_type_string:
+                value->type = HANDLEBARS_VALUE_TYPE_STRING;
+                value->v.strval = handlebars_talloc_strdup(value, json_object_get_string(json));
+                break;
+
+            case json_type_object:
+            case json_type_array:
+                value->type = HANDLEBARS_VALUE_TYPE_USER;
+                value->handlers = handlebars_value_get_std_json_handlers();
+                value->v.usr = (void *) json;
+                break;
+            default:
+                // ruh roh
+                assert(0);
+                break;
+        }
     }
 
-    return ret;
+    return value;
 }
 
 struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json)

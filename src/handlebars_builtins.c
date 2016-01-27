@@ -25,6 +25,16 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     return NULL;
 }
 
+struct handlebars_value * handlebars_builtin_if(struct handlebars_options * options)
+{
+    return NULL;
+}
+
+struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * options)
+{
+    return NULL;
+}
+
 
 struct handlebars_map * handlebars_builtins(void * ctx)
 {
@@ -58,6 +68,8 @@ struct handlebars_map * handlebars_builtins(void * ctx)
 
     ADDHELPER(blockHelperMissing, handlebars_builtin_block_helper_missing);
     ADDHELPER(each, handlebars_builtin_each);
+    ADDHELPER(if, handlebars_builtin_if);
+    ADDHELPER(unless, handlebars_builtin_unless);
 
     talloc_steal(ctx, map);
 

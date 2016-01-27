@@ -13,12 +13,12 @@ struct json_object;
 
 enum handlebars_value_type {
 	HANDLEBARS_VALUE_TYPE_NULL = 0,
-	HANDLEBARS_VALUE_TYPE_MAP,
-	HANDLEBARS_VALUE_TYPE_ARRAY,
-	HANDLEBARS_VALUE_TYPE_STRING,
 	HANDLEBARS_VALUE_TYPE_BOOLEAN,
+    HANDLEBARS_VALUE_TYPE_INTEGER,
 	HANDLEBARS_VALUE_TYPE_FLOAT,
-	HANDLEBARS_VALUE_TYPE_INTEGER,
+    HANDLEBARS_VALUE_TYPE_STRING,
+    HANDLEBARS_VALUE_TYPE_ARRAY,
+    HANDLEBARS_VALUE_TYPE_MAP,
 	HANDLEBARS_VALUE_TYPE_USER,
 	HANDLEBARS_VALUE_TYPE_PTR,
 	HANDLEBARS_VALUE_TYPE_HELPER
@@ -39,16 +39,36 @@ struct handlebars_value {
         handlebars_helper_func helper;
 	} v;
     int refcount;
+	void * ctx;
 };
 
-static inline void handlebars_value_addref(struct handlebars_value * value) {
-    ++value->refcount;
+static inline int handlebars_value_addref(struct handlebars_value * value) {
+    return ++value->refcount;
 }
 
-static inline void handlebars_value_delref(struct handlebars_value * value) {
+static inline int handlebars_value_delref(struct handlebars_value * value) {
     --value->refcount;
     if( value->refcount <= 0 ) {
         handlebars_talloc_free(value);
+        return 0;
+    }
+    return value->refcount;
+}
+
+static inline int handlebars_value_refcount(struct handlebars_value * value) {
+    return value->refcount;
+}
+
+static inline short handlebars_value_is_scalar(struct handlebars_value * value) {
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_NULL:
+        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            return 1;
+        default:
+            return 0;
     }
 }
 

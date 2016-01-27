@@ -58,33 +58,38 @@ struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack)
         return NULL;
     }
 
-    // Should we delref here?
-    //handlebars_value_delref(value);
-
     return stack->v[--stack->i];
 }
 
 struct handlebars_value * handlebars_stack_top(struct handlebars_stack * stack)
 {
+    struct handlebars_value * value;
+
     if( stack->i <= 0 ) {
         return NULL;
     }
 
-    return stack->v[stack->i - 1];
+    value = stack->v[stack->i - 1];
+    handlebars_value_addref(value);
+    return value;
 }
 
 struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, size_t offset)
 {
+    struct handlebars_value * value;
+
     if( offset >= stack->i || offset < 0 ) {
         return NULL;
     }
 
-    return stack->v[offset];
+    value = stack->v[offset];
+    handlebars_value_addref(value);
+    return value;
 }
 
 void * handlebars_stack_push_ptr(struct handlebars_stack * stack, void * ptr)
 {
-    struct handlebars_value * value = handlebars_value_ctor(stack);
+    struct handlebars_value * value = handlebars_value_ctor(stack->ctx);
 
     if( unlikely(value == NULL) ) {
         return NULL;
