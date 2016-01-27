@@ -4,9 +4,12 @@
 
 #include <stddef.h>
 #include "handlebars_helpers.h"
+#include "handlebars_map.h"
 #include "handlebars_memory.h"
+#include "handlebars_stack.h"
 
 struct handlebars_map;
+struct handlebars_options;
 struct handlebars_stack;
 struct handlebars_value;
 struct handlebars_value_handlers;
@@ -22,11 +25,18 @@ enum handlebars_value_type {
     HANDLEBARS_VALUE_TYPE_MAP,
 	HANDLEBARS_VALUE_TYPE_USER,
 	HANDLEBARS_VALUE_TYPE_PTR,
-	HANDLEBARS_VALUE_TYPE_HELPER
+	HANDLEBARS_VALUE_TYPE_HELPER,
+    HANDLEBARS_VALUE_TYPE_OPTIONS
+};
+
+enum handlebars_value_flags {
+    HANDLEBARS_VALUE_FLAG_NONE = 0,
+    HANDLEBARS_VALUE_FLAG_TALLOC_DTOR = 1
 };
 
 struct handlebars_value {
 	enum handlebars_value_type type;
+    unsigned long flags;
 	struct handlebars_value_handlers * handlers;
 	union {
 		long lval;
@@ -38,10 +48,27 @@ struct handlebars_value {
 		void * usr;
 		void * ptr;
         handlebars_helper_func helper;
+        struct handlebars_options * options;
 	} v;
     int refcount;
 	void * ctx;
 };
+
+enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
+struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key, size_t len);
+struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
+const char * handlebars_value_get_strval(struct handlebars_value * value);
+size_t handlebars_value_get_strlen(struct handlebars_value * value);
+short handlebars_value_get_boolval(struct handlebars_value * value);
+long handlebars_value_get_intval(struct handlebars_value * value);
+double handlebars_value_get_floatval(struct handlebars_value * value);
+
+char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape);
+
+struct handlebars_value * handlebars_value_ctor(void * ctx);
+void handlebars_value_dtor(struct handlebars_value * value);
+struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json);
+struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
 
 static inline int handlebars_value_addref(struct handlebars_value * value) {
     return ++value->refcount;
@@ -50,6 +77,9 @@ static inline int handlebars_value_addref(struct handlebars_value * value) {
 static inline int handlebars_value_delref(struct handlebars_value * value) {
     --value->refcount;
     if( value->refcount <= 0 ) {
+        if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
+            handlebars_value_dtor(value);
+        }
         handlebars_talloc_free(value);
         return 0;
     }
@@ -73,19 +103,69 @@ static inline short handlebars_value_is_scalar(struct handlebars_value * value) 
     }
 }
 
-enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
-struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key, size_t len);
-struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
-const char * handlebars_value_get_strval(struct handlebars_value * value);
-size_t handlebars_value_get_strlen(struct handlebars_value * value);
-short handlebars_value_get_boolval(struct handlebars_value * value);
-long handlebars_value_get_intval(struct handlebars_value * value);
-double handlebars_value_get_floatval(struct handlebars_value * value);
+static inline short handlebars_value_is_empty(struct handlebars_value * value) {
+    switch( handlebars_value_get_type(value) ) {
+        case HANDLEBARS_VALUE_TYPE_NULL:
+            return 1;
+        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+            return 0 == handlebars_value_get_boolval(value);
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            return 0 == handlebars_value_get_floatval(value);
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            return 0 == handlebars_value_get_intval(value);
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            return 0 == handlebars_value_get_strlen(value);
+        // @todo map, stack
+        default:
+             return 1;
 
-char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape);
+    }
+}
 
-struct handlebars_value * handlebars_value_ctor(void * ctx);
-struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json);
-struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
+static inline void handlebars_value_null(struct handlebars_value * value) {
+    handlebars_value_dtor(value);
+}
+
+static inline void handlebars_value_boolean(struct handlebars_value * value, short bval) {
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_BOOLEAN;
+    value->v.bval = bval;
+}
+
+static inline void handlebars_value_integer(struct handlebars_value * value, long lval) {
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
+    value->v.lval = lval;
+}
+
+static inline void handlebars_value_float(struct handlebars_value * value, double dval) {
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
+    value->v.dval = dval;
+}
+
+static inline void handlebars_value_string(struct handlebars_value * value, const char * strval) {
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.strval = handlebars_talloc_strdup(value, strval);
+}
+
+static inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen) {
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.strval = handlebars_talloc_strndup(value, strval, strlen);
+}
+
+static inline void handlebars_value_map_init(struct handlebars_value * value) {
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_MAP;
+    value->v.map = handlebars_map_ctor(value);
+}
+
+static inline void handlebars_value_array_init(struct handlebars_value * value) {
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
+    value->v.stack = handlebars_stack_ctor(value);
+}
 
 #endif

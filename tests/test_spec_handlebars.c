@@ -188,10 +188,12 @@ START_TEST(test_handlebars_spec)
     ck_assert_ptr_ne(vm->buffer, NULL);
 
 #ifndef NDEBUG
-    fprintf(stdout, "-----------\nTMPL: %s\n", test->tmpl);
+    fprintf(stdout, "-----------\nNUM: %d\n", _i);
+    fprintf(stdout, "TMPL: %s\n", test->tmpl);
     fprintf(stdout, "EXPECTED: %s\n", test->expected);
     fprintf(stdout, "ACTUAL: %s\n", vm->buffer);
     fprintf(stdout, "CMP: %d\n", strcmp(vm->buffer, test->expected));
+    fprintf(stdout, "%s\n", 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
 #endif
 
     if( strcmp(vm->buffer, test->expected) != 0 ) {
@@ -210,11 +212,20 @@ END_TEST
 Suite * parser_suite(void)
 {
     const char * title = "Handlebars Spec";
-    Suite * s = suite_create(title);
-
     TCase * tc_handlebars_spec = tcase_create(title);
+    Suite * s = suite_create(title);
+    int start = 0;
+    int end = tests_len;
+
+    if( getenv("TEST_NUM") != NULL ) {
+        int num;
+        sscanf(getenv("TEST_NUM"), "%d", &num);
+        start = end = num;
+        end++;
+    }
+
     // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
-    tcase_add_loop_test(tc_handlebars_spec, test_handlebars_spec, 0, tests_len - 1);
+    tcase_add_loop_test(tc_handlebars_spec, test_handlebars_spec, start, end);
     suite_add_tcase(s, tc_handlebars_spec);
 
     return s;

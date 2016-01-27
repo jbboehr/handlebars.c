@@ -19,6 +19,7 @@ struct handlebars_vm {
 
 	struct handlebars_map * helpers;
 
+	const char * last_helper;
     struct handlebars_value * last_context;
 	struct handlebars_value * context;
 	char * buffer;
@@ -33,5 +34,7 @@ struct handlebars_vm * handlebars_vm_ctor(void * ctx);
 void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
 		struct handlebars_value * context);
+
+char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, struct handlebars_value * context);
 
 #endif

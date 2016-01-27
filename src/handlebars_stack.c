@@ -87,6 +87,42 @@ struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, 
     return value;
 }
 
+struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, size_t offset, struct handlebars_value * value)
+{
+    // As a special case, push
+    if( offset == stack->i ) {
+        return handlebars_stack_push(stack, value);
+    }
+
+    // Out-of-bounds
+    if( offset >= stack->i || offset < 0 ) {
+        return NULL;
+    }
+
+    handlebars_value_delref(stack->v[offset]);
+
+    stack->v[offset] = value;
+    handlebars_value_addref(value);
+
+    return value;
+}
+
+void handlebars_stack_reverse(struct handlebars_stack * stack)
+{
+    size_t start = 0;
+    size_t end = stack->i - 1;
+    struct handlebars_value * tmp;
+
+    while( start < end ) {
+        tmp = stack->v[start];
+        stack->v[start] = stack->v[end];
+        stack->v[end] = tmp;
+        start++;
+        end--;
+    }
+}
+
+
 void * handlebars_stack_push_ptr(struct handlebars_stack * stack, void * ptr)
 {
     struct handlebars_value * value = handlebars_value_ctor(stack->ctx);

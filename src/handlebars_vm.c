@@ -9,6 +9,7 @@
 
 #include "handlebars_compiler.h"
 #include "handlebars_value.h"
+#include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
@@ -26,8 +27,88 @@
 struct literal {
     char * value;
 };
+struct setup_ctx {
+    const char * name;
+    size_t param_size;
+    struct handlebars_stack * params;
+    short is_block_helper;
+    struct handlebars_options * options;
+    struct handlebars_value * helper;
+};
 
 ACCEPT_FUNCTION(push_context);
+
+
+static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * ctx)
+{
+    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_options * options = handlebars_talloc(vm, struct handlebars_options);
+    ctx->options = options;
+
+    options->name = ctx->name ? handlebars_talloc_strdup(options, ctx->name) : NULL;
+    options->hash = handlebars_stack_pop(vm->stack);
+    options->scope = frame->context;
+    options->vm = vm;
+
+    // programs
+    long * inverse = handlebars_stack_pop_type(vm->stack, long);
+    long * program = handlebars_stack_pop_type(vm->stack, long);
+
+    options->program = program ? *program : -1;
+    options->inverse = inverse ? *inverse : -1;
+
+    // params
+    size_t i = ctx->param_size;
+
+    size_t j;
+    struct handlebars_value * placeholder = handlebars_value_ctor(vm);
+    for( j = 0; j < i; j++ ) {
+        handlebars_stack_set(ctx->params, j, placeholder);
+    }
+
+    while( i-- ) {
+        struct handlebars_value * param = handlebars_stack_pop(vm->stack);
+        handlebars_stack_set(ctx->params, i, param);
+        handlebars_value_delref(param);
+    }
+
+    handlebars_value_delref(placeholder);
+
+    // Params
+    options->params = ctx->params;
+
+    // Data
+    // @todo
+    options->data = NULL;
+
+
+    //options->scope =
+    //options->inverse = handlebars_stack_pop_type();
+}
+
+static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ctx)
+{
+    setup_options(vm, ctx);
+    if( ctx->params != NULL ) {
+        struct handlebars_value * value = handlebars_value_ctor(vm);
+        value->type = HANDLEBARS_VALUE_TYPE_OPTIONS;
+        value->v.options = ctx->options;
+        handlebars_stack_push(ctx->params, value);
+    }
+
+}
+
+static inline void setup_helper(struct handlebars_vm * vm, struct setup_ctx * ctx)
+{
+    ctx->params = handlebars_stack_ctor(vm);
+    setup_params(vm, ctx);
+    ctx->helper = handlebars_map_find(vm->helpers, ctx->name);
+}
+
+
+
+
+
 
 
 struct handlebars_vm * handlebars_vm_ctor(void * ctx)
@@ -53,24 +134,53 @@ error:
     return vm;
 }
 
+
+ACCEPT_FUNCTION(ambiguous_block_value) {
+    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct setup_ctx ctx = {0};
+
+    ctx.name = vm->last_helper;
+    ctx.params = handlebars_stack_ctor(vm);
+    handlebars_stack_push(ctx.params, frame->context);
+    setup_params(vm, &ctx);
+
+    struct handlebars_value * current = handlebars_stack_pop(vm->stack);
+    handlebars_stack_set(ctx.params, 0, current);
+
+    if( vm->last_helper == NULL ) {
+        struct handlebars_value * helper = handlebars_map_find(vm->helpers, "blockHelperMissing");
+
+        assert(helper != NULL);
+        assert(helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
+        assert(ctx.options != NULL);
+
+        struct handlebars_value * result = helper->v.helper(ctx.options);
+        if( result ) {
+            char * tmp = handlebars_value_expression(vm, result, 0);
+            frame->buffer = handlebars_talloc_strdup_append(frame->buffer, tmp);
+            handlebars_talloc_free(tmp);
+        }
+    }
+}
+
 ACCEPT_FUNCTION(append) {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
-    struct handlebars_value * value = handlebars_stack_pop_type(vm->stack, struct handlebars_value);
+    struct handlebars_value * value = handlebars_stack_pop(vm->stack);
 
     if( value ) {
         char * tmp = handlebars_value_expression(vm, value, 0);
-        frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp);
+        frame->buffer = handlebars_talloc_strdup_append(frame->buffer, tmp);
         handlebars_talloc_free(tmp);
     }
 }
 
 ACCEPT_FUNCTION(append_escaped) {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
-    struct handlebars_value * value = handlebars_stack_pop_type(vm->stack, struct handlebars_value);
+    struct handlebars_value * value = handlebars_stack_pop(vm->stack);
 
     if( value ) {
         char * tmp = handlebars_value_expression(vm, value, 1);
-        frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp);
+        frame->buffer = handlebars_talloc_strdup_append(frame->buffer, tmp);
         handlebars_talloc_free(tmp);
     }
 }
@@ -81,7 +191,15 @@ ACCEPT_FUNCTION(append_content) {
     assert(opcode->type == handlebars_opcode_type_append_content);
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, opcode->op1.data.stringval);
+    frame->buffer = handlebars_talloc_strdup_append(frame->buffer, opcode->op1.data.stringval);
+}
+
+ACCEPT_FUNCTION(empty_hash) {
+    struct handlebars_value * value = handlebars_value_ctor(vm);
+    value->type = HANDLEBARS_VALUE_TYPE_MAP;
+    value->v.map = handlebars_map_ctor(value);
+    handlebars_stack_push(vm->stack, value);
+    handlebars_value_delref(value);
 }
 
 ACCEPT_FUNCTION(get_context) {
@@ -91,9 +209,8 @@ ACCEPT_FUNCTION(get_context) {
     assert(opcode->op1.type == handlebars_operand_type_long);
 
     long depth = opcode->op1.data.longval;
-
     size_t length = handlebars_stack_length(vm->depths);
-    fprintf(stdout, "ARGGGGGGGGG %d %d\n", length, depth);
+
     if( depth >= length ) {
         // error
         // @todo
@@ -108,12 +225,56 @@ ACCEPT_FUNCTION(get_context) {
 
 ACCEPT_FUNCTION(invoke_ambiguous) {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
-    struct handlebars_value * value = handlebars_stack_pop_type(vm->stack, struct handlebars_value);
+    struct handlebars_value * value = handlebars_stack_pop(vm->stack);
+    struct setup_ctx ctx = {0};
 
-    // @todo helper >.>
+    ACCEPT_FN(empty_hash)(vm, opcode);
 
-    //frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, handlebars_value_get_strval(value));
-    handlebars_stack_push_ptr(vm->stack, value);
+    assert(opcode->op1.type == handlebars_operand_type_string);
+    assert(opcode->op2.type == handlebars_operand_type_boolean);
+
+    ctx.name = opcode->op1.data.stringval;
+    ctx.is_block_helper = opcode->op2.data.boolval;
+    setup_helper(vm, &ctx);
+    vm->last_helper = ctx.helper ? ctx.name : NULL;
+
+    if( ctx.helper != NULL ) {
+        assert(ctx.helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
+
+        struct handlebars_value * result = ctx.helper->v.helper(ctx.options);
+        if( result ) {
+            char *tmp = handlebars_value_expression(vm, result, 0);
+            frame->buffer = handlebars_talloc_strdup_append(frame->buffer, tmp);
+            handlebars_talloc_free(tmp);
+        }
+    } else {
+        //frame->buffer = handlebars_talloc_strdup_append(frame->buffer, handlebars_value_get_strval(value));
+        handlebars_stack_push(vm->stack, value);
+    }
+}
+
+ACCEPT_FUNCTION(invoke_known_helper) {
+    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct setup_ctx ctx = {0};
+
+    assert(opcode->op1.type == handlebars_operand_type_long);
+    assert(opcode->op2.type == handlebars_operand_type_string);
+
+    ctx.param_size = opcode->op1.data.longval;
+    ctx.name = opcode->op2.data.stringval;
+    setup_helper(vm, &ctx);
+
+    assert(ctx.helper != NULL);
+    assert(ctx.options != NULL);
+
+    struct handlebars_value * result = ctx.helper->v.helper(ctx.options);
+    if( result != NULL ) {
+        char *tmp = handlebars_value_expression(vm, result, 0);
+        if( tmp ) {
+            frame->buffer = handlebars_talloc_strdup_append(frame->buffer, tmp);
+            handlebars_talloc_free(tmp);
+        }
+    }
 }
 
 ACCEPT_FUNCTION(lookup_on_context) {
@@ -124,8 +285,7 @@ ACCEPT_FUNCTION(lookup_on_context) {
 
     ACCEPT_FN(push_context)(vm, opcode);
 
-    struct handlebars_value * value = handlebars_stack_top_type(vm->stack, struct handlebars_value);
-    fprintf(stdout, "ARRGGGG %d %p\n", value ? handlebars_value_get_type(value) : -1, value);
+    struct handlebars_value * value = handlebars_stack_top(vm->stack);
 
     if( value ) {
         char **arr = opcode->op1.data.arrayval;
@@ -142,10 +302,8 @@ ACCEPT_FUNCTION(lookup_on_context) {
         value = handlebars_value_ctor(vm);
     }
 
-    fprintf(stdout, "ARRGGGG %s\n", handlebars_value_get_strval(value));
-
-    handlebars_stack_pop_ptr(vm->stack);
-    handlebars_stack_push_ptr(vm->stack, value);
+    handlebars_stack_pop(vm->stack);
+    handlebars_stack_push(vm->stack, value);
 }
 
 ACCEPT_FUNCTION(push_context) {
@@ -153,7 +311,7 @@ ACCEPT_FUNCTION(push_context) {
 
     assert(vm->last_context != NULL);
 
-    handlebars_stack_push_ptr(vm->stack, vm->last_context);
+    handlebars_stack_push(vm->stack, vm->last_context);
 }
 
 ACCEPT_FUNCTION(push_program) {
@@ -176,9 +334,9 @@ ACCEPT_FUNCTION(push_literal) {
     handlebars_stack_push_ptr(vm->stack, lit);
 }
 
-//ACCEPT_FUNCTION(resolve_possible_lambda) {
-//
-//}
+ACCEPT_FUNCTION(resolve_possible_lambda) {
+    // @todo
+}
 
 void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler * compiler)
 {
@@ -193,15 +351,19 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
         talloc_free(tmp);
 
 		switch( opcode->type ) {
+            ACCEPT(ambiguous_block_value);
             ACCEPT(append)
             ACCEPT(append_escaped)
             ACCEPT(append_content);
             ACCEPT(get_context);
+            ACCEPT(empty_hash);
+            ACCEPT(invoke_ambiguous);
+            ACCEPT(invoke_known_helper);
+            ACCEPT(lookup_on_context);
             ACCEPT(push_context);
             ACCEPT(push_program);
             ACCEPT(push_literal);
-            ACCEPT(lookup_on_context);
-            ACCEPT(invoke_ambiguous);
+            ACCEPT(resolve_possible_lambda);
 
 //            case handlebars_opcode_type_append:
 //
@@ -223,8 +385,6 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
 //            case handlebars_opcode_type_invoke_partial:
 //            case handlebars_opcode_type_push_id:
 //            case handlebars_opcode_type_push_string_param:
-//            case handlebars_opcode_type_invoke_ambiguous:
-//            case handlebars_opcode_type_invoke_known_helper:
 //            case handlebars_opcode_type_invoke_helper:
 //            case handlebars_opcode_type_lookup_on_context:
 //            case handlebars_opcode_type_lookup_data:
@@ -245,10 +405,11 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
 
 char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, struct handlebars_value * context)
 {
-    //assert(program < vm->opcodes->children_length);
+    if( program < 0 ) {
+        return NULL;
+    }
     if( program >= vm->guid_index ) {
-        assert(0);
-        // @todo error
+        assert(program < vm->guid_index);
         return NULL;
     }
 
@@ -280,7 +441,12 @@ char * handlebars_vm_execute_program(struct handlebars_vm * vm, int program, str
     // Pop depths
     handlebars_stack_pop(vm->depths);
 
-    return frame->buffer;
+    // Pop frame
+    char * buffer = talloc_steal(vm, frame->buffer);
+    handlebars_stack_pop(vm->frameStack);
+    handlebars_talloc_free(frame);
+
+    return buffer;
 }
 
 static void preprocess_opcode(struct handlebars_vm * vm, struct handlebars_opcode * opcode, struct handlebars_compiler * compiler)

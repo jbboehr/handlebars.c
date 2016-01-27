@@ -1,9 +1,17 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
+
 #include "handlebars_builtins.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_stack.h"
 #include "handlebars_value.h"
+#include "handlebars_vm.h"
 
 static const char * names[] = {
     "helperMissing", "blockHelperMissing", "each", "if",
@@ -17,6 +25,29 @@ const char ** handlebars_builtins_names()
 
 struct handlebars_value * handlebars_builtin_block_helper_missing(struct handlebars_options * options)
 {
+    char * result = NULL;
+
+    assert(handlebars_stack_length(options->params) >= 1);
+
+    struct handlebars_value * context = handlebars_stack_get(options->params, 0);
+
+    if( handlebars_value_get_boolval(context) == 1 ) {
+        result = handlebars_vm_execute_program(options->vm, options->program, options->scope);
+    } else if( handlebars_value_is_empty(context) ) { // @todo supposed to be !== 0 ?
+        result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
+    } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        // @todo
+    } else {
+        // @todo
+    }
+
+    if( result ) {
+        struct handlebars_value * ret = handlebars_value_ctor(options->vm);
+        ret->type = HANDLEBARS_VALUE_TYPE_STRING;
+        ret->v.strval = talloc_steal(ret, result);
+        return ret;
+    }
+
     return NULL;
 }
 
@@ -27,12 +58,33 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
 
 struct handlebars_value * handlebars_builtin_if(struct handlebars_options * options)
 {
+    struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
+
+    // @todo callable conditional
+
+    int program = handlebars_value_is_empty(conditional) ? options->inverse : options->program;
+
+    char * result = handlebars_vm_execute_program(options->vm, program, options->scope);
+
+    if( result ) {
+        struct handlebars_value * ret = handlebars_value_ctor(options->vm);
+        ret->type = HANDLEBARS_VALUE_TYPE_STRING;
+        ret->v.strval = talloc_steal(ret, result);
+        return ret;
+    }
+
     return NULL;
 }
 
 struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * options)
 {
-    return NULL;
+    struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
+
+    handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
+
+    struct handlebars_value * helper = handlebars_map_find(options->vm->helpers, "if");
+    assert(helper != NULL);
+    return helper->v.helper(options);
 }
 
 

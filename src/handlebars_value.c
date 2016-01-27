@@ -17,8 +17,10 @@
 #include <json/json_tokener.h>
 #endif
 
+#include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_stack.h"
 #include "handlebars_utils.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
@@ -39,7 +41,9 @@ struct handlebars_value * handlebars_value_map_find(struct handlebars_value * va
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
 			return value->handlers->map_find(value, key, len);
 		}
-	}
+	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        return handlebars_map_find(value->v.map, key);
+    }
 
 	return NULL;
 }
@@ -50,7 +54,9 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
 			return value->handlers->array_find(value, index);
 		}
-	}
+	} else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        return handlebars_stack_get(value->v.stack, index);
+    }
 
 	return NULL;
 }
@@ -124,7 +130,7 @@ double handlebars_value_get_floatval(struct handlebars_value * value)
 
 char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape)
 {
-    char * ret;
+    char * ret = NULL;
 
     switch( handlebars_value_get_type(value) ) {
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
@@ -181,6 +187,29 @@ struct handlebars_value * handlebars_value_ctor(void * ctx)
 	return value;
 }
 
+void handlebars_value_dtor(struct handlebars_value * value)
+{
+    // Release old value
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            handlebars_talloc_free(value->v.stack);
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            handlebars_talloc_free(value->v.map);
+            break;
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            handlebars_talloc_free(value->v.strval);
+            break;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            assert(value->handlers != NULL);
+            value->handlers->dtor(value);
+            break;
+    }
+
+    // Initialize to null
+    memset(value, 0, sizeof(struct handlebars_value));
+}
+
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json)
 {
     struct handlebars_value * value = handlebars_value_ctor(ctx);
@@ -231,7 +260,8 @@ struct handlebars_value * handlebars_value_from_json_string(void *ctx, const cha
     if( result ) {
         ret = handlebars_value_from_json_object(ctx, result);
         if( ret ) {
-            talloc_set_destructor(ret, handlebars_value_json_dtor);
+            talloc_set_destructor(ret, handlebars_value_dtor);
+            ret->flags |= HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
         }
     }
     return ret;

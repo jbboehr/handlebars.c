@@ -2,6 +2,7 @@
 #ifndef HANDLEBARS_VALUE_HANDLERS_H
 #define HANDLEBARS_VALUE_HANDLERS_H
 
+typedef void (*handlebars_value_dtor_func)(struct handlebars_value * value);
 typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
 typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, const char * key, size_t len);
 typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index);
@@ -12,6 +13,7 @@ typedef long (*handlebars_intval_func)(struct handlebars_value * value);
 typedef double (*handlebars_floatval_func)(struct handlebars_value * value);
 
 struct handlebars_value_handlers {
+    handlebars_value_dtor_func dtor;
     handlebars_value_type_func type;
     handlebars_map_find_func map_find;
     handlebars_array_find_func array_find;
@@ -22,7 +24,6 @@ struct handlebars_value_handlers {
     handlebars_floatval_func floatval;
 };
 
-void handlebars_value_json_dtor(struct handlebars_value * value);
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void);
 
 #endif

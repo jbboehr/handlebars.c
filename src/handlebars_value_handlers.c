@@ -20,6 +20,19 @@
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
+static void std_json_dtor(struct handlebars_value * value)
+{
+    struct json_object * result = (struct json_object *) value->v.usr;
+
+    assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
+    assert(result != NULL);
+
+    if( result != NULL ) {
+        json_object_put(result);
+        value->v.usr = NULL;
+    }
+}
+
 static enum handlebars_value_type std_json_type(struct handlebars_value * value) {
     struct json_object * intern = (struct json_object *) value->v.usr;
     switch( json_object_get_type(intern) ) {
@@ -100,6 +113,7 @@ static double std_json_floatval(struct handlebars_value * value) {
 }
 
 static struct handlebars_value_handlers handlebars_value_std_json_handlers = {
+        &std_json_dtor,
         &std_json_type,
         &std_json_map_find,
         &std_json_array_find,
@@ -109,16 +123,6 @@ static struct handlebars_value_handlers handlebars_value_std_json_handlers = {
         &std_json_intval,
         &std_json_floatval
 };
-
-void handlebars_value_json_dtor(struct handlebars_value * value)
-{
-    // @todo move this into handlers
-    if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-        struct json_object * result = (struct json_object *) value->v.usr;
-        // Decrement reference counter
-        json_object_put(result);
-    }
-}
 
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers()
 {
