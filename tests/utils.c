@@ -14,6 +14,9 @@
 
 #include "utils.h"
 
+
+const int MOD_ADLER = 65521;
+
 int file_get_contents(const char * filename, char ** buf, size_t * len)
 {
 	FILE * f;
@@ -109,4 +112,20 @@ int regex_compare(const char * regex, const char * string, char ** error)
 error:
     pcre_free(re);
     return ret;
+}
+
+// https://en.wikipedia.org/wiki/Adler-32
+uint32_t adler32(unsigned char *data, size_t len)
+{
+	uint32_t a = 1, b = 0;
+	size_t index;
+
+	/* Process each byte of the data in order */
+	for (index = 0; index < len; ++index)
+	{
+		a = (a + data[index]) % MOD_ADLER;
+		b = (b + a) % MOD_ADLER;
+	}
+
+	return (b << 16) | a;
 }
