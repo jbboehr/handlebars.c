@@ -98,7 +98,7 @@ START_TEST(test_htmlspecialchars)
 {
     char * out = handlebars_htmlspecialchars("'");
     talloc_steal(ctx, out);
-    ck_assert_str_eq("&#039;", out);
+    ck_assert_str_eq("&#x27;", out);
     handlebars_talloc_free(out);
 }
 {
@@ -109,7 +109,7 @@ START_TEST(test_htmlspecialchars)
 }
 {
     const char * in = "a&b<c>d\'e\"f";
-    const char * exp = "a&amp;b&lt;c&gt;d&#039;e&quot;f";
+    const char * exp = "a&amp;b&lt;c&gt;d&#x27;e&quot;f";
     char * out = handlebars_htmlspecialchars(in);
     talloc_steal(ctx, out);
     ck_assert_str_eq(exp, out);

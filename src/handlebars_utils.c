@@ -90,9 +90,10 @@ char * handlebars_htmlspecialchars(const char * str)
     memset(flags, 0, sizeof(flags));
     flags['&'] = "&amp;";
     flags['"'] = "&quot;";
-    flags['\''] = "&#039;";
+    flags['\''] = "&#x27;"; //"&#039;";
     flags['<'] = "&lt;";
     flags['>'] = "&gt;";
+    flags['`'] = "&#x60;";
 
     // Estimate new size
     for( p = str; *p != NULL; p++ ) {

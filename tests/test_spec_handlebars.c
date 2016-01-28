@@ -37,6 +37,7 @@ struct generic_test {
 
     char ** known_helpers;
     long flags;
+    struct json_object * raw;
 };
 
 static TALLOC_CTX * rootctx;
@@ -51,6 +52,7 @@ static void loadSpecTest(json_object * object)
 
     // Get test
     struct generic_test * test = &(tests[tests_len++]);
+    test->raw = object;
 
     // Get description
     cur = json_object_object_get(object, "description");
@@ -194,6 +196,7 @@ START_TEST(test_handlebars_spec)
     fprintf(stdout, "ACTUAL: %s\n", vm->buffer);
     fprintf(stdout, "CMP: %d\n", strcmp(vm->buffer, test->expected));
     fprintf(stdout, "%s\n", 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
+        fprintf(stdout, "%s\n", json_object_to_json_string_ext(test->raw, JSON_C_TO_STRING_PRETTY));
 #endif
 
     if( strcmp(vm->buffer, test->expected) != 0 ) {
