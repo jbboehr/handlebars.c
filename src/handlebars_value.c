@@ -63,11 +63,7 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 
 const char * handlebars_value_get_strval(struct handlebars_value * value)
 {
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_STRING ) {
-			return value->handlers->strval(value);
-		}
-	} else if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
+	if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
 		return value->v.strval;
 	}
 
@@ -76,11 +72,7 @@ const char * handlebars_value_get_strval(struct handlebars_value * value)
 
 size_t handlebars_value_get_strlen(struct handlebars_value * value)
 {
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_STRING ) {
-			return value->handlers->strlen(value);
-		}
-	} else if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
+	if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
 		return strlen(value->v.strval);
 	}
 
@@ -89,11 +81,7 @@ size_t handlebars_value_get_strlen(struct handlebars_value * value)
 
 short handlebars_value_get_boolval(struct handlebars_value * value)
 {
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
-			return value->handlers->boolval(value);
-		}
-	} else if( value->type == HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
+	if( value->type == HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
         return value->v.bval;
 	}
 
@@ -102,11 +90,7 @@ short handlebars_value_get_boolval(struct handlebars_value * value)
 
 long handlebars_value_get_intval(struct handlebars_value * value)
 {
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_INTEGER ) {
-			return value->handlers->intval(value);
-		}
-	} else if( value->type == HANDLEBARS_VALUE_TYPE_INTEGER ) {
+	if( value->type == HANDLEBARS_VALUE_TYPE_INTEGER ) {
         return value->v.lval;
 	}
 
@@ -115,18 +99,84 @@ long handlebars_value_get_intval(struct handlebars_value * value)
 
 double handlebars_value_get_floatval(struct handlebars_value * value)
 {
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_FLOAT ) {
-			return value->handlers->floatval(value);
-		}
-	} else if( value->type == HANDLEBARS_VALUE_TYPE_FLOAT ) {
+	if( value->type == HANDLEBARS_VALUE_TYPE_FLOAT ) {
         return value->v.dval;
 	}
 
 	return 0;
 }
 
+struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value)
+{
+    struct handlebars_value_iterator * it = NULL;
 
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            it = handlebars_talloc(value, struct handlebars_value_iterator);
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            it = handlebars_talloc(value, struct handlebars_value_iterator);
+            it->current = value->v.map->first;
+            break;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            it = value->handlers->iterator(value);
+            break;
+    }
+
+    return it;
+}
+
+short handlebars_value_iterator_next(struct handlebars_value * value, struct handlebars_value_iterator * it)
+{
+    assert(it != NULL);
+
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            if( it->index >= handlebars_stack_length(value->v.stack) ) {
+                return 0;
+            }
+            it->index++;
+            return 1;
+        case HANDLEBARS_VALUE_TYPE_MAP: {
+            struct handlebars_map_entry * entry = talloc_get_type(it->current, struct handlebars_map_entry);
+            if( !entry || !entry->next ) {
+                return 0;
+            }
+            it->current = entry->next;
+            return 1;
+        }
+        case HANDLEBARS_VALUE_TYPE_USER:
+            return value->handlers->next(value, it);
+        default:
+            return 0;
+    }
+}
+
+struct handlebars_value * handlebars_value_iterator_current(struct handlebars_value * value, void * iterator)
+{
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY: {
+            struct handlebars_stack_iterator *it = talloc_get_type(iterator, struct handlebars_stack_iterator);
+            if( !it ) {
+                return NULL;
+            } else {
+                return handlebars_stack_get(value->v.stack, it->pos);
+            }
+        }
+        case HANDLEBARS_VALUE_TYPE_MAP: {
+            struct handlebars_map_iterator *it = talloc_get_type(iterator, struct handlebars_map_iterator);
+            if( !it ) {
+                return NULL;
+            } else {
+                return it->current;
+            }
+        }
+        case HANDLEBARS_VALUE_TYPE_USER:
+            return value->handlers->next(value, iterator);
+        default:
+            return 0;
+    }
+}
 
 char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape)
 {

@@ -13,6 +13,10 @@ struct handlebars_map_entry {
     struct handlebars_map_entry * prev;
 };
 
+struct handlebars_map_iterator {
+    struct handlebars_map_entry * current;
+};
+
 struct handlebars_map {
     void * ctx;
     size_t i;

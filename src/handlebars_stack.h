@@ -16,6 +16,10 @@ struct handlebars_stack {
     struct handlebars_value ** v;
 };
 
+struct handlebars_stack_iterator {
+    size_t pos;
+};
+
 #define handlebars_stack_foreach(stack, el, i) \
     for( i = 0, el = stack->v[0]; i < stack->i; i++, el = stack->v[i] )
 
