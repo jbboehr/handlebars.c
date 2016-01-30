@@ -106,6 +106,24 @@ double handlebars_value_get_floatval(struct handlebars_value * value)
 	return 0;
 }
 
+void handlebars_value_convert_ex(struct handlebars_value * value, short recurse)
+{
+    struct handlebars_value_iterator * it;
+
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_USER:
+            value->handlers->convert(value, recurse);
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            it = handlebars_value_iterator_ctor(value);
+            for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+                handlebars_value_convert_ex(it->current, recurse);
+            }
+            break;
+    }
+}
+
 struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value)
 {
     struct handlebars_value_iterator * it = NULL;

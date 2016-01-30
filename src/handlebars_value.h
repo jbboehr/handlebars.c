@@ -79,6 +79,8 @@ void handlebars_value_dtor(struct handlebars_value * value);
 struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json);
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
 
+#define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
+void handlebars_value_convert_ex(struct handlebars_value * value, short recurse);
 struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value);
 short handlebars_value_iterator_next(struct handlebars_value_iterator * it);
 

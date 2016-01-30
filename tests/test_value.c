@@ -348,6 +348,24 @@ START_TEST(test_complex)
 }
 END_TEST
 
+START_TEST(test_convert)
+{
+    struct handlebars_value * value2;
+    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"a\": 2358, \"b\": [1, 2.1], \"c\": {\"d\": \"test\"}}");
+    handlebars_value_convert(value);
+
+    ck_assert_int_eq(value->type, HANDLEBARS_VALUE_TYPE_MAP);
+
+    value2 = handlebars_value_map_find(value, "b", sizeof("b") - 1);
+    ck_assert_ptr_ne(value2, NULL);
+    ck_assert_int_eq(value2->type, HANDLEBARS_VALUE_TYPE_ARRAY);
+    handlebars_value_delref(value2);
+
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("Value");
@@ -364,6 +382,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_array_find, "Array Find");
     REGISTER_TEST_FIXTURE(s, test_map_find, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex, "Complex");
+    REGISTER_TEST_FIXTURE(s, test_convert, "Convert");
 
     return s;
 }
