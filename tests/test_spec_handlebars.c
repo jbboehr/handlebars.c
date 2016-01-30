@@ -21,6 +21,7 @@
 #include "handlebars_compiler.h"
 #include "handlebars_builtins.h"
 #include "handlebars_memory.h"
+#include "handlebars_value.h"
 #include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
@@ -181,9 +182,12 @@ START_TEST(test_handlebars_spec)
     handlebars_compiler_compile(compiler, ctx->program);
     ck_assert_int_eq(0, compiler->errnum);
 
+    // Load context
+    context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
+    handlebars_value_addref(context);
+    load_fixtures(context);
 
     // Execute
-    context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
     handlebars_vm_execute(vm, compiler, context);
 
     ck_assert_ptr_ne(test->expected, NULL);
@@ -207,6 +211,8 @@ START_TEST(test_handlebars_spec)
                                                 test->tmpl, test->expected, vm->buffer);
         ck_abort_msg(tmp);
     }
+
+    handlebars_value_addref(context);
 
     //ck_assert_str_eq(vm->buffer, test->expected);
 }

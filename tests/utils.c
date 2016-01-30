@@ -1,4 +1,9 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,8 +16,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <src/handlebars_value.h>
 
 #include "utils.h"
+#include "handlebars_value.h"
 
 
 const int MOD_ADLER = 65521;
@@ -128,4 +135,54 @@ uint32_t adler32(unsigned char *data, size_t len)
 	}
 
 	return (b << 16) | a;
+}
+
+static void convert_value_to_fixture(struct handlebars_value * value)
+{
+    assert(value->type == HANDLEBARS_VALUE_TYPE_MAP);
+
+    struct handlebars_value * jsvalue = handlebars_value_map_find(value, "javascript", sizeof("javascript"));
+    assert(jsvalue != NULL);
+    assert(jsvalue->type == HANDLEBARS_VALUE_TYPE_STRING);
+    uint32_t hash = adler32(jsvalue->v.strval, strlen(jsvalue->v.strval));
+
+    switch( hash ) {
+        default:
+            fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, jsvalue->v.strval);
+            break;
+    }
+}
+
+void load_fixtures(struct handlebars_value * value)
+{
+    struct handlebars_value_iterator * it;
+    struct handlebars_value * child;
+
+    // This shouldn't happen ...
+    assert(value != NULL);
+
+    handlebars_value_convert(value);
+
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            // Check if it contains a "!code" key
+            child = handlebars_value_map_find(value, "!code", sizeof("!code") - 1);
+            if( child ) {
+                // Convert to helper
+                convert_value_to_fixture(value);
+            } else {
+                // Recurse
+                it = handlebars_value_iterator_ctor(value);
+                for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
+                    load_fixtures(it->current);
+                }
+            }
+            break;
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            it = handlebars_value_iterator_ctor(value);
+            for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
+                load_fixtures(it->current);
+            }
+            break;
+    }
 }

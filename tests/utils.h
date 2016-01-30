@@ -35,6 +35,8 @@
 #define ck_assert_str_gt_msg(X, Y, msg) _ck_assert_str_msg(X, >, Y, msg)
 #define ck_assert_str_ge_msg(X, Y, msg) _ck_assert_str_msg(X, >=, Y, msg)
 
+struct handlebars_value;
+
 const int MOD_ADLER;
 
 typedef void (*scan_directory_cb)(char * filename);
@@ -43,5 +45,7 @@ int file_get_contents(const char * filename, char ** buf, size_t * len);
 int scan_directory_callback(char * dirname, scan_directory_cb cb);
 int regex_compare(const char * regex, const char * string, char ** error);
 uint32_t adler32(unsigned char *data, size_t len);
+
+void load_fixtures(struct handlebars_value * value);
 
 #endif

@@ -126,26 +126,32 @@ void handlebars_value_convert_ex(struct handlebars_value * value, short recurse)
 
 struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value)
 {
-    struct handlebars_value_iterator * it = NULL;
+    struct handlebars_value_iterator * it;
     struct handlebars_map_entry * entry;
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            it = handlebars_talloc(value, struct handlebars_value_iterator);
+            it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
             it->value = value;
             it->current = handlebars_stack_get(value->v.stack, 0);
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
-            it = handlebars_talloc(value, struct handlebars_value_iterator);
-            it->value = value;
+            it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
             entry = value->v.map->first;
-            it->usr = (void *) entry;
-            it->key = entry->key;
-            it->current = entry->value;
-            handlebars_value_addref(it->current);
+            if( entry ) {
+                it->value = value;
+                it->usr = (void *) entry;
+                it->key = entry->key;
+                it->current = entry->value;
+                handlebars_value_addref(it->current);
+            }
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
             it = value->handlers->iterator(value);
+            break;
+        default:
+            assert(0);
+            it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
             break;
     }
 
@@ -233,7 +239,7 @@ char * handlebars_value_expression(void * ctx, struct handlebars_value * value, 
             break;
     }
 
-    if( escape ) {
+    if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
         char * esc = handlebars_htmlspecialchars(ret);
         handlebars_talloc_free(ret);
         ret = esc;

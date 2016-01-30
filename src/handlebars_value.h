@@ -31,7 +31,8 @@ enum handlebars_value_type {
 
 enum handlebars_value_flags {
     HANDLEBARS_VALUE_FLAG_NONE = 0,
-    HANDLEBARS_VALUE_FLAG_TALLOC_DTOR = 1
+    HANDLEBARS_VALUE_FLAG_TALLOC_DTOR = 1,
+    HANDLEBARS_VALUE_FLAG_SAFE_STRING = 2
 };
 
 struct handlebars_value_iterator {
