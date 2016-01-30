@@ -120,6 +120,35 @@ START_TEST(test_array_iterator)
         ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
         ck_assert_int_eq(it->current->v.lval, ++i);
     }
+
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+}
+END_TEST
+
+START_TEST(test_map_iterator)
+{
+    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"a\": 1, \"c\": 2, \"b\": 3}");
+    struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(value);
+    int i = 0;
+
+    ck_assert_ptr_ne(it->current, NULL);
+
+    for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
+        ++i;
+        ck_assert_ptr_ne(it->current, NULL);
+        ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_ptr_ne(it->key, NULL);
+        switch( i ) {
+            case 1: ck_assert_str_eq(it->key, "a"); break;
+            case 2: ck_assert_str_eq(it->key, "c"); break;
+            case 3: ck_assert_str_eq(it->key, "b"); break;
+        }
+        ck_assert_int_eq(it->current->v.lval, i);
+    }
+
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(1, talloc_total_blocks(ctx));
 }
 END_TEST
 
@@ -238,6 +267,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_float, "Float");
     REGISTER_TEST_FIXTURE(s, test_string, "String");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");
     REGISTER_TEST_FIXTURE(s, test_array_find, "Array Find");
     REGISTER_TEST_FIXTURE(s, test_map_find, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex, "Complex");

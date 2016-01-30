@@ -80,8 +80,7 @@ struct handlebars_value_iterator * std_json_iterator_ctor(struct handlebars_valu
         case json_type_object:
             entry = json_object_get_object(intern)->head;
             it->usr = (void *) entry;
-            // @todo
-            //it->key = entry->k;
+            it->key = (char *) entry->k;
             it->current = handlebars_value_from_json_object(value->ctx, entry->v);
             break;
         case json_type_array:
@@ -104,26 +103,18 @@ short std_json_iterator_next(struct handlebars_value_iterator * it)
     struct lh_entry * entry;
     short ret = 0;
 
-//    if( it->current ) {
-//        handlebars_value_delref(it->current);
-//        it->current = NULL;
-//    }
-
     switch( json_object_get_type(intern) ) {
         case json_type_object:
             entry = (struct lh_entry *) it->usr;
             if( entry && entry->next ) {
                 ret = 1;
-                it->usr = (void *) entry->next;
-                // @todo
-                //it->key = entry->k;
+                it->usr = (void *) (entry = entry->next);
+                it->key = (char *) entry->k;
                 it->current = handlebars_value_from_json_object(value->ctx, entry->v);
-                // Need to increment refcount?
             }
             break;
         case json_type_array:
-            fprintf("QWEJIKQWJEQWEQWE %d %d\n", it->index, json_object_array_length(intern));
-            if( it->index < json_object_array_length(intern) ) {
+            if( it->index < json_object_array_length(intern) - 1 ) {
                 ret = 1;
                 it->index++;
                 it->current = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, it->index));

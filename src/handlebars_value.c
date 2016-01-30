@@ -139,7 +139,7 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
     struct handlebars_value * current = it->current;
     short ret = 0;
 
-    if( it->current ) {
+    if( it->current != NULL ) {
         handlebars_value_delref(it->current);
         it->current = NULL;
     }
@@ -166,7 +166,7 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
             break;
     }
 
-//    it->eof = !ret;
+    it->eof = !ret;
 
     return ret;
 }
