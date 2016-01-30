@@ -15,6 +15,8 @@
 #include <json/json.h>
 #include <json/json_object.h>
 #include <json/json_tokener.h>
+#include <src/handlebars_value.h>
+
 #endif
 
 #include "utils.h"
@@ -102,6 +104,22 @@ START_TEST(test_string)
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
     ck_assert_int_eq(0, handlebars_value_delref(value));
     ck_assert_int_eq(1, talloc_total_blocks(ctx));
+}
+END_TEST
+
+START_TEST(test_array_iterator)
+{
+    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "[1, 2, 3]");
+    struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(value);
+    int i = 0;
+
+    ck_assert_ptr_ne(it->current, NULL);
+
+    for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+        ck_assert_ptr_ne(it->current, NULL);
+        ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(it->current->v.lval, ++i);
+    }
 }
 END_TEST
 
@@ -219,6 +237,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_int, "Integer");
     REGISTER_TEST_FIXTURE(s, test_float, "Float");
     REGISTER_TEST_FIXTURE(s, test_string, "String");
+    REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_array_find, "Array Find");
     REGISTER_TEST_FIXTURE(s, test_map_find, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex, "Complex");

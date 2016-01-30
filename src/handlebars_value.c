@@ -113,9 +113,12 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             it = handlebars_talloc(value, struct handlebars_value_iterator);
+            it->value = value;
+            it->current = handlebars_stack_get(value->v.stack, 0);
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
             it = handlebars_talloc(value, struct handlebars_value_iterator);
+            it->value = value;
             it->current = value->v.map->first;
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
@@ -126,56 +129,46 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
     return it;
 }
 
-short handlebars_value_iterator_next(struct handlebars_value * value, struct handlebars_value_iterator * it)
+short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
 {
     assert(it != NULL);
+    assert(it->value != NULL);
+
+    struct handlebars_value * value = it->value;
+    struct handlebars_map_entry * entry;
+    struct handlebars_value * current = it->current;
+    short ret = 0;
+
+    if( it->current ) {
+        handlebars_value_delref(it->current);
+        it->current = NULL;
+    }
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            if( it->index >= handlebars_stack_length(value->v.stack) ) {
-                return 0;
+            if( it->index < handlebars_stack_length(value->v.stack) ) {
+                ret = 1;
+                it->index++;
+                it->current = handlebars_stack_get(value->v.stack, it->index);
             }
-            it->index++;
-            return 1;
-        case HANDLEBARS_VALUE_TYPE_MAP: {
-            struct handlebars_map_entry * entry = talloc_get_type(it->current, struct handlebars_map_entry);
-            if( !entry || !entry->next ) {
-                return 0;
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            entry = talloc_get_type(it->usr, struct handlebars_map_entry);
+            if( entry && entry->next ) {
+                ret = 1;
+                it->usr = (void *) entry->next;
+                it->key = entry->key;
+                it->current = entry->value;
             }
-            it->current = entry->next;
-            return 1;
-        }
+            break;
         case HANDLEBARS_VALUE_TYPE_USER:
-            return value->handlers->next(value, it);
-        default:
-            return 0;
+            ret = value->handlers->next(it);
+            break;
     }
-}
 
-struct handlebars_value * handlebars_value_iterator_current(struct handlebars_value * value, void * iterator)
-{
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_ARRAY: {
-            struct handlebars_stack_iterator *it = talloc_get_type(iterator, struct handlebars_stack_iterator);
-            if( !it ) {
-                return NULL;
-            } else {
-                return handlebars_stack_get(value->v.stack, it->pos);
-            }
-        }
-        case HANDLEBARS_VALUE_TYPE_MAP: {
-            struct handlebars_map_iterator *it = talloc_get_type(iterator, struct handlebars_map_iterator);
-            if( !it ) {
-                return NULL;
-            } else {
-                return it->current;
-            }
-        }
-        case HANDLEBARS_VALUE_TYPE_USER:
-            return value->handlers->next(value, iterator);
-        default:
-            return 0;
-    }
+//    it->eof = !ret;
+
+    return ret;
 }
 
 char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape)
@@ -292,6 +285,8 @@ struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct js
                 value->type = HANDLEBARS_VALUE_TYPE_USER;
                 value->handlers = handlebars_value_get_std_json_handlers();
                 value->v.usr = (void *) json;
+                // Increment refcount?
+                json_object_get(json);
                 break;
             default:
                 // ruh roh

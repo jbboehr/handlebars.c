@@ -38,8 +38,8 @@ struct handlebars_value_iterator {
     short eof;
     size_t index;
     const char * key;
+    struct handlebars_value * value;
     struct handlebars_value * current;
-    struct handlebars_value * parent;
     void * usr;
 };
 
@@ -80,7 +80,7 @@ struct handlebars_value * handlebars_value_from_json_string(void *ctx, const cha
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
 
 struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value);
-short handlebars_value_iterator_next(struct handlebars_value * value, struct handlebars_value_iterator * it);
+short handlebars_value_iterator_next(struct handlebars_value_iterator * it);
 
 static inline int handlebars_value_addref(struct handlebars_value * value) {
     return ++value->refcount;
