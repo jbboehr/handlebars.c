@@ -109,6 +109,7 @@ double handlebars_value_get_floatval(struct handlebars_value * value)
 struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value)
 {
     struct handlebars_value_iterator * it = NULL;
+    struct handlebars_map_entry * entry;
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
@@ -119,7 +120,11 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
         case HANDLEBARS_VALUE_TYPE_MAP:
             it = handlebars_talloc(value, struct handlebars_value_iterator);
             it->value = value;
-            it->current = value->v.map->first;
+            entry = value->v.map->first;
+            it->usr = (void *) entry;
+            it->key = entry->key;
+            it->current = entry->value;
+            handlebars_value_addref(it->current);
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
             it = value->handlers->iterator(value);
@@ -146,7 +151,7 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            if( it->index < handlebars_stack_length(value->v.stack) ) {
+            if( it->index < handlebars_stack_length(value->v.stack) - 1 ) {
                 ret = 1;
                 it->index++;
                 it->current = handlebars_stack_get(value->v.stack, it->index);
@@ -156,9 +161,10 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
             entry = talloc_get_type(it->usr, struct handlebars_map_entry);
             if( entry && entry->next ) {
                 ret = 1;
-                it->usr = (void *) entry->next;
+                it->usr = (void *) (entry = entry->next);
                 it->key = entry->key;
                 it->current = entry->value;
+                handlebars_value_addref(it->current);
             }
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
@@ -225,7 +231,7 @@ struct handlebars_value * handlebars_value_ctor(void * ctx)
 	struct handlebars_value * value = handlebars_talloc_zero(ctx, struct handlebars_value);
 	if( likely(value != NULL) ) {
         value->ctx = ctx;
-		handlebars_value_addref(value);
+        value->refcount = 1;
 	}
 	return value;
 }
@@ -235,10 +241,10 @@ void handlebars_value_dtor(struct handlebars_value * value)
     // Release old value
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            handlebars_talloc_free(value->v.stack);
+            handlebars_stack_dtor(value->v.stack);
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
-            handlebars_talloc_free(value->v.map);
+            handlebars_map_dtor(value->v.map);
             break;
         case HANDLEBARS_VALUE_TYPE_STRING:
             handlebars_talloc_free(value->v.strval);
@@ -250,7 +256,9 @@ void handlebars_value_dtor(struct handlebars_value * value)
     }
 
     // Initialize to null
-    memset(value, 0, sizeof(struct handlebars_value));
+    value->type = HANDLEBARS_VALUE_TYPE_NULL;
+    value->handlers = NULL;
+    memset(&value->v, 0, sizeof(value->v));
 }
 
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json)

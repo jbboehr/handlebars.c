@@ -109,6 +109,97 @@ END_TEST
 
 START_TEST(test_array_iterator)
 {
+    struct handlebars_value * value;
+    struct handlebars_value * tmp;
+    struct handlebars_value_iterator * it;
+    int i = 0;
+
+    value = handlebars_value_ctor(ctx);
+    value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
+    value->v.stack = handlebars_stack_ctor(value);
+
+    tmp = handlebars_value_ctor(ctx);
+    handlebars_value_integer(tmp, 1);
+    handlebars_stack_push(value->v.stack, tmp);
+    handlebars_value_delref(tmp);
+
+    tmp = handlebars_value_ctor(ctx);
+    handlebars_value_integer(tmp, 2);
+    handlebars_stack_push(value->v.stack, tmp);
+    handlebars_value_delref(tmp);
+
+    tmp = handlebars_value_ctor(ctx);
+    handlebars_value_integer(tmp, 3);
+    handlebars_stack_push(value->v.stack, tmp);
+    handlebars_value_delref(tmp);
+
+    it = handlebars_value_iterator_ctor(value);
+
+    ck_assert_ptr_ne(it->current, NULL);
+
+    for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+        ck_assert_ptr_ne(it->current, NULL);
+        ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(it->current->v.lval, ++i);
+    }
+
+    handlebars_talloc_free(it);
+
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+}
+END_TEST
+
+START_TEST(test_map_iterator)
+{
+    struct handlebars_value * value;
+    struct handlebars_value * tmp;
+    struct handlebars_value_iterator * it;
+    int i = 0;
+
+    value = handlebars_value_ctor(ctx);
+    value->type = HANDLEBARS_VALUE_TYPE_MAP;
+    value->v.map = handlebars_map_ctor(value);
+
+    tmp = handlebars_value_ctor(ctx);
+    handlebars_value_integer(tmp, 1);
+    handlebars_map_add(value->v.map, "a", tmp);
+    handlebars_value_delref(tmp);
+
+    tmp = handlebars_value_ctor(ctx);
+    handlebars_value_integer(tmp, 2);
+    handlebars_map_add(value->v.map, "c", tmp);
+    handlebars_value_delref(tmp);
+
+    tmp = handlebars_value_ctor(ctx);
+    handlebars_value_integer(tmp, 3);
+    handlebars_map_add(value->v.map, "b", tmp);
+    handlebars_value_delref(tmp);
+
+    it = handlebars_value_iterator_ctor(value);
+
+    ck_assert_ptr_ne(it->current, NULL);
+
+    for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
+        ++i;
+        ck_assert_ptr_ne(it->current, NULL);
+        ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_ptr_ne(it->key, NULL);
+        switch( i ) {
+            case 1: ck_assert_str_eq(it->key, "a"); break;
+            case 2: ck_assert_str_eq(it->key, "c"); break;
+            case 3: ck_assert_str_eq(it->key, "b"); break;
+        }
+        ck_assert_int_eq(it->current->v.lval, i);
+    }
+
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+}
+END_TEST
+
+START_TEST(test_array_iterator_json)
+{
     struct handlebars_value * value = handlebars_value_from_json_string(ctx, "[1, 2, 3]");
     struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(value);
     int i = 0;
@@ -126,7 +217,7 @@ START_TEST(test_array_iterator)
 }
 END_TEST
 
-START_TEST(test_map_iterator)
+START_TEST(test_map_iterator_json)
 {
     struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"a\": 1, \"c\": 2, \"b\": 3}");
     struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(value);
@@ -268,6 +359,8 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_string, "String");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");
+    REGISTER_TEST_FIXTURE(s, test_array_iterator_json, "Array iterator (JSON)");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_json, "Map iterator (JSON)");
     REGISTER_TEST_FIXTURE(s, test_array_find, "Array Find");
     REGISTER_TEST_FIXTURE(s, test_map_find, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex, "Complex");

@@ -20,6 +20,11 @@ struct handlebars_stack * handlebars_stack_ctor(void * ctx)
 
 void handlebars_stack_dtor(struct handlebars_stack * stack)
 {
+    size_t i;
+    for( i = 0; i < stack->i; i++ ) {
+        struct handlebars_value * value = stack->v[i];
+        handlebars_value_delref(value);
+    }
     handlebars_talloc_free(stack);
 }
 

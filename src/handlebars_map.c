@@ -17,6 +17,13 @@ struct handlebars_map * handlebars_map_ctor(void * ctx)
 
 void handlebars_map_dtor(struct handlebars_map * map)
 {
+    struct handlebars_map_entry * entry;
+    struct handlebars_map_entry * tmp;
+
+    handlebars_map_foreach(map, entry, tmp) {
+        handlebars_value_delref(entry->value);
+    }
+
     handlebars_talloc_free(map);
 }
 
@@ -29,7 +36,7 @@ short handlebars_map_add(struct handlebars_map * map, const char * key, struct h
     }
 
     entry->key = handlebars_talloc_strdup(entry, key);
-    entry->value = value; // @todo steal?
+    entry->value = value;
     handlebars_value_addref(value);
 
     if( !map->first ) {
