@@ -194,13 +194,13 @@ START_TEST(test_handlebars_spec)
     ck_assert_ptr_ne(vm->buffer, NULL);
 
 #ifndef NDEBUG
-    fprintf(stdout, "-----------\nNUM: %d\n", _i);
-    fprintf(stdout, "TMPL: %s\n", test->tmpl);
-    fprintf(stdout, "EXPECTED: %s\n", test->expected);
-    fprintf(stdout, "ACTUAL: %s\n", vm->buffer);
-    fprintf(stdout, "CMP: %d\n", strcmp(vm->buffer, test->expected));
-    fprintf(stdout, "%s\n", 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
-        fprintf(stdout, "%s\n", json_object_to_json_string_ext(test->raw, JSON_C_TO_STRING_PRETTY));
+    fprintf(stderr, "-----------\nNUM: %d\n", _i);
+    fprintf(stderr, "TMPL: %s\n", test->tmpl);
+    fprintf(stderr, "EXPECTED: %s\n", test->expected);
+    fprintf(stderr, "ACTUAL: %s\n", vm->buffer);
+    fprintf(stderr, "CMP: %d\n", strcmp(vm->buffer, test->expected));
+    fprintf(stderr, "%s\n", 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
+    fprintf(stderr, "%s\n", json_object_to_json_string_ext(test->raw, JSON_C_TO_STRING_PRETTY));
 #endif
 
     if( strcmp(vm->buffer, test->expected) != 0 ) {

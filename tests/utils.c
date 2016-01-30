@@ -137,8 +137,31 @@ uint32_t adler32(unsigned char *data, size_t len)
 	return (b << 16) | a;
 }
 
+
+
+/* Helpers/Lambdas */
+
+static struct handlebars_value * fixture_3578728160(struct handlebars_options * options)
+{
+    // "function () {\n            return 'undefined!';\n          }"
+    struct handlebars_value * value = handlebars_value_ctor(options->vm);
+    handlebars_value_string(value, "undefined!");
+    return value;
+}
+
+
 static void convert_value_to_fixture(struct handlebars_value * value)
 {
+#define HASH_FIXTURE(hash) \
+    case hash: \
+        SET_FUNCTION(fixture_ ## hash); \
+        break
+
+#define SET_FUNCTION(func) \
+    handlebars_value_null(value); \
+    value->type = HANDLEBARS_VALUE_TYPE_HELPER; \
+    value->v.helper = &func;
+
     assert(value->type == HANDLEBARS_VALUE_TYPE_MAP);
 
     struct handlebars_value * jsvalue = handlebars_value_map_find(value, "javascript", sizeof("javascript"));
@@ -147,10 +170,15 @@ static void convert_value_to_fixture(struct handlebars_value * value)
     uint32_t hash = adler32(jsvalue->v.strval, strlen(jsvalue->v.strval));
 
     switch( hash ) {
+        HASH_FIXTURE(3578728160);
         default:
             fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, jsvalue->v.strval);
-            break;
+            return;
     }
+
+    fprintf(stderr, "Got fixture [%u]\n", hash);
+
+#undef SET_FUNCTION
 }
 
 void load_fixtures(struct handlebars_value * value)

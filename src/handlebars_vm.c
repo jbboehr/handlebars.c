@@ -239,14 +239,19 @@ ACCEPT_FUNCTION(invoke_ambiguous) {
     vm->last_helper = ctx.helper ? ctx.name : NULL;
 
     if( ctx.helper != NULL ) {
+        fprintf(stderr, "CALLLED %d\n", __LINE__);
         assert(ctx.helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
 
-        struct handlebars_value * result = ctx.helper->v.helper(ctx.options);
-        if( result ) {
+        struct handlebars_value *result = ctx.helper->v.helper(ctx.options);
+        if (result) {
             char *tmp = handlebars_value_expression(vm, result, 0);
             frame->buffer = handlebars_talloc_strdup_append(frame->buffer, tmp);
             handlebars_talloc_free(tmp);
         }
+    } else if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+        struct handlebars_value * result = value->v.helper(ctx.options);
+        assert(result != NULL);
+        handlebars_stack_push(vm->stack, result);
     } else {
         //frame->buffer = handlebars_talloc_strdup_append(frame->buffer, handlebars_value_get_strval(value));
         handlebars_stack_push(vm->stack, value);
