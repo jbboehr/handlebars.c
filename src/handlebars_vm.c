@@ -258,6 +258,45 @@ ACCEPT_FUNCTION(invoke_ambiguous) {
     }
 }
 
+ACCEPT_FUNCTION(invoke_helper)
+{
+    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_value * value = handlebars_stack_pop(vm->stack);
+    struct handlebars_value * fn = NULL;
+    struct handlebars_value * result;
+    struct setup_ctx ctx = {0};
+
+    assert(opcode->op1.type == handlebars_operand_type_long);
+    assert(opcode->op2.type == handlebars_operand_type_string);
+    assert(opcode->op3.type == handlebars_operand_type_boolean);
+
+    ctx.name = opcode->op2.data.stringval;
+    ctx.param_size = opcode->op1.data.longval;
+    setup_helper(vm, &ctx);
+
+    if( opcode->op3.data.boolval ) { // isSimple
+        fn = handlebars_map_find(vm->helpers, ctx.name);
+    }
+    if( !fn || fn->type != HANDLEBARS_VALUE_TYPE_HELPER ) {
+        fn = value;
+    }
+
+    if( !fn || fn->type != HANDLEBARS_VALUE_TYPE_HELPER ) {
+        fprintf(stderr, "LE SIGH %d %d\n", fn->type, 12345);
+        fn = handlebars_map_find(vm->helpers, "helperMissing");
+    }
+
+    // @todo runtime error
+    assert(fn != NULL);
+    assert(fn->type == HANDLEBARS_VALUE_TYPE_HELPER);
+
+    result = fn->v.helper(ctx.options);
+    if( !result ) {
+        result = handlebars_value_ctor(vm);
+    }
+    handlebars_stack_push(vm->stack, result);
+}
+
 ACCEPT_FUNCTION(invoke_known_helper) {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     struct setup_ctx ctx = {0};
@@ -363,6 +402,7 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
             ACCEPT(get_context);
             ACCEPT(empty_hash);
             ACCEPT(invoke_ambiguous);
+            ACCEPT(invoke_helper);
             ACCEPT(invoke_known_helper);
             ACCEPT(lookup_on_context);
             ACCEPT(push_context);

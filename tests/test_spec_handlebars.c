@@ -33,6 +33,7 @@ struct generic_test {
     char * it;
     char * tmpl;
     struct json_object * context;
+    struct json_object * helpers;
     char * expected;
     TALLOC_CTX * mem_ctx;
 
@@ -87,6 +88,14 @@ static void loadSpecTest(json_object * object)
         test->context = cur;
     } else {
         fprintf(stderr, "Warning: Data was not set\n");
+    }
+
+    // Get helpers
+    cur = json_object_object_get(object, "helpers");
+    if( cur ) {
+        test->helpers = cur;
+    } else {
+        //fprintf(stderr, "Warning: Helpers was not set\n");
     }
 }
 
@@ -158,6 +167,8 @@ START_TEST(test_handlebars_spec)
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
     struct handlebars_value * context;
+    struct handlebars_value * helpers;
+    struct handlebars_value_iterator * it;
     int retval;
 
     // Initialize
@@ -166,8 +177,17 @@ START_TEST(test_handlebars_spec)
     compiler = handlebars_compiler_ctor(ctx);
     vm = handlebars_vm_ctor(ctx);
 
-    // Setup VM
+    // Setup helpers
     vm->helpers = handlebars_builtins(vm);
+    if( test->helpers ) {
+        helpers = handlebars_value_from_json_object(ctx, test->helpers);
+        load_fixtures(helpers);
+        it = handlebars_value_iterator_ctor(helpers);
+        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
+            // @todo add doesn't override
+            handlebars_map_add(vm->helpers, it->key, it->current);
+        }
+    }
 
     // Parse
     ctx->tmpl = test->tmpl;
@@ -211,8 +231,6 @@ START_TEST(test_handlebars_spec)
                                                 test->tmpl, test->expected, vm->buffer);
         ck_abort_msg(tmp);
     }
-
-    handlebars_value_addref(context);
 
     //ck_assert_str_eq(vm->buffer, test->expected);
 }

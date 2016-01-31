@@ -60,6 +60,12 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     return NULL;
 }
 
+struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_options * options)
+{
+    // @todo
+    return NULL;
+}
+
 struct handlebars_value * handlebars_builtin_if(struct handlebars_options * options)
 {
     struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
@@ -149,6 +155,7 @@ struct handlebars_map * handlebars_builtins(void * ctx)
 
     ADDHELPER(blockHelperMissing, handlebars_builtin_block_helper_missing);
     ADDHELPER(each, handlebars_builtin_each);
+    ADDHELPER(helperMissing, handlebars_builtin_helper_missing);
     ADDHELPER(if, handlebars_builtin_if);
     ADDHELPER(unless, handlebars_builtin_unless);
     ADDHELPER(with, handlebars_builtin_with);

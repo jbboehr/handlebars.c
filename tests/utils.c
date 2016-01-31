@@ -141,14 +141,31 @@ uint32_t adler32(unsigned char *data, size_t len)
 
 /* Helpers/Lambdas */
 
-static struct handlebars_value * fixture_3578728160(struct handlebars_options * options)
+#define FIXTURE_FN(hash) static struct handlebars_value * fixture_ ## hash(struct handlebars_options * options)
+#define FIXTURE_STRING(string) \
+    struct handlebars_value * value = handlebars_value_ctor(options->vm); \
+    handlebars_value_string(value, string); \
+    return value;
+
+FIXTURE_FN(739773491)
+{
+    // "function (arg) {\n        return arg;\n      }"
+    return handlebars_stack_get(options->params, 0);
+}
+
+FIXTURE_FN(2554595758)
+{
+    // "function () { return 'bar'; }"
+    FIXTURE_STRING("bar");
+}
+
+FIXTURE_FN(3578728160)
 {
     // "function () {\n            return 'undefined!';\n          }"
     struct handlebars_value * value = handlebars_value_ctor(options->vm);
     handlebars_value_string(value, "undefined!");
     return value;
 }
-
 
 static void convert_value_to_fixture(struct handlebars_value * value)
 {
@@ -170,13 +187,17 @@ static void convert_value_to_fixture(struct handlebars_value * value)
     uint32_t hash = adler32(jsvalue->v.strval, strlen(jsvalue->v.strval));
 
     switch( hash ) {
+        HASH_FIXTURE(739773491);
+        HASH_FIXTURE(2554595758);
         HASH_FIXTURE(3578728160);
         default:
             fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, jsvalue->v.strval);
             return;
     }
 
+#ifndef NDEBUG
     fprintf(stderr, "Got fixture [%u]\n", hash);
+#endif
 
 #undef SET_FUNCTION
 }
