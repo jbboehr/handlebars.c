@@ -35,11 +35,11 @@ enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * v
 	}
 }
 
-struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key, size_t len)
+struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key)
 {
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-			return value->handlers->map_find(value, key, len);
+			return value->handlers->map_find(value, key);
 		}
 	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
         return handlebars_map_find(value->v.map, key);
@@ -63,9 +63,16 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 
 const char * handlebars_value_get_strval(struct handlebars_value * value)
 {
-	if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
-		return value->v.strval;
-	}
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            return value->v.strval;
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            return handlebars_talloc_asprintf(value, "%ld", value->v.lval);
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            return handlebars_talloc_asprintf(value, "%f", value->v.lval);
+        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+            return handlebars_talloc_strdup(value, value->v.bval ? "true" : "false");
+    }
 
 	return NULL;
 }
@@ -150,6 +157,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             it = value->handlers->iterator(value);
             break;
         default:
+            it->current = 1;
             assert(0);
             it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
             break;
@@ -199,6 +207,63 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
     it->eof = !ret;
 
     return ret;
+}
+
+char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
+{
+    char * buf = handlebars_talloc_strdup(value->ctx, "");
+    struct handlebars_value_iterator * it;
+    char indent[64];
+    char indent2[64];
+
+    memset(indent, 0, sizeof(indent));
+    memset(indent, ' ', depth * 4);
+
+    memset(indent2, 0, sizeof(indent2));
+    memset(indent2, ' ', (depth + 1) * 4);
+
+    switch( handlebars_value_get_type(value) ) {
+        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "boolean(%s)", value->v.bval ? "true" : "false");
+            break;
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "float(%f)", value->v.dval);
+            break;
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "integer(%ld)", value->v.lval);
+            break;
+        case HANDLEBARS_VALUE_TYPE_NULL:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "NULL");
+            break;
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%s)", value->v.strval);
+            break;
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "[");
+            it = handlebars_value_iterator_ctor(value);
+            for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+                char * tmp = handlebars_value_dump(it->current, depth + 1);
+                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%d => %s\n", indent2, it->index, tmp);
+                handlebars_talloc_free(tmp);
+            }
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "]");
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "{");
+            it = handlebars_value_iterator_ctor(value);
+            for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+                char * tmp = handlebars_value_dump(it->current, depth + 1);
+                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s => %s\n", indent2, it->key, tmp);
+                handlebars_talloc_free(tmp);
+            }
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "}");
+            break;
+        default:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "unknown type %d", value->type);
+            break;
+    }
+
+    return buf;
 }
 
 char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape)

@@ -34,7 +34,9 @@ struct generic_test {
     char * tmpl;
     struct json_object * context;
     struct json_object * helpers;
+    struct json_object * globalHelpers;
     char * expected;
+    short exception;
     TALLOC_CTX * mem_ctx;
 
     char ** known_helpers;
@@ -82,6 +84,12 @@ static void loadSpecTest(json_object * object)
         fprintf(stderr, "Warning: Expected was not a string\n");
     }
 
+    // Get exception
+    cur = json_object_object_get(object, "exception");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->exception = json_object_get_boolean(cur);
+    }
+
     // Get data
     cur = json_object_object_get(object, "data");
     if( cur ) {
@@ -91,11 +99,17 @@ static void loadSpecTest(json_object * object)
     }
 
     // Get helpers
-    cur = json_object_object_get(object, "helpers");
-    if( cur ) {
+    if( NULL != (cur = json_object_object_get(object, "helpers")) ) {
         test->helpers = cur;
-    } else {
-        //fprintf(stderr, "Warning: Helpers was not set\n");
+    }
+    if( NULL != (cur = json_object_object_get(object, "globalHelpers")) ) {
+        test->globalHelpers = cur;
+    }
+
+    // Get compile options
+    cur = json_object_object_get(object, "compileOptions");
+    if( cur && json_object_get_type(cur) == json_type_object ) {
+        test->flags = json_load_compile_flags(cur);
     }
 }
 
@@ -160,6 +174,29 @@ error:
     return error;
 }
 
+int shouldnt_skip(struct generic_test * test)
+{
+#define MYCHECK(d, i) \
+    if( 0 == strcmp(#d, test->description) && 0 == strcmp(#i, test->it) ) return 0;
+
+    // Still having issues with whitespace
+    MYCHECK(standalone sections, block standalone else sections can be disabled);
+
+    // Decorators aren't implemented
+    MYCHECK(decorators, should apply mustache decorators);
+    MYCHECK(decorators, should apply block decorators);
+    MYCHECK(decorators, should apply allow undefined return);
+    MYCHECK(decorators, should support nested decorators);
+    MYCHECK(decorators, should apply multiple decorators);
+    MYCHECK(decorators, should access parent variables);
+    MYCHECK(decorators, should work with root program);
+    MYCHECK(decorators, should fail when accessing variables from root);
+
+    return 1;
+
+#undef MYCCHECK
+}
+
 START_TEST(test_handlebars_spec)
 {
     struct generic_test * test = &tests[_i];
@@ -171,27 +208,30 @@ START_TEST(test_handlebars_spec)
     struct handlebars_value_iterator * it;
     int retval;
 
+#ifndef NDEBUG
+    fprintf(stderr, "-----------\nNUM: %d\n", _i);
+    fprintf(stderr, "TMPL: %s\n", test->tmpl);
+    fprintf(stderr, "FLAGS: %d\n", test->flags);
+    fprintf(stderr, "%s\n", json_object_to_json_string_ext(test->raw, JSON_C_TO_STRING_PRETTY));
+#endif
+
+    ck_assert_msg(shouldnt_skip(test), "Skipped");
+
     // Initialize
     ctx = handlebars_context_ctor();
     //ctx->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
-    vm = handlebars_vm_ctor(ctx);
-
-    // Setup helpers
-    vm->helpers = handlebars_builtins(vm);
-    if( test->helpers ) {
-        helpers = handlebars_value_from_json_object(ctx, test->helpers);
-        load_fixtures(helpers);
-        it = handlebars_value_iterator_ctor(helpers);
-        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            // @todo add doesn't override
-            handlebars_map_add(vm->helpers, it->key, it->current);
-        }
-    }
 
     // Parse
     ctx->tmpl = test->tmpl;
     retval = handlebars_yy_parse(ctx);
+
+    // Check error
+    if( ctx->error ) {
+        // @todo maybe check message
+        ck_assert(test->exception);
+        goto done;
+    }
 
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
@@ -202,6 +242,33 @@ START_TEST(test_handlebars_spec)
     handlebars_compiler_compile(compiler, ctx->program);
     ck_assert_int_eq(0, compiler->errnum);
 
+    // Setup VM
+    vm = handlebars_vm_ctor(ctx);
+    vm->flags = test->flags;
+
+    // Setup helpers
+    vm->helpers = handlebars_builtins(vm);
+    if( test->globalHelpers ) {
+        helpers = handlebars_value_from_json_object(ctx, test->globalHelpers);
+        load_fixtures(helpers);
+        it = handlebars_value_iterator_ctor(helpers);
+        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
+            // @todo add doesn't override
+            handlebars_map_add(vm->helpers->v.map, it->key, it->current);
+        }
+        handlebars_value_delref(helpers);
+    }
+    if( test->helpers ) {
+        helpers = handlebars_value_from_json_object(ctx, test->helpers);
+        load_fixtures(helpers);
+        it = handlebars_value_iterator_ctor(helpers);
+        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
+            // @todo add doesn't override
+            handlebars_map_add(vm->helpers->v.map, it->key, it->current);
+        }
+        handlebars_value_delref(helpers);
+    }
+
     // Load context
     context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
     handlebars_value_addref(context);
@@ -210,18 +277,18 @@ START_TEST(test_handlebars_spec)
     // Execute
     handlebars_vm_execute(vm, compiler, context);
 
-    ck_assert_ptr_ne(test->expected, NULL);
-    ck_assert_ptr_ne(vm->buffer, NULL);
 
 #ifndef NDEBUG
-    fprintf(stderr, "-----------\nNUM: %d\n", _i);
-    fprintf(stderr, "TMPL: %s\n", test->tmpl);
-    fprintf(stderr, "EXPECTED: %s\n", test->expected);
-    fprintf(stderr, "ACTUAL: %s\n", vm->buffer);
-    fprintf(stderr, "CMP: %d\n", strcmp(vm->buffer, test->expected));
-    fprintf(stderr, "%s\n", 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
-    fprintf(stderr, "%s\n", json_object_to_json_string_ext(test->raw, JSON_C_TO_STRING_PRETTY));
+    if( test->expected ) {
+        fprintf(stderr, "EXPECTED: %s\n", test->expected);
+        fprintf(stderr, "ACTUAL: %s\n", vm->buffer);
+        fprintf(stderr, "CMP: %d\n", strcmp(vm->buffer, test->expected));
+        fprintf(stderr, "%s\n", 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
+    }
 #endif
+
+    ck_assert_ptr_ne(test->expected, NULL);
+    ck_assert_ptr_ne(vm->buffer, NULL);
 
     if( strcmp(vm->buffer, test->expected) != 0 ) {
         char * tmp = handlebars_talloc_asprintf(rootctx,
@@ -233,6 +300,8 @@ START_TEST(test_handlebars_spec)
     }
 
     //ck_assert_str_eq(vm->buffer, test->expected);
+done:
+    handlebars_context_dtor(ctx);
 }
 END_TEST
 
@@ -279,8 +348,9 @@ int main(void)
     }
     loadSpec("basic");
     //loadSpec("./spec/handlebars/spec/bench.json");
+    loadSpec("blocks");
+    loadSpec("builtins");
     /*
-    loadSpec("./spec/handlebars/spec/blocks.json");
     loadSpec("./spec/handlebars/spec/builtins.json");
     loadSpec("./spec/handlebars/spec/data.json");
     loadSpec("./spec/handlebars/spec/helpers.json");

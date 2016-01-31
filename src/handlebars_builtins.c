@@ -13,6 +13,9 @@
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 
+struct handlebars_value * handlebars_builtin_each(struct handlebars_options * options);
+
+
 static const char * names[] = {
     "helperMissing", "blockHelperMissing", "each", "if",
     "unless", "with", "log", "lookup", NULL
@@ -36,9 +39,11 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
     } else if( handlebars_value_is_empty(context) ) { // @todo supposed to be !== 0 ?
         result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        // @todo
+        // @todo use hash lookup
+        return handlebars_builtin_each(options);
     } else {
-        // @todo
+        // For object, etc
+        result = handlebars_vm_execute_program(options->vm, options->program, context);
     }
 
     if( result ) {
@@ -54,10 +59,106 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
 struct handlebars_value * handlebars_builtin_each(struct handlebars_options * options)
 {
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
+    struct handlebars_value_iterator * it;
+    struct handlebars_value * result = handlebars_value_ctor(options->vm);
+    short use_data = options->data != NULL;
+    struct handlebars_value * data = NULL;
+    struct handlebars_value * block_params = NULL;
+    char * tmp;
+    size_t i = 0;
+    size_t len;
 
-    // @todo
+    if( context->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+        struct handlebars_options * options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
+        options2->params = handlebars_stack_ctor(options);
+        handlebars_stack_push(options2->params, options->scope);
+        struct handlebars_value * ret = context->v.helper(options);
+        if( !ret ) {
+            goto whoopsie;
+        }
+        handlebars_value_delref(context);
+        context = ret;
+    }
 
-    return NULL;
+    handlebars_value_string(result, "");
+
+    if( use_data ) {
+        data = handlebars_value_ctor(options->vm);
+        data->type = HANDLEBARS_VALUE_TYPE_MAP;
+        data->v.map = handlebars_map_ctor(data);
+        if( options->data ) {
+            handlebars_map_add(data->v.map, "_parent", options->data);
+        }
+    }
+
+    if( context->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        len = context->v.map->i - 1;
+    } else if( context->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        len = handlebars_stack_length(context->v.stack) - 1;
+    } else {
+        goto whoopsie;
+    }
+
+    for( it = handlebars_value_iterator_ctor(context) ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+        if( context->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+            i++;
+            continue;
+        }
+
+        struct handlebars_value * key = handlebars_value_ctor(options->vm);
+        if( it->value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+            handlebars_value_string(key, it->key);
+        } else {
+            handlebars_value_integer(key, it->index);
+        }
+
+        if( data ) {
+            struct handlebars_value * index = handlebars_value_ctor(options->vm);
+            struct handlebars_value * first = handlebars_value_ctor(options->vm);
+            struct handlebars_value * last = handlebars_value_ctor(options->vm);
+            if( it->value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+                handlebars_value_integer(index, i);
+            } else {
+                handlebars_value_integer(index, it->index);
+            }
+            handlebars_value_boolean(first, i == 0);
+            handlebars_value_boolean(last, i == len);
+
+            handlebars_map_update(data->v.map, "index", index);
+            handlebars_map_update(data->v.map, "key", key);
+            handlebars_map_update(data->v.map, "first", first);
+            handlebars_map_update(data->v.map, "last", last);
+            handlebars_value_delref(index);
+            handlebars_value_delref(first);
+            handlebars_value_delref(last);
+        }
+
+        block_params = handlebars_value_ctor(options->vm);
+        block_params->type = HANDLEBARS_VALUE_TYPE_ARRAY;
+        block_params->v.stack = handlebars_stack_ctor(block_params);
+        handlebars_stack_set(block_params->v.stack, 0, it->current);
+        handlebars_stack_set(block_params->v.stack, 1, key);
+
+        tmp = handlebars_vm_execute_program_ex(options->vm, options->program, it->current, data, block_params);
+        if( tmp ) {
+            result->v.strval = handlebars_talloc_strdup_append(result->v.strval, tmp);
+        }
+
+        handlebars_value_delref(key);
+        handlebars_value_delref(block_params);
+
+        i++;
+    }
+
+whoopsie:
+    if( i == 0 ) {
+        tmp = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
+        if( tmp ) {
+            result->v.strval = handlebars_talloc_strdup_append(result->v.strval, tmp);
+        }
+    }
+
+    return result;
 }
 
 struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_options * options)
@@ -69,10 +170,21 @@ struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_op
 struct handlebars_value * handlebars_builtin_if(struct handlebars_options * options)
 {
     struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
+    int program;
+    struct handlebars_value * tmp = NULL;
 
     // @todo callable conditional
 
-    int program = handlebars_value_is_empty(conditional) ? options->inverse : options->program;
+    if( !handlebars_value_is_empty(conditional) ) {
+        program = options->program;
+    } else if( conditional->type == HANDLEBARS_VALUE_TYPE_INTEGER &&
+            handlebars_value_get_intval(conditional) == 0 &&
+            NULL != (tmp = handlebars_value_map_find(options->hash, "includeZero")) ) {
+        program = options->program;
+        handlebars_value_delref(tmp);
+    } else {
+        program = options->inverse;
+    }
 
     char * result = handlebars_vm_execute_program(options->vm, program, options->scope);
 
@@ -92,26 +204,44 @@ struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * 
 
     handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
-    struct handlebars_value * helper = handlebars_map_find(options->vm->helpers, "if");
+    struct handlebars_value * helper = handlebars_value_map_find(options->vm->helpers, "if");
     assert(helper != NULL);
     return helper->v.helper(options);
 }
 
 struct handlebars_value * handlebars_builtin_with(struct handlebars_options * options)
 {
-    // @todo callable
     char * result = NULL;
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
+    struct handlebars_value * block_params;
+
+    if( context->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+        struct handlebars_options * options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
+        options2->params = handlebars_stack_ctor(options);
+        handlebars_stack_push(options2->params, options->scope);
+        struct handlebars_value * ret = context->v.helper(options);
+        if( !ret ) {
+            ret = handlebars_value_ctor(options->vm);
+        }
+        handlebars_value_delref(context);
+        context = ret;
+    }
 
     if( context == NULL ) {
         context = handlebars_value_ctor(options->vm);
         result = handlebars_vm_execute_program(options->vm, options->inverse, context);
-        handlebars_value_delref(context);
     } else if( context->type == HANDLEBARS_VALUE_TYPE_NULL ) {
         result = handlebars_vm_execute_program(options->vm, options->inverse, context);
     } else {
-        result = handlebars_vm_execute_program(options->vm, options->program, context);
+        block_params = handlebars_value_ctor(options->vm);
+        block_params->type = HANDLEBARS_VALUE_TYPE_ARRAY;
+        block_params->v.stack = handlebars_stack_ctor(block_params);
+        handlebars_stack_set(block_params->v.stack, 0, context);
+
+        result = handlebars_vm_execute_program_ex(options->vm, options->program, context, options->data, block_params);
     }
+
+    handlebars_value_delref(context);
 
     if( result ) {
         struct handlebars_value * ret = handlebars_value_ctor(options->vm);
@@ -123,7 +253,7 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
     return NULL;
 }
 
-struct handlebars_map * handlebars_builtins(void * ctx)
+struct handlebars_value * handlebars_builtins(void * ctx)
 {
 #define ADDHELPER(name, func) do { \
         tmp = handlebars_value_ctor(ctx); \
@@ -139,19 +269,22 @@ struct handlebars_map * handlebars_builtins(void * ctx)
         } \
     } while(0)
 
-    TALLOC_CTX * tmpctx;
+    struct handlebars_value * value;
     struct handlebars_map * map;
     struct handlebars_value * tmp;
 
-    tmpctx = talloc_init(ctx);
-    if( unlikely(tmpctx) == NULL ) {
+    value = handlebars_value_ctor(ctx);
+    if( unlikely(value == NULL) ) {
         return NULL;
     }
 
-    map = handlebars_map_ctor(tmpctx);
+    map = handlebars_map_ctor(value);
     if( unlikely(map == NULL) ) {
-        return NULL;
+        goto error;
     }
+
+    value->type = HANDLEBARS_VALUE_TYPE_MAP;
+    value->v.map = map;
 
     ADDHELPER(blockHelperMissing, handlebars_builtin_block_helper_missing);
     ADDHELPER(each, handlebars_builtin_each);
@@ -160,10 +293,9 @@ struct handlebars_map * handlebars_builtins(void * ctx)
     ADDHELPER(unless, handlebars_builtin_unless);
     ADDHELPER(with, handlebars_builtin_with);
 
-    talloc_steal(ctx, map);
-
+    return value;
 error:
-    handlebars_talloc_free(tmpctx);
-    return map;
+    handlebars_value_delref(value);
+    return NULL;
 #undef ADDHELPER
 }

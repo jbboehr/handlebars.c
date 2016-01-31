@@ -65,7 +65,7 @@ struct handlebars_value {
 };
 
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
-struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key, size_t len);
+struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key);
 struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
 const char * handlebars_value_get_strval(struct handlebars_value * value);
 size_t handlebars_value_get_strlen(struct handlebars_value * value);
@@ -84,6 +84,8 @@ struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct js
 void handlebars_value_convert_ex(struct handlebars_value * value, short recurse);
 struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value);
 short handlebars_value_iterator_next(struct handlebars_value_iterator * it);
+
+char * handlebars_value_dump(struct handlebars_value * value, size_t depth);
 
 static inline int handlebars_value_addref(struct handlebars_value * value) {
     return ++value->refcount;
@@ -119,7 +121,7 @@ static inline short handlebars_value_is_scalar(struct handlebars_value * value) 
 }
 
 static inline short handlebars_value_is_empty(struct handlebars_value * value) {
-    switch( handlebars_value_get_type(value) ) {
+    switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
             return 1;
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
@@ -130,10 +132,13 @@ static inline short handlebars_value_is_empty(struct handlebars_value * value) {
             return 0 == handlebars_value_get_intval(value);
         case HANDLEBARS_VALUE_TYPE_STRING:
             return 0 == handlebars_value_get_strlen(value);
-        // @todo map, stack
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            return 0 == handlebars_stack_length(value->v.stack);
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            return NULL == value->v.map->first;
+        case HANDLEBARS_VALUE_TYPE_USER:
         default:
-             return 1;
-
+            return 0;
     }
 }
 

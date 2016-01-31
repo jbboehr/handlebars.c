@@ -33,4 +33,10 @@ short handlebars_map_add(struct handlebars_map * map, const char * key, struct h
 short handlebars_map_remove(struct handlebars_map * map, const char * key);
 struct handlebars_value * handlebars_map_find(struct handlebars_map * map, const char * key);
 
+static inline short handlebars_map_update(struct handlebars_map * map, const char * key, struct handlebars_value * value)
+{
+    handlebars_map_remove(map, key);
+    return handlebars_map_add(map, key, value);
+}
+
 #endif

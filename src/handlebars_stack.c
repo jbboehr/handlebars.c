@@ -94,6 +94,8 @@ struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, 
 
 struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, size_t offset, struct handlebars_value * value)
 {
+    struct handlebars_value * old;
+
     // As a special case, push
     if( offset == stack->i ) {
         return handlebars_stack_push(stack, value);
@@ -104,10 +106,11 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
         return NULL;
     }
 
-    handlebars_value_delref(stack->v[offset]);
-
+    old = stack->v[offset];
     stack->v[offset] = value;
+
     handlebars_value_addref(value);
+    handlebars_value_delref(old);
 
     return value;
 }

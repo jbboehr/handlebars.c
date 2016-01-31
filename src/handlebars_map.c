@@ -62,11 +62,15 @@ short handlebars_map_remove(struct handlebars_map * map, const char * key)
     handlebars_map_foreach(map, entry, tmp) {
         if( 0 == strcmp(entry->key, key) ) {
             value = entry->value;
-            if( entry == map->first ) {
+            if( entry->prev ) {
+                entry->prev->next = entry->next;
+            } else {
                 map->first = entry->next;
                 map->first->prev = NULL;
             }
-            if( entry == map->last ) {
+            if( entry->next ) {
+                entry->next->prev = entry->prev;
+            } else {
                 map->last = entry->prev;
                 map->last->next = NULL;
             }
