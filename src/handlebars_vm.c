@@ -161,6 +161,17 @@ static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
     handlebars_value_delref(value);
 }
 
+static inline char * dump_stack(struct handlebars_stack * stack)
+{
+    struct handlebars_value * tmp = handlebars_value_ctor(stack);
+    tmp->type = HANDLEBARS_VALUE_TYPE_ARRAY;
+    tmp->v.stack = stack;
+    char * str = handlebars_value_dump(tmp, 0);
+    talloc_steal(stack, str);
+    handlebars_talloc_free(tmp);
+    return str;
+}
+
 
 
 
@@ -338,7 +349,8 @@ ACCEPT_FUNCTION(invoke_helper)
 {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     struct handlebars_value * value = handlebars_stack_pop(vm->stack);
-    struct handlebars_value * fn = NULL;
+    struct handlebars_value * fn = value;
+    struct handlebars_value * fn2 = NULL;
     struct handlebars_value * result;
     struct setup_ctx ctx = {0};
 
@@ -351,9 +363,11 @@ ACCEPT_FUNCTION(invoke_helper)
     setup_helper(vm, &ctx);
 
     if( opcode->op3.data.boolval ) { // isSimple
-        fn = handlebars_value_map_find(vm->helpers, ctx.name);
+        if( NULL != (fn2 = handlebars_value_map_find(vm->helpers, ctx.name)) ) {
+            fn = fn2;
+        }
     }
-    
+
     if( !fn || fn->type != HANDLEBARS_VALUE_TYPE_HELPER ) {
         fn = value;
     }
@@ -586,6 +600,16 @@ ACCEPT_FUNCTION(push_literal) {
     handlebars_stack_push(vm->stack, value);
 }
 
+ACCEPT_FUNCTION(push_string)
+{
+    assert(opcode->op1.type == handlebars_operand_type_string);
+
+    struct handlebars_value * value = handlebars_value_ctor(vm);
+    handlebars_value_string(value, opcode->op1.data.stringval);
+    handlebars_stack_push(vm->stack, value);
+    handlebars_value_delref(value);
+}
+
 ACCEPT_FUNCTION(resolve_possible_lambda)
 {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
@@ -639,6 +663,7 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
             ACCEPT(push_hash);
             ACCEPT(push_program);
             ACCEPT(push_literal);
+            ACCEPT(push_string);
             ACCEPT(resolve_possible_lambda);
 
 //            case handlebars_opcode_type_append:

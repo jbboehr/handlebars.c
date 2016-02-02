@@ -278,8 +278,9 @@ START_TEST(test_handlebars_spec)
         load_fixtures(helpers);
         it = handlebars_value_iterator_ctor(helpers);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            // @todo add doesn't override
-            handlebars_map_add(vm->helpers->v.map, it->key, it->current);
+            //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+                handlebars_map_add(vm->helpers->v.map, it->key, it->current);
+            //}
         }
         handlebars_value_delref(helpers);
     }
@@ -288,8 +289,9 @@ START_TEST(test_handlebars_spec)
         load_fixtures(helpers);
         it = handlebars_value_iterator_ctor(helpers);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            // @todo add doesn't override
-            handlebars_map_add(vm->helpers->v.map, it->key, it->current);
+            //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+                handlebars_map_add(vm->helpers->v.map, it->key, it->current);
+            //}
         }
         handlebars_value_delref(helpers);
     }
@@ -302,7 +304,8 @@ START_TEST(test_handlebars_spec)
     // Load data
     if( test->data ) {
         vm->data = handlebars_value_from_json_object(ctx, test->data);
-        //handlebars_value_convert(vm->data);
+        handlebars_value_convert(vm->data);
+        load_fixtures(vm->data);
     }
 
     // Execute
@@ -326,6 +329,7 @@ START_TEST(test_handlebars_spec)
         ck_assert_ptr_ne(vm->errmsg, NULL);
         ck_assert_str_eq(vm->errmsg, test->message);
     } else {
+        ck_assert_msg(vm->errmsg == NULL, vm->errmsg);
         ck_assert_ptr_ne(test->expected, NULL);
         ck_assert_ptr_ne(vm->buffer, NULL);
 
@@ -390,9 +394,8 @@ int main(void)
     //loadSpec("./spec/handlebars/spec/bench.json");
     loadSpec("blocks");
     loadSpec("builtins");
+    loadSpec("data");
     /*
-    loadSpec("./spec/handlebars/spec/builtins.json");
-    loadSpec("./spec/handlebars/spec/data.json");
     loadSpec("./spec/handlebars/spec/helpers.json");
     loadSpec("./spec/handlebars/spec/partials.json");
     loadSpec("./spec/handlebars/spec/regressions.json");

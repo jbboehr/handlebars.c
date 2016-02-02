@@ -310,6 +310,23 @@ FIXTURE_FN(2596410860)
     return value;
 }
 
+FIXTURE_FN(2961119846)
+{
+    // "function (options) {\n        return options.data.adjective + ' ' + this.noun;\n      }"
+    struct handlebars_value * adjective = handlebars_value_map_find(options->data, "adjective");
+    struct handlebars_value * noun = handlebars_value_map_find(options->scope, "noun");
+    struct handlebars_value * result = handlebars_value_ctor(options->vm);
+    char * tmp = handlebars_talloc_asprintf(
+            result,
+            "%s %s",
+            handlebars_value_get_strval(adjective),
+            handlebars_value_get_strval(noun)
+    );
+    handlebars_value_string(result, tmp);
+    handlebars_talloc_free(tmp);
+    return result;
+}
+
 FIXTURE_FN(3058305845)
 {
     // "function () {return this.foo; }"
@@ -403,6 +420,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(2499873302);
         FIXTURE_CASE(2554595758);
         FIXTURE_CASE(2596410860);
+        FIXTURE_CASE(2961119846);
         FIXTURE_CASE(3058305845);
         FIXTURE_CASE(3307473738);
         FIXTURE_CASE(3379432388);
@@ -412,6 +430,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
 
         FIXTURE_CASE_ALIAS(401083957, 3707047013);
         FIXTURE_CASE_ALIAS(1111103580, 1341397520);
+        FIXTURE_CASE_ALIAS(2836204191, 739773491);
         default:
             fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, jsvalue->v.strval);
             return;
