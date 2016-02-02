@@ -33,6 +33,7 @@ struct generic_test {
     char * it;
     char * tmpl;
     struct json_object * context;
+    struct json_object * data;
     struct json_object * helpers;
     struct json_object * globalHelpers;
     char * expected;
@@ -49,6 +50,17 @@ static struct generic_test * tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
 static char * spec_dir;
+
+static void loadOptions(struct generic_test * test, json_object * object)
+{
+    json_object * cur = NULL;
+
+    // Get data
+    cur = json_object_object_get(object, "data");
+    if( cur ) {
+        test->data = cur;
+    }
+}
 
 static void loadSpecTest(json_object * object)
 {
@@ -96,6 +108,12 @@ static void loadSpecTest(json_object * object)
         test->context = cur;
     } else {
         fprintf(stderr, "Warning: Data was not set\n");
+    }
+
+    // Get options
+    cur = json_object_object_get(object, "options");
+    if( cur && json_object_get_type(cur) == json_type_object ) {
+        loadOptions(test, cur);
     }
 
     // Get helpers
@@ -273,6 +291,12 @@ START_TEST(test_handlebars_spec)
     context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
     handlebars_value_addref(context);
     load_fixtures(context);
+
+    // Load data
+    if( test->data ) {
+        vm->data = handlebars_value_from_json_object(ctx, test->data);
+        //handlebars_value_convert(vm->data);
+    }
 
     // Execute
     handlebars_vm_execute(vm, compiler, context);

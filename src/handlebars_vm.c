@@ -294,7 +294,7 @@ ACCEPT_FUNCTION(get_context) {
         // error
         // @todo
         vm->last_context = NULL;
-        assert(0);
+        //assert(0);
     } else if( depth == 0 ) {
         vm->last_context = handlebars_stack_top(vm->depths);
     } else {
@@ -433,12 +433,14 @@ ACCEPT_FUNCTION(lookup_data)
 {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     struct handlebars_value * data = frame->data;
-    size_t depth = opcode->op1.data.longval;
+    struct handlebars_value * tmp;
+    struct handlebars_value * val = NULL;
 
     assert(opcode->op1.type == handlebars_operand_type_long);
     assert(opcode->op2.type == handlebars_operand_type_array);
     assert(opcode->op3.type == handlebars_operand_type_boolean || opcode->op3.type == handlebars_operand_type_null);
 
+    size_t depth = opcode->op1.data.longval;
     char **arr = opcode->op2.data.arrayval;
     char * first = *arr++;
 
@@ -448,22 +450,20 @@ ACCEPT_FUNCTION(lookup_data)
         }
     }
 
-    assert(data != NULL);
-
-    struct handlebars_value * tmp;
-    struct handlebars_value * val = NULL;
-    if( (tmp = handlebars_value_map_find(data, first)) ) {
-        val = tmp;
-    } else if( 0 == strcmp(first, "root") ) {
-        val = handlebars_stack_get(vm->depths, 0);
-    }
-
-    for( ; *arr != NULL; arr++ ) {
-        char * part = *arr;
-        if( val == NULL || val->type != HANDLEBARS_VALUE_TYPE_MAP ) {
-            break;
+    if( data ) {
+        if( (tmp = handlebars_value_map_find(data, first)) ) {
+            val = tmp;
+        } else if( 0 == strcmp(first, "root") ) {
+            val = handlebars_stack_get(vm->depths, 0);
         }
-        val = handlebars_value_map_find(val, part);
+
+        for( ; *arr != NULL; arr++ ) {
+            char * part = *arr;
+            if( val == NULL || val->type != HANDLEBARS_VALUE_TYPE_MAP ) {
+                break;
+            }
+            val = handlebars_value_map_find(val, part);
+        }
     }
 
     if( !val ) {
@@ -520,8 +520,11 @@ ACCEPT_FUNCTION(pop_hash)
 
 ACCEPT_FUNCTION(push_context) {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_value * value = vm->last_context;
 
-    assert(vm->last_context != NULL);
+    if( !vm->last_context ) {
+        vm->last_context = handlebars_value_ctor(vm);
+    }
 
     handlebars_stack_push(vm->stack, vm->last_context);
 }
@@ -798,7 +801,7 @@ void handlebars_vm_execute(
     vm->context = context;
 
     // Execute
-    vm->buffer = handlebars_vm_execute_program(vm, 0, context);
+    vm->buffer = handlebars_vm_execute_program_ex(vm, 0, context, vm->data, NULL);
 
     // Release context
     handlebars_value_delref(context);

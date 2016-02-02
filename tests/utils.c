@@ -236,7 +236,7 @@ FIXTURE_FN(1341397520)
     if( options->data ) {
         return handlebars_value_map_find(options->data, "exclaim");
     } else {
-        return NULL;
+        return handlebars_value_ctor(options->vm);
     }
 }
 
@@ -286,6 +286,13 @@ FIXTURE_FN(2439252451)
     return value;
 }
 
+FIXTURE_FN(2499873302)
+{
+    struct handlebars_value * value = handlebars_value_ctor(options->vm);
+    handlebars_value_boolean(value, 0);
+    return value;
+}
+
 FIXTURE_FN(2554595758)
 {
     // "function () { return 'bar'; }"
@@ -300,6 +307,16 @@ FIXTURE_FN(2596410860)
     struct handlebars_value * value = handlebars_value_ctor(options->vm);
     handlebars_value_string(value, res);
     handlebars_talloc_free(res);
+    return value;
+}
+
+FIXTURE_FN(3058305845)
+{
+    // "function () {return this.foo; }"
+    struct handlebars_value * value = handlebars_value_map_find(options->scope, "foo");
+    if( !value ) {
+        value = handlebars_value_ctor(options->vm);
+    }
     return value;
 }
 
@@ -383,8 +400,10 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(2259424295);
         FIXTURE_CASE(2305563493);
         FIXTURE_CASE(2439252451);
+        FIXTURE_CASE(2499873302);
         FIXTURE_CASE(2554595758);
         FIXTURE_CASE(2596410860);
+        FIXTURE_CASE(3058305845);
         FIXTURE_CASE(3307473738);
         FIXTURE_CASE(3379432388);
         FIXTURE_CASE(3578728160);
@@ -392,6 +411,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(3707047013);
 
         FIXTURE_CASE_ALIAS(401083957, 3707047013);
+        FIXTURE_CASE_ALIAS(1111103580, 1341397520);
         default:
             fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, jsvalue->v.strval);
             return;
