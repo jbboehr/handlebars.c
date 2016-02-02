@@ -401,21 +401,26 @@ ACCEPT_FUNCTION(lookup_block_param)
     sscanf(*(opcode->op1.data.arrayval), "%ld", &blockParam1);
     sscanf(*(opcode->op1.data.arrayval + 1), "%ld", &blockParam2);
 
-    struct handlebars_value * v1 = handlebars_stack_get(vm->blockParamStack, blockParam1);
+    struct handlebars_value * v1 = handlebars_stack_get(vm->blockParamStack, handlebars_stack_length(vm->blockParamStack) - blockParam1 - 1);
     if( !v1 || v1->type != HANDLEBARS_VALUE_TYPE_ARRAY ) goto done;
 
     struct handlebars_value * v2 = handlebars_stack_get(v1->v.stack, blockParam2);
-    if( !v2 || v2->type != HANDLEBARS_VALUE_TYPE_MAP ) goto done;
+    if( !v2 ) goto done;
 
     char ** arr = opcode->op2.data.arrayval;
-    struct handlebars_value * tmp = v2;
-    for( arr++ ; *arr != NULL; arr++ ) {
-        tmp = handlebars_value_map_find(tmp, *arr);
-        if( !tmp ) {
-            break;
+    arr++;
+    if( *arr ) {
+        struct handlebars_value * tmp = v2;
+        for(  ; *arr != NULL; arr++ ) {
+            tmp = handlebars_value_map_find(tmp, *arr);
+            if( !tmp ) {
+                break;
+            }
         }
+        value = tmp;
+    } else {
+        value = v2;
     }
-    value = tmp;
 
 done:
     if( !value ) {
