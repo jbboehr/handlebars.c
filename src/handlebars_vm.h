@@ -2,6 +2,8 @@
 #ifndef HANDLEBARS_VM_H
 #define HANDLEBARS_VM_H
 
+#include <setjmp.h>
+
 struct handlebars_compiler;
 struct handlebars_map;
 struct handlebars_options;
@@ -20,8 +22,12 @@ struct handlebars_vm {
     struct handlebars_compiler ** programs;
     size_t guid_index;
 
-	struct handlebars_value * context;
-	struct handlebars_value * data;
+    long errnum;
+    long errmsg;
+    jmp_buf jmpbuf;
+
+    struct handlebars_value * context;
+    struct handlebars_value * data;
     struct handlebars_value * helpers;
     long flags;
 
@@ -47,5 +53,7 @@ char * handlebars_vm_execute_program(
 char * handlebars_vm_execute_program_ex(
         struct handlebars_vm * vm, int program, struct handlebars_value * context,
         struct handlebars_value * data, struct handlebars_value * block_params);
+
+void handlebars_vm_throw(struct handlebars_vm * vm, long errnum, const char * errmsg);
 
 #endif

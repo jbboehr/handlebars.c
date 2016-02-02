@@ -101,12 +101,15 @@ static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ct
             handlebars_stack_push(ctx->params, frame->options_register);
         }
     }
+    // Don't include options in oarams for now
+    /*
     if( ctx->params != NULL ) {
         struct handlebars_value * value = handlebars_value_ctor(vm);
         value->type = HANDLEBARS_VALUE_TYPE_OPTIONS;
         value->v.options = ctx->options;
         handlebars_stack_push(ctx->params, value);
     }
+    */
 }
 
 static inline void setup_helper(struct handlebars_vm * vm, struct setup_ctx * ctx)
@@ -689,6 +692,7 @@ char * handlebars_vm_execute_program_ex(
         return NULL;
     }
 
+    // Get compiler
 	struct handlebars_compiler * compiler = vm->programs[program];
 
     // Get parent frame
@@ -792,6 +796,11 @@ void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
 		struct handlebars_value * context)
 {
+    // Save jump buffer
+    if( setjmp(vm->jmpbuf) ) {
+        goto done;
+    }
+
     // Preprocess
     vm->programs = handlebars_talloc_array(vm, struct handlebars_compiler *, 32);
     preprocess_program(vm, compiler);
@@ -803,6 +812,17 @@ void handlebars_vm_execute(
     // Execute
     vm->buffer = handlebars_vm_execute_program_ex(vm, 0, context, vm->data, NULL);
 
+done:
+    // Clear jump buffer?
+    memset(vm->jmpbuf, 0, sizeof(jmp_buf));
+
     // Release context
     handlebars_value_delref(context);
+}
+
+void handlebars_vm_throw(struct handlebars_vm * vm, long errnum, const char * errmsg)
+{
+    vm->errnum = errnum;
+    vm->errmsg = errmsg;
+    longjmp(vm->jmpbuf, 1);
 }

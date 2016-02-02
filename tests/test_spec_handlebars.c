@@ -37,6 +37,7 @@ struct generic_test {
     struct json_object * helpers;
     struct json_object * globalHelpers;
     char * expected;
+    char * message;
     short exception;
     TALLOC_CTX * mem_ctx;
 
@@ -94,6 +95,12 @@ static void loadSpecTest(json_object * object)
         test->expected = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
     } else {
         fprintf(stderr, "Warning: Expected was not a string\n");
+    }
+
+    // Get message
+    cur = json_object_object_get(object, "message");
+    if( cur && json_object_get_type(cur) == json_type_string ) {
+        test->message = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
     }
 
     // Get exception
@@ -302,25 +309,34 @@ START_TEST(test_handlebars_spec)
     handlebars_vm_execute(vm, compiler, context);
 
 
+
 #ifndef NDEBUG
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
         fprintf(stderr, "ACTUAL: %s\n", vm->buffer);
         fprintf(stderr, "CMP: %d\n", strcmp(vm->buffer, test->expected));
         fprintf(stderr, "%s\n", 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
+    } else if( vm->errmsg ) {
+        fprintf(stderr, "ERROR: %s\n", vm->errmsg);
     }
 #endif
 
-    ck_assert_ptr_ne(test->expected, NULL);
-    ck_assert_ptr_ne(vm->buffer, NULL);
+    if( test->exception ) {
+        ck_assert_ptr_ne(test->message, NULL);
+        ck_assert_ptr_ne(vm->errmsg, NULL);
+        ck_assert_str_eq(vm->errmsg, test->message);
+    } else {
+        ck_assert_ptr_ne(test->expected, NULL);
+        ck_assert_ptr_ne(vm->buffer, NULL);
 
-    if( strcmp(vm->buffer, test->expected) != 0 ) {
-        char * tmp = handlebars_talloc_asprintf(rootctx,
-                                                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
-                                                "" /*test->suite_name*/,
-                                                test->description, test->it, test->flags,
-                                                test->tmpl, test->expected, vm->buffer);
-        ck_abort_msg(tmp);
+        if (strcmp(vm->buffer, test->expected) != 0) {
+            char *tmp = handlebars_talloc_asprintf(rootctx,
+                                                   "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+                                                   "" /*test->suite_name*/,
+                                                   test->description, test->it, test->flags,
+                                                   test->tmpl, test->expected, vm->buffer);
+            ck_abort_msg(tmp);
+        }
     }
 
     //ck_assert_str_eq(vm->buffer, test->expected);

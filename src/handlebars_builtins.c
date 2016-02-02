@@ -58,6 +58,11 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
 
 struct handlebars_value * handlebars_builtin_each(struct handlebars_options * options)
 {
+    if( handlebars_stack_length(options->params) < 1 ) {
+        handlebars_vm_throw(options->vm, 0, "Must pass iterator to #each");
+        return NULL; // Shouldn't return
+    }
+
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
     struct handlebars_value_iterator * it;
     struct handlebars_value * result = handlebars_value_ctor(options->vm);
