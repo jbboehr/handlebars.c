@@ -101,6 +101,18 @@ struct handlebars_opcode {
     struct handlebars_locinfo loc;
 };
 
+/*
+struct handlebars_opcode_get_context {
+    struct handlebars_opcode o;
+    union {
+        struct {
+            long depth;
+        } v;
+        char padding[8];
+    } u;
+};
+*/
+
 /**
  * @brief Construct an opcode
  *
