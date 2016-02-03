@@ -213,6 +213,9 @@ ACCEPT_FUNCTION(ambiguous_block_value) {
     setup_params(vm, &ctx);
 
     struct handlebars_value * current = handlebars_stack_pop(vm->stack);
+    if( !current ) { // @todo I don't think this should happen
+        current = handlebars_value_ctor(vm);
+    }
     handlebars_stack_set(ctx.params, 0, current);
 
     if( vm->last_helper == NULL ) {
@@ -289,8 +292,7 @@ ACCEPT_FUNCTION(block_value)
 
 ACCEPT_FUNCTION(empty_hash) {
     struct handlebars_value * value = handlebars_value_ctor(vm);
-    value->type = HANDLEBARS_VALUE_TYPE_MAP;
-    value->v.map = handlebars_map_ctor(value);
+    handlebars_value_map_init(value);
     handlebars_stack_push(vm->stack, value);
     handlebars_value_delref(value);
 }
@@ -467,16 +469,16 @@ ACCEPT_FUNCTION(lookup_data)
         }
     }
 
-    if( data ) {
-        if( (tmp = handlebars_value_map_find(data, first)) ) {
-            val = tmp;
-        } else if( 0 == strcmp(first, "root") ) {
-            val = handlebars_stack_get(vm->depths, 0);
-        }
+    if( data && (tmp = handlebars_value_map_find(data, first)) ) {
+        val = tmp;
+    } else if( 0 == strcmp(first, "root") ) {
+        val = handlebars_stack_get(vm->depths, 0);
+    }
 
-        for( ; *arr != NULL; arr++ ) {
-            char * part = *arr;
-            if( val == NULL || val->type != HANDLEBARS_VALUE_TYPE_MAP ) {
+    if( val ) {
+        for (; *arr != NULL; arr++) {
+            char *part = *arr;
+            if (val == NULL || val->type != HANDLEBARS_VALUE_TYPE_MAP) {
                 break;
             }
             val = handlebars_value_map_find(val, part);
@@ -640,7 +642,7 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
 
         // Print opcode?
         char * tmp = handlebars_opcode_print(vm, opcode);
-        fprintf(stdout, "OPCODE: %s\n", tmp);
+        fprintf(stdout, "PROG [%d] OPCODE: %s\n", compiler->guid, tmp);
         talloc_free(tmp);
 
 		switch( opcode->type ) {
@@ -721,7 +723,7 @@ char * handlebars_vm_execute_program_ex(
 	struct handlebars_compiler * compiler = vm->programs[program];
 
     // Get parent frame
-    struct handlebars_vm_frame * parent_frame = handlebars_stack_top(vm->frameStack);
+    struct handlebars_vm_frame * parent_frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
 
     // Push the frame stack
 	struct handlebars_vm_frame * frame = handlebars_talloc_zero(vm, struct handlebars_vm_frame);

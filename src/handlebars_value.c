@@ -63,6 +63,10 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 
 const char * handlebars_value_get_strval(struct handlebars_value * value)
 {
+    if( unlikely(value == NULL) ) {
+        return "";
+    }
+
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
             return value->v.strval;
@@ -74,7 +78,7 @@ const char * handlebars_value_get_strval(struct handlebars_value * value)
             return handlebars_talloc_strdup(value, value->v.bval ? "true" : "false");
     }
 
-	return NULL;
+	return "";
 }
 
 size_t handlebars_value_get_strlen(struct handlebars_value * value)
@@ -157,8 +161,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             it = value->handlers->iterator(value);
             break;
         default:
-            it->current = 1;
-            assert(0);
+            //assert(0);
             it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
             break;
     }
@@ -213,6 +216,11 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
     struct handlebars_value_iterator * it;
     char indent[64];
     char indent2[64];
+
+    if( value == NULL ) {
+        handlebars_talloc_strdup_append_buffer(buf, "(nil)");
+        return buf;
+    }
 
     memset(indent, 0, sizeof(indent));
     memset(indent, ' ', depth * 4);
