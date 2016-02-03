@@ -173,6 +173,12 @@ static inline void handlebars_value_string(struct handlebars_value * value, cons
     value->v.strval = handlebars_talloc_strdup(value, strval);
 }
 
+static inline void handelbars_value_string_steal(struct handlebars_value * value, char * strval) {
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.strval = talloc_steal(value, strval);
+}
+
 static inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
