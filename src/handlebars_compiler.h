@@ -7,11 +7,11 @@
 #ifndef HANDLEBARS_COMPILER_H
 #define HANDLEBARS_COMPILER_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
-#include <stddef.h>
 
 #define HANDLEBARS_COMPILER_STACK_SIZE 64
 

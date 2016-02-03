@@ -84,6 +84,7 @@ AS_IF([test "x$DOXYGEN" = "xno"], [
 AC_HEADER_STDC
 AC_FUNC_MALLOC
 AC_HEADER_DIRENT
+AC_HEADER_STDBOOL
 AC_CHECK_HEADERS(ctype.h, , AC_MSG_ERROR([ctype.h is required]))
 AC_CHECK_HEADERS(errno.h, , AC_MSG_ERROR([errno.h is required]))
 AC_CHECK_HEADERS(stdint.h, , AC_MSG_ERROR([stdint.h is required]))

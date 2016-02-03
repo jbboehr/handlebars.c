@@ -7,6 +7,8 @@
 #ifndef HANDLEBARS_AST_LIST_H
 #define HANDLEBARS_AST_LIST_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

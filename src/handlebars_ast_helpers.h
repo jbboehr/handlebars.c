@@ -7,7 +7,7 @@
 #ifndef HANDLEBARS_AST_HELPERS_H
 #define HANDLEBARS_AST_HELPERS_H
 
-#include <stddef.h>
+#include "handlebars.h"
 
 #ifdef	__cplusplus
 extern "C" {

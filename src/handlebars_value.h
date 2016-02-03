@@ -2,11 +2,15 @@
 #ifndef HANDLEBARS_VALUE_H
 #define HANDLEBARS_VALUE_H
 
-#include <stddef.h>
+#include "handlebars.h"
 #include "handlebars_helpers.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_stack.h"
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
 
 struct handlebars_map;
 struct handlebars_options;
@@ -187,5 +191,9 @@ static inline void handlebars_value_array_init(struct handlebars_value * value) 
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
     value->v.stack = handlebars_stack_ctor(value);
 }
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif

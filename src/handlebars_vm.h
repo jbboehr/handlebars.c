@@ -3,6 +3,11 @@
 #define HANDLEBARS_VM_H
 
 #include <setjmp.h>
+#include "handlebars.h"
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
 
 struct handlebars_compiler;
 struct handlebars_map;
@@ -55,5 +60,9 @@ char * handlebars_vm_execute_program_ex(
         struct handlebars_value * data, struct handlebars_value * block_params);
 
 void handlebars_vm_throw(struct handlebars_vm * vm, long errnum, const char * errmsg);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif

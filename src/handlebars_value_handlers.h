@@ -2,6 +2,12 @@
 #ifndef HANDLEBARS_VALUE_HANDLERS_H
 #define HANDLEBARS_VALUE_HANDLERS_H
 
+#include "handlebars.h"
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 struct handlebars_value_iterator;
 
 typedef void (*handlebars_value_dtor_func)(struct handlebars_value * value);
@@ -23,5 +29,9 @@ struct handlebars_value_handlers {
 };
 
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif

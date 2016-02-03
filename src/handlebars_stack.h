@@ -2,7 +2,11 @@
 #ifndef HANDLEBARS_STACK_H
 #define HANDLEBARS_STACK_H
 
-#include <stddef.h>
+#include "handlebars.h"
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
 
 struct handlebars_value;
 
@@ -38,5 +42,9 @@ void * handlebars_stack_push_ptr(struct handlebars_stack * stack, void * value);
 void * handlebars_stack_pop_ptr(struct handlebars_stack * stack);
 void * handlebars_stack_top_ptr(struct handlebars_stack * stack);
 void * handlebars_stack_get_ptr(struct handlebars_stack * stack, size_t offset);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif

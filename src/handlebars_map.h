@@ -2,7 +2,11 @@
 #ifndef HANDLEBARS_MAP_H
 #define HANDLEBARS_MAP_H
 
-#include <stddef.h>
+#include "handlebars.h"
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
 
 struct handlebars_value;
 
@@ -38,5 +42,9 @@ static inline short handlebars_map_update(struct handlebars_map * map, const cha
     handlebars_map_remove(map, key);
     return handlebars_map_add(map, key, value);
 }
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif

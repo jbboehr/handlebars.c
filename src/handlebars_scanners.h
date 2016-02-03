@@ -7,6 +7,8 @@
 #ifndef HANDLEBARS_SCANNERS_H
 #define HANDLEBARS_SCANNERS_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

@@ -7,7 +7,7 @@
 #ifndef HANDLEBARS_TOKEN_H
 #define HANDLEBARS_TOKEN_H
 
-#include <stddef.h>
+#include "handlebars.h"
 
 #ifdef	__cplusplus
 extern "C" {

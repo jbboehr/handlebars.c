@@ -7,7 +7,7 @@
 #ifndef HANDLEBARS_WHITESPACE_H
 #define HANDLEBARS_WHITESPACE_H
 
-#include <stddef.h>
+#include "handlebars.h"
 
 #ifdef	__cplusplus
 extern "C" {

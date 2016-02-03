@@ -2,6 +2,8 @@
 #ifndef HANDLEBARS_PRIVATE_H
 #define HANDLEBARS_PRIVATE_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

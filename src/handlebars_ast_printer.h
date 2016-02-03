@@ -7,6 +7,8 @@
 #ifndef HANDLEBARS_AST_PRINTER_H
 #define HANDLEBARS_AST_PRINTER_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

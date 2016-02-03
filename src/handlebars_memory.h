@@ -7,8 +7,8 @@
 #ifndef HANDLEBARS_MEMORY_H
 #define HANDLEBARS_MEMORY_H
 
-#include <stddef.h>
 #include <talloc.h>
+#include "handlebars.h"
 
 #ifdef	__cplusplus
 extern "C" {

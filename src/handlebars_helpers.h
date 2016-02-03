@@ -2,7 +2,11 @@
 #ifndef HANDLEBARS_HELPERS_H
 #define HANDLEBARS_HELPERS_H
 
-#include <stddef.h>
+#include "handlebars.h"
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
 
 struct handlebars_stack;
 struct handlebars_value;
@@ -20,5 +24,9 @@ struct handlebars_options {
 };
 
 typedef struct handlebars_value * (*handlebars_helper_func)(struct handlebars_options * options);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif
