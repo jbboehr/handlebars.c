@@ -20,16 +20,16 @@ struct handlebars_ast_node;
 struct handlebars_locinfo;
 
 int handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root);
+        struct handlebars_ast_node * statement, bool is_root);
 
 int handlebars_whitespace_is_prev_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root);
+        struct handlebars_ast_node * statement, bool is_root);
 
 int handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple);
+        struct handlebars_ast_node * statement, bool multiple);
 
 int handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple);
+        struct handlebars_ast_node * statement, bool multiple);
 
 void handlebars_whitespace_accept(struct handlebars_context * context,
         struct handlebars_ast_node * node);

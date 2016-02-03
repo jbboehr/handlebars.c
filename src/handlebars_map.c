@@ -1,4 +1,8 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <string.h>
 
 #include "handlebars_map.h"
@@ -27,7 +31,7 @@ void handlebars_map_dtor(struct handlebars_map * map)
     handlebars_talloc_free(map);
 }
 
-short handlebars_map_add(struct handlebars_map * map, const char * key, struct handlebars_value * value)
+bool handlebars_map_add(struct handlebars_map * map, const char * key, struct handlebars_value * value)
 {
     struct handlebars_map_entry * entry = handlebars_talloc_zero(map, struct handlebars_map_entry);
 
@@ -52,7 +56,7 @@ short handlebars_map_add(struct handlebars_map * map, const char * key, struct h
     return 1;
 }
 
-short handlebars_map_remove(struct handlebars_map * map, const char * key)
+bool handlebars_map_remove(struct handlebars_map * map, const char * key)
 {
     struct handlebars_map_entry * entry;
     struct handlebars_map_entry * tmp;
@@ -82,7 +86,7 @@ short handlebars_map_remove(struct handlebars_map * map, const char * key)
 
     map->i -= removed;
 
-    return removed;
+    return (bool) removed;
 }
 
 struct handlebars_value * handlebars_map_find(struct handlebars_map * map, const char * key)

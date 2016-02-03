@@ -49,7 +49,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     long inverse_strip;
     char * open_str;
     char * close_str;
-    short is_decorator = 0;
+    bool is_decorator = false;
     
     assert(open_block != NULL && open_block->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
     assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
@@ -68,7 +68,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     }
 
     if( open_block->node.intermediate.open && NULL != strchr(open_block->node.intermediate.open, '*') ) {
-    	is_decorator = 1;
+    	is_decorator = true;
     }
 
     // @todo this isn't supposed to be null I think...
@@ -199,15 +199,10 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
     struct handlebars_ast_node * program, struct handlebars_ast_node * close,
     struct handlebars_locinfo * locinfo)
 {
-    struct handlebars_ast_node * ast_node;
     struct handlebars_ast_node * open_block_path = open->node.intermediate.path;
     struct handlebars_ast_node * close_block_path;
-    struct handlebars_ast_node * inverse = NULL;
-    struct handlebars_ast_node * tmp;
-    long inverse_strip;
     char * open_str;
     char * close_str;
-    short is_decorator = 0;
 
     assert(open != NULL && open->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
     assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
@@ -230,7 +225,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         struct handlebars_context * context, struct handlebars_ast_list * parts,
-        short data, struct handlebars_locinfo * locinfo)
+        bool data, struct handlebars_locinfo * locinfo)
 {
     TALLOC_CTX * ctx;
     struct handlebars_ast_node * ast_node;
@@ -239,7 +234,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     char * part = NULL;
     char * separator;
     char * original = NULL;
-    short is_literal;
+    bool is_literal;
     int depth = 0;
     int count = 0;
     
@@ -467,7 +462,7 @@ unsigned handlebars_ast_helper_strip_flags(const char * open, const char * close
     return strip;
 }
 
-short handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
+bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
 {
     char * original;
     char * found;
@@ -488,7 +483,7 @@ short handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
     return 0;
 }
 
-short handlebars_ast_helper_simple_id(struct handlebars_ast_node * path)
+bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path)
 {
     return ( path &&
         path->node.path.parts && 
@@ -497,7 +492,7 @@ short handlebars_ast_helper_simple_id(struct handlebars_ast_node * path)
         !path->node.path.depth );
 }
 
-short handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node)
+bool handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node)
 {
 	struct handlebars_ast_list * params;
 	struct handlebars_ast_node * hash;

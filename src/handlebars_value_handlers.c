@@ -33,7 +33,7 @@ static void std_json_dtor(struct handlebars_value * value)
     }
 }
 
-static void std_json_convert(struct handlebars_value * value, short recurse)
+static void std_json_convert(struct handlebars_value * value, bool recurse)
 {
     struct json_object * intern = (struct json_object *) value->v.usr;
     char * key;
@@ -144,18 +144,18 @@ struct handlebars_value_iterator * std_json_iterator_ctor(struct handlebars_valu
     return it;
 }
 
-short std_json_iterator_next(struct handlebars_value_iterator * it)
+bool std_json_iterator_next(struct handlebars_value_iterator * it)
 {
     struct handlebars_value * value = it->value;
     struct json_object * intern = (struct json_object *) value->v.usr;
     struct lh_entry * entry;
-    short ret = 0;
+    bool ret = false;
 
     switch( json_object_get_type(intern) ) {
         case json_type_object:
             entry = (struct lh_entry *) it->usr;
             if( entry && entry->next ) {
-                ret = 1;
+                ret = true;
                 it->usr = (void *) (entry = entry->next);
                 it->key = (char *) entry->k;
                 it->current = handlebars_value_from_json_object(value->ctx, entry->v);
@@ -163,7 +163,7 @@ short std_json_iterator_next(struct handlebars_value_iterator * it)
             break;
         case json_type_array:
             if( it->index < json_object_array_length(intern) - 1 ) {
-                ret = 1;
+                ret = true;
                 it->index++;
                 it->current = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, it->index));
             }

@@ -86,7 +86,7 @@ size_t handlebars_value_get_strlen(struct handlebars_value * value)
 	return 0;
 }
 
-short handlebars_value_get_boolval(struct handlebars_value * value)
+bool handlebars_value_get_boolval(struct handlebars_value * value)
 {
 	if( value->type == HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
         return value->v.bval;
@@ -113,7 +113,7 @@ double handlebars_value_get_floatval(struct handlebars_value * value)
 	return 0;
 }
 
-void handlebars_value_convert_ex(struct handlebars_value * value, short recurse)
+void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
 {
     struct handlebars_value_iterator * it;
 
@@ -166,7 +166,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
     return it;
 }
 
-short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
+bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
 {
     assert(it != NULL);
     assert(it->value != NULL);
@@ -174,7 +174,7 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
     struct handlebars_value * value = it->value;
     struct handlebars_map_entry * entry;
     struct handlebars_value * current = it->current;
-    short ret = 0;
+    bool ret = false;
 
     if( it->current != NULL ) {
         handlebars_value_delref(it->current);
@@ -184,7 +184,7 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             if( it->index < handlebars_stack_length(value->v.stack) - 1 ) {
-                ret = 1;
+                ret = true;
                 it->index++;
                 it->current = handlebars_stack_get(value->v.stack, it->index);
             }
@@ -192,7 +192,7 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
         case HANDLEBARS_VALUE_TYPE_MAP:
             entry = talloc_get_type(it->usr, struct handlebars_map_entry);
             if( entry && entry->next ) {
-                ret = 1;
+                ret = true;
                 it->usr = (void *) (entry = entry->next);
                 it->key = entry->key;
                 it->current = entry->value;
@@ -203,8 +203,6 @@ short handlebars_value_iterator_next(struct handlebars_value_iterator * it)
             ret = value->handlers->next(it);
             break;
     }
-
-    it->eof = !ret;
 
     return ret;
 }
@@ -266,7 +264,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
     return buf;
 }
 
-char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape)
+char * handlebars_value_expression(void * ctx, struct handlebars_value * value, bool escape)
 {
     char * ret = NULL;
 

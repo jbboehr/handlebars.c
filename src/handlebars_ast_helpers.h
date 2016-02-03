@@ -68,7 +68,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         struct handlebars_context * context, struct handlebars_ast_list * list,
-        short data, struct handlebars_locinfo * locinfo);
+        bool data, struct handlebars_locinfo * locinfo);
 
 /**
  * @brief Prepare a block node.
@@ -123,11 +123,11 @@ void handlebars_ast_helper_set_strip_flags(
  */
 unsigned handlebars_ast_helper_strip_flags(const char * open, const char * close);
 
-short handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path);
+bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path);
 
-short handlebars_ast_helper_simple_id(struct handlebars_ast_node * path);
+bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path);
 
-short handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node);
+bool handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node);
 
 #ifdef	__cplusplus
 }

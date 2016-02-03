@@ -32,12 +32,11 @@ struct handlebars_context
   int tmplReadOffset;
   void * scanner;
   struct handlebars_ast_node * program;
-  int eof;
   int errnum;
   char * error;
   struct handlebars_locinfo * errloc;
-  short whitespace_root_seen;
-  short ignore_standalone;
+  bool whitespace_root_seen;
+  bool ignore_standalone;
 };
 
 /**

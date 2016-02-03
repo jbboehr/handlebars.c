@@ -81,7 +81,7 @@ enum handlebars_operand_type {
 };
 
 union handlebars_operand_internals {
-    short boolval;
+    bool boolval;
     long longval;
     char * stringval;
     char ** arrayval;
@@ -120,7 +120,7 @@ struct handlebars_opcode * handlebars_opcode_ctor(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_boolean(
-        void * ctx, enum handlebars_opcode_type type, short arg);
+        void * ctx, enum handlebars_opcode_type type, bool arg);
 
 /**
  * @brief Construct an opcode with a long operand
@@ -195,7 +195,7 @@ void handlebars_operand_set_null(struct handlebars_operand * operand);
  * @param[in] arg The boolean value
  * @return void
  */
-void handlebars_operand_set_boolval(struct handlebars_operand * operand, short arg);
+void handlebars_operand_set_boolval(struct handlebars_operand * operand, bool arg);
 
 /**
  * @brief Set the value of an operand to a long

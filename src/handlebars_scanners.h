@@ -22,7 +22,7 @@ extern "C" {
  * @param[in] def The default return value
  * @return zero if not match, otherwise non-zero
  */
-short handlebars_scanner_next_whitespace(const char * s, short def);
+bool handlebars_scanner_next_whitespace(const char * s, bool def);
 
 /**
  * @brief Implement the following regexes, def returned if end hit:
@@ -33,7 +33,7 @@ short handlebars_scanner_next_whitespace(const char * s, short def);
  * @param[in] def The default return value
  * @return zero if not match, otherwise non-zero
  */
-short handlebars_scanner_prev_whitespace(const char * s, short def);
+bool handlebars_scanner_prev_whitespace(const char * s, bool def);
 
 #ifdef	__cplusplus
 }

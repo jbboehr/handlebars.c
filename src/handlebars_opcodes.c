@@ -22,7 +22,7 @@ struct handlebars_opcode * handlebars_opcode_ctor(
 }
 
 struct handlebars_opcode * handlebars_opcode_ctor_boolean(
-        void * ctx, enum handlebars_opcode_type type, short arg)
+        void * ctx, enum handlebars_opcode_type type, bool arg)
 {
     struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
     if( likely(opcode != NULL) ) {
@@ -98,7 +98,7 @@ void handlebars_operand_set_null(struct handlebars_operand * operand)
     memset(&operand->data, 0, sizeof(union handlebars_operand_internals));
 }
 
-void handlebars_operand_set_boolval(struct handlebars_operand * operand, short arg)
+void handlebars_operand_set_boolval(struct handlebars_operand * operand, bool arg)
 {
     assert(operand != NULL);
 

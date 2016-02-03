@@ -34,7 +34,7 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
 
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
 
-    if( handlebars_value_get_boolval(context) == 1 ) {
+    if( handlebars_value_get_boolval(context) ) {
         result = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     } else if( handlebars_value_is_empty(context) ) { // @todo supposed to be !== 0 ?
         result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);

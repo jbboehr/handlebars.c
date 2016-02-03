@@ -40,7 +40,6 @@ enum handlebars_value_flags {
 };
 
 struct handlebars_value_iterator {
-    short eof;
     size_t index;
     const char * key;
     struct handlebars_value * value;
@@ -54,7 +53,7 @@ struct handlebars_value {
 	struct handlebars_value_handlers * handlers;
 	union {
 		long lval;
-        short bval;
+        bool bval;
 		double dval;
         char * strval;
         struct handlebars_map * map;
@@ -73,11 +72,11 @@ struct handlebars_value * handlebars_value_map_find(struct handlebars_value * va
 struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
 const char * handlebars_value_get_strval(struct handlebars_value * value);
 size_t handlebars_value_get_strlen(struct handlebars_value * value);
-short handlebars_value_get_boolval(struct handlebars_value * value);
+bool handlebars_value_get_boolval(struct handlebars_value * value);
 long handlebars_value_get_intval(struct handlebars_value * value);
 double handlebars_value_get_floatval(struct handlebars_value * value);
 
-char * handlebars_value_expression(void * ctx, struct handlebars_value * value, short escape);
+char * handlebars_value_expression(void * ctx, struct handlebars_value * value, bool escape);
 
 struct handlebars_value * handlebars_value_ctor(void * ctx);
 void handlebars_value_dtor(struct handlebars_value * value);
@@ -85,9 +84,9 @@ struct handlebars_value * handlebars_value_from_json_string(void *ctx, const cha
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
 
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
-void handlebars_value_convert_ex(struct handlebars_value * value, short recurse);
+void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);
 struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value);
-short handlebars_value_iterator_next(struct handlebars_value_iterator * it);
+bool handlebars_value_iterator_next(struct handlebars_value_iterator * it);
 
 char * handlebars_value_dump(struct handlebars_value * value, size_t depth);
 
@@ -111,7 +110,7 @@ static inline int handlebars_value_refcount(struct handlebars_value * value) {
     return value->refcount;
 }
 
-static inline short handlebars_value_is_scalar(struct handlebars_value * value) {
+static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
@@ -124,7 +123,7 @@ static inline short handlebars_value_is_scalar(struct handlebars_value * value) 
     }
 }
 
-static inline short handlebars_value_is_empty(struct handlebars_value * value) {
+static inline bool handlebars_value_is_empty(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
             return 1;
@@ -150,7 +149,7 @@ static inline void handlebars_value_null(struct handlebars_value * value) {
     handlebars_value_dtor(value);
 }
 
-static inline void handlebars_value_boolean(struct handlebars_value * value, short bval) {
+static inline void handlebars_value_boolean(struct handlebars_value * value, bool bval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_BOOLEAN;
     value->v.bval = bval;

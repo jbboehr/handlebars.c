@@ -189,16 +189,16 @@ struct handlebars_compiler {
     int flags;
     
     // Option flags
-    short string_params;
-    short track_ids;
-    short use_depths;
-    short no_escape;
-    short known_helpers_only;
-    short prevent_indent;
-    short use_data;
-    short explicit_partial_context;
-    short ignore_standalone;
-    short alternate_decorators;
+    bool string_params;
+    bool track_ids;
+    bool use_depths;
+    bool no_escape;
+    bool known_helpers_only;
+    bool prevent_indent;
+    bool use_data;
+    bool explicit_partial_context;
+    bool ignore_standalone;
+    bool alternate_decorators;
     
     /**
      * @brief Result flags

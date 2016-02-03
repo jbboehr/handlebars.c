@@ -22,7 +22,7 @@
 
 
 int handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root)
+        struct handlebars_ast_node * statement, bool is_root)
 {
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * next;
@@ -53,7 +53,7 @@ int handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * statem
 }
 
 int handlebars_whitespace_is_prev_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root)
+        struct handlebars_ast_node * statement, bool is_root)
 {
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * prev;
@@ -84,7 +84,7 @@ int handlebars_whitespace_is_prev_whitespace(struct handlebars_ast_list * statem
 }
 
 int handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple)
+        struct handlebars_ast_node * statement, bool multiple)
 {
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
@@ -121,7 +121,7 @@ int handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
 }
 
 int handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple)
+        struct handlebars_ast_node * statement, bool multiple)
 {
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
@@ -168,12 +168,12 @@ int handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
 static inline void handlebars_whitespace_accept_program(struct handlebars_context * context,
         struct handlebars_ast_node * program)
 {
-    short is_root = !context->whitespace_root_seen;
+    bool is_root = !context->whitespace_root_seen;
     int error = HANDLEBARS_SUCCESS;
     struct handlebars_ast_list * statements = program->node.program.statements;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
-    short do_standalone = 1; //!context->ignore_standalone;
+    bool do_standalone = 1; //!context->ignore_standalone;
     
     context->whitespace_root_seen = 1;
     
@@ -183,8 +183,11 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_contex
     
     handlebars_ast_list_foreach(statements, item, tmp) {
         struct handlebars_ast_node * current = item->data;
-        short is_prev_whitespace, is_next_whitespace, open_standalone,
-              close_standalone, inline_standalone;
+        bool is_prev_whitespace;
+        bool is_next_whitespace;
+        bool open_standalone;
+        bool close_standalone;
+        bool inline_standalone;
           
         handlebars_whitespace_accept(context, current);
         if( !current || !(current->strip & handlebars_ast_strip_flag_set) ) {
@@ -253,7 +256,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_contex
     }
 }
 
-static inline struct handlebars_ast_node * _handlebars_whitespace_get_program(struct handlebars_ast_node * inverse, short first)
+static inline struct handlebars_ast_node * _handlebars_whitespace_get_program(struct handlebars_ast_node * inverse, bool first)
 {
     struct handlebars_ast_list * statements;
     struct handlebars_ast_node * node = NULL;
@@ -286,7 +289,7 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_context 
     struct handlebars_ast_node * firstInverse;
     struct handlebars_ast_node * lastInverse;
     unsigned strip = 0;
-    short do_standalone = 1; //!context->ignore_standalone;
+    bool do_standalone = true; //!context->ignore_standalone;
     
     handlebars_whitespace_accept(context, block->node.block.program);
     handlebars_whitespace_accept(context, block->node.block.inverse);

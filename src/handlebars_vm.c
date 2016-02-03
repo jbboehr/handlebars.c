@@ -31,9 +31,9 @@ struct setup_ctx {
     const char * name;
     size_t param_size;
     struct handlebars_stack * params;
-    short is_block_helper;
     struct handlebars_options * options;
     struct handlebars_value * helper;
+    bool is_block_helper;
     short use_register;
 };
 
@@ -119,7 +119,7 @@ static inline void setup_helper(struct handlebars_vm * vm, struct setup_ctx * ct
     ctx->helper = handlebars_value_map_find(vm->helpers, ctx->name);
 }
 
-static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, short escape)
+static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, bool escape)
 {
     struct handlebars_vm_frame * frame;
     char * tmp;
@@ -706,8 +706,8 @@ char * handlebars_vm_execute_program_ex(
         struct handlebars_vm * vm, int program, struct handlebars_value * context,
         struct handlebars_value * data, struct handlebars_value * block_params)
 {
-    short pushed_depths = 0;
-    short pushed_block_param = 0;
+    bool pushed_depths = false;
+    bool pushed_block_param = false;
 
     if( program < 0 ) {
         return NULL;

@@ -13,8 +13,8 @@ struct handlebars_value;
 struct handlebars_vm;
 
 struct handlebars_options {
-    int inverse;
-    int program;
+    long inverse;
+    long program;
     char * name;
     struct handlebars_stack * params;
     struct handlebars_value * scope;

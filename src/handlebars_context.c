@@ -3,10 +3,8 @@
 #include "config.h"
 #endif
 
-#include <assert.h>
 #include <errno.h>
 #include <memory.h>
-#include <stdlib.h>
 #include <talloc.h>
 
 #include "handlebars.h"
