@@ -318,7 +318,8 @@ ACCEPT_FUNCTION(get_context) {
     }
 }
 
-ACCEPT_FUNCTION(invoke_ambiguous) {
+ACCEPT_FUNCTION(invoke_ambiguous)
+{
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     struct handlebars_value * value = handlebars_stack_pop(vm->stack);
     struct setup_ctx ctx = {0};
@@ -342,6 +343,11 @@ ACCEPT_FUNCTION(invoke_ambiguous) {
         assert(result != NULL);
         handlebars_stack_push(vm->stack, result);
     } else {
+        struct handlebars_value * fn = handlebars_value_map_find(vm->helpers, "helperMissing");
+        assert(fn != NULL);
+        assert(fn->type == HANDLEBARS_VALUE_TYPE_HELPER);
+        struct handlebars_value * result = fn->v.helper(ctx.options);
+        append_to_buffer(vm, result, 0);
         //frame->buffer = handlebars_talloc_strdup_append(frame->buffer, handlebars_value_get_strval(value));
         handlebars_stack_push(vm->stack, value);
     }
@@ -378,9 +384,10 @@ ACCEPT_FUNCTION(invoke_helper)
         fn = handlebars_value_map_find(vm->helpers, "helperMissing");
     }
 
-    // @todo runtime error
-    assert(fn != NULL);
-    assert(fn->type == HANDLEBARS_VALUE_TYPE_HELPER);
+    if( !fn || !fn->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+        char * msg = handlebars_talloc_asprintf(vm, "Helper missing: %s", ctx.name);
+        handlebars_vm_throw(vm, 0, msg);
+    }
 
     result = fn->v.helper(ctx.options);
     if( !result ) {
@@ -402,6 +409,7 @@ ACCEPT_FUNCTION(invoke_known_helper) {
 
     assert(ctx.helper != NULL);
     assert(ctx.options != NULL);
+    assert(ctx.helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
 
     struct handlebars_value * result = ctx.helper->v.helper(ctx.options);
     append_to_buffer(vm, result, 0);
@@ -501,6 +509,7 @@ ACCEPT_FUNCTION(lookup_on_context)
     assert(opcode->op4.type == handlebars_operand_type_boolean || opcode->op4.type == handlebars_operand_type_null);
 
     char **arr = opcode->op1.data.arrayval;
+    long index = -1;
 
     if( !opcode->op4.data.boolval && (vm->flags & handlebars_compiler_flag_compat) ) {
         depthed_lookup(vm, *arr);
@@ -512,7 +521,13 @@ ACCEPT_FUNCTION(lookup_on_context)
 
     if( value ) {
         do {
-            value = handlebars_value_map_find(value, *arr);
+            if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+                value = handlebars_value_map_find(value, *arr);
+            } else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY && sscanf(*arr, "%ld", &index) ) {
+                value = handlebars_value_array_find(value, index);
+            } else {
+                value = NULL;
+            }
             if (!value) {
                 break;
             }
@@ -612,6 +627,26 @@ ACCEPT_FUNCTION(push_string)
     handlebars_value_delref(value);
 }
 
+ACCEPT_FUNCTION(push_string_param)
+{
+    assert(opcode->op1.type == handlebars_operand_type_string);
+    assert(opcode->op2.type == handlebars_operand_type_string);
+
+    ACCEPT_FN(push_context)(vm, opcode);
+
+    struct handlebars_value * value = handlebars_value_ctor(vm);
+    handlebars_value_string(value, opcode->op2.data.stringval);
+    handlebars_stack_push(vm->stack, value);
+    handlebars_value_delref(value);
+
+    if( 0 != strcmp(opcode->op2.data.stringval, "SubExpression") ) {
+        struct handlebars_value * value = handlebars_value_ctor(vm);
+        handlebars_value_string(value, opcode->op1.data.stringval);
+        handlebars_stack_push(vm->stack, value);
+        handlebars_value_delref(value);
+    }
+}
+
 ACCEPT_FUNCTION(resolve_possible_lambda)
 {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
@@ -630,7 +665,6 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
         handlebars_stack_push(vm->stack, result);
         handlebars_talloc_free(options);
     }
-    // @todo
 }
 
 void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler * compiler)
@@ -666,30 +700,12 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
             ACCEPT(push_program);
             ACCEPT(push_literal);
             ACCEPT(push_string);
+            ACCEPT(push_string_param);
             ACCEPT(resolve_possible_lambda);
 
-//            case handlebars_opcode_type_append:
-//
-//            case handlebars_opcode_type_ambiguous_block_value:
-//            case handlebars_opcode_type_append_escaped:
-//            case handlebars_opcode_type_empty_hash:
-//            case handlebars_opcode_type_pop_hash:
-//            case handlebars_opcode_type_push_context:
-//            case handlebars_opcode_type_push_hash:
-//            case handlebars_opcode_type_resolve_possible_lambda:
-//            case handlebars_opcode_type_get_context:
-//            case handlebars_opcode_type_push_program:
-//            case handlebars_opcode_type_append_content:
 //            case handlebars_opcode_type_push:
-//            case handlebars_opcode_type_push_literal:
-//            case handlebars_opcode_type_push_string:
 //            case handlebars_opcode_type_invoke_partial:
 //            case handlebars_opcode_type_push_id:
-//            case handlebars_opcode_type_push_string_param:
-//            case handlebars_opcode_type_invoke_helper:
-//            case handlebars_opcode_type_lookup_on_context:
-//            case handlebars_opcode_type_lookup_data:
-//            case handlebars_opcode_type_lookup_block_param:
 //            case handlebars_opcode_type_register_decorator:
 //                fprintf(stderr, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
 //                break;

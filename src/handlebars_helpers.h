@@ -20,6 +20,8 @@ struct handlebars_options {
     struct handlebars_value * scope;
     struct handlebars_value * data;
     struct handlebars_value * hash;
+    struct handlebars_value * hash_types;
+    struct handlebars_value * hash_contexts;
     struct handlebars_vm * vm;
 };
 

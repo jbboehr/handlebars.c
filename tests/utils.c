@@ -27,6 +27,7 @@
 #endif
 
 #include "utils.h"
+#include "handlebars_builtins.h"
 #include "handlebars_compiler.h"
 #include "handlebars_value.h"
 
@@ -183,6 +184,29 @@ long json_load_compile_flags(struct json_object * object)
     return flags;
 }
 
+char ** json_load_known_helpers(void * ctx, struct json_object * object)
+{
+    struct json_object * array_item = NULL;
+    int array_len = 0;
+    // Let's just allocate a nice fat array >.>
+    char ** known_helpers = talloc_zero_array(ctx, char *, 32);
+    char ** ptr = known_helpers;
+    const char ** ptr2 = handlebars_builtins_names();
+
+    for( ; *ptr2 ; ++ptr2 ) {
+        *ptr = handlebars_talloc_strdup(ctx, *ptr2);
+        ptr++;
+    }
+
+    json_object_object_foreach(object, key, value) {
+        *ptr = handlebars_talloc_strdup(ctx, key);
+        ptr++;
+    }
+
+    *ptr++ = NULL;
+
+    return known_helpers;
+}
 
 
 /* Helpers/Lambdas */

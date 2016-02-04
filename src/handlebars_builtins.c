@@ -33,10 +33,11 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
     assert(handlebars_stack_length(options->params) >= 1);
 
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
+    bool is_zero = handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_INTEGER && handlebars_value_get_intval(context) == 0;
 
     if( handlebars_value_get_boolval(context) ) {
         result = handlebars_vm_execute_program(options->vm, options->program, options->scope);
-    } else if( handlebars_value_is_empty(context) ) { // @todo supposed to be !== 0 ?
+    } else if( handlebars_value_is_empty(context) && !is_zero ) {
         result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
         // @todo use hash lookup
@@ -172,7 +173,10 @@ whoopsie:
 
 struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_options * options)
 {
-    // @todo
+    if( handlebars_stack_length(options->params) != 0 ) {
+        char * msg = handlebars_talloc_asprintf(options->vm, "Missing helper: \"%s\"", options->name);
+        handlebars_vm_throw(options->vm, 0, msg);
+    }
     return NULL;
 }
 

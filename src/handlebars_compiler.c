@@ -150,7 +150,7 @@ static inline bool handlebars_compiler_is_known_helper(
         NULL == (helper_name = path_segment->node.path_segment.part) ) {
         return 0;
     }
-    
+
     for( ptr = compiler->known_helpers ; *ptr ; ++ptr ) {
         if( strcmp(helper_name, *ptr) == 0 ) {
             return 1;

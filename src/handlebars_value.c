@@ -275,6 +275,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
 char * handlebars_value_expression(void * ctx, struct handlebars_value * value, bool escape)
 {
     char * ret = NULL;
+    struct handlebars_value_iterator * it;
 
     switch( handlebars_value_get_type(value) ) {
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
@@ -302,6 +303,18 @@ char * handlebars_value_expression(void * ctx, struct handlebars_value * value, 
             break;
 
         case HANDLEBARS_VALUE_TYPE_ARRAY:
+            // Convert to string >.>
+            ret = handlebars_talloc_strdup(ctx, "");
+            it = handlebars_value_iterator_ctor(value);
+            bool first = true;
+            for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+                char * tmp = handlebars_value_expression(ctx, it->current, escape);
+                ret = handlebars_talloc_asprintf_append_buffer(ret, "%s%s", first ? "" : ",", tmp);
+                handlebars_talloc_free(tmp);
+                first = false;
+            }
+            handlebars_talloc_free(it);
+            break;
         case HANDLEBARS_VALUE_TYPE_MAP:
         case HANDLEBARS_VALUE_TYPE_USER:
             // assert(0);
