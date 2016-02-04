@@ -395,8 +395,8 @@ int main(void)
     loadSpec("blocks");
     loadSpec("builtins");
     loadSpec("data");
+    loadSpec("helpers");
     /*
-    loadSpec("./spec/handlebars/spec/helpers.json");
     loadSpec("./spec/handlebars/spec/partials.json");
     loadSpec("./spec/handlebars/spec/regressions.json");
     loadSpec("./spec/handlebars/spec/string-params.json");

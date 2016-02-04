@@ -23,26 +23,26 @@ check_PROGRAMS = \
 	test_spec_handlebars \
 	test_random_alloc_fail
 
-test_main_SOURCES = utils.c test_main.c
-test_ast_SOURCES = utils.c test_ast.c
-test_ast_helpers_SOURCES = utils.c test_ast_helpers.c
-test_ast_list_SOURCES = utils.c test_ast_list.c
-test_compiler_SOURCES = utils.c test_compiler.c
-test_context_SOURCES = utils.c test_context.c
-test_opcode_printer_SOURCES = utils.c test_opcode_printer.c
-test_opcodes_SOURCES = utils.c test_opcodes.c
-test_scanners_SOURCES = utils.c test_scanners.c
-test_token_SOURCES = utils.c test_token.c
-test_token_list_SOURCES = utils.c test_token_list.c
-test_token_printer_SOURCES = utils.c test_token_printer.c
-test_utils_SOURCES = utils.c test_utils.c
-test_value_SOURCES = utils.c test_value.c
-test_vm_SOURCES = utils.c test_vm.c
-test_spec_handlebars_parser_SOURCES = utils.c test_spec_handlebars_parser.c
-test_spec_handlebars_tokenizer_SOURCES = utils.c test_spec_handlebars_tokenizer.c
-test_spec_handlebars_compiler_SOURCES = utils.c test_spec_handlebars_compiler.c
-test_spec_handlebars_SOURCES = utils.c test_spec_handlebars.c
-test_random_alloc_fail_SOURCES = utils.c test_random_alloc_fail.c
+test_main_SOURCES = utils.h utils.c fixtures.c test_main.c
+test_ast_SOURCES = utils.h utils.c fixtures.c test_ast.c
+test_ast_helpers_SOURCES = utils.h utils.c fixtures.c test_ast_helpers.c
+test_ast_list_SOURCES = utils.h utils.c fixtures.c test_ast_list.c
+test_compiler_SOURCES = utils.h utils.c fixtures.c test_compiler.c
+test_context_SOURCES = utils.h utils.c fixtures.c test_context.c
+test_opcode_printer_SOURCES = utils.h utils.c fixtures.c test_opcode_printer.c
+test_opcodes_SOURCES = utils.h utils.c fixtures.c test_opcodes.c
+test_scanners_SOURCES = utils.h utils.c fixtures.c test_scanners.c
+test_token_SOURCES = utils.h utils.c fixtures.c test_token.c
+test_token_list_SOURCES = utils.h utils.c fixtures.c test_token_list.c
+test_token_printer_SOURCES = utils.h utils.c fixtures.c test_token_printer.c
+test_utils_SOURCES = utils.h utils.c fixtures.c test_utils.c
+test_value_SOURCES = utils.h utils.c fixtures.c test_value.c
+test_vm_SOURCES = utils.h utils.c fixtures.c test_vm.c
+test_spec_handlebars_parser_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_parser.c
+test_spec_handlebars_tokenizer_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_tokenizer.c
+test_spec_handlebars_compiler_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_compiler.c
+test_spec_handlebars_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars.c
+test_random_alloc_fail_SOURCES = utils.h utils.c fixtures.c test_random_alloc_fail.c
 
 TESTS = \
 	test_main \
