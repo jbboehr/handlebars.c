@@ -44,7 +44,8 @@ struct handlebars_context
  * 
  * @return the context pointer
  */
-struct handlebars_context * handlebars_context_ctor(void);
+struct handlebars_context * handlebars_context_ctor_ex(void * ctx);
+#define handlebars_context_ctor() handlebars_context_ctor_ex(NULL)
 
 /**
  * @brief Free a context and it's resources.

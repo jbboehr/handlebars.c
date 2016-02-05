@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "handlebars_compiler.h"
+#include "handlebars_context.h"
 #include "handlebars_value.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
@@ -415,6 +416,116 @@ ACCEPT_FUNCTION(invoke_known_helper) {
     append_to_buffer(vm, result, 0);
 }
 
+ACCEPT_FUNCTION(invoke_partial)
+{
+    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct setup_ctx ctx = {0};
+    struct handlebars_value * tmp;
+    char * name = NULL;
+
+    assert(opcode->op1.type == handlebars_operand_type_boolean);
+    assert(opcode->op2.type == handlebars_operand_type_string || opcode->op2.type == handlebars_operand_type_null || opcode->op2.type == handlebars_operand_type_long);
+    assert(opcode->op3.type == handlebars_operand_type_string);
+
+    ctx.params = handlebars_stack_ctor(vm);
+    ctx.param_size = 1;
+    setup_options(vm, &ctx);
+
+    if( opcode->op2.type == handlebars_operand_type_long ) {
+        name = handlebars_talloc_asprintf(vm, "%ld", opcode->op2.data.longval);
+    } else if( opcode->op2.type == handlebars_operand_type_string ) {
+        name = opcode->op2.data.stringval;
+    }
+    if( opcode->op1.data.boolval ) {
+        tmp = handlebars_stack_pop(vm->stack);
+        name = handlebars_value_get_strval(tmp);
+        handlebars_value_delref(tmp);
+        ctx.options->name = NULL; // fear
+    }
+
+    struct handlebars_value * partial = NULL;
+    if( /*!opcode->op1.data.boolval*/ name ) {
+        partial = handlebars_value_map_find(vm->partials, name);
+    } /* else {
+        partial = handlebars_value_ctor(vm);
+        handlebars_value_string(partial, name);
+    } */
+
+    if( !partial ) {
+        char * tmp = handlebars_talloc_asprintf(vm, "The partial %s could not be found", name);
+        handlebars_vm_throw(vm, 0, tmp);
+    }
+
+    // If partial is a function?
+    if( partial->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+        partial = partial->v.helper(ctx.options);
+    }
+
+    // Construct new context
+    struct handlebars_context * context = handlebars_context_ctor_ex(vm);
+    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
+    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
+
+    // Parse
+    context->tmpl = handlebars_value_get_strval(partial);
+    int retval = handlebars_yy_parse(context);
+    if( context->error ) {
+        handlebars_vm_throw(vm, context->errnum, context->error);
+    }
+
+    // Compile
+    handlebars_compiler_set_flags(compiler, vm->flags);
+    /* if( vm->known_helpers ) {
+        compiler->known_helpers = (const char **) test->known_helpers;
+    } */
+    handlebars_compiler_compile(compiler, context->program);
+    if( compiler->errnum ) {
+        handlebars_vm_throw(vm, compiler->errnum, compiler->error);
+    }
+
+    // Get context
+    // @todo change parent to new vm?
+    // @todo hash
+    struct handlebars_value * context1 = handlebars_stack_get(ctx.options->params, 0);
+    struct handlebars_value * context2 = handlebars_value_ctor(vm2);
+    struct handlebars_value_iterator * it;
+    if( context1 && context1->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        handlebars_value_map_init(context2);
+        it = handlebars_value_iterator_ctor(context1);
+        for( ; it->current ; handlebars_value_iterator_next(it) ) {
+            handlebars_map_update(context2->v.map, it->key, it->current);
+        }
+        if( ctx.options->hash && ctx.options->hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+            it = handlebars_value_iterator_ctor(ctx.options->hash);
+            for( ; it->current ; handlebars_value_iterator_next(it) ) {
+                handlebars_map_update(context2->v.map, it->key, it->current);
+            }
+        }
+    } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+        context2 = ctx.options->hash;
+    } else {
+        context2 = context1;
+    }
+
+    // Setup new VM
+    vm2->depth = vm->depth + 1;
+    vm2->flags = vm->flags;
+    vm2->helpers = vm->helpers;
+    vm2->partials = vm->partials;
+    vm2->depths = vm->depths;
+    vm2->blockParamStack = vm->blockParamStack;
+    // @todo block params
+    handlebars_vm_execute(vm2, compiler, context2);
+    if( vm2->errnum ) {
+        handlebars_context_dtor(context);
+        handlebars_vm_throw(vm, vm2->errnum, vm2->errmsg);
+    }
+
+    frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, vm2->buffer);
+
+    handlebars_context_dtor(context);
+}
+
 ACCEPT_FUNCTION(lookup_block_param)
 {
     long blockParam1 = -1;
@@ -676,7 +787,7 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
 
         // Print opcode?
         char * tmp = handlebars_opcode_print(vm, opcode);
-        fprintf(stdout, "PROG [%d] OPCODE: %s\n", compiler->guid, tmp);
+        fprintf(stdout, "V[%d] P[%d] OPCODE: %s\n", vm->depth, compiler->guid, tmp);
         talloc_free(tmp);
 
 		switch( opcode->type ) {
@@ -691,6 +802,7 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
             ACCEPT(invoke_ambiguous);
             ACCEPT(invoke_helper);
             ACCEPT(invoke_known_helper);
+            ACCEPT(invoke_partial);
             ACCEPT(lookup_block_param);
             ACCEPT(lookup_data);
             ACCEPT(lookup_on_context);

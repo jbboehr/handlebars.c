@@ -18,13 +18,13 @@
 
 struct handlebars_context * _handlebars_context_init_current = NULL;
 
-struct handlebars_context * handlebars_context_ctor(void)
+struct handlebars_context * handlebars_context_ctor_ex(void * ctx)
 {
     struct handlebars_context * context = NULL;
     int lexerr = 0;
     
     // Allocate struct as new top level talloc context
-    context = handlebars_talloc_zero(NULL, struct handlebars_context);
+    context = handlebars_talloc_zero(ctx, struct handlebars_context);
     if( unlikely(context == NULL) ) {
         // Mainly doing this for consistency with lex init
         errno = ENOMEM;

@@ -26,14 +26,16 @@ struct handlebars_vm {
     //struct handlebars_compiler * opcodes;
     struct handlebars_compiler ** programs;
     size_t guid_index;
+    long depth;
 
     long errnum;
-    long errmsg;
+    const char * errmsg;
     jmp_buf jmpbuf;
 
     struct handlebars_value * context;
     struct handlebars_value * data;
     struct handlebars_value * helpers;
+	struct handlebars_value * partials;
     long flags;
 
     const char * last_helper;

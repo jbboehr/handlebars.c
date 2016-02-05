@@ -127,9 +127,11 @@ struct handlebars_value_iterator * std_json_iterator_ctor(struct handlebars_valu
     switch( json_object_get_type(intern) ) {
         case json_type_object:
             entry = json_object_get_object(intern)->head;
-            it->usr = (void *) entry;
-            it->key = (char *) entry->k;
-            it->current = handlebars_value_from_json_object(value->ctx, entry->v);
+            if( entry ) {
+                it->usr = (void *) entry;
+                it->key = (char *) entry->k;
+                it->current = handlebars_value_from_json_object(value->ctx, entry->v);
+            }
             break;
         case json_type_array:
             it->index = 0;

@@ -36,6 +36,8 @@ struct generic_test {
     struct json_object * data;
     struct json_object * helpers;
     struct json_object * globalHelpers;
+    struct json_object * partials;
+    struct json_object * globalPartials;
     char * expected;
     char * message;
     short exception;
@@ -129,6 +131,14 @@ static void loadSpecTest(json_object * object)
     }
     if( NULL != (cur = json_object_object_get(object, "globalHelpers")) ) {
         test->globalHelpers = cur;
+    }
+
+    // Get partials
+    if( NULL != (cur = json_object_object_get(object, "partials")) ) {
+        test->partials = cur;
+    }
+    if( NULL != (cur = json_object_object_get(object, "globalPartials")) ) {
+        test->globalPartials = cur;
     }
 
     // Get compile options
@@ -237,6 +247,8 @@ int shouldnt_skip(struct generic_test * test)
     MYCHECK("subexpressions", "as hashes in string params mode");
     MYCHECK("subexpressions", "string params for inner helper processed correctly");
 
+    // Partials
+
     return 1;
 
 #undef MYCCHECK
@@ -319,6 +331,26 @@ START_TEST(test_handlebars_spec)
             //}
         }
         handlebars_value_delref(helpers);
+    }
+
+    // Setup partials
+    vm->partials = handlebars_value_ctor(vm);
+    handlebars_value_map_init(vm->partials);
+    if( test->globalPartials ) {
+        struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->globalPartials);
+        it = handlebars_value_iterator_ctor(partials);
+        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
+            handlebars_map_update(vm->partials->v.map, it->key, it->current);
+        }
+        handlebars_value_delref(partials);
+    }
+    if( test->partials ) {
+        struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->partials);
+        it = handlebars_value_iterator_ctor(partials);
+        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
+            handlebars_map_update(vm->partials->v.map, it->key, it->current);
+        }
+        handlebars_value_delref(partials);
     }
 
     // Load context
@@ -438,7 +470,7 @@ int main(void)
     loadSpec("builtins");
     loadSpec("data");
     loadSpec("helpers");
-    //loadSpec("partials");
+    loadSpec("partials");
     //loadSpec("regressions");
     //loadSpec("string-params");
     loadSpec("subexpressions");

@@ -98,6 +98,12 @@ FIXTURE_FN(464915369)
     FIXTURE_STRING("fail");
 }
 
+FIXTURE_FN(471141295)
+{
+    // "function () {\n        return 'dude';\n      }"
+    FIXTURE_STRING("dude");
+}
+
 static int value_for_510017722 = 1;
 FIXTURE_FN(510017722)
 {
@@ -1369,6 +1375,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(459219799);
         FIXTURE_CASE(461441956);
         FIXTURE_CASE(464915369);
+        FIXTURE_CASE(471141295);
         FIXTURE_CASE(510017722);
         FIXTURE_CASE(585442881);
         FIXTURE_CASE(620640779);
