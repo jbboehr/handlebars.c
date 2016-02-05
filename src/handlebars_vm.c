@@ -15,6 +15,7 @@
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_stack.h"
+#include "handlebars_utils.h"
 
 #include "handlebars_vm.h"
 
@@ -521,7 +522,11 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_vm_throw(vm, vm2->errnum, vm2->errmsg);
     }
 
-    frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, vm2->buffer);
+    if( vm2->buffer ) {
+        char *tmp2 = handlebars_indent(vm2, vm2->buffer, opcode->op3.data.stringval);
+        frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp2);
+        handlebars_talloc_free(tmp2);
+    }
 
     handlebars_context_dtor(context);
 }

@@ -141,6 +141,42 @@ char * handlebars_implode(const char * sep, const char ** arr)
     return val;
 }
 
+char * handlebars_indent(void * ctx, const char * str, const char * indent)
+{
+    char * out = handlebars_talloc_strdup(ctx, "");
+    if( !str ) {
+        return out;
+    }
+
+    str = handlebars_rtrim(str, "\r\n");
+
+    size_t len = strlen(str);
+    size_t i;
+    bool endsInLine = str[len - 1] == '\n';
+
+    if( !len ) {
+        return out;
+    }
+
+    for( i = 0; i < len; i++ ) {
+        if( str[i] == '\n' ) {
+            out = handlebars_talloc_strdup_append/*_buffer*/(out, "\n");
+            out = handlebars_talloc_strdup_append/*_buffer*/(out, indent);
+        } else {
+            char tmp[2];
+            tmp[0] = str[i];
+            tmp[1] = 0;
+            out = handlebars_talloc_strdup_append/*_buffer*/(out, tmp);
+        }
+    }
+
+    if( endsInLine ) {
+        out = handlebars_talloc_strdup_append/*_buffer*/(out, "\n");
+    }
+
+    return out;
+}
+
 char * handlebars_ltrim_ex(char * string, size_t * length, const char * what, size_t what_length)
 {
     size_t i;

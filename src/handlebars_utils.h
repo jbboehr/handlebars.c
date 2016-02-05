@@ -41,6 +41,8 @@ char * handlebars_htmlspecialchars(const char * str);
 
 char * handlebars_implode(const char * sep, const char ** arr);
 
+char * handlebars_indent(void * ctx, const char * str, const char * indent);
+
 /**
  * @brief Trims a set of characters off the left end of string. Trims in
  *        place by setting a null terminator and moving the contents
