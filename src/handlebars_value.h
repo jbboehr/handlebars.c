@@ -96,15 +96,14 @@ static inline int handlebars_value_addref(struct handlebars_value * value) {
 }
 
 static inline int handlebars_value_delref(struct handlebars_value * value) {
-    --value->refcount;
-    if( value->refcount <= 0 ) {
+    if( value->refcount <= 1 ) {
         if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
             handlebars_value_dtor(value);
         }
         handlebars_talloc_free(value);
         return 0;
     }
-    return value->refcount;
+    return --value->refcount;
 }
 
 static inline int handlebars_value_refcount(struct handlebars_value * value) {

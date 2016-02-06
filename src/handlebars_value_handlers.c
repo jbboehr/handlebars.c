@@ -47,44 +47,36 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
 
     switch( json_object_get_type(intern) ) {
         case json_type_object: {
-            struct handlebars_map * map = handlebars_map_ctor(value);
-
+            handlebars_value_map_init(value);
             json_object_object_foreach(intern, k, v) {
                 new_value = handlebars_value_from_json_object(value->ctx, v);
-                handlebars_map_add(map, k, new_value);
+                handlebars_map_add(value->v.map, k, new_value);
                 handlebars_value_delref(new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
                 }
             }
-
-            handlebars_value_null(value);
-            value->type = HANDLEBARS_VALUE_TYPE_MAP;
-            value->v.map = map;
             break;
         }
         case json_type_array: {
-            struct handlebars_map * stack = handlebars_stack_ctor(value);
+            handlebars_value_array_init(value);
             size_t i, l;
 
             for( i = 0, l = json_object_array_length(intern); i < l; i++ ) {
                 new_value = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, i));
-                handlebars_stack_set(stack, i, new_value);
+                handlebars_stack_set(value->v.map, i, new_value);
                 handlebars_value_delref(new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
                 }
             }
-
-            handlebars_value_null(value);
-            value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
-            value->v.stack = stack;
             break;
         }
     }
 
     // Remove talloc destructor?
     talloc_set_destructor(value, NULL);
+    value->flags &= ~HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
 }
 
 static enum handlebars_value_type std_json_type(struct handlebars_value * value) {

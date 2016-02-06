@@ -131,6 +131,7 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
                 handlebars_value_convert_ex(it->current, recurse);
             }
+            handlebars_talloc_free(it);
             break;
     }
 }
@@ -397,6 +398,8 @@ void handlebars_value_dtor(struct handlebars_value * value)
             value->handlers->dtor(value);
             break;
     }
+
+    talloc_free_children(value);
 
     // Initialize to null
     value->type = HANDLEBARS_VALUE_TYPE_NULL;
