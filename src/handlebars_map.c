@@ -64,24 +64,26 @@ bool handlebars_map_remove(struct handlebars_map * map, const char * key)
     short removed = 0;
 
     handlebars_map_foreach(map, entry, tmp) {
-        if( 0 == strcmp(entry->key, key) ) {
-            value = entry->value;
-            if( entry->prev ) {
-                entry->prev->next = entry->next;
-            } else {
-                map->first = entry->next;
-                map->first->prev = NULL;
-            }
-            if( entry->next ) {
-                entry->next->prev = entry->prev;
-            } else {
-                map->last = entry->prev;
-                map->last->next = NULL;
-            }
-            handlebars_value_delref(value);
-            handlebars_talloc_free(entry);
-            removed++;
+        if( 0 != strcmp(entry->key, key) ) {
+            continue;
         }
+
+        value = entry->value;
+        if( map->first == entry ) {
+            map->first = entry->next;
+        }
+        if( map->last == entry ) {
+            map->last = entry->prev;
+        }
+        if( entry->next ) {
+            entry->next->prev = entry->prev;
+        }
+        if( entry->prev ) {
+            entry->prev->next = entry->next;
+        }
+        handlebars_value_delref(value);
+        handlebars_talloc_free(entry);
+        removed++;
     }
 
     map->i -= removed;

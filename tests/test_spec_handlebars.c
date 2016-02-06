@@ -484,7 +484,7 @@ int main(void)
         spec_dir = "./spec/handlebars/spec";
     }
     loadSpec("basic");
-    //loadSpec("./spec/handlebars/spec/bench.json");
+    loadSpec("bench");
     loadSpec("blocks");
     loadSpec("builtins");
     loadSpec("data");

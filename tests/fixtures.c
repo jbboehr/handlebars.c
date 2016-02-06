@@ -55,6 +55,12 @@ FIXTURE_FN(169151220)
     FIXTURE_STRING("LOL");
 }
 
+FIXTURE_FN(276040703)
+{
+    // "function () {\n      return 'Colors';\n    }"
+    FIXTURE_STRING("Colors");
+}
+
 FIXTURE_FN(454102302)
 {
     // "function (value) { return value + ''; }"
@@ -1102,6 +1108,27 @@ FIXTURE_FN(3307473738)
     FIXTURE_STRING("Awesome");
 }
 
+FIXTURE_FN(3287026061)
+{
+    // "function () {\n      return '';\n    }"
+    FIXTURE_STRING("");
+}
+
+FIXTURE_FN(3308130198)
+{
+    // "function (value) {\n      return 'foo ' + value;\n    }"
+    struct handlebars_value * value = handlebars_stack_get(options->params, 0);
+    char * tmp = handlebars_talloc_asprintf(
+            options->vm,
+            "foo %s",
+            handlebars_value_get_strval(value)
+    );
+    struct handlebars_value * result = handlebars_value_ctor(options->vm);
+    handlebars_value_string(result, tmp);
+    handlebars_talloc_free(tmp);
+    return result;
+}
+
 FIXTURE_FN(3325763044)
 {
     // "function (val, that, theOther) {\n        return 'val is ' + val + ', ' + that + ' and ' + theOther;\n      }"
@@ -1390,6 +1417,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(49286285);
         FIXTURE_CASE(126946175);
         FIXTURE_CASE(169151220);
+        FIXTURE_CASE(276040703);
         FIXTURE_CASE(454102302);
         FIXTURE_CASE(459219799);
         FIXTURE_CASE(461441956);
@@ -1466,7 +1494,9 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(3168412868);
         FIXTURE_CASE(3206093801);
         FIXTURE_CASE(325991858);
+        FIXTURE_CASE(3287026061);
         FIXTURE_CASE(3307473738);
+        FIXTURE_CASE(3308130198);
         FIXTURE_CASE(3325763044);
         FIXTURE_CASE(3327136760);
         FIXTURE_CASE(3328314220);
