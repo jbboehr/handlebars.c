@@ -199,6 +199,25 @@ FIXTURE_FN(662835958)
     return value;
 }
 
+FIXTURE_FN(690821881)
+{
+    // this one is actually a partial
+    // "function partial(context) {\n      return context.name + ' (' + context.url + ') ';\n    }"
+    struct handlebars_value * context = handlebars_stack_get(options->params, 0);
+    struct handlebars_value * name = handlebars_value_map_find(context, "name");
+    struct handlebars_value * url = handlebars_value_map_find(context, "url");
+    char * tmp = handlebars_talloc_asprintf(
+            options->vm,
+            "%s (%s) ",
+            handlebars_value_get_strval(name),
+            handlebars_value_get_strval(url)
+    );
+    struct handlebars_value * result = handlebars_value_ctor(options->vm);
+    handlebars_value_string(result, tmp);
+    handlebars_talloc_free(tmp);
+    return result;
+}
+
 FIXTURE_FN(666457330)
 {
     // "function (options) {\n          if (options.hash.print === true) {\n            return 'GOODBYE ' + options.hash.cruel + ' ' + options.fn(this);\n          } else if (options.hash.print === false) {\n            return 'NOT PRINTING';\n          } else {\n            return 'THIS SHOULD NOT HAPPEN';\n          }\n        }"
@@ -1383,6 +1402,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(665715952);
         FIXTURE_CASE(666457330);
         FIXTURE_CASE(662835958);
+        FIXTURE_CASE(690821881);
         FIXTURE_CASE(730081660);
         FIXTURE_CASE(730672213);
         FIXTURE_CASE(739773491);

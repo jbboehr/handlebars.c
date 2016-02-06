@@ -248,6 +248,21 @@ int shouldnt_skip(struct generic_test * test)
     MYCHECK("subexpressions", "string params for inner helper processed correctly");
 
     // Partials
+    MYCHECK("partials", "registering undefined partial throws an exception");
+    MYCHECK("partial blocks", "should render block from partial");
+    MYCHECK("partial blocks", "should render block from partial with context");
+    MYCHECK("partial blocks", "should render block from partial with block params");
+    MYCHECK("partial blocks", "should render partial block as default");
+    MYCHECK("partial blocks", "should execute default block with proper context");
+    MYCHECK("partial blocks", "should propagate block parameters to default block");
+    MYCHECK("inline partials", "should define inline partials for template");
+    MYCHECK("inline partials", "should overwrite multiple partials in the same template");
+    MYCHECK("inline partials", "should define inline partials for block");
+    MYCHECK("inline partials", "should override global partials");
+    MYCHECK("inline partials", "should override template partials");
+    MYCHECK("inline partials", "should override partials down the entire stack");
+    MYCHECK("inline partials", "should define inline partials for partial call");
+    MYCHECK("inline partials", "should define inline partials in partial block call");
 
     return 1;
 
@@ -275,7 +290,7 @@ START_TEST(test_handlebars_spec)
 
     //ck_assert_msg(shouldnt_skip(test), "Skipped");
     if( !shouldnt_skip(test) ) {
-        fprintf(stderr, "SKIPPED #%d", _i);
+        fprintf(stderr, "SKIPPED #%d\n", _i);
         return;
     }
 
@@ -302,7 +317,11 @@ START_TEST(test_handlebars_spec)
     }
 
     handlebars_compiler_compile(compiler, ctx->program);
-    ck_assert_int_eq(0, compiler->errnum);
+    if( compiler->errnum ) {
+        // @todo check message
+        ck_assert_int_eq(1, test->exception);
+        goto done;
+    }
 
     // Setup VM
     vm = handlebars_vm_ctor(ctx);
@@ -338,6 +357,7 @@ START_TEST(test_handlebars_spec)
     handlebars_value_map_init(vm->partials);
     if( test->globalPartials ) {
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->globalPartials);
+        load_fixtures(partials);
         it = handlebars_value_iterator_ctor(partials);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
             handlebars_map_update(vm->partials->v.map, it->key, it->current);
@@ -346,6 +366,7 @@ START_TEST(test_handlebars_spec)
     }
     if( test->partials ) {
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->partials);
+        load_fixtures(partials);
         it = handlebars_value_iterator_ctor(partials);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
             handlebars_map_update(vm->partials->v.map, it->key, it->current);
@@ -367,8 +388,6 @@ START_TEST(test_handlebars_spec)
 
     // Execute
     handlebars_vm_execute(vm, compiler, context);
-
-
 
 #ifndef NDEBUG
     if( test->expected ) {

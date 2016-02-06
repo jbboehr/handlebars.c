@@ -467,8 +467,13 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
     struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
-    // Parse
+    // Get tempalte
     context->tmpl = handlebars_value_get_strval(partial);
+    if( !*context->tmpl ) {
+        goto done;
+    }
+
+    // Parse
     int retval = handlebars_yy_parse(context);
     if( context->error ) {
         handlebars_vm_throw(vm, context->errnum, context->error);
@@ -528,6 +533,7 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_talloc_free(tmp2);
     }
 
+done:
     handlebars_context_dtor(context);
 }
 

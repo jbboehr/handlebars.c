@@ -10,6 +10,7 @@ extern "C" {
 
 struct handlebars_value_iterator;
 
+typedef struct handlebars_value * (*handlebars_copy_func)(struct handlebars_value * value);
 typedef void (*handlebars_value_dtor_func)(struct handlebars_value * value);
 typedef void (*handlebars_value_convert_func)(struct handlebars_value * value, bool recurse);
 typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
@@ -19,6 +20,7 @@ typedef struct handlebars_value_iterator * (*handlebars_iterator_ctor_func)(stru
 typedef bool (*handlebars_iterator_next_func)(struct handlebars_value_iterator * it);
 
 struct handlebars_value_handlers {
+    handlebars_copy_func copy;
     handlebars_value_dtor_func dtor;
     handlebars_value_convert_func convert;
     handlebars_value_type_func type;

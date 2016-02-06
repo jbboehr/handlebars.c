@@ -20,6 +20,12 @@
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
+static struct handlebars_value * std_json_copy(struct handlebars_value * value)
+{
+    const char * str = json_object_to_json_string(value->v.usr);
+    return handlebars_value_from_json_string(value->ctx, str);
+}
+
 static void std_json_dtor(struct handlebars_value * value)
 {
     struct json_object * result = (struct json_object *) value->v.usr;
@@ -177,6 +183,7 @@ bool std_json_iterator_next(struct handlebars_value_iterator * it)
 
 
 static struct handlebars_value_handlers handlebars_value_std_json_handlers = {
+        &std_json_copy,
         &std_json_dtor,
         &std_json_convert,
         &std_json_type,

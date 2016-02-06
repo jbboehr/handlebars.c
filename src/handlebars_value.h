@@ -79,6 +79,7 @@ double handlebars_value_get_floatval(struct handlebars_value * value);
 char * handlebars_value_expression(void * ctx, struct handlebars_value * value, bool escape);
 
 struct handlebars_value * handlebars_value_ctor(void * ctx);
+struct handlebars_value * handlebars_value_copy(struct handlebars_value * value);
 void handlebars_value_dtor(struct handlebars_value * value);
 struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json);
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);

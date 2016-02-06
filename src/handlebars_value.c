@@ -344,6 +344,41 @@ struct handlebars_value * handlebars_value_ctor(void * ctx)
 	return value;
 }
 
+struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
+{
+    struct handlebars_value * new_value;
+    struct handlebars_value_iterator * it;
+
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            new_value = handlebars_value_ctor(value->ctx);
+            handlebars_value_array_init(new_value);
+            it = handlebars_value_iterator_ctor(value);
+            for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+                handlebars_stack_set(new_value->v.stack, it->index, it->current);
+            }
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            new_value = handlebars_value_ctor(value->ctx);
+            handlebars_value_map_init(new_value);
+            it = handlebars_value_iterator_ctor(value);
+            for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
+                handlebars_map_add(new_value->v.map, it->key, it->current);
+            }
+            break;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            new_value = value->handlers->copy(value);
+            break;
+
+        default:
+            new_value = handlebars_value_ctor(value->ctx);
+            memcpy(&new_value->v, &value->v, sizeof(value->v));
+            break;
+    }
+
+    return new_value;
+}
+
 void handlebars_value_dtor(struct handlebars_value * value)
 {
     // Release old value
