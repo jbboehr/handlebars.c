@@ -147,12 +147,13 @@ char * handlebars_indent(void * ctx, const char * str, const char * indent)
     if( !str ) {
         return out;
     }
-
-    str = handlebars_rtrim(str, "\r\n");
+    out = handlebars_talloc_strdup_append(out, indent);
 
     size_t len = strlen(str);
     size_t i;
-    bool endsInLine = str[len - 1] == '\n';
+    bool endsInLine = (str[len - 1] == '\n');
+
+    str = handlebars_rtrim(str, "\r\n");
 
     if( !len ) {
         return out;

@@ -529,6 +529,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
     if( vm2->buffer ) {
         char *tmp2 = handlebars_indent(vm2, vm2->buffer, opcode->op3.data.stringval);
+        fprintf(stderr, "TESTING %s ||| %s ||| %s", tmp2, vm2->buffer, opcode->op3.data.stringval);
         frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp2);
         handlebars_talloc_free(tmp2);
     }
@@ -825,19 +826,9 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
             ACCEPT(push_string);
             ACCEPT(push_string_param);
             ACCEPT(resolve_possible_lambda);
-
-//            case handlebars_opcode_type_push:
-//            case handlebars_opcode_type_invoke_partial:
-//            case handlebars_opcode_type_push_id:
-//            case handlebars_opcode_type_register_decorator:
-//                fprintf(stderr, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
-//                break;
-//
-//            case handlebars_opcode_type_invalid:
-//            case handlebars_opcode_type_nil:
             default:
-                fprintf(stdout, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
-                //assert(0);
+                tmp = handlebars_talloc_asprintf(vm, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
+                handlebars_vm_throw(vm, 0, tmp);
                 break;
         }
 	}
