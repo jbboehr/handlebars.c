@@ -508,8 +508,6 @@ int main(void)
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 
-    fprintf(stderr, "ARGGGG %d %d\n", number_failed, error);
-
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
