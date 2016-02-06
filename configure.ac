@@ -207,6 +207,15 @@ AM_CONDITIONAL([GCOV], [test x$enable_gcov = xyes])
 #])
 #AM_CONDITIONAL([HANDLEBARS_MEMDEBUG], [test x$enable_memdebug = xyes])
 
+# yaml
+AC_ARG_ENABLE([yaml],
+	[AS_HELP_STRING([--disable-yaml], [disable support for yaml])], [])
+
+AS_IF([test "x$enable_yaml" != "xno"], [
+  AC_CHECK_HEADERS(yaml.h)
+  AC_CHECK_LIB([yaml], [yaml_get_version_string])
+])
+
 # yydebug
 AC_ARG_ENABLE([yydebug], 
   [AS_HELP_STRING([--enable-yydebug], [compile with yydebug functions])], [])

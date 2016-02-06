@@ -28,7 +28,7 @@ sudo apt-get install handlebarsc libhandlebars-dev
 ```bash
 # Install dependencies
 sudo apt-get install autoconf automake bison flex gawk gcc git-core \
-                     libjson0-dev libtalloc-dev libtool \
+                     libjson0-dev libtalloc-dev libyaml-dev libtool \
                      m4 make pkg-config
 
 # Install testing dependencies
@@ -48,7 +48,7 @@ cd handlebars.c
 
 ```bash
 # Install dependencies
-brew install autoconf automake bison flex gcc json-c libtool pkg-config talloc
+brew install autoconf automake bison flex gcc json-c libtool libyaml pkg-config talloc
 
 # Install testing dependencies
 brew install check lcov pcre
