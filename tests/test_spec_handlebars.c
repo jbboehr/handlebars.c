@@ -490,7 +490,7 @@ int main(void)
     loadSpec("data");
     loadSpec("helpers");
     loadSpec("partials");
-    //loadSpec("regressions");
+    loadSpec("regressions");
     //loadSpec("string-params");
     loadSpec("subexpressions");
     //loadSpec("track-ids");
