@@ -289,7 +289,7 @@ char * handlebars_value_expression(void * ctx, struct handlebars_value * value, 
             break;
 
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            ret = handlebars_talloc_asprintf(ctx, "%f", handlebars_value_get_floatval(value));
+            ret = handlebars_talloc_asprintf(ctx, "%g", handlebars_value_get_floatval(value));
             break;
 
         case HANDLEBARS_VALUE_TYPE_INTEGER:

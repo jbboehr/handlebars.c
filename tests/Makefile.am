@@ -21,6 +21,7 @@ check_PROGRAMS = \
 	test_spec_handlebars_tokenizer \
 	test_spec_handlebars_compiler \
 	test_spec_handlebars \
+	test_spec_mustache \
 	test_random_alloc_fail
 
 test_main_SOURCES = utils.h utils.c fixtures.c test_main.c
@@ -42,6 +43,7 @@ test_spec_handlebars_parser_SOURCES = utils.h utils.c fixtures.c test_spec_handl
 test_spec_handlebars_tokenizer_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_tokenizer.c
 test_spec_handlebars_compiler_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_compiler.c
 test_spec_handlebars_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars.c
+test_spec_mustache_SOURCES = utils.h utils.c fixtures.c test_spec_mustache.c
 test_random_alloc_fail_SOURCES = utils.h utils.c fixtures.c test_random_alloc_fail.c
 
 TESTS = \
@@ -64,6 +66,7 @@ TESTS = \
 	test_spec_handlebars_tokenizer \
 	test_spec_handlebars_compiler \
 	test_spec_handlebars \
+	test_spec_mustache \
 	test_random_alloc_fail
 
 TESTS_ENVIRONMENT = \
@@ -73,6 +76,7 @@ TESTS_ENVIRONMENT = \
 	handlebars_spec_dir=@HANDLEBARS_SPEC_DIR@/spec \
 	handlebars_tokenizer_spec=@HANDLEBARS_SPEC_DIR@/spec/tokenizer.json \
 	handlebars_parser_spec=@HANDLEBARS_SPEC_DIR@/spec/parser.json \
+	mustache_spec_dir=@MUSTACHE_SPEC_DIR@/specs \
 	CK_VERBOSITY=normal
 
 if CHECK_HAS_TAP

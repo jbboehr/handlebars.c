@@ -170,6 +170,19 @@ AS_IF([test "x$enable_json" != "xno"], [
   ])
 ])
 
+# mustache-spec
+AC_ARG_WITH([mustache-spec],
+	[AS_HELP_STRING([--with-mustache-spec=SPEC_LOCATION], [location to find mustache specification @<:@default=./spec/mustache@>:@])],
+	[], [with_mustache_spec=`pwd`/spec/mustache])
+
+AS_IF([test "x$with_mustache_spec" != "xno"], [
+  AC_CHECK_FILE([$with_mustache_spec/specs/comments.yml], [
+    AC_SUBST([MUSTACHE_SPEC_DIR], [$with_mustache_spec])
+  ], [
+    AC_MSG_FAILURE([mustache spec missing (--without-mustache-spec to disable)])
+  ])
+])
+
 # pcre
 AC_CHECK_LIB([pcre], [pcre_version])
 

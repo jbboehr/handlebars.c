@@ -453,8 +453,12 @@ ACCEPT_FUNCTION(invoke_partial)
     } */
 
     if( !partial ) {
-        char * tmp = handlebars_talloc_asprintf(vm, "The partial %s could not be found", name);
-        handlebars_vm_throw(vm, 0, tmp);
+        if( vm->flags & handlebars_compiler_flag_compat ) {
+            return;
+        } else {
+            char *tmp = handlebars_talloc_asprintf(vm, "The partial %s could not be found", name);
+            handlebars_vm_throw(vm, 0, tmp);
+        }
     }
 
     // If partial is a function?
@@ -529,7 +533,6 @@ ACCEPT_FUNCTION(invoke_partial)
 
     if( vm2->buffer ) {
         char *tmp2 = handlebars_indent(vm2, vm2->buffer, opcode->op3.data.stringval);
-        fprintf(stderr, "TESTING %s ||| %s ||| %s", tmp2, vm2->buffer, opcode->op3.data.stringval);
         frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp2);
         handlebars_talloc_free(tmp2);
     }
