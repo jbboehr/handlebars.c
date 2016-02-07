@@ -18,6 +18,8 @@ struct handlebars_stack;
 struct handlebars_value;
 struct handlebars_value_handlers;
 struct json_object;
+struct yaml_document_s;
+struct yaml_node_s;
 
 enum handlebars_value_type {
     HANDLEBARS_VALUE_TYPE_NULL = 0,
@@ -83,6 +85,8 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
 void handlebars_value_dtor(struct handlebars_value * value);
 struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json);
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
+struct handlebars_value * handlebars_value_from_yaml_node(void *ctx, struct yaml_document_s * document, struct yaml_node_s * node);
+struct handlebars_value * handlebars_value_from_yaml_string(void * ctx, const char * yaml);
 
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);

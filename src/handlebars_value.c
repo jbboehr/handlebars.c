@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include <talloc.h>
+#include <yaml.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
 #include <json-c/json.h>
@@ -407,6 +408,10 @@ void handlebars_value_dtor(struct handlebars_value * value)
     memset(&value->v, 0, sizeof(value->v));
 }
 
+
+
+
+
 struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json)
 {
     struct handlebars_value * value = handlebars_value_ctor(ctx);
@@ -464,4 +469,100 @@ struct handlebars_value * handlebars_value_from_json_string(void *ctx, const cha
         }
     }
     return ret;
+}
+
+
+
+
+struct _yaml_ctx {
+    yaml_parser_t parser;
+    yaml_document_t document;
+};
+
+static void _yaml_ctx_dtor(struct _yaml_ctx * holder)
+{
+    yaml_document_delete(&holder->document);
+    yaml_parser_delete(&holder->parser);
+}
+
+struct handlebars_value * handlebars_value_from_yaml_node(void *ctx, struct yaml_document_s * document, struct yaml_node_s * node)
+{
+    struct handlebars_value * value = handlebars_value_ctor(ctx);
+    struct handlebars_value * tmp;
+    yaml_node_pair_t * pair;
+    yaml_node_item_t * item;
+    char * end = NULL;
+
+    switch( node->type ) {
+        case YAML_MAPPING_NODE:
+            handlebars_value_map_init(value);
+            for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
+                yaml_node_t * keyNode = yaml_document_get_node(document, pair->key);
+                yaml_node_t * valueNode = yaml_document_get_node(document, pair->value);
+                assert(keyNode->type == YAML_SCALAR_NODE);
+                tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
+                handlebars_map_add(value->v.map, keyNode->data.scalar.value, tmp);
+            }
+            break;
+        case YAML_SEQUENCE_NODE:
+            handlebars_value_array_init(value);
+            for( item = node->data.sequence.items.start; item < node->data.sequence.items.top; item ++) {
+                yaml_node_t * valueNode = yaml_document_get_node(document, *item);
+                tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
+                handlebars_stack_push(value->v.stack, tmp);
+            }
+            break;
+        case YAML_SCALAR_NODE:
+            if( 0 == strcmp(node->data.scalar.value, "true") ) {
+                handlebars_value_boolean(value, 1);
+            } else if( 0 == strcmp(node->data.scalar.value, "false") ) {
+                handlebars_value_boolean(value, 0);
+            } else {
+                long lval;
+                double dval;
+                // Long
+                lval = strtol(node->data.scalar.value, &end, 10);
+                if( !*end ) {
+                    handlebars_value_integer(value, lval);
+                    goto done;
+                }
+                // Double
+                dval = strtod(node->data.scalar.value, &end);
+                if( !*end ) {
+                    handlebars_value_float(value, dval);
+                    goto done;
+                }
+                // String
+                value->type = HANDLEBARS_VALUE_TYPE_STRING;
+                value->v.strval = handlebars_talloc_strndup(value, node->data.scalar.value, node->data.scalar.length);
+            }
+            break;
+        default:
+            // ruh roh
+            assert(0);
+            break;
+    }
+
+done:
+    return value;
+}
+
+struct handlebars_value * handlebars_value_from_yaml_string(void * ctx, const char * yaml)
+{
+    struct handlebars_value * value = NULL;
+    struct _yaml_ctx * yctx = talloc_zero(ctx, struct _yaml_ctx);
+    talloc_set_destructor(yctx, _yaml_ctx_dtor);
+    yaml_parser_initialize(&yctx->parser);
+    yaml_parser_set_input_string(&yctx->parser, (unsigned char *) yaml, strlen(yaml));
+    yaml_parser_load(&yctx->parser, &yctx->document);
+    yaml_node_t * node = yaml_document_get_root_node(&yctx->document);
+    if( node ) {
+        value = handlebars_value_from_yaml_node(ctx, &yctx->document, node);
+#ifndef NDEBUG
+    } else {
+        fprintf(stderr, "YAML error: %d:\n", yctx->parser.error);
+#endif
+    }
+    handlebars_talloc_free(yctx);
+    return value;
 }

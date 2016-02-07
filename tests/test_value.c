@@ -52,14 +52,25 @@ START_TEST(test_boolean_false)
 END_TEST
 
 START_TEST(test_boolean_json_true)
-{
-	struct handlebars_value * value = handlebars_value_from_json_string(ctx, "true");
-	ck_assert_ptr_ne(value, NULL);
-	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
-	ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
-	ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
-}
+    {
+        struct handlebars_value * value = handlebars_value_from_json_string(ctx, "true");
+        ck_assert_ptr_ne(value, NULL);
+        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
+        ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
+        ck_assert_int_eq(0, handlebars_value_delref(value));
+        ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    }
+END_TEST
+
+START_TEST(test_boolean_yaml_true)
+    {
+        struct handlebars_value * value = handlebars_value_from_yaml_string(ctx, "---\ntrue");
+        ck_assert_ptr_ne(value, NULL);
+        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
+        ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
+        ck_assert_int_eq(0, handlebars_value_delref(value));
+        ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    }
 END_TEST
 
 START_TEST(test_boolean_json_false)
@@ -74,23 +85,47 @@ START_TEST(test_boolean_json_false)
 END_TEST
 
 START_TEST(test_int)
-{
-	struct handlebars_value * value = handlebars_value_from_json_string(ctx, "2358");
-	ck_assert_ptr_ne(value, NULL);
-	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
-	ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
-	ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
-}
+    {
+        struct handlebars_value * value = handlebars_value_from_json_string(ctx, "2358");
+        ck_assert_ptr_ne(value, NULL);
+        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
+        ck_assert_int_eq(0, handlebars_value_delref(value));
+        ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    }
+END_TEST
+
+START_TEST(test_int_yaml)
+    {
+        struct handlebars_value * value = handlebars_value_from_yaml_string(ctx, "---\n2358");
+        ck_assert_ptr_ne(value, NULL);
+        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
+        ck_assert_int_eq(0, handlebars_value_delref(value));
+        ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    }
 END_TEST
 
 START_TEST(test_float)
 {
-	struct handlebars_value * value = handlebars_value_from_json_string(ctx, "1234.4321");
-	ck_assert_ptr_ne(value, NULL);
-	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
-	ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
-	ck_assert_int_eq(0, handlebars_value_delref(value));
+    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "1234.4321");
+    ck_assert_ptr_ne(value, NULL);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
+    // Note: converting to int - precision issue
+    ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+}
+END_TEST
+
+START_TEST(test_float_yaml)
+{
+    struct handlebars_value * value = handlebars_value_from_yaml_string(ctx, "---\n1234.4321");
+    ck_assert_ptr_ne(value, NULL);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
+    // Note: converting to int - precision issue
+    ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
+    ck_assert_int_eq(0, handlebars_value_delref(value));
     ck_assert_int_eq(1, talloc_total_blocks(ctx));
 }
 END_TEST
@@ -371,9 +406,12 @@ Suite * parser_suite(void)
     Suite * s = suite_create("Value");
 
 	REGISTER_TEST_FIXTURE(s, test_boolean_json_true, "Boolean - true (JSON)");
-	REGISTER_TEST_FIXTURE(s, test_boolean_json_false, "Boolean - true (JSON)");
+	REGISTER_TEST_FIXTURE(s, test_boolean_json_false, "Boolean - false (JSON)");
+    REGISTER_TEST_FIXTURE(s, test_boolean_yaml_true, "Boolean - true (YAML)");
     REGISTER_TEST_FIXTURE(s, test_int, "Integer");
+    REGISTER_TEST_FIXTURE(s, test_int_yaml, "Integer (YAML)");
     REGISTER_TEST_FIXTURE(s, test_float, "Float");
+    REGISTER_TEST_FIXTURE(s, test_float_yaml, "Float (YAML)");
     REGISTER_TEST_FIXTURE(s, test_string, "String");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");
