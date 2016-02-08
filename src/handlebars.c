@@ -39,6 +39,11 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
         ctx->errnum = HANDLEBARS_NOMEM;
         return NULL;
     }
+
+    // Save jump buffer
+    if( setjmp(ctx->jmp) ) {
+        goto done;
+    }
     
     // Run
     do {
@@ -63,6 +68,20 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
         // Append
         handlebars_token_list_append(list, token);
     } while( 1 );
-    
+
+done:
     return list;
+}
+
+bool handlebars_parse(struct handlebars_context * ctx)
+{
+    // Save jump buffer
+    if( setjmp(ctx->jmp) ) {
+        goto done;
+    }
+
+    handlebars_yy_parse(ctx);
+
+done:
+    return ctx->program != NULL;
 }

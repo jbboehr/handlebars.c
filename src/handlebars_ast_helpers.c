@@ -29,11 +29,9 @@
             ast_node = NULL; \
             context->errnum = HANDLEBARS_NOMEM; \
             context->error = "Out of memory" __S2(__FUNCTION__) " [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
-            goto error; \
+            longjmp(context->jmp, 1); \
         } \
     } while(0)
-
-
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         struct handlebars_context * context, struct handlebars_ast_node * open_block,

@@ -196,7 +196,6 @@ START_TEST(test_mustache_spec)
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
     struct handlebars_value_iterator * it;
-    int retval;
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
@@ -222,7 +221,7 @@ START_TEST(test_mustache_spec)
 
     // Parse
     ctx->tmpl = test->tmpl;
-    retval = handlebars_yy_parse(ctx);
+    handlebars_parse(ctx);
 
     // Check error
     if( ctx->error ) {

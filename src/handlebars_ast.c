@@ -25,7 +25,7 @@
             ast_node = NULL; \
             context->errnum = HANDLEBARS_NOMEM; \
             context->error = "Out of memory [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
-            goto error; \
+            longjmp(context->jmp, 1); \
         } \
     } while(0)
 

@@ -164,13 +164,12 @@ START_TEST(handlebars_spec_parser)
 {
     struct parser_test * test = &tests[_i];
     struct handlebars_context * ctx = handlebars_context_ctor();
-    int retval;
     char * errmsg;
     char errlinestr[32];
     
     ctx->tmpl = test->tmpl;
     
-    retval = handlebars_yy_parse(ctx);
+    handlebars_parse(ctx);
     
     if( ctx->error != NULL ) {
         char * errmsg = handlebars_context_get_errmsg(ctx);

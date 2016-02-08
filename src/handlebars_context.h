@@ -7,6 +7,7 @@
 #ifndef HANDLEBARS_CONTEXT_H
 #define HANDLEBARS_CONTEXT_H
 
+#include <setjmp.h>
 #include "handlebars.h"
 
 #ifdef	__cplusplus
@@ -28,15 +29,16 @@ extern struct handlebars_context * _handlebars_context_init_current;
  */
 struct handlebars_context
 {
-  const char * tmpl;
-  int tmplReadOffset;
-  void * scanner;
-  struct handlebars_ast_node * program;
-  int errnum;
-  char * error;
-  struct handlebars_locinfo * errloc;
-  bool whitespace_root_seen;
-  bool ignore_standalone;
+    jmp_buf jmp;
+    const char * tmpl;
+    int tmplReadOffset;
+    void * scanner;
+    struct handlebars_ast_node * program;
+    int errnum;
+    char * error;
+    struct handlebars_locinfo * errloc;
+    bool whitespace_root_seen;
+    bool ignore_standalone;
 };
 
 /**

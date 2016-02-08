@@ -613,7 +613,6 @@ START_TEST(handlebars_spec_compiler)
     struct handlebars_context * ctx;
     struct handlebars_compiler * compiler;
     struct handlebars_opcode_printer * printer;
-    int retval;
     
     // NOTE: works but handlebars.js doesn't concatenate adjacent content blocks
     if( 0 == strcmp(test->it, "escaping") && 0 == strcmp(test->description, "basic context") ) {
@@ -632,7 +631,7 @@ START_TEST(handlebars_spec_compiler)
     
     // Parse
     ctx->tmpl = test->tmpl;
-    retval = handlebars_yy_parse(ctx);
+    handlebars_parse(ctx);
 
     //ck_assert_int_eq(retval <= 0, test->exception > 0);
     

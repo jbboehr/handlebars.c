@@ -479,7 +479,7 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     // Parse
-    int retval = handlebars_yy_parse(context);
+    handlebars_parse(context);
     if( context->error ) {
         handlebars_vm_throw(vm, context->errnum, context->error);
     }

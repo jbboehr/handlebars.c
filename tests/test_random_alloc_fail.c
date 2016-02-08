@@ -69,7 +69,7 @@ START_TEST(test_random_alloc_fail_parser)
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
-        retval = handlebars_yy_parse(ctx);
+        handlebars_parse(ctx);
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);
@@ -88,7 +88,7 @@ START_TEST(test_random_alloc_fail_compiler)
         struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
         talloc_steal(rootctx, ctx);
         ctx->tmpl = tmpl;
-        retval = handlebars_yy_parse(ctx);
+        handlebars_parse(ctx);
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
