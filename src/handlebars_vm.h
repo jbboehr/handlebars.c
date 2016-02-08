@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 struct handlebars_compiler;
+struct handlebars_context;
 struct handlebars_map;
 struct handlebars_options;
 
@@ -23,7 +24,7 @@ struct handlebars_vm_frame {
 };
 
 struct handlebars_vm {
-    //struct handlebars_compiler * opcodes;
+    struct handlebars_context * ctx;
     struct handlebars_compiler ** programs;
     size_t guid_index;
     long depth;
@@ -48,7 +49,7 @@ struct handlebars_vm {
     struct handlebars_stack * blockParamStack;
 };
 
-struct handlebars_vm * handlebars_vm_ctor(void * ctx);
+struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx);
 
 void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,

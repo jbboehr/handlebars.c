@@ -47,6 +47,8 @@ struct compiler_test {
     short opt_explicit_partial_context;
     short opt_ignore_standalone;
     long flags;
+
+    struct handlebars_context * ctx;
 };
 
 static const char * suite_names[] = {
@@ -306,7 +308,7 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
-        struct handlebars_compiler * subcompiler = handlebars_compiler_ctor(compiler);
+        struct handlebars_compiler * subcompiler = handlebars_compiler_ctor(compiler->ctx);
         
         array_item = json_object_array_get_idx(cur, i);
         if( json_object_get_type(array_item) != json_type_object ) {
@@ -324,11 +326,13 @@ error:
 
 static char * loadTestOpcodesPrint(json_object * object)
 {
+    struct handlebars_context * context;
     struct handlebars_compiler * compiler;
     struct handlebars_opcode_printer * printer;
     char * output;
-    
-    compiler = handlebars_compiler_ctor(rootctx);
+
+    context = handlebars_context_ctor_ex(rootctx);
+    compiler = handlebars_compiler_ctor(context);
     printer = handlebars_opcode_printer_ctor(compiler);
     
     loadTestCompiler(compiler, object);
@@ -339,6 +343,7 @@ static char * loadTestOpcodesPrint(json_object * object)
     
 error:
     handlebars_compiler_dtor(compiler);
+    handlebars_context_dtor(context);
     return output;
 }
 

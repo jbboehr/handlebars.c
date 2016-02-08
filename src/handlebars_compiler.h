@@ -17,6 +17,7 @@ extern "C" {
 
 struct handlebars_ast_node;
 struct handlebars_compiler;
+struct handlebars_context;
 struct handlebars_opcode;
 
 /**
@@ -155,6 +156,8 @@ struct handlebars_source_node_stack {
  * @brief Main compiler state struct
  */
 struct handlebars_compiler {
+    struct handlebars_context * ctx;
+
     enum handlebars_compiler_error errnum;
     char * error;
     
@@ -226,7 +229,7 @@ void handlebars_compiler_compile(
  * @param[in] ctx The memory context
  * @return the compiler context pointer
  */
-struct handlebars_compiler * handlebars_compiler_ctor(void * ctx);
+struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx);
 
 /**
  * @brief Free a compiler context and it's resources.

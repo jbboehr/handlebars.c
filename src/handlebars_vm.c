@@ -180,7 +180,7 @@ static inline char * dump_stack(struct handlebars_stack * stack)
 
 
 
-struct handlebars_vm * handlebars_vm_ctor(void * ctx)
+struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 {
     TALLOC_CTX * tmp = talloc_init(ctx);
 	struct handlebars_vm * vm = handlebars_talloc_zero(tmp, struct handlebars_vm);
@@ -188,6 +188,7 @@ struct handlebars_vm * handlebars_vm_ctor(void * ctx)
         return NULL;
     }
 
+    vm->ctx = ctx;
     vm->frameStack = handlebars_stack_ctor(vm);
     vm->depths = handlebars_stack_ctor(vm);
     vm->stack = handlebars_stack_ctor(vm);

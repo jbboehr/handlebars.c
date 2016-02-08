@@ -68,13 +68,14 @@ static inline void handlebars_compiler_accept_decorator(
 
 
 
-struct handlebars_compiler * handlebars_compiler_ctor(void * ctx)
+struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_compiler * compiler;
     
     compiler = handlebars_talloc_zero(ctx, struct handlebars_compiler);
     
     if( likely(compiler != NULL) ) {
+        compiler->ctx = ctx;
         compiler->known_helpers = handlebars_builtins_names();
         compiler->bps = handlebars_talloc_zero(compiler, struct handlebars_block_param_stack);
     }
@@ -216,7 +217,7 @@ static inline long handlebars_compiler_compile_program(
     assert(program->type == HANDLEBARS_AST_NODE_PROGRAM ||
            program->type == HANDLEBARS_AST_NODE_CONTENT);
     
-    subcompiler = handlebars_compiler_ctor(compiler);
+    subcompiler = handlebars_compiler_ctor(compiler->ctx);
     if( unlikely(subcompiler == NULL) ) {
         compiler->errnum = handlebars_compiler_error_nomem;
         return -1;

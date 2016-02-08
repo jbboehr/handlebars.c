@@ -11,6 +11,7 @@
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
+#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "utils.h"
 
@@ -19,18 +20,18 @@
 
 
 
-static TALLOC_CTX * ctx;
+static struct handlebars_context * ctx;
 
 static void setup(void)
 {
     handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
+    ctx = handlebars_context_ctor();
 }
 
 static void teardown(void)
 {
     handlebars_memory_fail_disable();
-    talloc_free(ctx);
+    handlebars_context_dtor(ctx);
     ctx = NULL;
 }
 
