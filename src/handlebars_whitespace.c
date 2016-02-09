@@ -395,6 +395,8 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_cont
     
     if( inverse && inverse->node.program.chained ) {
         firstInverse = _handlebars_whitespace_get_program(inverse, 1);
+        // @todo lastInverse was previously unassigned, make sure this works
+        lastInverse = inverse;
         
         // Should this also allow inverse node?
         while( lastInverse && 

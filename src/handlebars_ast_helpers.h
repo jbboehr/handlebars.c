@@ -39,18 +39,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         struct handlebars_ast_node * close, int inverted,
         struct handlebars_locinfo * locinfo);
 
-/**
- * @brief Prepare an ID node.
- * 
- * @param[in] context The handlebars context
- * @param[in] list The path segment list
- * @param[in] locinfo The parser location info
- * @return A newly constructed ID AST node
- */
-struct handlebars_ast_node * handlebars_ast_helper_prepare_id(
-        struct handlebars_context * context, struct handlebars_ast_list * list,
-        struct handlebars_locinfo * locinfo);
-
 struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
         struct handlebars_context * context, struct handlebars_ast_node * open_inverse_chain,
         struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_chain,
@@ -82,21 +70,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
         struct handlebars_context * context, struct handlebars_ast_node * open_raw_block, 
         const char * content, const char * close, struct handlebars_locinfo * locinfo);
-
-/**
- * @brief Prepare an SEXPR node.
- * 
- * @param[in] context The handlebars context
- * @param[in] id
- * @param[in] params
- * @param[in] hash
- * @param[in] locinfo The parser location
- * @return A newly constructed SEXPR AST node
- */
-struct handlebars_ast_node * handlebars_ast_helper_prepare_sexpr(
-        struct handlebars_context * context, struct handlebars_ast_node * id,
-        struct handlebars_ast_list * params, struct handlebars_ast_node * hash,
-        struct handlebars_locinfo * locinfo);
 
 char * handlebars_ast_helper_strip_comment(char * comment);
 

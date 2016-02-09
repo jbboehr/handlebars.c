@@ -43,7 +43,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_ast_node * close_block_path;
     struct handlebars_ast_node * inverse = NULL;
     struct handlebars_ast_node * tmp;
-    long inverse_strip;
+    long inverse_strip = 0;
     const char * open_str;
     const char * close_str;
     bool is_decorator = false;
