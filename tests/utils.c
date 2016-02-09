@@ -27,8 +27,8 @@
 #endif
 
 #include "utils.h"
-#include "handlebars_builtins.h"
 #include "handlebars_compiler.h"
+#include "handlebars_helpers.h"
 #include "handlebars_value.h"
 
 
