@@ -96,7 +96,7 @@ char * handlebars_htmlspecialchars(const char * str)
     flags['`'] = "&#x60;";
 
     // Estimate new size
-    for( p = str; *p != NULL; p++ ) {
+    for( p = str; *p; p++ ) {
         if( flags[*p] != NULL ) {
             newsize += strlen(flags[*p]);
         } else {
@@ -109,8 +109,8 @@ char * handlebars_htmlspecialchars(const char * str)
     memset(newstr, 0, newsize + 1);
 
     // Copy
-    for( p = str; *p != NULL; p++ ) {
-        if( flags[*p] != NULL ) {
+    for( p = str; *p; p++ ) {
+        if( flags[*p] ) {
             tmp = strlen(flags[*p]);
             memcpy(r, flags[*p], tmp);
             r += tmp;
@@ -143,17 +143,18 @@ char * handlebars_implode(const char * sep, const char ** arr)
 
 char * handlebars_indent(void * ctx, const char * str, const char * indent)
 {
+    size_t len, i;
     char * out = handlebars_talloc_strdup(ctx, "");
+    bool endsInLine;
+
     if( !str ) {
         return out;
     }
+
     out = handlebars_talloc_strdup_append(out, indent);
-
-    size_t len = strlen(str);
-    size_t i;
-    bool endsInLine = (str[len - 1] == '\n');
-
-    str = handlebars_rtrim(str, "\r\n");
+    len = strlen(str);
+    endsInLine = (str[len - 1] == '\n');
+    str = handlebars_rtrim(str, "\r\n"); // @todo fixme
 
     if( !len ) {
         return out;
@@ -316,6 +317,7 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
 	int replacement_len = strlen(replacement);
 	int substr_len = strlen(substr);
 	int string_len = strlen(string);
+    int counter = 0;
 	
 	assert(replacement_len <= substr_len);
 	assert(substr_len > 0);
@@ -327,7 +329,6 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
 	}
 	
 	tok = string;
-	int counter = 0;
 	while( (tok = strstr(tok, substr)) ) {
 	    assert(++counter < 1000);
 	//while( (tok = strstr(string, substr)) ) {

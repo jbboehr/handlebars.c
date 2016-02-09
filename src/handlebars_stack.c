@@ -17,7 +17,7 @@ struct handlebars_stack * handlebars_stack_ctor(void * ctx)
     if( stack ) {
         stack->ctx = ctx;
         stack->i = 0;
-        stack->v = handlebars_talloc_array(stack, void *, 32);
+        stack->v = handlebars_talloc_array(stack, struct handlebars_value *, 32);
     }
     return stack;
 }
@@ -40,13 +40,14 @@ size_t handlebars_stack_length(struct handlebars_stack * stack)
 struct handlebars_value * handlebars_stack_push(struct handlebars_stack * stack, struct handlebars_value * value)
 {
     size_t s = talloc_array_length(stack->v);
+    struct handlebars_value ** nv;
 
     // Resize array if necessary
     if( stack->i <= s ) {
         do {
             s += 32;
         } while( s <= stack->i );
-        struct handlebars_value ** nv = handlebars_talloc_realloc(stack, stack->v, struct handlebars_value *, s);
+        nv = handlebars_talloc_realloc(stack, stack->v, struct handlebars_value *, s);
         if( !nv ) {
             return NULL;
         }
@@ -87,7 +88,7 @@ struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, 
 {
     struct handlebars_value * value;
 
-    if( offset >= stack->i || offset < 0 ) {
+    if( offset >= stack->i ) {
         return NULL;
     }
 
@@ -106,7 +107,7 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
     }
 
     // Out-of-bounds
-    if( offset >= stack->i || offset < 0 ) {
+    if( offset >= stack->i ) {
         return NULL;
     }
 

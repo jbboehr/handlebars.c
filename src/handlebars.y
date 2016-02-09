@@ -363,12 +363,12 @@ close_block
 
 mustache
   : OPEN intermediate3 CLOSE {
-      $$ = handlebars_ast_helper_prepare_mustache(context, $2, NULL, $1,
+      $$ = handlebars_ast_helper_prepare_mustache(context, $2, $1,
         			handlebars_ast_helper_strip_flags($1, $3), &@$);
       __MEMCHECK($$);
     }
   | OPEN_UNESCAPED intermediate3 CLOSE_UNESCAPED {
-      $$ = handlebars_ast_helper_prepare_mustache(context, $2, NULL, $1,
+      $$ = handlebars_ast_helper_prepare_mustache(context, $2, $1,
         			handlebars_ast_helper_strip_flags($1, $3), &@$);
       __MEMCHECK($$);
     }

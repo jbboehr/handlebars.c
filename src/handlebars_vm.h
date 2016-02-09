@@ -31,7 +31,7 @@ struct handlebars_vm {
 
     long errnum;
     const char * errmsg;
-    jmp_buf jmpbuf;
+    jmp_buf jmp;
 
     struct handlebars_value * context;
     struct handlebars_value * data;

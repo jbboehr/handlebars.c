@@ -62,7 +62,7 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 	return NULL;
 }
 
-const char * handlebars_value_get_strval(struct handlebars_value * value)
+char * handlebars_value_get_strval(struct handlebars_value * value)
 {
     if( unlikely(value == NULL) ) {
         return "";
@@ -70,16 +70,16 @@ const char * handlebars_value_get_strval(struct handlebars_value * value)
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
-            return value->v.strval;
+            return handlebars_talloc_strdup(value, value->v.strval);
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             return handlebars_talloc_asprintf(value, "%ld", value->v.lval);
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            return handlebars_talloc_asprintf(value, "%f", value->v.lval);
+            return handlebars_talloc_asprintf(value, "%g", value->v.dval);
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
             return handlebars_talloc_strdup(value, value->v.bval ? "true" : "false");
+        default:
+            return handlebars_talloc_strdup(value, "");
     }
-
-	return "";
 }
 
 size_t handlebars_value_get_strlen(struct handlebars_value * value)
@@ -134,6 +134,9 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
             }
             handlebars_talloc_free(it);
             break;
+        default:
+            // do nothing
+            break;
     }
 }
 
@@ -163,7 +166,6 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             it = value->handlers->iterator(value);
             break;
         default:
-            //assert(0);
             it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
             break;
     }
@@ -178,7 +180,6 @@ bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
 
     struct handlebars_value * value = it->value;
     struct handlebars_map_entry * entry;
-    struct handlebars_value * current = it->current;
     bool ret = false;
 
     if( it->current != NULL ) {
@@ -206,6 +207,9 @@ bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
             ret = value->handlers->next(it);
+            break;
+        default:
+            // do nothing
             break;
     }
 

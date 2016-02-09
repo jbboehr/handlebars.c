@@ -17,7 +17,7 @@
 #include "handlebars_opcodes.h"
 #include "handlebars_private.h"
 #include "handlebars_utils.h"
-
+#include "handlebars_context.h"
 
 
 #define __MK(type) handlebars_opcode_type_ ## type
@@ -366,7 +366,7 @@ static inline void handlebars_compiler_push_param(
                 
                 handlebars_operand_set_stringval(opcode, &opcode->op1, "BlockParam");
                 handlebars_operand_set_arrayval(opcode, &opcode->op2, block_param_arr);
-                parts_arr = handlebars_ast_node_get_id_parts(opcode, param);
+                parts_arr = (const char **) handlebars_ast_node_get_id_parts(opcode, param);
                 __MEMCHECK(parts_arr);
                 if( *parts_arr ) {
                     block_param_parts = handlebars_implode(".", parts_arr + 1);
@@ -480,6 +480,9 @@ static inline void handlebars_compiler_transform_literal_to_path(
 			__MEMCHECK(path->node.path.original);
 			path->node.path.parts = talloc_steal(path, parts);
 			break;
+        default:
+            // do nothing
+            break;
 	}
 }
 
@@ -570,8 +573,6 @@ static inline void handlebars_compiler_accept_block(
     struct handlebars_ast_node * path = block->node.block.path;
     long programGuid = -1;
     long inverseGuid = -1;
-    struct handlebars_ast_node * params;
-    const char * original;
 
     assert(compiler != NULL);
 
@@ -584,11 +585,6 @@ static inline void handlebars_compiler_accept_block(
     if( block->node.block.is_decorator ) {
         // Decorator
     	handlebars_compiler_accept_decorator(compiler, block, programGuid, inverseGuid);
-    	/* original = handlebars_ast_node_get_string_mode_value(path);
-    	params = handlebars_compiler_setup_full_mustache_params(
-                    compiler, block, programGuid, inverseGuid, 0);
-        compiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
-        __OPLS(register_decorator, handlebars_ast_list_count(params), original); */
     } else {
 		// Normal
 		if( inverse != NULL ) {
@@ -662,7 +658,7 @@ static inline void handlebars_compiler_accept_hash(
 
 static inline void _handlebars_compiler_accept_partial(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node,
-        struct handlebars_ast_node * name, struct handlebars_ast_node * params,
+        struct handlebars_ast_node * name, struct handlebars_ast_list * params,
         struct handlebars_ast_node * program, char * indent)
 {
     int count = 0;
@@ -819,7 +815,7 @@ static inline void handlebars_compiler_accept_decorator(
         }
 
         origcompiler = compiler;
-        subcompiler = handlebars_compiler_ctor(compiler);
+        subcompiler = handlebars_compiler_ctor(compiler->ctx);
         compiler->decorators[compiler->decorators_length++] = subcompiler;
         compiler = subcompiler;
         

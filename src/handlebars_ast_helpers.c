@@ -26,7 +26,6 @@
 #define __MEMCHECK(cond) \
     do { \
         if( unlikely(!cond) ) { \
-            ast_node = NULL; \
             context->errnum = HANDLEBARS_NOMEM; \
             context->error = "Out of memory" __S2(__FUNCTION__) " [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
             longjmp(context->jmp, 1); \
@@ -45,8 +44,8 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_ast_node * inverse = NULL;
     struct handlebars_ast_node * tmp;
     long inverse_strip;
-    char * open_str;
-    char * close_str;
+    const char * open_str;
+    const char * close_str;
     bool is_decorator = false;
     
     assert(open_block != NULL && open_block->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
@@ -121,7 +120,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     __MEMCHECK(ast_node);
 
     ast_node->node.block.is_decorator = is_decorator;
-error:
     return ast_node;
 }
 
@@ -147,7 +145,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
         struct handlebars_context * context, struct handlebars_ast_node * intermediate,
-        struct handlebars_ast_node * block_params,
         char * open, unsigned strip, struct handlebars_locinfo * locinfo)
 {
     char c = 0;
@@ -187,8 +184,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     
     // Free the intermediate node
     handlebars_talloc_free(intermediate);
-    
-error:
+
     return ast_node;
 }
 
@@ -199,8 +195,8 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
 {
     struct handlebars_ast_node * open_block_path = open->node.intermediate.path;
     struct handlebars_ast_node * close_block_path;
-    char * open_str;
-    char * close_str;
+    const char * open_str;
+    const char * close_str;
 
     assert(open != NULL && open->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
     assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
@@ -225,8 +221,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         struct handlebars_context * context, struct handlebars_ast_list * parts,
         bool data, struct handlebars_locinfo * locinfo)
 {
-    TALLOC_CTX * ctx;
-    struct handlebars_ast_node * ast_node;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
     char * part = NULL;
@@ -236,12 +230,8 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     int depth = 0;
     int count = 0;
     
-    // Initialize temporary talloc context
-    ctx = talloc_new(context);
-    __MEMCHECK(ctx);
-    
     // Allocate the original strings
-    original = handlebars_talloc_strdup(ctx, data ? "@" : "");
+    original = handlebars_talloc_strdup(context, data ? "@" : "");
     __MEMCHECK(original);
     
     // Iterate over parts and process
@@ -267,8 +257,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
                 context->errnum = HANDLEBARS_ERROR;
                 context->error = handlebars_talloc_asprintf(context, "Invalid path: %s", original);
                 context->errloc = locinfo;
-                ast_node = NULL;
-                goto error;
+                longjmp(context->jmp, 1);
             } else if( strcmp(part, "..") == 0 ) {
                 depth++;
             }
@@ -279,13 +268,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         }
     }
     
-    ast_node = handlebars_ast_node_ctor_path(context, parts, original, depth, data, locinfo);
-    
-error:
-    if( ctx ) {
-        handlebars_talloc_free(ctx);
-    }
-    return ast_node;
+    return handlebars_ast_node_ctor_path(context, parts, original, depth, data, locinfo);
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
@@ -295,14 +278,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     struct handlebars_ast_node * ast_node;
     struct handlebars_ast_node * content_node;
     struct handlebars_ast_node * open_block_path;
-    char * tmp;
-    TALLOC_CTX * ctx;
-    
-    // Initialize temporary talloc context
-    ctx = talloc_new(context);
-    if( unlikely(ctx == NULL) ) {
-        return NULL;
-    }
     
     assert(open_raw_block != NULL);
     assert(open_raw_block->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
@@ -315,23 +290,16 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
                 open_block_path->node.path.original, 
                 close);
         handlebars_yy_error(locinfo, context, errmsgtmp);
-        return NULL;
+        longjmp(context->jmp, 1);
     }
     
     // Create the content node
     content_node = handlebars_ast_node_ctor_content(context, content, locinfo);
-    talloc_steal(ctx, content_node);
     
     // Create the raw block node
-    ast_node = handlebars_ast_node_ctor_raw_block(context, open_raw_block, 
-        content_node, locinfo);
+    ast_node = handlebars_ast_node_ctor_raw_block(context, open_raw_block, content_node, locinfo);
     __MEMCHECK(ast_node);
-    
-    // Steal the raw block node so it won't be freed below
-    talloc_steal(context, ast_node);
-    
-error:
-    handlebars_talloc_free(ctx);
+
     return ast_node;
 }
 
@@ -468,9 +436,9 @@ bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
     if( path && (original = path->node.path.original) ) {
         len = strlen(original);
         if( len >= 1 && *original == '.' ) {
-            return 1;
+            return true;
         } else if( len == 4 && 0 == strcmp(original, "this") ) {
-            return 1;
+            return true;
         } else if( len > 4 && NULL != (found = strstr(original, "this")) ) {
         //} else if( len > 4 && 0 == strncmp(original, "this", 4) ) {
             char c = *(found + 4);
@@ -478,7 +446,7 @@ bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
             return c < '0' || (c > '9' && c < 'A') || (c > 'Z' && c < '_') || (c > '_' && c < 'a') || c > 'z';
         }
     }
-    return 0;
+    return false;
 }
 
 bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path)
@@ -495,7 +463,7 @@ bool handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node)
 	struct handlebars_ast_list * params;
 	struct handlebars_ast_node * hash;
     if( node->type == HANDLEBARS_AST_NODE_SEXPR ) {
-        return 1;
+        return true;
     }
     params = handlebars_ast_node_get_params(node);
     hash = handlebars_ast_node_get_hash(node);

@@ -58,7 +58,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
         struct handlebars_context * context, struct handlebars_ast_node * intermediate,
-        struct handlebars_ast_node * block_params,
         char * open, unsigned strip, struct handlebars_locinfo * locinfo);
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(

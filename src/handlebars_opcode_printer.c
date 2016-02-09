@@ -139,6 +139,7 @@ void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer,
     size_t i;
     char indentbuf[17];
     int indent;
+    struct handlebars_compiler * child;
     
     // Make indent
     indent = printer->indent < 8 ? printer->indent * 2 : 16;
@@ -155,13 +156,13 @@ void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer,
     // Print decorators
     for( i = 0; i < compiler->decorators_length; i++ ) {
         printer->output = handlebars_talloc_asprintf_append(printer->output, "%sDECORATOR\n", indentbuf);
-        struct handlebars_compiler * child = *(compiler->decorators + i);
+        child = *(compiler->decorators + i);
         handlebars_opcode_printer_print(printer, child);
     }
     
     // Print children
     for( i = 0; i < compiler->children_length; i++ ) {
-        struct handlebars_compiler * child = *(compiler->children + i);
+        child = *(compiler->children + i);
         handlebars_opcode_printer_print(printer, child);
     }
     
