@@ -27,6 +27,11 @@ const char * handlebars_spec_version_string(void)
     return HANDLEBARS_SPEC_VERSION_STRING;
 }
 
+const char * handlebars_mustache_spec_version_string(void)
+{
+    return MUSTACHE_SPEC_VERSION_STRING;
+}
+
 struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
 {
     YYSTYPE yylval_param;

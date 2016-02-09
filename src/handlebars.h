@@ -76,6 +76,8 @@ const char * handlebars_version_string(void);
 
 const char * handlebars_spec_version_string(void);
 
+const char * handlebars_mustache_spec_version_string(void);
+
 /**
  * @brief Convenience function for lexing to a token list
  * 

@@ -10,8 +10,9 @@ m4_define([HANDLEBARS_CURRENT], 3)
 m4_define([HANDLEBARS_REVISION], 2)
 m4_define([HANDLEBARS_AGE], 0)
 
-# Define the version of the handlebars spec
-m4_define([HANDLEBARS_SPEC_VERSION], [4.0.4])
+# Define the version of the specs
+m4_define([HANDLEBARS_SPEC_VERSION], [4.0.5])
+m4_define([MUSTACHE_SPEC_VERSION], [1.1.3])
 
 # Initialize autoconf & automake.
 AC_PREREQ(2.61)
@@ -38,6 +39,7 @@ AC_DEFINE(HANDLEBARS_VERSION_MINOR, HANDLEBARS_MINOR, [Define the minor version 
 AC_DEFINE(HANDLEBARS_VERSION_PATCH, HANDLEBARS_PATCH, [Define the patch version number.])
 AC_DEFINE(HANDLEBARS_VERSION_STRING, "HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH", [Define the version string.])
 AC_DEFINE(HANDLEBARS_SPEC_VERSION_STRING, "HANDLEBARS_SPEC_VERSION", [Define the handlebars spec version])
+AC_DEFINE(MUSTACHE_SPEC_VERSION_STRING, "MUSTACHE_SPEC_VERSION", [Define the mustache spec version])
 
 # Define substitutions for the libtool version numbers.
 # HANDLEBARS_LT_RELEASE=HANDLEBARS_RELEASE
@@ -89,6 +91,7 @@ AC_CHECK_HEADERS(ctype.h, , AC_MSG_ERROR([ctype.h is required]))
 AC_CHECK_HEADERS(errno.h, , AC_MSG_ERROR([errno.h is required]))
 AC_CHECK_HEADERS(stdint.h, , AC_MSG_ERROR([stdint.h is required]))
 AC_CHECK_HEADERS(stdarg.h, , AC_MSG_ERROR([stdarg.h is required]))
+AC_CHECK_HEADERS(stdbool.h, , AC_MSG_ERROR([stdbool.h is required]))
 
 # Checks for functions
 AC_CHECK_FUNC(snprintf, , AC_MSG_ERROR([snprintf is required]))

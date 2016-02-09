@@ -46,6 +46,18 @@ START_TEST(test_version_string)
 }
 END_TEST
 
+START_TEST(test_handlebars_spec_version_string)
+{
+    ck_assert_ptr_ne(NULL, handlebars_spec_version_string());
+}
+END_TEST
+
+START_TEST(test_mustache_spec_version_string)
+{
+    ck_assert_ptr_ne(NULL, handlebars_mustache_spec_version_string());
+}
+END_TEST
+
 START_TEST(test_lex)
 {
     struct handlebars_context * ctx = handlebars_context_ctor();
@@ -77,6 +89,8 @@ Suite * parser_suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_version, "Version");
     REGISTER_TEST_FIXTURE(s, test_version_string, "Version String");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_spec_version_string, "Handlebars Spec Version String");
+    REGISTER_TEST_FIXTURE(s, test_mustache_spec_version_string, "Mustache Spec Version String");
     REGISTER_TEST_FIXTURE(s, test_lex, "Lex Convenience Function");
 
     return s;
