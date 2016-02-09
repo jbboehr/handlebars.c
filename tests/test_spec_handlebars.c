@@ -278,6 +278,7 @@ START_TEST(test_handlebars_spec)
     struct handlebars_value * context;
     struct handlebars_value * helpers;
     struct handlebars_value_iterator * it;
+    TALLOC_CTX * memctx = talloc_new(rootctx);
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
@@ -294,7 +295,7 @@ START_TEST(test_handlebars_spec)
     }
 
     // Initialize
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(memctx);
     //ctx->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
 
@@ -438,6 +439,7 @@ START_TEST(test_handlebars_spec)
     //ck_assert_str_eq(vm->buffer, test->expected);
 done:
     handlebars_context_dtor(ctx);
+    ck_assert_int_eq(1, talloc_total_blocks(memctx));
 }
 END_TEST
 
