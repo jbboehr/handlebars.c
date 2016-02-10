@@ -173,7 +173,7 @@ static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars
     }
     fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
     frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
-    frame->buffer = handlebars_talloc_strdup_append(frame->buffer, tmp);
+    frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp);
     __MEMCHECK(frame->buffer);
     handlebars_talloc_free(tmp);
 }
