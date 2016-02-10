@@ -20,6 +20,8 @@
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
+
+
 static struct handlebars_value * std_json_copy(struct handlebars_value * value)
 {
     const char * str = json_object_to_json_string(value->v.usr);

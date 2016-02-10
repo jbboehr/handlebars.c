@@ -18,6 +18,7 @@
 #include <json/json_tokener.h>
 #endif
 
+#include "handlebars_context.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -26,9 +27,33 @@
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
+#define __S1(x) #x
+#define __S2(x) __S1(x)
+#define __MEMCHECK(cond) \
+    do { \
+        if( unlikely(!cond) ) { \
+            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
+        } \
+    } while(0)
 
 
-enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value) {
+
+#define CONTEXT ctx
+
+struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
+{
+    struct handlebars_value * value = handlebars_talloc_zero(ctx, struct handlebars_value);
+    __MEMCHECK(value);
+    value->ctx = ctx;
+    value->refcount = 1;
+    return value;
+}
+
+#undef CONTEXT
+#define CONTEXT value->ctx
+
+enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value)
+{
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
 		return value->handlers->type(value);
 	} else {
@@ -64,22 +89,30 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 
 char * handlebars_value_get_strval(struct handlebars_value * value)
 {
-    if( unlikely(value == NULL) ) {
-        return "";
+    char * ret;
+    enum handlebars_value_type type = value ? value->type : HANDLEBARS_VALUE_TYPE_NULL;
+
+    switch( type ) {
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            ret = handlebars_talloc_strdup(value, value->v.strval);
+            break;
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            ret = handlebars_talloc_asprintf(value, "%ld", value->v.lval);
+            break;
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            ret = handlebars_talloc_asprintf(value, "%g", value->v.dval);
+            break;
+        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+            ret = handlebars_talloc_strdup(value, value->v.bval ? "true" : "false");
+            break;
+        default:
+            ret = handlebars_talloc_strdup(value, "");
+            break;
     }
 
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_STRING:
-            return handlebars_talloc_strdup(value, value->v.strval);
-        case HANDLEBARS_VALUE_TYPE_INTEGER:
-            return handlebars_talloc_asprintf(value, "%ld", value->v.lval);
-        case HANDLEBARS_VALUE_TYPE_FLOAT:
-            return handlebars_talloc_asprintf(value, "%g", value->v.dval);
-        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            return handlebars_talloc_strdup(value, value->v.bval ? "true" : "false");
-        default:
-            return handlebars_talloc_strdup(value, "");
-    }
+    __MEMCHECK(ret);
+
+    return ret;
 }
 
 size_t handlebars_value_get_strlen(struct handlebars_value * value)
@@ -148,11 +181,13 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
+            __MEMCHECK(it);
             it->value = value;
             it->current = handlebars_stack_get(value->v.stack, 0);
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
             it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
+            __MEMCHECK(it);
             entry = value->v.map->first;
             if( entry ) {
                 it->value = value;
@@ -167,6 +202,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             break;
         default:
             it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
+            __MEMCHECK(it);
             break;
     }
 
@@ -223,6 +259,8 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
     char indent[64];
     char indent2[64];
 
+    __MEMCHECK(buf);
+
     if( value == NULL ) {
         handlebars_talloc_strdup_append_buffer(buf, "(nil)");
         return buf;
@@ -275,10 +313,12 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             break;
     }
 
+    __MEMCHECK(buf);
+
     return buf;
 }
 
-char * handlebars_value_expression(void * ctx, struct handlebars_value * value, bool escape)
+char * handlebars_value_expression(struct handlebars_value * value, bool escape)
 {
     char * ret = NULL;
     struct handlebars_value_iterator * it;
@@ -286,48 +326,50 @@ char * handlebars_value_expression(void * ctx, struct handlebars_value * value, 
     switch( handlebars_value_get_type(value) ) {
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
             if( handlebars_value_get_boolval(value) ) {
-                ret = handlebars_talloc_strdup(ctx, "true");
+                ret = handlebars_talloc_strdup(value->ctx, "true");
             } else {
-                ret = handlebars_talloc_strdup(ctx, "false");
+                ret = handlebars_talloc_strdup(value->ctx, "false");
             }
             break;
 
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            ret = handlebars_talloc_asprintf(ctx, "%g", handlebars_value_get_floatval(value));
+            ret = handlebars_talloc_asprintf(value->ctx, "%g", handlebars_value_get_floatval(value));
             break;
 
         case HANDLEBARS_VALUE_TYPE_INTEGER:
-            ret = handlebars_talloc_asprintf(ctx, "%ld", handlebars_value_get_intval(value));
+            ret = handlebars_talloc_asprintf(value->ctx, "%ld", handlebars_value_get_intval(value));
             break;
 
         case HANDLEBARS_VALUE_TYPE_NULL:
-            ret = handlebars_talloc_strdup(ctx, "");
+            ret = handlebars_talloc_strdup(value->ctx, "");
             break;
 
         case HANDLEBARS_VALUE_TYPE_STRING:
-            ret = handlebars_talloc_strdup(ctx, handlebars_value_get_strval(value));
+            ret = handlebars_talloc_strdup(value->ctx, handlebars_value_get_strval(value));
             break;
 
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             // Convert to string >.>
-            ret = handlebars_talloc_strdup(ctx, "");
+            ret = handlebars_talloc_strdup(value->ctx, "");
             it = handlebars_value_iterator_ctor(value);
             bool first = true;
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
-                char * tmp = handlebars_value_expression(ctx, it->current, escape);
+                char * tmp = handlebars_value_expression(it->current, escape);
                 ret = handlebars_talloc_asprintf_append_buffer(ret, "%s%s", first ? "" : ",", tmp);
                 handlebars_talloc_free(tmp);
                 first = false;
             }
             handlebars_talloc_free(it);
             break;
+
         case HANDLEBARS_VALUE_TYPE_MAP:
         case HANDLEBARS_VALUE_TYPE_USER:
-            // assert(0);
-            //return NULL;
-            ret = handlebars_talloc_strdup(ctx, "");
+        default:
+            ret = handlebars_talloc_strdup(value->ctx, "");
             break;
     }
+
+    __MEMCHECK(ret);
 
     if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
         char * esc = handlebars_htmlspecialchars(ret);
@@ -335,19 +377,9 @@ char * handlebars_value_expression(void * ctx, struct handlebars_value * value, 
         ret = esc;
     }
 
+    __MEMCHECK(ret);
+
     return ret;
-}
-
-
-
-struct handlebars_value * handlebars_value_ctor(void * ctx)
-{
-	struct handlebars_value * value = handlebars_talloc_zero(ctx, struct handlebars_value);
-	if( likely(value != NULL) ) {
-        value->ctx = ctx;
-        value->refcount = 1;
-	}
-	return value;
 }
 
 struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
@@ -412,11 +444,14 @@ void handlebars_value_dtor(struct handlebars_value * value)
     memset(&value->v, 0, sizeof(value->v));
 }
 
+#undef CONTEXT
 
 
 
 
-struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json)
+#define CONTEXT ctx
+
+struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json)
 {
     struct handlebars_value * value = handlebars_value_ctor(ctx);
 
@@ -441,6 +476,7 @@ struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct js
             case json_type_string:
                 value->type = HANDLEBARS_VALUE_TYPE_STRING;
                 value->v.strval = handlebars_talloc_strdup(value, json_object_get_string(json));
+                __MEMCHECK(value->v.strval);
                 break;
 
             case json_type_object:
@@ -461,7 +497,7 @@ struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct js
     return value;
 }
 
-struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json)
+struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json)
 {
     struct handlebars_value * ret;
     struct json_object * result = json_tokener_parse(json);
@@ -489,7 +525,7 @@ static void _yaml_ctx_dtor(struct _yaml_ctx * holder)
     yaml_parser_delete(&holder->parser);
 }
 
-struct handlebars_value * handlebars_value_from_yaml_node(void *ctx, struct yaml_document_s * document, struct yaml_node_s * node)
+struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node)
 {
     struct handlebars_value * value = handlebars_value_ctor(ctx);
     struct handlebars_value * tmp;
@@ -539,6 +575,7 @@ struct handlebars_value * handlebars_value_from_yaml_node(void *ctx, struct yaml
                 // String
                 value->type = HANDLEBARS_VALUE_TYPE_STRING;
                 value->v.strval = handlebars_talloc_strndup(value, node->data.scalar.value, node->data.scalar.length);
+                __MEMCHECK(value->v.strval);
             }
             break;
         default:
@@ -551,10 +588,11 @@ done:
     return value;
 }
 
-struct handlebars_value * handlebars_value_from_yaml_string(void * ctx, const char * yaml)
+struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml)
 {
     struct handlebars_value * value = NULL;
     struct _yaml_ctx * yctx = talloc_zero(ctx, struct _yaml_ctx);
+    __MEMCHECK(yctx);
     talloc_set_destructor(yctx, _yaml_ctx_dtor);
     yaml_parser_initialize(&yctx->parser);
     yaml_parser_set_input_string(&yctx->parser, (unsigned char *) yaml, strlen(yaml));

@@ -62,8 +62,7 @@ int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handleb
         handlebars_ast_list_insert_after(list, list->last, item);
     }
     list->count++;
-    
-error:
+
     return error;
 }
 
@@ -185,7 +184,6 @@ int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handle
         handlebars_ast_list_insert_before(list, list->first, item);
     }
     list->count++;
-    
-error:
+
     return error;
 }

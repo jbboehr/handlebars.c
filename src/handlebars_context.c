@@ -65,7 +65,7 @@ void handlebars_context_dtor(struct handlebars_context * context)
     handlebars_talloc_free(context);
 }
 
-static inline _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
+static inline void _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
 {
     context->e.num = num;
     context->e.msg = talloc_vasprintf(context, msg, ap);

@@ -8,6 +8,7 @@
 extern "C" {
 #endif
 
+struct handlebars_context;
 struct handlebars_value;
 
 #define handlebars_stack_pop_type(stack, type) talloc_get_type(handlebars_stack_pop_ptr(stack), type)
@@ -15,19 +16,12 @@ struct handlebars_value;
 #define handlebars_stack_get_type(stack, index, type) talloc_get_type(handlebars_stack_get_ptr(stack, index), type)
 
 struct handlebars_stack {
-    void * ctx;
+    struct handlebars_context * ctx;
     size_t i;
     struct handlebars_value ** v;
 };
 
-struct handlebars_stack_iterator {
-    size_t pos;
-};
-
-#define handlebars_stack_foreach(stack, el, i) \
-    for( i = 0, el = stack->v[0]; i < stack->i; i++, el = stack->v[i] )
-
-struct handlebars_stack * handlebars_stack_ctor(void * ctx);
+struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx);
 void handlebars_stack_dtor(struct handlebars_stack * stack);
 size_t handlebars_stack_length(struct handlebars_stack * stack);
 

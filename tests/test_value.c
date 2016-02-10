@@ -21,20 +21,24 @@
 
 #include "utils.h"
 
+#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_value.h"
 
 static TALLOC_CTX * ctx;
+static struct handlebars_context * context;
 
 static void setup(void)
 {
     handlebars_memory_fail_disable();
     ctx = talloc_new(NULL);
+    context = handlebars_context_ctor_ex(ctx);
 }
 
 static void teardown(void)
 {
     handlebars_memory_fail_disable();
+    handlebars_context_dtor(context);
     talloc_free(ctx);
     ctx = NULL;
 }
@@ -52,93 +56,93 @@ START_TEST(test_boolean_false)
 END_TEST
 
 START_TEST(test_boolean_json_true)
-    {
-        struct handlebars_value * value = handlebars_value_from_json_string(ctx, "true");
-        ck_assert_ptr_ne(value, NULL);
-        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
-        ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
-        ck_assert_int_eq(0, handlebars_value_delref(value));
-        ck_assert_int_eq(1, talloc_total_blocks(ctx));
-    }
+{
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "true");
+    ck_assert_ptr_ne(value, NULL);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
+    ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
+}
 END_TEST
 
 START_TEST(test_boolean_yaml_true)
-    {
-        struct handlebars_value * value = handlebars_value_from_yaml_string(ctx, "---\ntrue");
-        ck_assert_ptr_ne(value, NULL);
-        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
-        ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
-        ck_assert_int_eq(0, handlebars_value_delref(value));
-        ck_assert_int_eq(1, talloc_total_blocks(ctx));
-    }
+{
+    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\ntrue");
+    ck_assert_ptr_ne(value, NULL);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
+    ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
+}
 END_TEST
 
 START_TEST(test_boolean_json_false)
 {
-    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "false");
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "false");
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 0);
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
 START_TEST(test_int)
-    {
-        struct handlebars_value * value = handlebars_value_from_json_string(ctx, "2358");
-        ck_assert_ptr_ne(value, NULL);
-        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
-        ck_assert_int_eq(0, handlebars_value_delref(value));
-        ck_assert_int_eq(1, talloc_total_blocks(ctx));
-    }
+{
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "2358");
+    ck_assert_ptr_ne(value, NULL);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
+}
 END_TEST
 
 START_TEST(test_int_yaml)
-    {
-        struct handlebars_value * value = handlebars_value_from_yaml_string(ctx, "---\n2358");
-        ck_assert_ptr_ne(value, NULL);
-        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
-        ck_assert_int_eq(0, handlebars_value_delref(value));
-        ck_assert_int_eq(1, talloc_total_blocks(ctx));
-    }
+{
+    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\n2358");
+    ck_assert_ptr_ne(value, NULL);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
+    ck_assert_int_eq(0, handlebars_value_delref(value));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
+}
 END_TEST
 
 START_TEST(test_float)
 {
-    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "1234.4321");
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "1234.4321");
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
     // Note: converting to int - precision issue
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
 START_TEST(test_float_yaml)
 {
-    struct handlebars_value * value = handlebars_value_from_yaml_string(ctx, "---\n1234.4321");
+    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\n1234.4321");
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
     // Note: converting to int - precision issue
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
 START_TEST(test_string)
 {
-	struct handlebars_value * value = handlebars_value_from_json_string(ctx, "\"test\"");
+	struct handlebars_value * value = handlebars_value_from_json_string(context, "\"test\"");
 	ck_assert_ptr_ne(value, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_STRING);
 	ck_assert_str_eq(handlebars_value_get_strval(value), "test");
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
@@ -149,21 +153,20 @@ START_TEST(test_array_iterator)
     struct handlebars_value_iterator * it;
     int i = 0;
 
-    value = handlebars_value_ctor(ctx);
-    value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
-    value->v.stack = handlebars_stack_ctor(value);
+    value = handlebars_value_ctor(context);
+    handlebars_value_array_init(value);
 
-    tmp = handlebars_value_ctor(ctx);
+    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
     handlebars_stack_push(value->v.stack, tmp);
     handlebars_value_delref(tmp);
 
-    tmp = handlebars_value_ctor(ctx);
+    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
     handlebars_stack_push(value->v.stack, tmp);
     handlebars_value_delref(tmp);
 
-    tmp = handlebars_value_ctor(ctx);
+    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
     handlebars_stack_push(value->v.stack, tmp);
     handlebars_value_delref(tmp);
@@ -181,7 +184,7 @@ START_TEST(test_array_iterator)
     handlebars_talloc_free(it);
 
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
@@ -192,21 +195,20 @@ START_TEST(test_map_iterator)
     struct handlebars_value_iterator * it;
     int i = 0;
 
-    value = handlebars_value_ctor(ctx);
-    value->type = HANDLEBARS_VALUE_TYPE_MAP;
-    value->v.map = handlebars_map_ctor(value);
+    value = handlebars_value_ctor(context);
+    handlebars_value_map_init(value);
 
-    tmp = handlebars_value_ctor(ctx);
+    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
     handlebars_map_add(value->v.map, "a", tmp);
     handlebars_value_delref(tmp);
 
-    tmp = handlebars_value_ctor(ctx);
+    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
     handlebars_map_add(value->v.map, "c", tmp);
     handlebars_value_delref(tmp);
 
-    tmp = handlebars_value_ctor(ctx);
+    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
     handlebars_map_add(value->v.map, "b", tmp);
     handlebars_value_delref(tmp);
@@ -229,13 +231,13 @@ START_TEST(test_map_iterator)
     }
 
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
 START_TEST(test_array_iterator_json)
 {
-    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "[1, 2, 3]");
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "[1, 2, 3]");
     struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(value);
     int i = 0;
 
@@ -248,13 +250,13 @@ START_TEST(test_array_iterator_json)
     }
 
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
 START_TEST(test_map_iterator_json)
 {
-    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"a\": 1, \"c\": 2, \"b\": 3}");
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"a\": 1, \"c\": 2, \"b\": 3}");
     struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(value);
     int i = 0;
 
@@ -274,14 +276,14 @@ START_TEST(test_map_iterator_json)
     }
 
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
 START_TEST(test_array_find)
 {
 	struct handlebars_value * value2;
-	struct handlebars_value * value = handlebars_value_from_json_string(ctx, "[2358, \"test\"]");
+	struct handlebars_value * value = handlebars_value_from_json_string(context, "[2358, \"test\"]");
 	ck_assert_ptr_ne(value, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_ARRAY);
 
@@ -302,14 +304,14 @@ START_TEST(test_array_find)
 	ck_assert_ptr_eq(value2, NULL);
 
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
 START_TEST(test_map_find)
 {
 	struct handlebars_value * value2;
-	struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"a\": 2358, \"b\": \"test\"}");
+	struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"a\": 2358, \"b\": \"test\"}");
 	ck_assert_ptr_ne(value, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_MAP);
 
@@ -330,7 +332,7 @@ START_TEST(test_map_find)
 	ck_assert_ptr_eq(value2, NULL);
 
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
@@ -338,7 +340,7 @@ START_TEST(test_complex)
 {
 	struct handlebars_value * value2;
 	struct handlebars_value * value3;
-	struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"a\": 2358, \"b\": [1, 2.1], \"c\": {\"d\": \"test\"}}");
+	struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"a\": 2358, \"b\": [1, 2.1], \"c\": {\"d\": \"test\"}}");
 	ck_assert_ptr_ne(value, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_MAP);
 
@@ -379,14 +381,14 @@ START_TEST(test_complex)
     handlebars_value_delref(value2);
 
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 
 START_TEST(test_convert)
 {
     struct handlebars_value * value2;
-    struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"a\": 2358, \"b\": [1, 2.1], \"c\": {\"d\": \"test\"}}");
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"a\": 2358, \"b\": [1, 2.1], \"c\": {\"d\": \"test\"}}");
     handlebars_value_convert(value);
 
     ck_assert_int_eq(value->type, HANDLEBARS_VALUE_TYPE_MAP);
@@ -397,7 +399,7 @@ START_TEST(test_convert)
     handlebars_value_delref(value2);
 
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(1, talloc_total_blocks(ctx));
+    ck_assert_int_eq(2, talloc_total_blocks(context));
 }
 END_TEST
 

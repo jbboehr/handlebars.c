@@ -212,7 +212,7 @@ static int do_lex(void)
         
         // Make token object
         text = (lval->text == NULL ? "" : lval->text);
-        token = handlebars_token_ctor(token_int, text, strlen(text), ctx);
+        token = handlebars_token_ctor(ctx, token_int, text, strlen(text));
         
         // Print token
         output = handlebars_token_print(token, 0);

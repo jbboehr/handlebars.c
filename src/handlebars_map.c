@@ -5,19 +5,35 @@
 
 #include <string.h>
 
+#include "handlebars_context.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_value.h"
 
-struct handlebars_map * handlebars_map_ctor(void * ctx)
+#define __S1(x) #x
+#define __S2(x) __S1(x)
+#define __MEMCHECK(ptr) \
+    do { \
+        if( unlikely(ptr == NULL) ) { \
+            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
+        } \
+    } while(0)
+
+
+
+#define CONTEXT ctx
+
+struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_map * map = handlebars_talloc_zero(ctx, struct handlebars_map);
-    if( likely(map != NULL) ) {
-        map->ctx = ctx;
-    }
+    __MEMCHECK(map);
+    map->ctx = ctx;
     return map;
 }
+
+#undef CONTEXT
+#define CONTEXT map->ctx
 
 void handlebars_map_dtor(struct handlebars_map * map)
 {
@@ -34,12 +50,10 @@ void handlebars_map_dtor(struct handlebars_map * map)
 bool handlebars_map_add(struct handlebars_map * map, const char * key, struct handlebars_value * value)
 {
     struct handlebars_map_entry * entry = handlebars_talloc_zero(map, struct handlebars_map_entry);
-
-    if( !entry ) {
-        return 0;
-    }
+    __MEMCHECK(entry);
 
     entry->key = handlebars_talloc_strdup(entry, key);
+    __MEMCHECK(entry->key);
     entry->value = value;
     handlebars_value_addref(value);
 

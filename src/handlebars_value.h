@@ -12,6 +12,7 @@
 extern "C" {
 #endif
 
+struct handlebars_context;
 struct handlebars_map;
 struct handlebars_options;
 struct handlebars_stack;
@@ -78,15 +79,15 @@ bool handlebars_value_get_boolval(struct handlebars_value * value);
 long handlebars_value_get_intval(struct handlebars_value * value);
 double handlebars_value_get_floatval(struct handlebars_value * value);
 
-char * handlebars_value_expression(void * ctx, struct handlebars_value * value, bool escape);
+char * handlebars_value_expression(struct handlebars_value * value, bool escape);
 
-struct handlebars_value * handlebars_value_ctor(void * ctx);
+struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx);
 struct handlebars_value * handlebars_value_copy(struct handlebars_value * value);
 void handlebars_value_dtor(struct handlebars_value * value);
-struct handlebars_value * handlebars_value_from_json_string(void *ctx, const char * json);
-struct handlebars_value * handlebars_value_from_json_object(void *ctx, struct json_object *json);
-struct handlebars_value * handlebars_value_from_yaml_node(void *ctx, struct yaml_document_s * document, struct yaml_node_s * node);
-struct handlebars_value * handlebars_value_from_yaml_string(void * ctx, const char * yaml);
+struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json);
+struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json);
+struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node);
+struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml);
 
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);
@@ -192,13 +193,13 @@ static inline void handlebars_value_stringl(struct handlebars_value * value, con
 static inline void handlebars_value_map_init(struct handlebars_value * value) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_MAP;
-    value->v.map = handlebars_map_ctor(value);
+    value->v.map = talloc_steal(value, handlebars_map_ctor(value->ctx));
 }
 
 static inline void handlebars_value_array_init(struct handlebars_value * value) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
-    value->v.stack = handlebars_stack_ctor(value);
+    value->v.stack = talloc_steal(value, handlebars_stack_ctor(value->ctx));
 }
 
 #ifdef	__cplusplus

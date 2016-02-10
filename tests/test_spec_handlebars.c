@@ -41,7 +41,7 @@ struct generic_test {
     char * expected;
     char * message;
     short exception;
-    TALLOC_CTX * mem_ctx;
+    //struct handlebars_context * ctx;
 
     char ** known_helpers;
     long flags;
@@ -71,6 +71,7 @@ static void loadSpecTest(json_object * object)
 
     // Get test
     struct generic_test * test = &(tests[tests_len++]);
+    //test->ctx = handlebars_context_ctor_ex(rootctx);
     test->raw = object;
 
     // Get description
@@ -328,7 +329,7 @@ START_TEST(test_handlebars_spec)
     vm->flags = test->flags;
 
     // Setup helpers
-    vm->helpers = handlebars_builtins(vm);
+    vm->helpers = handlebars_builtins(vm->ctx);
     if( test->globalHelpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->globalHelpers);
         load_fixtures(helpers);
@@ -353,7 +354,7 @@ START_TEST(test_handlebars_spec)
     }
 
     // Setup partials
-    vm->partials = handlebars_value_ctor(vm);
+    vm->partials = handlebars_value_ctor(ctx);
     handlebars_value_map_init(vm->partials);
     if( test->globalPartials ) {
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->globalPartials);

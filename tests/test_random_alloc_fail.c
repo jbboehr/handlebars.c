@@ -11,6 +11,8 @@
 #include "handlebars_compiler.h"
 #include "handlebars_context.h"
 #include "handlebars_memory.h"
+#include "handlebars_value.h"
+#include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 #include "utils.h"
@@ -79,26 +81,54 @@ START_TEST(test_random_alloc_fail_parser)
 END_TEST
 
 START_TEST(test_random_alloc_fail_compiler)
-{
-    size_t i;
-    int retval;
-    
-    for( i = 1; i < 300; i++ ) {
-        struct handlebars_context * ctx = handlebars_context_ctor();
-        struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
-        talloc_steal(rootctx, ctx);
-        ctx->tmpl = tmpl;
-        handlebars_parse(ctx);
+    {
+        size_t i;
+        int retval;
 
-        // For now, don't do yy alloc
-        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
-        handlebars_memory_fail_counter(i);
-        handlebars_compiler_compile(compiler, ctx->program);
-        handlebars_memory_fail_disable();
+        for( i = 1; i < 300; i++ ) {
+            struct handlebars_context * ctx = handlebars_context_ctor();
+            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
+            talloc_steal(rootctx, ctx);
+            ctx->tmpl = tmpl;
+            handlebars_parse(ctx);
 
-        handlebars_context_dtor(ctx);
+            // For now, don't do yy alloc
+            handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+            handlebars_memory_fail_counter(i);
+            handlebars_compiler_compile(compiler, ctx->program);
+            handlebars_memory_fail_disable();
+
+            handlebars_context_dtor(ctx);
+        }
     }
-}
+END_TEST
+
+START_TEST(test_random_alloc_fail_vm)
+    {
+        size_t i;
+        int retval;
+
+        for( i = 1; i < 300; i++ ) {
+            struct handlebars_context * ctx = handlebars_context_ctor();
+            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
+            struct handlebars_vm * vm = handlebars_vm_ctor(ctx);
+            struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"foo\": {\"bar\": 2}}");
+            handlebars_value_convert(value);
+
+            talloc_steal(rootctx, ctx);
+            ctx->tmpl = tmpl;
+            handlebars_parse(ctx);
+            handlebars_compiler_compile(compiler, ctx->program);
+
+            // For now, don't do yy alloc
+            handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+            handlebars_memory_fail_counter(i);
+            handlebars_vm_execute(vm, compiler, value);
+            handlebars_memory_fail_disable();
+
+            handlebars_context_dtor(ctx);
+        }
+    }
 END_TEST
 
 Suite * parser_suite(void)
@@ -108,6 +138,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_tokenizer, "Random Memory Allocation Failures (Tokenizer)");
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_parser, "Random Memory Allocation Failures (Parser)");
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_compiler, "Random Memory Allocation Failures (Compiler)");
+    REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_vm, "Random Memory Allocation Failures (VM)");
     
     return s;
 }

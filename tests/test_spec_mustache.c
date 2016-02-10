@@ -30,7 +30,7 @@ struct mustache_test {
     long flags;
 //    char * message;
 //    short exception;
-    TALLOC_CTX * mem_ctx;
+    struct handlebars_context * ctx;
 
 //    char ** known_helpers;
 //    struct json_object * raw;
@@ -52,7 +52,7 @@ static bool loadSpecTestPartials(yaml_document_t * document, yaml_node_t * node,
         return false;
     }
 
-    test->partials = handlebars_value_from_yaml_node(rootctx, document, node);
+    test->partials = handlebars_value_from_yaml_node(test->ctx, document, node);
     /*for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
 
     }*/
@@ -70,6 +70,7 @@ static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node)
 
     test = &(tests[tests_len++]);
     memset(test, 0, sizeof(struct mustache_test));
+    test->ctx = handlebars_context_ctor_ex(rootctx);
     test->flags = handlebars_compiler_flag_compat;
 
     for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
@@ -84,7 +85,7 @@ static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node)
             assert(value->type == YAML_SCALAR_NODE);
             test->desc = handlebars_talloc_strdup(rootctx, value->data.scalar.value);
         } else if( 0 == strcmp("data", key->data.scalar.value) ) {
-            test->data = handlebars_value_from_yaml_node(rootctx, document, value);
+            test->data = handlebars_value_from_yaml_node(test->ctx, document, value);
         } else if( 0 == strcmp("template", key->data.scalar.value) ) {
             assert(value->type == YAML_SCALAR_NODE);
             test->tmpl = handlebars_talloc_strdup(rootctx, value->data.scalar.value);
@@ -216,7 +217,7 @@ START_TEST(test_mustache_spec)
     }
 
     // Initialize
-    ctx = handlebars_context_ctor_ex(memctx);
+    ctx = talloc_steal(memctx, test->ctx);
     //ctx->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
 
@@ -243,7 +244,7 @@ START_TEST(test_mustache_spec)
     vm->flags = test->flags;
 
     // Setup partials
-    vm->partials = handlebars_value_ctor(vm);
+    vm->partials = handlebars_value_ctor(ctx);
     handlebars_value_map_init(vm->partials);
     if( test->partials ) {
         it = handlebars_value_iterator_ctor(test->partials);

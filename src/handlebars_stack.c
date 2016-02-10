@@ -11,7 +11,7 @@
 #include "handlebars_stack.h"
 #include "handlebars_value.h"
 
-struct handlebars_stack * handlebars_stack_ctor(void * ctx)
+struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_stack * stack = handlebars_talloc(ctx, struct handlebars_stack);
     if( stack ) {

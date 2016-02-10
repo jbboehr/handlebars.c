@@ -8,6 +8,7 @@
 extern "C" {
 #endif
 
+struct handlebars_context;
 struct handlebars_value;
 
 struct handlebars_map_entry {
@@ -17,12 +18,8 @@ struct handlebars_map_entry {
     struct handlebars_map_entry * prev;
 };
 
-struct handlebars_map_iterator {
-    struct handlebars_map_entry * current;
-};
-
 struct handlebars_map {
-    void * ctx;
+    struct handlebars_context * ctx;
     size_t i;
     struct handlebars_map_entry * first;
     struct handlebars_map_entry * last;
@@ -31,7 +28,7 @@ struct handlebars_map {
 #define handlebars_map_foreach(list, el, tmp) \
     for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
 
-struct handlebars_map * handlebars_map_ctor(void * ctx);
+struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx);
 void handlebars_map_dtor(struct handlebars_map * map);
 bool handlebars_map_add(struct handlebars_map * map, const char * key, struct handlebars_value * value);
 bool handlebars_map_remove(struct handlebars_map * map, const char * key);
