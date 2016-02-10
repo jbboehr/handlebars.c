@@ -95,7 +95,7 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
  * @param[in] err The error message
  * @return void
  */
-void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_context * context, const char * err);
+void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_context * context, const char * err) HBS_NORETURN;
 
 /**
  * @brief Handle a fatal error in the parser. Prints message to stderr and exits with code 2.
@@ -104,7 +104,7 @@ void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_con
  * @param[in] yyscanner The scanner object
  * @return void
  */
-void handlebars_yy_fatal_error(const char * msg, void * yyscanner);
+void handlebars_yy_fatal_error(const char * msg, void * yyscanner) HBS_NORETURN;
 
 /**
  * @brief Reads input for the lexer. Reads input from the tmpl field of the context object

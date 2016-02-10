@@ -360,7 +360,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_stripcslashes, "stripcslashes");
     REGISTER_TEST_FIXTURE(s, test_handlebars_str_reduce, "str_reduce");
     REGISTER_TEST_FIXTURE(s, test_yy_error, "yy_error");
-    REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
+    //REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
     REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");
     REGISTER_TEST_FIXTURE(s, test_yy_print, "yy_print");
     REGISTER_TEST_FIXTURE(s, test_yy_realloc, "yy_realloc");

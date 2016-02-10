@@ -19,6 +19,13 @@ extern "C" {
 struct handlebars_context;
 struct handlebars_token_list;
 
+// Macros
+#if (__GNUC__ >= 3)
+#define HBS_NORETURN __attribute__ ((noreturn))
+#else
+#define HBS_NORETURN
+#endif
+
 /**
  * @brief Enumeration of error types
  */
