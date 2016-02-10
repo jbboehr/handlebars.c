@@ -22,6 +22,7 @@ sudo apt-get install handlebarsc libhandlebars-dev
 
 ### Source
 
+Note: >= gcc 4.9 is required for `returns_nonnull`
 
 #### Ubuntu 
 
