@@ -24,14 +24,14 @@ struct handlebars_token {
 
 /**
  * @brief Construct a token. Returns NULL on failure.
- * 
+ *
+ * @param[in] ctx The handlebars context
  * @param[in] token_int Token type
  * @param[in] text Token text
  * @param[in] length Length of the text
- * @param[in] ctx Talloc memory context
  * @return the new token object
  */
-struct handlebars_token * handlebars_token_ctor(int token_int, const char * text, size_t length, void * ctx);
+struct handlebars_token * handlebars_token_ctor(struct handlebars_context * ctx, int token_int, const char * text, size_t length);
 
 /**
  * @brief Destruct a token

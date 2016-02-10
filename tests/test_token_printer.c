@@ -3,6 +3,7 @@
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
@@ -11,16 +12,19 @@
 #include "utils.h"
 
 static TALLOC_CTX * ctx;
+static struct handlebars_context * context;
 
 static void setup(void)
 {
     handlebars_memory_fail_disable();
     ctx = talloc_new(NULL);
+    context = handlebars_context_ctor_ex(ctx);
 }
 
 static void teardown(void)
 {
     handlebars_memory_fail_disable();
+    handlebars_context_dtor(context);
     talloc_free(ctx);
     ctx = NULL;
 }
@@ -73,7 +77,7 @@ END_TEST
 
 START_TEST(test_token_print_failed_alloc)
 {
-    struct handlebars_token * tok = handlebars_token_ctor(CONTENT, "tok1", strlen("tok1"), ctx);
+    struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, "tok1", strlen("tok1"));
 	char * expected;
     
     handlebars_memory_fail_enable();
@@ -94,9 +98,9 @@ END_TEST
 
 START_TEST(test_token_list_print)
 {
-    struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
-    struct handlebars_token * token1 = handlebars_token_ctor(CONTENT, "tok1", strlen("tok1"), list);
-    struct handlebars_token * token2 = handlebars_token_ctor(CONTENT, "tok2", strlen("tok1"), list);
+    struct handlebars_token_list * list = handlebars_token_list_ctor(context);
+    struct handlebars_token * token1 = handlebars_token_ctor(context, CONTENT, "tok1", strlen("tok1"));
+    struct handlebars_token * token2 = handlebars_token_ctor(context, CONTENT, "tok2", strlen("tok1"));
     
     handlebars_token_list_append(list, token1);
     handlebars_token_list_append(list, token2);
@@ -111,9 +115,9 @@ END_TEST
 
 START_TEST(test_token_list_print_null_item)
 {
-    struct handlebars_token_list * list = handlebars_token_list_ctor(ctx);
-    struct handlebars_token * token1 = handlebars_token_ctor(CONTENT, "tok1", strlen("tok1"), list);
-    struct handlebars_token * token2 = handlebars_token_ctor(CONTENT, "tok2", strlen("tok1"), list);
+    struct handlebars_token_list * list = handlebars_token_list_ctor(context);
+    struct handlebars_token * token1 = handlebars_token_ctor(context, CONTENT, "tok1", strlen("tok1"));
+    struct handlebars_token * token2 = handlebars_token_ctor(context, CONTENT, "tok2", strlen("tok1"));
     
     handlebars_token_list_append(list, token1);
     handlebars_token_list_append(list, token2);

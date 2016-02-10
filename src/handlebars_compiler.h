@@ -93,38 +93,6 @@ enum handlebars_compiler_result_flag {
     handlebars_compiler_result_flag_all = ((1 << 4) - 1)
 };
 
-/**
- * @brief Compiler error codes
- */
-enum handlebars_compiler_error {
-    handlebars_compiler_error_none = 0,
-
-    /**
-     * @brief The compiler encountered a memory allocation failure
-     */
-    handlebars_compiler_error_nomem = 1,
-
-    /**
-     * @brief The compiler encountered an unknown helper in known helpers only mode
-     */
-    handlebars_compiler_error_unknown_helper = 2,
-
-    handlebars_compiler_error_unsupported_partial_args = 3,
-    
-    handlebars_compiler_error_block_param_stack_blown = 4,
-    
-    handlebars_compiler_error_source_node_stack_blown = 5
-};
-
-/**
- * @brief Sexpr types
- */
-enum handlebars_compiler_sexpr_type {
-    handlebars_compiler_sexpr_type_ambiguous = 0,
-    handlebars_compiler_sexpr_type_helper = 1,
-    handlebars_compiler_sexpr_type_simple = 2
-};
-
 struct handlebars_block_param_stack {
     /**
      * @brief Block param stack
@@ -158,9 +126,6 @@ struct handlebars_source_node_stack {
 struct handlebars_compiler {
     struct handlebars_context * ctx;
 
-    enum handlebars_compiler_error errnum;
-    char * error;
-    
     struct handlebars_opcode ** opcodes;
     size_t opcodes_length;
     size_t opcodes_size;

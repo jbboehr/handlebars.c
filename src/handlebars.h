@@ -47,7 +47,22 @@ enum handlebars_error_type
     /**
      * @brief Indicates that failure was due to a parse error
      */
-    HANDLEBARS_PARSEERR = 4
+    HANDLEBARS_PARSEERR = 4,
+
+    /**
+     * @brief The compiler encountered an unknown helper in known helpers only mode
+     */
+    HANDLEBARS_UNKNOWN_HELPER = 5,
+
+    /**
+     * @brief An unsupported number of partial arguments were given
+     */
+    HANDLEBARS_UNSUPPORTED_PARTIAL_ARGS = 6,
+
+    /**
+     * @brief A stack was overflown
+     */
+    HANDLEBARS_STACK_OVERFLOW = 7
 };
 
 /**

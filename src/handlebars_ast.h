@@ -202,12 +202,12 @@ struct handlebars_ast_node {
 
 /**
  * @brief Contruct an AST node
- * 
+ *
+ * @param[in] ctx The handlebars context
  * @param[in] type The AST node type
- * @param[in] ctx The talloc context on which to allocate
  * @return the newly constructed AST node
  */
-struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_ast_node_type type, void * ctx);
+struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_context * context, enum handlebars_ast_node_type type);
 
 /**
  * @brief Destruct an AST node
@@ -216,15 +216,6 @@ struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_ast_node_t
  * @return void
  */
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
-
-/**
- * @brief Get the ID name of an AST node. Returns NULL if not 
- * applicable. Returns a pointer to the current buffer.
- * 
- * @param[in] ast_node The AST node
- * @return The string
- */
-const char * handlebars_ast_node_get_id_name(struct handlebars_ast_node * ast_node);
 
 /**
  * @brief Get the first part of an ID name of an AST node. Returns NULL if not 
@@ -242,7 +233,7 @@ const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_no
  * @param[in] ast_node The AST node
  * @return The string array
  */
-char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node * ast_node);
+char ** handlebars_ast_node_get_id_parts(struct handlebars_context * context, struct handlebars_ast_node * ast_node);
 
 /**
  * @brief Get the string mode value of an AST node. Returns NULL if not 

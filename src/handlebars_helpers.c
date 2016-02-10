@@ -5,6 +5,7 @@
 
 #include <assert.h>
 
+#include "handlebars_context.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -17,9 +18,7 @@
 #define __MEMCHECK(cond) \
     do { \
         if( unlikely(!cond) ) { \
-            options->vm->errnum = HANDLEBARS_NOMEM; \
-            options->vm->errmsg = "Out of memory [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
-            longjmp(options->vm->jmp, 1); \
+            handlebars_context_throw(options->vm->ctx, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
         } \
     } while(0)
 

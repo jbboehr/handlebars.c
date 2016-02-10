@@ -65,24 +65,63 @@ void handlebars_context_dtor(struct handlebars_context * context)
     handlebars_talloc_free(context);
 }
 
+static inline _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
+{
+    context->e.num = num;
+    context->e.msg = talloc_vasprintf(context, msg, ap);
+    if( loc ) {
+        context->e.loc = *loc;
+    } else {
+        memset(&context->e.loc, 0, sizeof(context->e.loc));
+    }
+}
+
+void handlebars_context_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...)
+{
+    va_list ap;
+    va_start(ap, msg);
+    _set_err(context, num, NULL, msg, ap);
+    va_end(ap);
+    if( context->e.ok ) {
+        longjmp(context->e.jmp, num);
+    } else {
+        fprintf(stderr, "Throw with invalid jmp_buf: %s\n", msg);
+        abort();
+    }
+}
+
+void handlebars_context_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...)
+{
+    va_list ap;
+    va_start(ap, msg);
+    _set_err(context, num, loc, msg, ap);
+    va_end(ap);
+    if( context->e.ok ) {
+        longjmp(context->e.jmp, num);
+    } else {
+        fprintf(stderr, "Throw with invalid jmp_buf: %s\n", msg);
+        abort();
+    }
+}
+
 char * handlebars_context_get_errmsg(struct handlebars_context * context)
 {
     char * errmsg;
     char errbuf[256];
     
-    if( context == NULL || context->error == NULL ) {
+    if( context == NULL || context->e.msg == NULL ) {
       return NULL;
     }
     
     snprintf(errbuf, sizeof(errbuf), "%s on line %d, column %d", 
-            context->error,
-            context->errloc->last_line, 
-            context->errloc->last_column);
+            context->e.msg,
+            context->e.loc.last_line,
+            context->e.loc.last_column);
     
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( unlikely(errmsg == NULL) ) {
       // this might be a bad idea... 
-      return context->error;
+      return context->e.msg;
     }
     
     return errmsg;
@@ -93,21 +132,21 @@ char * handlebars_context_get_errmsg_js(struct handlebars_context * context)
     char * errmsg;
     char errbuf[512];
     
-    if( context == NULL || context->error == NULL ) {
+    if( context == NULL || context->e.msg == NULL ) {
       return NULL;
     }
     
     // @todo check errno == HANDLEBARS_PARSEERR
     
     snprintf(errbuf, sizeof(errbuf), "Parse error on line %d, column %d : %s", 
-            context->errloc->last_line, 
-            context->errloc->last_column,
-            context->error);
+            context->e.loc.last_line,
+            context->e.loc.last_column,
+            context->e.msg);
     
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( unlikely(errmsg == NULL) ) {
       // this might be a bad idea... 
-      return context->error;
+      return context->e.msg;
     }
     
     return errmsg;

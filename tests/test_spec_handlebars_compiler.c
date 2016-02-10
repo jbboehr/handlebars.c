@@ -16,6 +16,8 @@
 #include <json/json.h>
 #include <json/json_object.h>
 #include <json/json_tokener.h>
+#include <src/handlebars_context.h>
+
 #endif
 
 #include "handlebars_compiler.h"
@@ -642,7 +644,7 @@ START_TEST(handlebars_spec_compiler)
     }
 
     handlebars_compiler_compile(compiler, ctx->program);
-    ck_assert_int_eq(0, compiler->errnum);
+    ck_assert_int_eq(0, ctx->e.num);
     
     // Printer
     printer->flags = opcode_printer_flags;

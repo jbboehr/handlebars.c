@@ -29,14 +29,18 @@ extern struct handlebars_context * _handlebars_context_init_current;
  */
 struct handlebars_context
 {
-    jmp_buf jmp;
+    struct {
+        long num;
+        char * msg;
+        struct handlebars_locinfo loc;
+        jmp_buf jmp;
+        bool ok;
+    } e;
+
     const char * tmpl;
     int tmplReadOffset;
     void * scanner;
     struct handlebars_ast_node * program;
-    int errnum;
-    char * error;
-    struct handlebars_locinfo * errloc;
     bool whitespace_root_seen;
     bool ignore_standalone;
 };
@@ -56,6 +60,10 @@ struct handlebars_context * handlebars_context_ctor_ex(void * ctx);
  * @return void
  */
 void handlebars_context_dtor(struct handlebars_context * context);
+
+//#define handlebars_context_throw(context, errnum, errmsg, ...) handlebars_context_throw_ex(context, errnum, NULL, errmsg, __VA_ARGS__)
+void handlebars_context_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...);
+void handlebars_context_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...);
 
 /**
  * @brief Get the error message from a context, or NULL.

@@ -37,11 +37,15 @@
 #define __MEMCHECK(cond) \
     do { \
         if( unlikely(!cond) ) { \
-            compiler->errnum = handlebars_compiler_error_nomem; \
-            compiler->error = "Out of memory [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
-            return; \
+            handlebars_context_throw(compiler->ctx, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
         } \
     } while(0)
+
+enum handlebars_compiler_sexpr_type {
+    SEXPR_AMBIG = 0,
+    SEXPR_HELPER = 1,
+    SEXPR_SIMPLE = 2
+};
 
 
 
@@ -198,11 +202,11 @@ static inline enum handlebars_compiler_sexpr_type handlebars_compiler_classify_s
     }
     
     if( is_helper ) {
-        return handlebars_compiler_sexpr_type_helper;
+        return SEXPR_HELPER;
     } else if( is_eligible ) {
-        return handlebars_compiler_sexpr_type_ambiguous;
+        return SEXPR_AMBIG;
     } else {
-        return handlebars_compiler_sexpr_type_simple;
+        return SEXPR_SIMPLE;
     }
 }
 
@@ -218,10 +222,7 @@ static inline long handlebars_compiler_compile_program(
            program->type == HANDLEBARS_AST_NODE_CONTENT);
     
     subcompiler = handlebars_compiler_ctor(compiler->ctx);
-    if( unlikely(subcompiler == NULL) ) {
-        compiler->errnum = handlebars_compiler_error_nomem;
-        return -1;
-    }
+    __MEMCHECK(subcompiler);
     
     // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
@@ -231,12 +232,6 @@ static inline long handlebars_compiler_compile_program(
     // compile
     handlebars_compiler_compile(subcompiler, program);
     guid = compiler->guid++;
-    
-    // copy compiler error
-    if( (subcompiler->errnum != 0 && compiler->errnum == 0) ) {
-        compiler->errnum = subcompiler->errnum;
-        compiler->error = subcompiler->error;
-    }
 
     // Don't propogate use_decorators
     compiler->result_flags |= (subcompiler->result_flags & ~handlebars_compiler_result_flag_use_decorators);
@@ -247,10 +242,7 @@ static inline long handlebars_compiler_compile_program(
         compiler->children = (struct handlebars_compiler **)
             handlebars_talloc_realloc(compiler, compiler->children, 
                     struct handlebars_compiler *, compiler->children_size);
-        if( unlikely(compiler->children == NULL) ) {
-            compiler->errnum = handlebars_compiler_error_nomem;
-            return -1;
-        }
+        __MEMCHECK(compiler->children);
     }
     
     // Append child
@@ -366,7 +358,7 @@ static inline void handlebars_compiler_push_param(
                 
                 handlebars_operand_set_stringval(opcode, &opcode->op1, "BlockParam");
                 handlebars_operand_set_arrayval(opcode, &opcode->op2, block_param_arr);
-                parts_arr = (const char **) handlebars_ast_node_get_id_parts(opcode, param);
+                parts_arr = (const char **) handlebars_ast_node_get_id_parts(compiler->ctx, param);
                 __MEMCHECK(parts_arr);
                 if( *parts_arr ) {
                     block_param_parts = handlebars_implode(".", parts_arr + 1);
@@ -467,11 +459,10 @@ static inline void handlebars_compiler_transform_literal_to_path(
 		case HANDLEBARS_AST_NODE_STRING:
 			val = handlebars_ast_node_get_string_mode_value(path);
 			// Make parts
-			part = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH_SEGMENT, node);
+			part = talloc_steal(node, handlebars_ast_node_ctor(compiler->ctx, HANDLEBARS_AST_NODE_PATH_SEGMENT));
 			part->node.path_segment.part = handlebars_talloc_strdup(part, val);
 			__MEMCHECK(part);
-			parts = handlebars_ast_list_ctor(node);
-			__MEMCHECK(parts);
+			parts = talloc_steal(node, handlebars_ast_list_ctor(compiler->ctx));
 		    handlebars_ast_list_append(parts, part);
 		    // Re-jigger node
 		    memset(path, 0, sizeof(struct handlebars_ast_node));
@@ -532,9 +523,7 @@ static inline void handlebars_compiler_accept_program(
     assert(compiler != NULL);
     
     if( compiler->bps->i > HANDLEBARS_COMPILER_STACK_SIZE ) {
-        compiler->errnum = handlebars_compiler_error_block_param_stack_blown;
-        compiler->error = handlebars_talloc_strdup(compiler, "Block param stack blown");
-        return;
+        handlebars_context_throw(compiler->ctx, HANDLEBARS_STACK_OVERFLOW, "Block param stack blown");
     }
     compiler->bps->s[compiler->bps->i].block_param1 = block_param1;
     compiler->bps->s[compiler->bps->i].block_param2 = block_param2;
@@ -592,17 +581,17 @@ static inline void handlebars_compiler_accept_block(
 		}
 
 		switch( handlebars_compiler_classify_sexpr(compiler, sexpr) ) {
-			case handlebars_compiler_sexpr_type_helper:
+			case SEXPR_HELPER:
 				handlebars_compiler_accept_sexpr_helper(compiler, sexpr, programGuid, inverseGuid);
 				break;
-			case handlebars_compiler_sexpr_type_simple:
+			case SEXPR_SIMPLE:
 				handlebars_compiler_accept_sexpr_simple(compiler, sexpr);
 				programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
 				inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
 				__OPN(empty_hash);
 				__OPS(block_value, path->node.path.original);
 				break;
-			case handlebars_compiler_sexpr_type_ambiguous:
+			case SEXPR_AMBIG:
 				handlebars_compiler_accept_sexpr_ambiguous(compiler, sexpr, programGuid, inverseGuid);
 				programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
 				inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
@@ -628,10 +617,7 @@ static inline void handlebars_compiler_accept_hash(
     assert(compiler != NULL);
     
     keys = handlebars_talloc_array(compiler, char *, len);
-    if( unlikely(keys == NULL) ) {
-        compiler->errnum = handlebars_compiler_error_nomem;
-        return;
-    }
+    __MEMCHECK(keys);
     
     __OPN(push_hash);
     
@@ -674,16 +660,14 @@ static inline void _handlebars_compiler_accept_partial(
     count = (params ? handlebars_ast_list_count(params) : 0);
     
     if( count > 1 ) {
-    	compiler->errnum = handlebars_compiler_error_unsupported_partial_args;
-    	return;
+        handlebars_context_throw(compiler->ctx, HANDLEBARS_UNSUPPORTED_PARTIAL_ARGS, "Unsupported number of partial arguments");
     } else if( !params || !handlebars_ast_list_count(params) ) {
     	if( compiler->flags & handlebars_compiler_flag_explicit_partial_context ) {
     		__OPS(push_literal, "undefined");
     	} else {
 			struct handlebars_ast_node * tmp;
 			if( !params ) {
-				params = handlebars_ast_list_ctor(node);
-				__MEMCHECK(params);
+				params = talloc_steal(node, handlebars_ast_list_ctor(compiler->ctx));
 				if( node->type == HANDLEBARS_AST_NODE_PARTIAL ) {
 					node->node.partial.params = params;
 				} else if( node->type == HANDLEBARS_AST_NODE_PARTIAL_BLOCK ) {
@@ -691,7 +675,7 @@ static inline void _handlebars_compiler_accept_partial(
 				}
 			}
 			__MEMCHECK(params);
-			tmp = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH, params);
+			tmp = talloc_steal(params, handlebars_ast_node_ctor(compiler->ctx, HANDLEBARS_AST_NODE_PATH));
 			__MEMCHECK(tmp);
 			handlebars_ast_list_append(params, tmp);
     	}
@@ -930,10 +914,7 @@ static inline void handlebars_compiler_accept_sexpr_helper(
     if( handlebars_compiler_is_known_helper(compiler, path) ) {
         __OPLS(invoke_known_helper, handlebars_ast_list_count(params), name);
     } else if( compiler->known_helpers_only ) {
-        compiler->errnum = handlebars_compiler_error_unknown_helper;
-        compiler->error = handlebars_talloc_asprintf(compiler, 
-                "You specified knownHelpersOnly, but used the unknown helper %s", name);
-        __MEMCHECK(compiler->error);
+        handlebars_context_throw(compiler->ctx, HANDLEBARS_UNKNOWN_HELPER, "You specified knownHelpersOnly, but used the unknown helper %s", name);
     } else {
         struct handlebars_opcode * opcode;
         int is_simple = handlebars_ast_helper_simple_id(path);
@@ -961,13 +942,13 @@ static inline void handlebars_compiler_accept_sexpr(
     handlebars_compiler_transform_literal_to_path(compiler, sexpr);
 
     switch( handlebars_compiler_classify_sexpr(compiler, sexpr) ) {
-        case handlebars_compiler_sexpr_type_helper:
+        case SEXPR_HELPER:
             handlebars_compiler_accept_sexpr_helper(compiler, sexpr, -1, -1);
             break;
-        case handlebars_compiler_sexpr_type_simple:
+        case SEXPR_SIMPLE:
             handlebars_compiler_accept_sexpr_simple(compiler, sexpr);
             break;
-        case handlebars_compiler_sexpr_type_ambiguous:
+        case SEXPR_AMBIG:
             handlebars_compiler_accept_sexpr_ambiguous(compiler, sexpr, -1, -1);
             break;
         default:
@@ -1010,7 +991,7 @@ static inline void handlebars_compiler_accept_path(
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_block_param);
         __MEMCHECK(opcode);
         handlebars_operand_set_arrayval(opcode, &opcode->op1, block_param_arr);
-        parts_arr = handlebars_ast_node_get_id_parts(opcode, path);
+        parts_arr = handlebars_ast_node_get_id_parts(compiler->ctx, path);
         __MEMCHECK(parts_arr);
         opcode->op2.type = handlebars_operand_type_array;
         opcode->op2.data.arrayval = parts_arr;
@@ -1020,7 +1001,7 @@ static inline void handlebars_compiler_accept_path(
     } else if( path->node.path.data ) {
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_data);
         __MEMCHECK(opcode);
-        parts_arr = handlebars_ast_node_get_id_parts(opcode, path);
+        parts_arr = handlebars_ast_node_get_id_parts(compiler->ctx, path);
         __MEMCHECK(parts_arr);
 
         handlebars_operand_set_longval(&opcode->op1, path->node.path.depth);
@@ -1034,7 +1015,7 @@ static inline void handlebars_compiler_accept_path(
     } else {
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_on_context);
         __MEMCHECK(opcode);
-        parts_arr = handlebars_ast_node_get_id_parts(opcode, path);
+        parts_arr = handlebars_ast_node_get_id_parts(compiler->ctx, path);
         __MEMCHECK(parts_arr);
         opcode->op1.type = handlebars_operand_type_array;
         opcode->op1.data.arrayval = parts_arr;
@@ -1153,17 +1134,17 @@ static inline void handlebars_compiler_accept_raw_block(
     }
     
     switch( handlebars_compiler_classify_sexpr(compiler, sexpr) ) {
-        case handlebars_compiler_sexpr_type_helper:
+        case SEXPR_HELPER:
             handlebars_compiler_accept_sexpr_helper(compiler, sexpr, programGuid, inverseGuid);
             break;
-        case handlebars_compiler_sexpr_type_simple:
+        case SEXPR_SIMPLE:
             handlebars_compiler_accept_sexpr_simple(compiler, sexpr);
             programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
             inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
             __OPN(empty_hash);
             __OPS(block_value, path->node.path.original);
             break;
-        case handlebars_compiler_sexpr_type_ambiguous:
+        case SEXPR_AMBIG:
             handlebars_compiler_accept_sexpr_ambiguous(compiler, sexpr, programGuid, inverseGuid);
             programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
             inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
@@ -1178,15 +1159,13 @@ static inline void handlebars_compiler_accept_raw_block(
 static void handlebars_compiler_accept(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
-    if( !node || compiler->errnum ) {
+    if( !node ) {
         return;
     }
     
     // Add node to source node stack
     if( compiler->sns.i > HANDLEBARS_COMPILER_STACK_SIZE ) {
-        compiler->errnum = handlebars_compiler_error_source_node_stack_blown;
-        compiler->error = handlebars_talloc_strdup(compiler, "Source node stack blown");
-        return;
+        handlebars_context_throw(compiler->ctx, HANDLEBARS_STACK_OVERFLOW, "Source node stack blown");
     }
     compiler->sns.s[compiler->sns.i] = node;
     compiler->sns.i++;
@@ -1255,5 +1234,13 @@ static void handlebars_compiler_accept(
 void handlebars_compiler_compile(
         struct handlebars_compiler * compiler, struct handlebars_ast_node * node)
 {
+    // Save jump buffer
+    compiler->ctx->e.ok = true;
+    if( setjmp(compiler->ctx->e.jmp) ) {
+        goto done;
+    }
+
     handlebars_compiler_accept(compiler, node);
+done:
+    compiler->ctx->e.ok = false;
 }

@@ -40,7 +40,7 @@ struct tokenizer_test {
     char * tmpl;
     struct handlebars_token_list * expected;
     size_t expected_len;
-    TALLOC_CTX * mem_ctx;
+    struct handlebars_context * ctx;
 };
 
 
@@ -63,7 +63,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
     array_len = json_object_array_length(object);
     
     // Allocate token list
-    test->expected = handlebars_token_list_ctor(rootctx);
+    test->expected = handlebars_token_list_ctor(test->ctx);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -99,7 +99,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
         }
         
         // Make token object
-        token = handlebars_token_ctor(token_int, text, strlen(text), test->expected);
+        token = handlebars_token_ctor(test->ctx, token_int, text, strlen(text));
         if( token == NULL ) {
             fprintf(stderr, "Warning: failed to allocate token struct\n");
             continue;
@@ -117,6 +117,7 @@ static void loadSpecTest(json_object * object)
     
     // Get test
     struct tokenizer_test * test = &(tests[tests_len++]);
+    test->ctx = handlebars_context_ctor_ex(rootctx);
     
     // Get description
     cur = json_object_object_get(object, "description");
@@ -225,7 +226,7 @@ START_TEST(handlebars_spec_tokenizer)
         
         // Make token object
         char * text = (lval->text == NULL ? "" : lval->text);
-        token = handlebars_token_ctor(token_int, text, strlen(text), actual);
+        token = handlebars_token_ctor(test->ctx, token_int, text, strlen(text));
         
         // Append
         handlebars_token_list_append(actual, token);

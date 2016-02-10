@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <pcre.h>
 #include <talloc.h>
+#include <src/handlebars_context.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
 #include "json-c/json.h"
@@ -171,7 +172,7 @@ START_TEST(handlebars_spec_parser)
     
     handlebars_parse(ctx);
     
-    if( ctx->error != NULL ) {
+    if( ctx->e.num ) {
         char * errmsg = handlebars_context_get_errmsg(ctx);
         char * errmsgjs = handlebars_context_get_errmsg_js(ctx);
         

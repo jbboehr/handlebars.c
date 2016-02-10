@@ -263,15 +263,18 @@ START_TEST(test_yy_error)
     loc.first_column = 2;
     loc.last_line = 3;
     loc.last_column = 4;
+
+    context->e.ok = true;
+    if( !setjmp(context->e.jmp) ) {
+        handlebars_yy_error(&loc, context, err);
+    }
     
-    handlebars_yy_error(&loc, context, err);
-    
-    ck_assert_int_eq(context->errnum, HANDLEBARS_PARSEERR);
-    ck_assert_str_eq(context->error, err);
-    ck_assert_int_eq(context->errloc->first_line, loc.first_line);
-    ck_assert_int_eq(context->errloc->first_column, loc.first_column);
-    ck_assert_int_eq(context->errloc->last_line, loc.last_line);
-    ck_assert_int_eq(context->errloc->last_column, loc.last_column);
+    ck_assert_int_eq(context->e.num, HANDLEBARS_PARSEERR);
+    ck_assert_str_eq(context->e.msg, err);
+    ck_assert_int_eq(context->e.loc.first_line, loc.first_line);
+    ck_assert_int_eq(context->e.loc.first_column, loc.first_column);
+    ck_assert_int_eq(context->e.loc.last_line, loc.last_line);
+    ck_assert_int_eq(context->e.loc.last_column, loc.last_column);
     
     handlebars_context_dtor(context);
 }

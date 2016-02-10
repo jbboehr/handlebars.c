@@ -41,11 +41,13 @@
      	fprintf( stderr, "--initializing yylval\n" ); \
 	}
 
+#define __S1(x) #x
+#define __S2(x) __S1(x)
 #define __MEMCHECK(cond) \
   do { \
     if( unlikely(!cond) ) { \
       struct handlebars_context * context = yyextra; \
-      context->errnum = HANDLEBARS_NOMEM; \
+      handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
       yyterminate(); \
     } \
   } while(0)

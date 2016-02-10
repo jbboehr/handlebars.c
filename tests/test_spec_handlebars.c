@@ -304,7 +304,7 @@ START_TEST(test_handlebars_spec)
     handlebars_parse(ctx);
 
     // Check error
-    if( ctx->error ) {
+    if( ctx->e.num ) {
         // @todo maybe check message
         ck_assert(test->exception);
         goto done;
@@ -317,7 +317,7 @@ START_TEST(test_handlebars_spec)
     }
 
     handlebars_compiler_compile(compiler, ctx->program);
-    if( compiler->errnum ) {
+    if( ctx->e.num ) {
         // @todo check message
         ck_assert_int_eq(1, test->exception);
         goto done;
@@ -394,35 +394,35 @@ START_TEST(test_handlebars_spec)
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
         fprintf(stderr, "ACTUAL: %s\n", vm->buffer);
         fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
-    } else if( vm->errmsg ) {
-        fprintf(stderr, "ERROR: %s\n", vm->errmsg);
+    } else if( ctx->e.msg ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->e.msg);
     }
 #endif
 
     if( test->exception ) {
-        ck_assert_ptr_ne(vm->errmsg, NULL);
+        ck_assert_ptr_ne(ctx->e.msg, NULL);
 //        if( test->message ) {
 //            ck_assert_str_eq(vm->errmsg, test->message);
 //        }
         if( test->message == NULL ) {
             // Just check if there was an error
-            ck_assert_str_ne("", vm->errmsg);
+            ck_assert_str_ne("", ctx->e.msg);
         } else if( test->message[0] == '/' && test->message[strlen(test->message) - 1] == '/' ) {
             // It's a regex
             char * tmp = strdup(test->message + 1);
             tmp[strlen(test->message) - 2] = '\0';
             char * regex_error = NULL;
-            if( 0 == regex_compare(tmp, vm->errmsg, &regex_error) ) {
+            if( 0 == regex_compare(tmp, ctx->e.msg, &regex_error) ) {
                 // ok
             } else {
                 ck_assert_msg(0, regex_error);
             }
             free(tmp);
         } else {
-            ck_assert_str_eq(test->message, vm->errmsg);
+            ck_assert_str_eq(test->message, ctx->e.msg);
         }
     } else {
-        ck_assert_msg(vm->errmsg == NULL, vm->errmsg);
+        ck_assert_msg(ctx->e.msg == NULL, ctx->e.msg);
         ck_assert_ptr_ne(test->expected, NULL);
         ck_assert_ptr_ne(vm->buffer, NULL);
 

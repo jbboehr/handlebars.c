@@ -364,12 +364,7 @@ void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_con
     fprintf(stderr, "%d : %s\n", lloc->first_line, err);
 #endif
 
-    context->errnum = HANDLEBARS_PARSEERR;
-    context->error = handlebars_talloc_strdup(context, err);
-    context->errloc = handlebars_talloc_zero(context, handlebars_locinfo);
-    if( likely(context->errloc != NULL) ) {
-        memcpy(context->errloc, lloc, sizeof(handlebars_locinfo));
-    }
+    handlebars_context_throw_ex(context, HANDLEBARS_PARSEERR, lloc, err);
 }
 
 void handlebars_yy_fatal_error(const char * msg, HANDLEBARS_ATTR_UNUSED void * yyscanner)

@@ -22,27 +22,20 @@
 #define __MEMCHECK(ptr) \
     do { \
         if( unlikely(ptr == NULL) ) { \
-            ast_node = NULL; \
-            context->errnum = HANDLEBARS_NOMEM; \
-            context->error = "Out of memory [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
-            longjmp(context->jmp, 1); \
+            handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
         } \
     } while(0)
 
 
 
-struct handlebars_ast_node * handlebars_ast_node_ctor(enum handlebars_ast_node_type type, void * ctx)
+struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_context * context, enum handlebars_ast_node_type type)
 {
     struct handlebars_ast_node * ast_node;
     
-    ast_node = handlebars_talloc_zero(ctx, struct handlebars_ast_node);
-    if( unlikely(ast_node == NULL) ) {
-        errno = ENOMEM;
-        goto done;
-    }
+    ast_node = handlebars_talloc_zero(context, struct handlebars_ast_node);
+    __MEMCHECK(ast_node);
+
     ast_node->type = type;
-    
-done:
     return ast_node;
 }
 
@@ -51,14 +44,6 @@ void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node)
     assert(ast_node != NULL);
     
     handlebars_talloc_free(ast_node);
-}
-
-const char * handlebars_ast_node_get_id_name(struct handlebars_ast_node * ast_node)
-{
-    assert(ast_node != NULL);
-    assert(ast_node->type == HANDLEBARS_AST_NODE_PATH);
-
-    return (const char *) ast_node->node.path.original; // @todo was 'id_name'
 }
 
 const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node)
@@ -80,7 +65,7 @@ const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_no
     return (const char *) path_segment->node.path_segment.part;
 }
 
-char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node * ast_node)
+char ** handlebars_ast_node_get_id_parts(struct handlebars_context * context, struct handlebars_ast_node * ast_node)
 {
     size_t num;
     char ** arr;
@@ -97,7 +82,7 @@ char ** handlebars_ast_node_get_id_parts(void * ctx, struct handlebars_ast_node 
         return NULL;
     }
 
-    arrptr = arr = handlebars_talloc_array(ctx, char *, num + 1);
+    arrptr = arr = handlebars_talloc_array(context, char *, num + 1);
     if( unlikely(arr == NULL) ) {
         return NULL;
     }
@@ -266,34 +251,22 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
     struct handlebars_ast_node * ast_node;
 
     // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BLOCK, context);
-    __MEMCHECK(ast_node);
-
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_BLOCK);
     ast_node->loc = *locinfo;
 
-    // Assign the content
     if( intermediate ) {
-        if( intermediate->node.intermediate.path ) {
-            ast_node->node.block.path = talloc_steal(ast_node, intermediate->node.intermediate.path);
-        }
-        if( intermediate->node.intermediate.params ) {
-            ast_node->node.block.params = talloc_steal(ast_node, intermediate->node.intermediate.params);
-        }
-        if( intermediate->node.intermediate.hash ) {
-            ast_node->node.block.hash = talloc_steal(ast_node, intermediate->node.intermediate.hash);
-        }
+        ast_node->node.block.path = talloc_steal(ast_node, intermediate->node.intermediate.path);
+        ast_node->node.block.params = talloc_steal(ast_node, intermediate->node.intermediate.params);
+        ast_node->node.block.hash = talloc_steal(ast_node, intermediate->node.intermediate.hash);
         
         // We can free the intermediate
         // @todo it seems to not be safe to free it... used in prepare_block
         //handlebars_talloc_free(intermediate);
         talloc_steal(ast_node, intermediate);
     }
-    if( program ) {
-        ast_node->node.block.program = talloc_steal(ast_node, program);
-    }
-    if( inverse ) {
-        ast_node->node.block.inverse = talloc_steal(ast_node, inverse);
-    }
+
+    ast_node->node.block.program = talloc_steal(ast_node, program);
+    ast_node->node.block.inverse = talloc_steal(ast_node, inverse);
     ast_node->node.block.open_strip = open_strip;
     ast_node->node.block.inverse_strip = inverse_strip;
     ast_node->node.block.close_strip = close_strip;
@@ -307,13 +280,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_BOOLEAN, context);
-    __MEMCHECK(ast_node);
-    
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_BOOLEAN);
     ast_node->loc = *locinfo;
-    
-    // Assign the content
     ast_node->node.boolean.value = handlebars_talloc_strdup(ast_node, boolean);
     __MEMCHECK(ast_node->node.boolean.value);
 
@@ -325,20 +293,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_comment(
         struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_COMMENT, context);
-    __MEMCHECK(ast_node);
-    
+
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_COMMENT);
     ast_node->loc = *locinfo;
     ast_node->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
-    
-    // Assign the content
     ast_node->node.comment.value = handlebars_talloc_strdup(ast_node, comment);
     __MEMCHECK(ast_node->node.comment.value);
-    
-    // Steal the node so it won't be freed below
-    talloc_steal(context, ast_node);
 
     return ast_node;
 }
@@ -349,13 +309,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_content(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_CONTENT, context);
-    __MEMCHECK(ast_node);
-    
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_CONTENT);
     ast_node->loc = *locinfo;
-    
-    // Assign the content
     ast_node->node.content.value = handlebars_talloc_strdup(ast_node, content);
     __MEMCHECK(ast_node->node.content.value);
     ast_node->node.content.original = handlebars_talloc_strdup(ast_node, content);
@@ -370,16 +325,10 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_hash_pair(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_HASH_PAIR, context);
-    __MEMCHECK(ast_node);
-    
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_HASH_PAIR);
     ast_node->loc = *locinfo;
-    
-    // Assign the content
     ast_node->node.hash_pair.key = handlebars_talloc_strdup(ast_node, key);
     __MEMCHECK(ast_node->node.hash_pair.key);
-    
     ast_node->node.hash_pair.value = talloc_steal(ast_node, value);
 
     return ast_node;
@@ -393,25 +342,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
     struct handlebars_ast_node * ast_node;
 
     // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_INTERMEDIATE, context);
-    __MEMCHECK(ast_node);
-
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_INTERMEDIATE);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
-
-    // Assign the content
-    if( path ) {
-        ast_node->node.intermediate.path = talloc_steal(ast_node, path);
-    }
-    if( params ) {
-    	ast_node->node.intermediate.params = talloc_steal(ast_node, params);
-    }
-    if( hash ) {
-    	ast_node->node.intermediate.hash = talloc_steal(ast_node, hash);
-    }
-    /*if( block_params ) {
-    	ast_node->node.intermediate.hash = talloc_steal(ast_node, block_params);
-    }*/
+    ast_node->node.intermediate.path = talloc_steal(ast_node, path);
+    ast_node->node.intermediate.params = talloc_steal(ast_node, params);
+    ast_node->node.intermediate.hash = talloc_steal(ast_node, hash);
 
     return ast_node;
 }
@@ -422,17 +358,10 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_INVERSE, context);
-    __MEMCHECK(ast_node);
-
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_INVERSE);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
-
-    // Assign the content
-    if( program ) {
-        ast_node->node.inverse.program = talloc_steal(ast_node, program);
-    }
+    ast_node->node.inverse.program = talloc_steal(ast_node, program);
     ast_node->node.inverse.chained = chained;
 
     return ast_node;
@@ -442,11 +371,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_null(
     struct handlebars_context * context, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_NUL, context);
-    __MEMCHECK(ast_node);
-    
+
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_NUL);
     ast_node->loc = *locinfo;
 
     return ast_node;
@@ -458,13 +384,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_number(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_NUMBER, context);
-    __MEMCHECK(ast_node);
-    
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_NUMBER);
     ast_node->loc = *locinfo;
-    
-    // Assign the content
     ast_node->node.number.value = handlebars_talloc_strdup(ast_node, number);
     __MEMCHECK(ast_node->node.number.value);
 
@@ -476,19 +397,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
         struct handlebars_ast_list * params, struct handlebars_ast_node * hash,
         unsigned strip, struct handlebars_locinfo * yylloc)
 {
-    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL, context);
-    __MEMCHECK(ast_node);
+    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PARTIAL);
     ast_node->loc = *yylloc;
     ast_node->strip = strip;
-    if( name ) {
-        ast_node->node.partial.name = talloc_steal(ast_node, name);
-    }
-    if( params ) {
-        ast_node->node.partial.params = talloc_steal(ast_node, params);
-    }
-    if( hash ) {
-        ast_node->node.partial.hash = talloc_steal(ast_node, hash);
-    }
+    ast_node->node.partial.name = talloc_steal(ast_node, name);
+    ast_node->node.partial.params = talloc_steal(ast_node, params);
+    ast_node->node.partial.hash = talloc_steal(ast_node, hash);
     return ast_node;
 }
 
@@ -499,32 +413,21 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PARTIAL_BLOCK, context);
-    __MEMCHECK(ast_node);
-
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PARTIAL_BLOCK);
     ast_node->loc = *loc;
 
-    // Assign the content
     if( open ) {
-        if( open->node.intermediate.path ) {
-            ast_node->node.block.path = talloc_steal(ast_node, open->node.intermediate.path);
-        }
-        if( open->node.intermediate.params ) {
-            ast_node->node.block.params = talloc_steal(ast_node, open->node.intermediate.params);
-        }
-        if( open->node.intermediate.hash ) {
-            ast_node->node.block.hash = talloc_steal(ast_node, open->node.intermediate.hash);
-        }
+        ast_node->node.block.path = talloc_steal(ast_node, open->node.intermediate.path);
+        ast_node->node.block.params = talloc_steal(ast_node, open->node.intermediate.params);
+        ast_node->node.block.hash = talloc_steal(ast_node, open->node.intermediate.hash);
 
         // We can free the intermediate
         // @todo it seems to not be safe to free it... used in prepare_block
         //handlebars_talloc_free(intermediate);
         talloc_steal(ast_node, open);
     }
-    if( program ) {
-        ast_node->node.block.program = talloc_steal(ast_node, program);
-    }
+
+    ast_node->node.block.program = talloc_steal(ast_node, program);
     ast_node->node.block.open_strip = open->strip;
     ast_node->node.block.close_strip = close->strip;
 
@@ -538,23 +441,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_program(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
-    __MEMCHECK(ast_node);
-    
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
-    
-    // Assign the content
-    if( statements ) {
-        ast_node->node.program.statements = talloc_steal(ast_node, statements);
-    }
-    if( block_param1 ) {
-        ast_node->node.program.block_param1 = talloc_steal(ast_node, block_param1);
-    }
-    if( block_param2 ) {
-        ast_node->node.program.block_param2 = talloc_steal(ast_node, block_param2);
-    }
+    ast_node->node.program.statements = talloc_steal(ast_node, statements);
+    ast_node->node.program.block_param1 = talloc_steal(ast_node, block_param1);
+    ast_node->node.program.block_param2 = talloc_steal(ast_node, block_param2);
     ast_node->node.program.chained = chained;
 
     return ast_node;
@@ -566,17 +458,11 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Assertions 
     assert(parts != NULL);
     assert(original != NULL);
-    
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH, context);
-    __MEMCHECK(ast_node);
-    
+
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PATH);
     ast_node->loc = *locinfo;
-    
-    // Assign the content
     ast_node->node.path.parts = talloc_steal(ast_node, parts);
     ast_node->node.path.original = talloc_steal(ast_node, original);
     ast_node->node.path.data = data;
@@ -592,13 +478,9 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     struct handlebars_ast_node * ast_node;
     char * newpart;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH_SEGMENT, context);
-    __MEMCHECK(ast_node);
-    
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PATH_SEGMENT);
     ast_node->loc = *locinfo;
-    
-    // Assign the content
+
     ast_node->node.path_segment.original = handlebars_talloc_strdup(ast_node, part);
     __MEMCHECK(ast_node->node.path_segment.original);
 
@@ -628,10 +510,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     struct handlebars_ast_list * statements;
 
     // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_RAW_BLOCK, context);
-    __MEMCHECK(ast_node);
-    
-    // Assign the location info
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_RAW_BLOCK);
     ast_node->loc = *locinfo;
     
     // Assign the content
@@ -647,9 +526,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     assert(hash == NULL || hash->type == HANDLEBARS_AST_NODE_HASH);
 
     // Create the program node
-    program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ast_node);
-    __MEMCHECK(program);
-    statements = handlebars_ast_list_ctor(program);
+    program = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
+    statements = talloc_steal(program, handlebars_ast_list_ctor(context));
     __MEMCHECK(statements);
     program->node.program.statements = statements;
     handlebars_ast_list_append(statements, talloc_steal(program, content));
@@ -657,15 +535,9 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     //ast_node->node.raw_block.program = talloc_steal(ast_node, content);
     
     // Assign the other nodes
-    if( path ) {
-        ast_node->node.raw_block.path = talloc_steal(ast_node, path);
-    }
-    if( params ) {
-    	ast_node->node.raw_block.params = talloc_steal(ast_node, params);
-    }
-    if( hash ) {
-    	ast_node->node.raw_block.hash = talloc_steal(ast_node, hash);
-    }
+    ast_node->node.raw_block.path = talloc_steal(ast_node, path);
+    ast_node->node.raw_block.params = talloc_steal(ast_node, params);
+    ast_node->node.raw_block.hash = talloc_steal(ast_node, hash);
 
     return ast_node;
 }
@@ -676,35 +548,14 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
 	    struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    struct handlebars_ast_node * path;
-    struct handlebars_ast_list * params;
-    struct handlebars_ast_node * hash;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_SEXPR, context);
-    __MEMCHECK(ast_node);
-
-    ast_node->loc = *locinfo;
-    
-    // Assign the content
     assert(intermediate != NULL);
-    
-    path = intermediate->node.intermediate.path;
-    params = intermediate->node.intermediate.params;
-    hash = intermediate->node.intermediate.hash;
-    
-    assert(path != NULL);
-    // I guess this can be other than path...
-    //assert(path->type == HANDLEBARS_AST_NODE_PATH);
-    assert(hash == NULL || hash->type == HANDLEBARS_AST_NODE_HASH);
 
-    ast_node->node.sexpr.path = talloc_steal(ast_node, path);
-    if( params ) {
-    	ast_node->node.sexpr.params = talloc_steal(ast_node, params);
-    }
-    if( hash ) {
-    	ast_node->node.sexpr.hash = talloc_steal(ast_node, hash);
-    }
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_SEXPR);
+    ast_node->loc = *locinfo;
+    ast_node->node.sexpr.path = talloc_steal(ast_node, intermediate->node.intermediate.path);
+    ast_node->node.sexpr.params = talloc_steal(ast_node, intermediate->node.intermediate.params);
+    ast_node->node.sexpr.hash = talloc_steal(ast_node, intermediate->node.intermediate.hash);
 
     return ast_node;
 }
@@ -715,13 +566,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_string(
 {
     struct handlebars_ast_node * ast_node;
 
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_STRING, context);
-    __MEMCHECK(ast_node);
-    
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_STRING);
     ast_node->loc = *locinfo;
-    
-    // Assign the content
     ast_node->node.string.value = handlebars_talloc_strdup(ast_node, string);
     __MEMCHECK(ast_node->node.string.value);
 
@@ -732,11 +578,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
     struct handlebars_context * context, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    
-    // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_UNDEFINED, context);
-    __MEMCHECK(ast_node);
-    
+
+    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_UNDEFINED);
     ast_node->loc = *locinfo;
 
     return ast_node;

@@ -26,9 +26,7 @@
 #define __MEMCHECK(cond) \
     do { \
         if( unlikely(!cond) ) { \
-            context->errnum = HANDLEBARS_NOMEM; \
-            context->error = "Out of memory" __S2(__FUNCTION__) " [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
-            longjmp(context->jmp, 1); \
+            handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
         } \
     } while(0)
 
@@ -56,11 +54,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         open_str = handlebars_ast_node_get_string_mode_value(open_block_path);
         close_str = handlebars_ast_node_get_string_mode_value(close_block_path);
         if( close_block_path && 0 != strcmp(open_str, close_str) ) {
-            char errmsgtmp[256];
-            snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s",  open_str, 
-                    close_str);
-            handlebars_yy_error(locinfo, context, errmsgtmp);
-            return NULL;
+            handlebars_context_throw_ex(context, HANDLEBARS_PARSEERR, locinfo,  "%s doesn't match %s", open_str, close_str);
         }
     }
 
@@ -70,7 +64,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
 
     // @todo this isn't supposed to be null I think...
     if( !program ) {
-        program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
+        program = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
     }
     program->node.program.block_param1 = open_block->node.intermediate.block_param1;
     program->node.program.block_param2 = open_block->node.intermediate.block_param2;
@@ -79,8 +73,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         assert(inverse_and_program->type == HANDLEBARS_AST_NODE_INVERSE);
 
         if( is_decorator ) {
-            handlebars_yy_error(locinfo, context, "Unexpected inverse block on decorator");
-            return NULL;
+            handlebars_context_throw_ex(context, HANDLEBARS_PARSEERR, locinfo, "Unexpected inverse block on decorator");
         }
 
         if( inverse_and_program->node.inverse.chained ) {
@@ -117,7 +110,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     
     ast_node = handlebars_ast_node_ctor_block(context, open_block, program, inverse,
                 open_block->strip, inverse_strip, close ? close->strip : 0, locinfo);
-    __MEMCHECK(ast_node);
 
     ast_node->node.block.is_decorator = is_decorator;
     return ast_node;
@@ -152,21 +144,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     struct handlebars_ast_node * path = intermediate->node.intermediate.path;
     struct handlebars_ast_list * params = intermediate->node.intermediate.params;
     struct handlebars_ast_node * hash = intermediate->node.intermediate.hash;
-    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_MUSTACHE, context);
-    __MEMCHECK(ast_node);
+    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_MUSTACHE);
     
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
-    
-    if( path ) {
-        ast_node->node.mustache.path = talloc_steal(ast_node, path);
-    }
-    if( params ) {
-        ast_node->node.mustache.params = talloc_steal(ast_node, params);
-    }
-    if( hash ) {
-        ast_node->node.mustache.hash = talloc_steal(ast_node, hash);
-    }
+    ast_node->node.mustache.path = talloc_steal(ast_node, path);
+    ast_node->node.mustache.params = talloc_steal(ast_node, params);
+    ast_node->node.mustache.hash = talloc_steal(ast_node, hash);
     
     // Check escaped
     if( open ) {
@@ -206,11 +190,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
         open_str = handlebars_ast_node_get_string_mode_value(open_block_path);
         close_str = handlebars_ast_node_get_string_mode_value(close_block_path);
         if( close_block_path && 0 != strcmp(open_str, close_str) ) {
-            char errmsgtmp[256];
-            snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s",  open_str,
-                    close_str);
-            handlebars_yy_error(locinfo, context, errmsgtmp);
-            return NULL;
+            handlebars_context_throw_ex(context, HANDLEBARS_PARSEERR, locinfo, "%s doesn't match %s", open_str, close_str);
         }
     }
 
@@ -254,10 +234,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         // Handle paths
         if( !is_literal && (strcmp(part, "..") == 0 || strcmp(part, ".") == 0 || strcmp(part, "this") == 0) ) {
             if( count > 0 ) {
-                context->errnum = HANDLEBARS_ERROR;
-                context->error = handlebars_talloc_asprintf(context, "Invalid path: %s", original);
-                context->errloc = locinfo;
-                longjmp(context->jmp, 1);
+                handlebars_context_throw_ex(context, HANDLEBARS_ERROR, locinfo, "Invalid path: %s", original);
             } else if( strcmp(part, "..") == 0 ) {
                 depth++;
             }
@@ -285,22 +262,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     
     open_block_path = open_raw_block->node.intermediate.path;
     if( 0 != strcmp(open_block_path->node.path.original, close) ) {
-        char errmsgtmp[256];
-        snprintf(errmsgtmp, sizeof(errmsgtmp), "%s doesn't match %s", 
-                open_block_path->node.path.original, 
-                close);
-        handlebars_yy_error(locinfo, context, errmsgtmp);
-        longjmp(context->jmp, 1);
+        handlebars_context_throw_ex(context, HANDLEBARS_ERROR, locinfo, "%s doesn't match %s", open_block_path->node.path.original, close);
     }
     
     // Create the content node
     content_node = handlebars_ast_node_ctor_content(context, content, locinfo);
     
     // Create the raw block node
-    ast_node = handlebars_ast_node_ctor_raw_block(context, open_raw_block, content_node, locinfo);
-    __MEMCHECK(ast_node);
-
-    return ast_node;
+    return handlebars_ast_node_ctor_raw_block(context, open_raw_block, content_node, locinfo);
 }
 
 static void handlebars_ast_helper_strip_comment_left(char * comment)

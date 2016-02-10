@@ -3,32 +3,53 @@
 #include "config.h"
 #endif
 
+#include <assert.h>
 #include <stdlib.h>
 #include <talloc.h>
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+
+#define __S1(x) #x
+#define __S2(x) __S1(x)
+#define __MEMCHECK(ptr) \
+    do { \
+        if( unlikely(ptr == NULL) ) { \
+            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
+        } \
+    } while(0)
+
+
+
+#define CONTEXT context
+
+struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_context * context)
+{
+    struct handlebars_ast_list * list =  handlebars_talloc_zero(context, struct handlebars_ast_list);
+    __MEMCHECK(list);
+    list->ctx = context;
+    return list;
+}
+
+#undef CONTEXT
+#define CONTEXT list->ctx
 
 int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {
     int error = HANDLEBARS_SUCCESS;
     struct handlebars_ast_list_item * item = NULL;
-    
-    // Check args
-    if( unlikely(list == NULL || ast_node == NULL) ) {
-        error = HANDLEBARS_NULLARG;
-        goto error;
-    }
-    
+
+    assert(list != NULL);
+    assert(ast_node != NULL);
+
     // Initialize list item
     item = handlebars_talloc_zero(list, struct handlebars_ast_list_item);
-    if( unlikely(item == NULL) ) {
-        error = HANDLEBARS_NOMEM; 
-        goto error;
-    }
+    __MEMCHECK(item);
+
     item->data = ast_node;
     
     // Append item
@@ -53,11 +74,6 @@ int handlebars_ast_list_count(struct handlebars_ast_list * list)
     } else {
         return list->count;
     }
-}
-
-struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx)
-{
-    return handlebars_talloc_zero(ctx, struct handlebars_ast_list);
 }
 
 void handlebars_ast_list_dtor(struct handlebars_ast_list * list)
@@ -150,19 +166,14 @@ int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handle
 {
     int error = HANDLEBARS_SUCCESS;
     struct handlebars_ast_list_item * item = NULL;
-    
-    // Check args
-    if( unlikely(list == NULL || ast_node == NULL) ) {
-        error = HANDLEBARS_NULLARG;
-        goto error;
-    }
+
+    assert(list != NULL);
+    assert(ast_node != NULL);
     
     // Initialize list item
     item = handlebars_talloc_zero(list, struct handlebars_ast_list_item);
-    if( unlikely(item == NULL) ) {
-        error = HANDLEBARS_NOMEM; 
-        goto error;
-    }
+    __MEMCHECK(item);
+
     item->data = ast_node;
     
     // Prepend item

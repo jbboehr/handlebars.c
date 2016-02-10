@@ -1,6 +1,7 @@
 
 #include <check.h>
 #include <talloc.h>
+#include <src/handlebars_context.h>
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -10,23 +11,27 @@
 #include "utils.h"
 
 static TALLOC_CTX * ctx;
+static struct handlebars_context * context;
 
 static void setup(void)
 {
     handlebars_memory_fail_disable();
     ctx = talloc_new(NULL);
+    context = handlebars_context_ctor_ex(ctx);
 }
 
 static void teardown(void)
 {
     handlebars_memory_fail_disable();
+    handlebars_context_dtor(context);
     talloc_free(ctx);
+    context = NULL;
     ctx = NULL;
 }
 
 START_TEST(test_ast_node_ctor)
 {
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
     
     ck_assert_ptr_ne(NULL, node);
     ck_assert_int_eq(HANDLEBARS_AST_NODE_PROGRAM, node->type);
@@ -38,25 +43,32 @@ END_TEST
 START_TEST(test_ast_node_ctor_failed_alloc)
 {
     struct handlebars_ast_node * node;
-    
+
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        // Should get here
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+    node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, node);
+
+    ck_assert(0);
 }
 END_TEST
 
 START_TEST(test_ast_node_dtor)
 {
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
     handlebars_ast_node_dtor(node);
 }
 END_TEST
 
 START_TEST(test_ast_node_dtor_failed_alloc)
 {
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
     int call_count;
     
     handlebars_memory_fail_enable();

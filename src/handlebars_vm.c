@@ -32,9 +32,7 @@
 #define __MEMCHECK(cond) \
     do { \
         if( unlikely(!cond) ) { \
-            vm->errnum = HANDLEBARS_NOMEM; \
-            vm->errmsg = "Out of memory [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
-            longjmp(vm->jmp, 1); \
+            handlebars_context_throw(vm->ctx, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
         } \
     } while(0)
 
@@ -407,8 +405,7 @@ ACCEPT_FUNCTION(invoke_helper)
     }
 
     if( !fn || !fn->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        char * msg = handlebars_talloc_asprintf(vm, "Helper missing: %s", ctx.name);
-        handlebars_vm_throw(vm, 0, msg);
+        handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "Helper missing: %s", ctx.name);
     }
 
     result = fn->v.helper(ctx.options);
@@ -478,8 +475,7 @@ ACCEPT_FUNCTION(invoke_partial)
         if( vm->flags & handlebars_compiler_flag_compat ) {
             return;
         } else {
-            char *tmp = handlebars_talloc_asprintf(vm, "The partial %s could not be found", name);
-            handlebars_vm_throw(vm, 0, tmp);
+            handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "The partial %s could not be found", name);
         }
     }
 
@@ -501,8 +497,8 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Parse
     handlebars_parse(context);
-    if( context->error ) {
-        handlebars_vm_throw(vm, context->errnum, context->error);
+    if( context->e.num ) {
+        handlebars_vm_throw(vm, context->e.num, context->e.msg);
     }
 
     // Compile
@@ -511,8 +507,8 @@ ACCEPT_FUNCTION(invoke_partial)
         compiler->known_helpers = (const char **) test->known_helpers;
     } */
     handlebars_compiler_compile(compiler, context->program);
-    if( compiler->errnum ) {
-        handlebars_vm_throw(vm, compiler->errnum, compiler->error);
+    if( context->e.num ) {
+        handlebars_context_throw_ex(vm->ctx, context->e.num, &context->e.loc, context->e.msg);
     }
 
     // Get context
@@ -547,10 +543,11 @@ ACCEPT_FUNCTION(invoke_partial)
     vm2->depths = vm->depths;
     vm2->blockParamStack = vm->blockParamStack;
     // @todo block params
+
     handlebars_vm_execute(vm2, compiler, context2);
-    if( vm2->errnum ) {
+    if( context->e.num ) {
         handlebars_context_dtor(context);
-        handlebars_vm_throw(vm, vm2->errnum, vm2->errmsg);
+        handlebars_context_throw_ex(vm->ctx, context->e.num, &context->e.loc, context->e.msg);
     }
 
     if( vm2->buffer ) {
@@ -987,7 +984,8 @@ void handlebars_vm_execute(
 		struct handlebars_value * context)
 {
     // Save jump buffer
-    if( setjmp(vm->jmp) ) {
+    vm->ctx->e.ok = true;
+    if( setjmp(vm->ctx->e.jmp) ) {
         goto done;
     }
 
@@ -1004,13 +1002,13 @@ void handlebars_vm_execute(
     vm->buffer = handlebars_vm_execute_program_ex(vm, 0, context, vm->data, NULL);
 
 done:
+    vm->ctx->e.ok = false;
+
     // Release context
     handlebars_value_delref(context);
 }
 
-void handlebars_vm_throw(struct handlebars_vm * vm, long errnum, const char * errmsg)
+void handlebars_vm_throw(struct handlebars_vm * vm, long num, const char * msg)
 {
-    vm->errnum = errnum;
-    vm->errmsg = errmsg;
-    longjmp(vm->jmp, 1);
+    handlebars_context_throw(vm->ctx, num, msg);
 }

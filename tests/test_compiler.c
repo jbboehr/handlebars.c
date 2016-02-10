@@ -119,13 +119,13 @@ START_TEST(test_compiler_is_known_helper)
     compiler = handlebars_compiler_ctor(ctx);
     //ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, NULL));
     
-    id = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH, compiler);
+    id = handlebars_ast_node_ctor(compiler, HANDLEBARS_AST_NODE_PATH);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
     id->node.path.parts = parts = handlebars_ast_list_ctor(compiler);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PATH, compiler);
+    path_segment = handlebars_ast_node_ctor(compiler, HANDLEBARS_AST_NODE_PATH);
     handlebars_ast_list_append(parts, path_segment);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     

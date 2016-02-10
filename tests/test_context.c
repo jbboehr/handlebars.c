@@ -2,6 +2,7 @@
 #include <check.h>
 #include <string.h>
 #include <talloc.h>
+#include <src/handlebars_context.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -70,8 +71,8 @@ START_TEST(test_context_get_errmsg)
     loc.last_line = 1;
     loc.last_column = 2;
     
-    context->error = "test";
-    context->errloc = &loc;
+    context->e.msg = "test";
+    context->e.loc = loc;
     actual = handlebars_context_get_errmsg(context);
     
     ck_assert_ptr_ne(NULL, actual);
@@ -94,15 +95,15 @@ START_TEST(test_context_get_errmsg_failed_alloc)
     loc.last_line = 1;
     loc.last_column = 2;
     
-    context->error = "test";
-    context->errloc = &loc;
+    context->e.msg = "test";
+    context->e.loc = loc;
     
     handlebars_memory_fail_enable();
     actual = handlebars_context_get_errmsg(context);
     handlebars_memory_fail_disable();
     
     //ck_assert_ptr_eq(NULL, actual);
-    ck_assert_ptr_eq(context->error, actual);
+    ck_assert_ptr_eq(context->e.msg, actual);
     
     handlebars_context_dtor(context);
 }
@@ -116,8 +117,8 @@ START_TEST(test_context_get_errmsg_js)
     loc.last_line = 1;
     loc.last_column = 2;
     
-    context->error = "test";
-    context->errloc = &loc;
+    context->e.msg = "test";
+    context->e.loc = loc;
     actual = handlebars_context_get_errmsg_js(context);
     
     ck_assert_ptr_ne(NULL, actual);
@@ -141,15 +142,15 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
     loc.last_line = 1;
     loc.last_column = 2;
     
-    context->error = "test";
-    context->errloc = &loc;
+    context->e.msg = "test";
+    context->e.loc = loc;
     
     handlebars_memory_fail_enable();
     actual = handlebars_context_get_errmsg_js(context);
     handlebars_memory_fail_disable();
     
     //ck_assert_ptr_eq(NULL, actual);
-    ck_assert_ptr_eq(context->error, actual);
+    ck_assert_ptr_eq(context->e.msg, actual);
     
     handlebars_context_dtor(context);
 }

@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <getopt.h>
+#include <src/handlebars_context.h>
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -239,10 +240,10 @@ static int do_parse(void)
     
     /*retval =*/ handlebars_yy_parse(ctx);
     
-    if( ctx->error != NULL ) {
+    if( ctx->e.num != NULL ) {
         output = handlebars_context_get_errmsg(ctx);
         fprintf(stderr, "%s\n", output);
-        error = ctx->errnum;
+        error = ctx->e.num;
         goto error;
     }
 
@@ -279,26 +280,16 @@ static int do_compile(void)
     // Parse
     /*retval =*/ handlebars_yy_parse(ctx);
 
-    if( ctx->error ) {
-        fprintf(stderr, "%s\n", ctx->error);
-        error = ctx->errnum;
-        goto error;
-    } else if( ctx->errnum ) {
-        fprintf(stderr, "Parser error %d\n", compiler->errnum);
-        error = ctx->errnum;
+    if( ctx->e.num ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->e.msg);
         goto error;
     }
     
     // Compile
     handlebars_compiler_compile(compiler, ctx->program);
 
-    if( compiler->error ) {
-        fprintf(stderr, "%s\n", compiler->error);
-        error = compiler->errnum;
-        goto error;
-    } else if( compiler->errnum ) {
-        fprintf(stderr, "Compiler error %d\n", compiler->errnum);
-        error = compiler->errnum;
+    if( ctx->e.num ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->e.msg);
         goto error;
     }
     
@@ -306,7 +297,7 @@ static int do_compile(void)
     //printer->flags = handlebars_opcode_printer_flag_locations;
     handlebars_opcode_printer_print(printer, compiler);
     fprintf(stdout, "%s\n", printer->output);
-    
+
 error:
     handlebars_context_dtor(ctx);
     return error;

@@ -29,10 +29,6 @@ struct handlebars_vm {
     size_t guid_index;
     long depth;
 
-    long errnum;
-    const char * errmsg;
-    jmp_buf jmp;
-
     struct handlebars_value * context;
     struct handlebars_value * data;
     struct handlebars_value * helpers;
@@ -62,7 +58,7 @@ char * handlebars_vm_execute_program_ex(
         struct handlebars_vm * vm, int program, struct handlebars_value * context,
         struct handlebars_value * data, struct handlebars_value * block_params);
 
-void handlebars_vm_throw(struct handlebars_vm * vm, long errnum, const char * errmsg);
+void handlebars_vm_throw(struct handlebars_vm * vm, long num, const char * msg);
 
 #ifdef	__cplusplus
 }

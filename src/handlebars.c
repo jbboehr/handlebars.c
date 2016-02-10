@@ -6,6 +6,7 @@
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_context.h"
+#include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
@@ -37,18 +38,15 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
     struct handlebars_token_list * list;
-    
-    // Prepare token list
-    list = handlebars_token_list_ctor(ctx);
-    if( unlikely(list == NULL) ) {
-        ctx->errnum = HANDLEBARS_NOMEM;
-        return NULL;
-    }
 
     // Save jump buffer
-    if( setjmp(ctx->jmp) ) {
+    ctx->e.ok = true;
+    if( setjmp(ctx->e.jmp) ) {
         goto done;
     }
+
+    // Prepare token list
+    list = handlebars_token_list_ctor(ctx);
     
     // Run
     do {
@@ -65,7 +63,7 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
         
         // Make token object
         text = (lval->text == NULL ? "" : lval->text);
-        token = handlebars_token_ctor(token_int, text, strlen(text), list);
+        token = talloc_steal(list, handlebars_token_ctor(ctx, token_int, text, strlen(text)));
         if( unlikely(token == NULL) ) {
             break;
         }
@@ -75,18 +73,21 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
     } while( 1 );
 
 done:
+    ctx->e.ok = false;
     return list;
 }
 
 bool handlebars_parse(struct handlebars_context * ctx)
 {
     // Save jump buffer
-    if( setjmp(ctx->jmp) ) {
+    ctx->e.ok = true;
+    if( setjmp(ctx->e.jmp) ) {
         goto done;
     }
 
     handlebars_yy_parse(ctx);
 
 done:
+    ctx->e.ok = false;
     return ctx->program != NULL;
 }
