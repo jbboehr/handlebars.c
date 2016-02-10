@@ -22,8 +22,10 @@ struct handlebars_token_list;
 // Macros
 #if (__GNUC__ >= 3)
 #define HBS_NORETURN __attribute__ ((noreturn))
+#define HBS_PRINTF_ATTR(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
 #else
 #define HBS_NORETURN
+#define HBS_PRINTF_ATTR(a1, a2)
 #endif
 
 /**
