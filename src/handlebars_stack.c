@@ -3,24 +3,42 @@
 #include "config.h"
 #endif
 
+#include <assert.h>
 #include <stdlib.h>
 #include <talloc.h>
 
+#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_stack.h"
 #include "handlebars_value.h"
 
+#define __S1(x) #x
+#define __S2(x) __S1(x)
+#define __MEMCHECK(ptr) \
+    do { \
+        if( unlikely(ptr == NULL) ) { \
+            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
+        } \
+    } while(0)
+
+
+
+#define CONTEXT ctx
+
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 {
-    struct handlebars_stack * stack = handlebars_talloc(ctx, struct handlebars_stack);
-    if( stack ) {
-        stack->ctx = ctx;
-        stack->i = 0;
-        stack->v = handlebars_talloc_array(stack, struct handlebars_value *, 32);
-    }
+    struct handlebars_stack * stack = handlebars_talloc_zero(ctx, struct handlebars_stack);
+    __MEMCHECK(stack);
+    stack->ctx = ctx;
+    stack->i = 0;
+    stack->v = handlebars_talloc_array(stack, struct handlebars_value *, 32);
+    __MEMCHECK(stack->v);
     return stack;
 }
+
+#undef CONTEXT
+#define CONTEXT stack->ctx
 
 void handlebars_stack_dtor(struct handlebars_stack * stack)
 {
@@ -39,8 +57,13 @@ size_t handlebars_stack_length(struct handlebars_stack * stack)
 
 struct handlebars_value * handlebars_stack_push(struct handlebars_stack * stack, struct handlebars_value * value)
 {
-    size_t s = talloc_array_length(stack->v);
+    size_t s;
     struct handlebars_value ** nv;
+
+    assert(stack != NULL);
+    assert(value != NULL);
+
+    s = talloc_array_length(stack->v);
 
     // Resize array if necessary
     if( stack->i <= s ) {
@@ -48,9 +71,7 @@ struct handlebars_value * handlebars_stack_push(struct handlebars_stack * stack,
             s += 32;
         } while( s <= stack->i );
         nv = handlebars_talloc_realloc(stack, stack->v, struct handlebars_value *, s);
-        if( !nv ) {
-            return NULL;
-        }
+        __MEMCHECK(nv);
         stack->v = nv;
     }
 
@@ -101,6 +122,8 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
 {
     struct handlebars_value * old;
 
+    assert(value != NULL);
+
     // As a special case, push
     if( offset == stack->i ) {
         return handlebars_stack_push(stack, value);
@@ -108,7 +131,7 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
 
     // Out-of-bounds
     if( offset >= stack->i ) {
-        return NULL;
+        handlebars_context_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds");
     }
 
     old = stack->v[offset];
@@ -140,18 +163,13 @@ void * handlebars_stack_push_ptr(struct handlebars_stack * stack, void * ptr)
 {
     struct handlebars_value * value = handlebars_value_ctor(stack->ctx);
 
-    if( unlikely(value == NULL) ) {
-        return NULL;
-    }
+    assert(value != NULL);
+    assert(ptr != NULL);
 
     value->type = HANDLEBARS_VALUE_TYPE_PTR;
     value->v.ptr = ptr;
 
-    value = handlebars_stack_push(stack, value);
-
-    if( unlikely(value == NULL) ) {
-        ptr = NULL;
-    }
+    handlebars_stack_push(stack, value);
 
     return ptr;
 }

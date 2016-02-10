@@ -31,7 +31,7 @@ struct handlebars_token {
  * @param[in] length Length of the text
  * @return the new token object
  */
-struct handlebars_token * handlebars_token_ctor(struct handlebars_context * ctx, int token_int, const char * text, size_t length);
+struct handlebars_token * handlebars_token_ctor(struct handlebars_context * ctx, int token_int, const char * text, size_t length) HBSARN;
 
 /**
  * @brief Destruct a token
@@ -73,7 +73,7 @@ void handlebars_token_get_text_ex(struct handlebars_token * token, const char **
  * @param[in] type The integral token type
  * @return The string name of the type
  */
-const char * handlebars_token_readable_type(int type);
+const char * handlebars_token_readable_type(int type) HBSARN;
 
 /**
  * @brief Get an integral type for the token name

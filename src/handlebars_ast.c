@@ -131,7 +131,7 @@ const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_nod
             ret = "null";
             break;
         default:
-            ret = NULL;
+            ret = "";
             break;
     }
     

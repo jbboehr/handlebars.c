@@ -350,6 +350,7 @@ static void handlebars_ast_helper_strip_comment_right(char * comment)
 
 char * handlebars_ast_helper_strip_comment(char * comment)
 {
+    assert(comment != NULL);
     handlebars_ast_helper_strip_comment_left(comment);
     handlebars_ast_helper_strip_comment_right(comment);
     return comment;

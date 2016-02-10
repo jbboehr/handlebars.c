@@ -103,6 +103,7 @@ AC_C_STRINGIZE
 AC_TYPE_SIZE_T
 AX_GCC_BUILTIN([__builtin_expect])
 AX_GCC_VAR_ATTRIBUTE([unused])
+AX_GCC_FUNC_ATTRIBUTE(returns_nonnull)
 
 # Checks for system
 AC_EXEEXT

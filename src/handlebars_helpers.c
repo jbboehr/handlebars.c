@@ -22,6 +22,7 @@
             handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
         } \
     } while(0)
+#define SAFE_RETURN(val) return val ? val : handlebars_value_ctor(CONTEXT)
 
 
 
@@ -65,14 +66,14 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
         ret->v.strval = talloc_steal(ret, result);
     }
 
-    return ret;
+    SAFE_RETURN(ret);
 }
 
 struct handlebars_value * handlebars_builtin_each(struct handlebars_options * options)
 {
     struct handlebars_value * context;
     struct handlebars_value_iterator * it;
-    struct handlebars_value * result;
+    struct handlebars_value * result = NULL;
     short use_data;
     use_data = (options->data != NULL);
     struct handlebars_value * data = NULL;
@@ -81,7 +82,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     size_t i = 0;
     size_t len;
     struct handlebars_options * options2;
-    struct handlebars_value * ret;
+    struct handlebars_value * ret = NULL;
 
     if( handlebars_stack_length(options->params) < 1 ) {
         handlebars_vm_throw(options->vm, HANDLEBARS_ERROR, "Must pass iterator to #each");
@@ -187,7 +188,7 @@ whoopsie:
         }
     }
 
-    return result;
+    SAFE_RETURN(result);
 }
 
 struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_options * options)
@@ -196,25 +197,26 @@ struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_op
         char * msg = handlebars_talloc_asprintf(options->vm, "Missing helper: \"%s\"", options->name);
         handlebars_vm_throw(options->vm, HANDLEBARS_ERROR, msg);
     }
-    return NULL;
+    SAFE_RETURN(NULL);
 }
 
 struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * options)
 {
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
     struct handlebars_value * field = handlebars_stack_get(options->params, 1);
+    struct handlebars_value * result = NULL;
 
     if( context->type == HANDLEBARS_VALUE_TYPE_MAP ) {
         const char * tmp = handlebars_value_get_strval(field);
-        return handlebars_value_map_find(context, tmp);
+        result = handlebars_value_map_find(context, tmp);
     } else if( context->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
         // @todo sscanf?
         if( field->type == HANDLEBARS_VALUE_TYPE_INTEGER ) {
-            return handlebars_value_array_find(context, handlebars_value_get_intval(field));
+            result = handlebars_value_array_find(context, handlebars_value_get_intval(field));
         }
     }
 
-    return NULL;
+    SAFE_RETURN(result);
 }
 
 struct handlebars_value * handlebars_builtin_if(struct handlebars_options * options)
@@ -235,6 +237,7 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
         if( !conditional ) {
             conditional = handlebars_value_ctor(CONTEXT);
         }
+        ret = NULL;
     }
 
     if( !handlebars_value_is_empty(conditional) ) {
@@ -254,22 +257,24 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
         ret = handlebars_value_ctor(CONTEXT);
         ret->type = HANDLEBARS_VALUE_TYPE_STRING;
         ret->v.strval = talloc_steal(ret, result);
-        return ret;
     }
 
-    return NULL;
+    SAFE_RETURN(ret);
 }
 
 struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * options)
 {
     struct handlebars_value * helper;
     struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
+    struct handlebars_value * result = NULL;
 
     handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
     helper = handlebars_value_map_find(options->vm->helpers, "if");
     assert(helper != NULL);
-    return helper->v.helper(options);
+    result = helper->v.helper(options);
+
+    SAFE_RETURN(result);
 }
 
 struct handlebars_value * handlebars_builtin_with(struct handlebars_options * options)
@@ -277,7 +282,7 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
     char * result = NULL;
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
     struct handlebars_value * block_params;
-    struct handlebars_value * ret;
+    struct handlebars_value * ret = NULL;
 
     if( context->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
         struct handlebars_options * options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
@@ -289,6 +294,7 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
         }
         handlebars_value_delref(context);
         context = ret;
+        ret = NULL;
     }
 
     if( context == NULL ) {
@@ -311,10 +317,9 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
         ret = handlebars_value_ctor(CONTEXT);
         ret->type = HANDLEBARS_VALUE_TYPE_STRING;
         ret->v.strval = talloc_steal(ret, result);
-        return ret;
     }
 
-    return NULL;
+    SAFE_RETURN(ret);
 }
 
 struct handlebars_value * handlebars_builtins(struct handlebars_context * ctx)
@@ -323,25 +328,16 @@ struct handlebars_value * handlebars_builtins(struct handlebars_context * ctx)
         tmp = handlebars_value_ctor(ctx); \
         tmp->type = HANDLEBARS_VALUE_TYPE_HELPER; \
         tmp->v.helper = func; \
-        handlebars_map_add(map, #name, tmp); \
+        handlebars_map_add(value->v.map, #name, tmp); \
     } while(0)
 
     struct handlebars_value * value;
-    struct handlebars_map * map;
     struct handlebars_value * tmp;
 
+    assert(ctx != NULL);
+
     value = handlebars_value_ctor(ctx);
-    if( unlikely(value == NULL) ) {
-        return NULL;
-    }
-
-    map = talloc_steal(value, handlebars_map_ctor(ctx));
-    if( unlikely(map == NULL) ) {
-        goto error;
-    }
-
-    value->type = HANDLEBARS_VALUE_TYPE_MAP;
-    value->v.map = map;
+    handlebars_value_map_init(value);
 
     ADDHELPER(blockHelperMissing, handlebars_builtin_block_helper_missing);
     ADDHELPER(each, handlebars_builtin_each);
@@ -352,8 +348,5 @@ struct handlebars_value * handlebars_builtins(struct handlebars_context * ctx)
     ADDHELPER(with, handlebars_builtin_with);
 
     return value;
-error:
-    handlebars_value_delref(value);
-    return NULL;
 #undef ADDHELPER
 }

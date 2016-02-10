@@ -50,12 +50,18 @@ END_TEST
 START_TEST(test_compiler_ctor_failed_alloc)
 {
     struct handlebars_compiler * compiler;
-    
+
+    ctx->e.ok = true;
+    if( setjmp(ctx->e.jmp) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
     compiler = handlebars_compiler_ctor(ctx);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, compiler);
+
+    ck_assert(0);
 }
 END_TEST
 

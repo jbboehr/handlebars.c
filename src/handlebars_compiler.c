@@ -37,7 +37,7 @@
 #define __MEMCHECK(cond) \
     do { \
         if( unlikely(!cond) ) { \
-            handlebars_context_throw(compiler->ctx, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
+            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
         } \
     } while(0)
 
@@ -71,21 +71,24 @@ static inline void handlebars_compiler_accept_decorator(
         int programGuid, int inverseGuid);
 
 
+#define CONTEXT ctx
 
 struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_compiler * compiler;
     
     compiler = handlebars_talloc_zero(ctx, struct handlebars_compiler);
-    
-    if( likely(compiler != NULL) ) {
-        compiler->ctx = ctx;
-        compiler->known_helpers = handlebars_builtins_names();
-        compiler->bps = handlebars_talloc_zero(compiler, struct handlebars_block_param_stack);
-    }
+    __MEMCHECK(compiler);
+    compiler->ctx = ctx;
+    compiler->known_helpers = handlebars_builtins_names();
+    compiler->bps = handlebars_talloc_zero(compiler, struct handlebars_block_param_stack);
+    __MEMCHECK(compiler->bps);
     
     return compiler;
 };
+
+#undef CONTEXT
+#define CONTEXT compiler->ctx
 
 void handlebars_compiler_dtor(struct handlebars_compiler * compiler)
 {

@@ -28,7 +28,7 @@ struct handlebars_map {
 #define handlebars_map_foreach(list, el, tmp) \
     for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
 
-struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx);
+struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx) HBSARN;
 void handlebars_map_dtor(struct handlebars_map * map);
 bool handlebars_map_add(struct handlebars_map * map, const char * key, struct handlebars_value * value);
 bool handlebars_map_remove(struct handlebars_map * map, const char * key);

@@ -34,28 +34,45 @@ struct handlebars_yy_inverse_and_program;
  * @return A newly constructed raw block AST node
  */
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
-        struct handlebars_context * context, struct handlebars_ast_node * open_block,
-        struct handlebars_ast_node * program, struct handlebars_ast_node * inverse,
-        struct handlebars_ast_node * close, int inverted,
-        struct handlebars_locinfo * locinfo);
+    struct handlebars_context * context,
+    struct handlebars_ast_node * open_block,
+    struct handlebars_ast_node * program,
+    struct handlebars_ast_node * inverse,
+    struct handlebars_ast_node * close,
+    int inverted,
+    struct handlebars_locinfo * locinfo
+) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
-        struct handlebars_context * context, struct handlebars_ast_node * open_inverse_chain,
-        struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_chain,
-        struct handlebars_locinfo * locinfo);
+    struct handlebars_context * context,
+    struct handlebars_ast_node * open_inverse_chain,
+    struct handlebars_ast_node * program,
+    struct handlebars_ast_node * inverse_chain,
+    struct handlebars_locinfo * locinfo
+) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
-        struct handlebars_context * context, struct handlebars_ast_node * intermediate,
-        char * open, unsigned strip, struct handlebars_locinfo * locinfo);
+    struct handlebars_context * context,
+    struct handlebars_ast_node * intermediate,
+    char * open,
+    unsigned strip,
+    struct handlebars_locinfo * locinfo
+) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
-    struct handlebars_context * context, struct handlebars_ast_node * open,
-    struct handlebars_ast_node * program, struct handlebars_ast_node * close,
-    struct handlebars_locinfo * locinfo);
+    struct handlebars_context * context,
+    struct handlebars_ast_node * open,
+    struct handlebars_ast_node * program,
+    struct handlebars_ast_node * close,
+    struct handlebars_locinfo * locinfo
+) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
-        struct handlebars_context * context, struct handlebars_ast_list * list,
-        bool data, struct handlebars_locinfo * locinfo);
+    struct handlebars_context * context,
+    struct handlebars_ast_list * list,
+    bool data,
+    struct handlebars_locinfo * locinfo
+) HBSARN;
 
 /**
  * @brief Prepare a block node.
@@ -68,12 +85,16 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
  * @return A newly constructed block AST node
  */
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
-        struct handlebars_context * context, struct handlebars_ast_node * open_raw_block, 
-        const char * content, const char * close, struct handlebars_locinfo * locinfo);
+        struct handlebars_context * context,
+        struct handlebars_ast_node * open_raw_block,
+        const char * content,
+        const char * close,
+        struct handlebars_locinfo * locinfo
+) HBSARN;
 
-char * handlebars_ast_helper_strip_comment(char * comment);
+char * handlebars_ast_helper_strip_comment(char * comment) HBSARN;
 
-char * handlebars_ast_helper_strip_id_literal(char * comment);
+char * handlebars_ast_helper_strip_id_literal(char * comment) HBSARN;
 
 /**
  * @brief Set the strip flags of a node

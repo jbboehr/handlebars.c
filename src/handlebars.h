@@ -21,12 +21,22 @@ struct handlebars_token_list;
 
 // Macros
 #if (__GNUC__ >= 3)
-#define HBS_NORETURN __attribute__ ((noreturn))
-#define HBS_PRINTF_ATTR(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
+#define HBS_ATTR_NORETURN __attribute__ ((noreturn))
+#define HBS_ATTR_PRINTF(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
+#define HBS_ATTR_UNUSED  __attribute__((__unused__))
+#define HBS_ATTR_NONNULL(...) __attribute__((nonnull (__VA_ARGS__)))
 #else
-#define HBS_NORETURN
-#define HBS_PRINTF_ATTR(a1, a2)
+#define HBS_ATTR_NORETURN
+#define HBS_ATTR_PRINTF(a1, a2)
+#define HBS_ATTR_UNUSED
+#define HBS_ATTR_NONNULL
 #endif
+#if (__GNUC__ >= 5) || ((__GNUC__ >= 4) && (__GNUC_MINOR__ >= 9))
+#define HBS_ATTR_RETURNS_NONNULL  __attribute__((returns_nonnull))
+#else
+#define HBS_ATTR_RETURNS_NONNULL
+#endif
+#define HBSARN HBS_ATTR_RETURNS_NONNULL
 
 /**
  * @brief Enumeration of error types
@@ -96,11 +106,11 @@ int handlebars_version(void);
  * @brief Get the library version as a string
  * @return The version of handlebars as a string
  */
-const char * handlebars_version_string(void);
+const char * handlebars_version_string(void) HBSARN;
 
-const char * handlebars_spec_version_string(void);
+const char * handlebars_spec_version_string(void) HBSARN;
 
-const char * handlebars_mustache_spec_version_string(void);
+const char * handlebars_mustache_spec_version_string(void) HBSARN;
 
 /**
  * @brief Convenience function for lexing to a token list
@@ -108,7 +118,7 @@ const char * handlebars_mustache_spec_version_string(void);
  * @param[in] ctx
  * @return the token list
  */
-struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx);
+struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx) HBSARN;
 
 bool handlebars_parse(struct handlebars_context * ctx);
 

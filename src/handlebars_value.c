@@ -384,8 +384,10 @@ char * handlebars_value_expression(struct handlebars_value * value, bool escape)
 
 struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
 {
-    struct handlebars_value * new_value;
+    struct handlebars_value * new_value = NULL;
     struct handlebars_value_iterator * it;
+
+    assert(value != NULL);
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
@@ -413,6 +415,8 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             memcpy(&new_value->v, &value->v, sizeof(value->v));
             break;
     }
+
+    __MEMCHECK(new_value);
 
     return new_value;
 }
@@ -499,14 +503,16 @@ struct handlebars_value * handlebars_value_from_json_object(struct handlebars_co
 
 struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json)
 {
-    struct handlebars_value * ret;
-    struct json_object * result = json_tokener_parse(json);
-    if( result ) {
+    struct handlebars_value * ret = NULL;
+    enum json_tokener_error parse_err = json_tokener_success;
+    struct json_object * result = json_tokener_parse_verbose(json, &parse_err);
+    // @todo test parse error
+    if( parse_err == json_tokener_success ) {
         ret = handlebars_value_from_json_object(ctx, result);
-        if( ret ) {
-            talloc_set_destructor(ret, handlebars_value_dtor);
-            ret->flags |= HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
-        }
+        talloc_set_destructor(ret, handlebars_value_dtor);
+        ret->flags |= HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
+    } else {
+        handlebars_context_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
     }
     return ret;
 }
@@ -598,12 +604,11 @@ struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_co
     yaml_parser_set_input_string(&yctx->parser, (unsigned char *) yaml, strlen(yaml));
     yaml_parser_load(&yctx->parser, &yctx->document);
     yaml_node_t * node = yaml_document_get_root_node(&yctx->document);
+    // @todo test parse error
     if( node ) {
         value = handlebars_value_from_yaml_node(ctx, &yctx->document, node);
-#ifndef NDEBUG
     } else {
-        fprintf(stderr, "YAML error: %d:\n", yctx->parser.error);
-#endif
+        handlebars_context_throw(ctx, HANDLEBARS_ERROR, "YAML Parse Error: [%d] %s", yctx->parser.error, yctx->parser.problem);
     }
     handlebars_talloc_free(yctx);
     return value;

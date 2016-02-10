@@ -73,28 +73,28 @@ struct handlebars_value {
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
 struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key);
 struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
-char * handlebars_value_get_strval(struct handlebars_value * value);
+char * handlebars_value_get_strval(struct handlebars_value * value) HBSARN;
 size_t handlebars_value_get_strlen(struct handlebars_value * value);
 bool handlebars_value_get_boolval(struct handlebars_value * value);
 long handlebars_value_get_intval(struct handlebars_value * value);
 double handlebars_value_get_floatval(struct handlebars_value * value);
 
-char * handlebars_value_expression(struct handlebars_value * value, bool escape);
+char * handlebars_value_expression(struct handlebars_value * value, bool escape) HBSARN;
 
-struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx);
-struct handlebars_value * handlebars_value_copy(struct handlebars_value * value);
+struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx) HBSARN;
+struct handlebars_value * handlebars_value_copy(struct handlebars_value * value) HBSARN;
 void handlebars_value_dtor(struct handlebars_value * value);
-struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json);
-struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json);
-struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node);
-struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml);
+struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json) HBSARN;
+struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json) HBSARN;
+struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node) HBSARN;
+struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml) HBSARN;
 
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);
-struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value);
+struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value) HBSARN;
 bool handlebars_value_iterator_next(struct handlebars_value_iterator * it);
 
-char * handlebars_value_dump(struct handlebars_value * value, size_t depth);
+char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBSARN;
 
 static inline int handlebars_value_addref(struct handlebars_value * value) {
     return ++value->refcount;

@@ -45,7 +45,7 @@ struct handlebars_vm {
     struct handlebars_stack * blockParamStack;
 };
 
-struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx);
+struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBSARN;
 
 void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
@@ -58,7 +58,7 @@ char * handlebars_vm_execute_program_ex(
         struct handlebars_vm * vm, int program, struct handlebars_value * context,
         struct handlebars_value * data, struct handlebars_value * block_params);
 
-void handlebars_vm_throw(struct handlebars_vm * vm, long num, const char * msg) HBS_NORETURN;
+void handlebars_vm_throw(struct handlebars_vm * vm, long num, const char * msg) HBS_ATTR_NORETURN;
 
 #ifdef	__cplusplus
 }

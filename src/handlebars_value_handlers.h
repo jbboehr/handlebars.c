@@ -30,7 +30,7 @@ struct handlebars_value_handlers {
     handlebars_iterator_next_func next;
 };
 
-struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void);
+struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void) HBSARN;
 
 #ifdef	__cplusplus
 }

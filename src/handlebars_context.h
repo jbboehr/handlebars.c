@@ -62,8 +62,8 @@ struct handlebars_context * handlebars_context_ctor_ex(void * ctx);
 void handlebars_context_dtor(struct handlebars_context * context);
 
 //#define handlebars_context_throw(context, errnum, errmsg, ...) handlebars_context_throw_ex(context, errnum, NULL, errmsg, __VA_ARGS__)
-void handlebars_context_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...) HBS_NORETURN HBS_PRINTF_ATTR(3, 4);
-void handlebars_context_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...) HBS_NORETURN  HBS_PRINTF_ATTR(4, 5);
+void handlebars_context_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...) HBS_ATTR_NORETURN HBS_ATTR_PRINTF(3, 4);
+void handlebars_context_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...) HBS_ATTR_NORETURN  HBS_ATTR_PRINTF(4, 5);
 
 /**
  * @brief Get the error message from a context, or NULL.

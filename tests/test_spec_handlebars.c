@@ -71,6 +71,7 @@ static void loadSpecTest(json_object * object)
 
     // Get test
     struct generic_test * test = &(tests[tests_len++]);
+    memset(test, 0, sizeof(struct generic_test));
     //test->ctx = handlebars_context_ctor_ex(rootctx);
     test->raw = object;
 
@@ -329,7 +330,7 @@ START_TEST(test_handlebars_spec)
     vm->flags = test->flags;
 
     // Setup helpers
-    vm->helpers = handlebars_builtins(vm->ctx);
+    vm->helpers = handlebars_builtins(ctx);
     if( test->globalHelpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->globalHelpers);
         load_fixtures(helpers);

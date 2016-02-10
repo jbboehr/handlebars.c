@@ -32,7 +32,7 @@
 #define __MEMCHECK(cond) \
     do { \
         if( unlikely(!cond) ) { \
-            handlebars_context_throw(vm->ctx, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
+            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
         } \
     } while(0)
 
@@ -52,6 +52,32 @@ struct setup_ctx {
 };
 
 ACCEPT_FUNCTION(push_context);
+
+
+
+
+
+#define CONTEXT ctx
+
+struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
+{
+    struct handlebars_vm * vm = handlebars_talloc_zero(ctx, struct handlebars_vm);
+    __MEMCHECK(vm);
+
+    vm->ctx = ctx;
+    vm->frameStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
+    vm->depths = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
+    vm->stack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
+    vm->hashStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
+    vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
+
+    return vm;
+}
+
+#undef CONTEXT
+#define CONTEXT vm->ctx
+
+
 
 
 static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * ctx)
@@ -195,30 +221,6 @@ static inline char * dump_stack(struct handlebars_stack * stack)
 
 
 
-struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
-{
-    TALLOC_CTX * tmp = talloc_init(ctx);
-	struct handlebars_vm * vm = handlebars_talloc_zero(tmp, struct handlebars_vm);
-    if( !vm ) {
-        return NULL;
-    }
-
-    vm->ctx = ctx;
-    vm->frameStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    vm->depths = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    vm->stack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    vm->hashStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    if( !vm->frameStack || !vm->depths || !vm->stack || !vm->hashStack || !vm->blockParamStack ) {
-        vm = NULL;
-        goto error;
-    }
-
-    talloc_steal(ctx, vm);
-error:
-    handlebars_talloc_free(tmp);
-    return vm;
-}
 
 
 ACCEPT_FUNCTION(ambiguous_block_value)
