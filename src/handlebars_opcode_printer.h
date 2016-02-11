@@ -61,7 +61,7 @@ struct handlebars_opcode_printer {
  *
  * @param[in] ctx The talloc parent context
  */
-struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(void * ctx);
+struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_compiler * compiler) HBSARN;
 
 /**
  * @brief Destruct an opcode printer context
@@ -95,7 +95,7 @@ char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opc
  * @param[in] opcode The opcode to print
  * @return The printed opcode
  */
-char * handlebars_opcode_print(void * ctx, struct handlebars_opcode * opcode);
+char * handlebars_opcode_print(struct handlebars_compiler * compiler, struct handlebars_opcode * opcode) HBSARN;
 
 /**
  * @brief Print a compiler context

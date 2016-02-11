@@ -63,16 +63,6 @@ int handlebars_yy_debug = 1;
 int handlebars_yy_debug = 0;
 #endif
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(cond) \
-  do { \
-    if( unlikely(!cond) ) { \
-      handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-      YYABORT; \
-    } \
-  } while(0)
-
 #define scanner context->scanner
 %}
 
@@ -227,10 +217,8 @@ statement
 
 content
   : CONTENT content {
-      $$ = handlebars_talloc_strdup_append($1, $2);
-      __MEMCHECK($$);
+      $$ = MC(handlebars_talloc_strdup_append($1, $2));
       $$ = talloc_steal(context, $$);
-      __MEMCHECK($$);
     }
   | CONTENT {
       $$ = $1;
@@ -469,20 +457,16 @@ hash_pairs
 hash_pair
   : ID EQUALS param {
       $$ = handlebars_ast_node_ctor_hash_pair(context, $1, $3, &@$);
-      __MEMCHECK($$);
     }
   ;
 
 block_params
   : OPEN_BLOCK_PARAMS ID ID CLOSE_BLOCK_PARAMS {
-      $$.block_param1 = handlebars_talloc_strdup(context, $2);
-      __MEMCHECK($$.block_param1);
-      $$.block_param2 = handlebars_talloc_strdup(context, $3);
-      __MEMCHECK($$.block_param2);
+      $$.block_param1 = MC(handlebars_talloc_strdup(context, $2));
+      $$.block_param2 = MC(handlebars_talloc_strdup(context, $3));
     }
   | OPEN_BLOCK_PARAMS ID CLOSE_BLOCK_PARAMS {
-      $$.block_param1 = handlebars_talloc_strdup(context, $2);
-      __MEMCHECK($$.block_param1);
+      $$.block_param1 = MC(handlebars_talloc_strdup(context, $2));
       $$.block_param2 = NULL;
     }
   ;
@@ -541,10 +525,10 @@ path_segments
     }
   | ID {
       struct handlebars_ast_node * ast_node;
-      __MEMCHECK($1); // this is weird
+      MEMCHK($1); // this is weird
   	  
       ast_node = handlebars_ast_node_ctor_path_segment(context, $1, NULL, &@$);
-      __MEMCHECK(ast_node); // this is weird
+      MEMCHK(ast_node); // this is weird
       
       $$ = handlebars_ast_list_ctor(context);
       handlebars_ast_list_append($$, ast_node);

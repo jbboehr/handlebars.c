@@ -15,6 +15,9 @@
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
+#undef CONTEXT
+#define CONTEXT ((struct handlebars_context *)yyextra)
+
 // Make sure nothing goes to stdout
 #define ECHO
 
@@ -41,25 +44,13 @@
      	fprintf( stderr, "--initializing yylval\n" ); \
 	}
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(cond) \
-  do { \
-    if( unlikely(!cond) ) { \
-      struct handlebars_context * context = yyextra; \
-      handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-      yyterminate(); \
-    } \
-  } while(0)
-
 #define handlebars_yy_unput_all \
 	handlebars_yy_unput_n(yyleng)
  		
 #define handlebars_yy_unput_n(n) \
 	do { \
 		int i; \
- 		char * yycopy = handlebars_talloc_strdup(yyextra, yytext); \
- 		__MEMCHECK(yycopy); \
+ 		char * yycopy = MC(handlebars_talloc_strdup(yyextra, yytext)); \
 		for ( i = yyleng - 1; i >= yyleng - n && i >= 0; --i ) { \
 			unput( yycopy[i] ); \
 		} \
@@ -67,8 +58,7 @@
     } while(0)
 
 #define handlebars_yy_copy_lval() \
-	yylval->text = handlebars_talloc_strndup(yyextra, yytext, yyleng); \
-    __MEMCHECK(yylval->text); \
+	yylval->text = MC(handlebars_talloc_strndup(yyextra, yytext, yyleng)); \
 	yylval->length = yyleng
 
 #define YY_USER_ACTION \

@@ -13,12 +13,14 @@
 #include "handlebars_private.h"
 #include "handlebars_utils.h"
 
-struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(void * ctx)
+
+
+#define CONTEXT compiler->ctx
+
+struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_compiler * compiler)
 {
-    struct handlebars_opcode_printer * printer = handlebars_talloc_zero(ctx, struct handlebars_opcode_printer);
-    if( likely(printer != NULL) ) {
-        printer->output = handlebars_talloc_strdup(printer, "");
-    }
+    struct handlebars_opcode_printer * printer = MC(handlebars_talloc_zero(compiler, struct handlebars_opcode_printer));
+    printer->output = MC(handlebars_talloc_strdup(printer, ""));
     return printer;
 }
 
@@ -108,13 +110,13 @@ char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opc
     return str;
 }
 
-char * handlebars_opcode_print(void * ctx, struct handlebars_opcode * opcode)
+char * handlebars_opcode_print(struct handlebars_compiler * compiler, struct handlebars_opcode * opcode)
 {
-    char * str = handlebars_talloc_strdup(ctx, "");
-    return handlebars_opcode_print_append(str, opcode, 0);
+    char * str = MC(handlebars_talloc_strdup(compiler, ""));
+    return MC(handlebars_opcode_print_append(str, opcode, 0));
 }
 
-static void handlebars_opcode_printer_array_print(struct handlebars_opcode_printer * printer)
+static void handlebars_opcode_printer_array_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
 {
     int indent = printer->indent < 8 ? printer->indent * 2 : 16;
     char indentbuf[17];
@@ -126,12 +128,12 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
     indentbuf[indent] = 0;
     
     for( i = 0; i < count; i++, opcodes++ ) {
-        printer->output = handlebars_talloc_strdup_append(printer->output, indentbuf);
-        printer->output = handlebars_opcode_print_append(printer->output, *opcodes, printer->flags);
-        printer->output = handlebars_talloc_strdup_append(printer->output, "\n");
+        printer->output = MC(handlebars_talloc_strdup_append(printer->output, indentbuf));
+        printer->output = MC(handlebars_opcode_print_append(printer->output, *opcodes, printer->flags));
+        printer->output = MC(handlebars_talloc_strdup_append(printer->output, "\n"));
     }
     
-    printer->output = handlebars_talloc_asprintf_append(printer->output, "%s-----\n", indentbuf);
+    printer->output = MC(handlebars_talloc_asprintf_append(printer->output, "%s-----\n", indentbuf));
 }
 
 void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
@@ -149,7 +151,7 @@ void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer,
     // Print opcodes
     printer->opcodes = compiler->opcodes;
     printer->opcodes_length = compiler->opcodes_length;
-    handlebars_opcode_printer_array_print(printer);
+    handlebars_opcode_printer_array_print(printer, compiler);
     
     printer->indent++;
     

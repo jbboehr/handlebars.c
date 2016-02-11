@@ -17,24 +17,12 @@
 #include "handlebars_private.h"
 #include "handlebars_utils.h"
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(ptr) \
-    do { \
-        if( unlikely(ptr == NULL) ) { \
-            handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-        } \
-    } while(0)
-
 
 
 struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_context * context, enum handlebars_ast_node_type type)
 {
     struct handlebars_ast_node * ast_node;
-    
-    ast_node = handlebars_talloc_zero(context, struct handlebars_ast_node);
-    __MEMCHECK(ast_node);
-
+    ast_node = MC(handlebars_talloc_zero(context, struct handlebars_ast_node));
     ast_node->type = type;
     return ast_node;
 }
@@ -82,19 +70,12 @@ char ** handlebars_ast_node_get_id_parts(struct handlebars_context * context, st
         return NULL;
     }
 
-    arrptr = arr = handlebars_talloc_array(context, char *, num + 1);
-    if( unlikely(arr == NULL) ) {
-        return NULL;
-    }
+    arrptr = arr = MC(handlebars_talloc_array(context, char *, num + 1));
     
     handlebars_ast_list_foreach(ast_node->node.path.parts, item, tmp) {
         assert(item->data);
         if( likely(item->data->type == HANDLEBARS_AST_NODE_PATH_SEGMENT) ) {
-            *arrptr = handlebars_talloc_strdup(arr, item->data->node.path_segment.part);
-            if( unlikely(*arrptr == NULL) ) {
-                handlebars_talloc_free(arr);
-                return NULL;
-            }
+            *arrptr = MC(handlebars_talloc_strdup(arr, item->data->node.path_segment.part));
             ++arrptr;
         }
     }
@@ -282,8 +263,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
 
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_BOOLEAN);
     ast_node->loc = *locinfo;
-    ast_node->node.boolean.value = handlebars_talloc_strdup(ast_node, boolean);
-    __MEMCHECK(ast_node->node.boolean.value);
+    ast_node->node.boolean.value = MC(handlebars_talloc_strdup(ast_node, boolean));
 
     return ast_node;
 }
@@ -293,13 +273,10 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_comment(
         struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_COMMENT);
     ast_node->loc = *locinfo;
     ast_node->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
-    ast_node->node.comment.value = handlebars_talloc_strdup(ast_node, comment);
-    __MEMCHECK(ast_node->node.comment.value);
-
+    ast_node->node.comment.value = MC(handlebars_talloc_strdup(ast_node, comment));
     return ast_node;
 }
 
@@ -308,14 +285,10 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_content(
         struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_CONTENT);
     ast_node->loc = *locinfo;
-    ast_node->node.content.value = handlebars_talloc_strdup(ast_node, content);
-    __MEMCHECK(ast_node->node.content.value);
-    ast_node->node.content.original = handlebars_talloc_strdup(ast_node, content);
-    __MEMCHECK(ast_node->node.content.original);
-
+    ast_node->node.content.value = MC(handlebars_talloc_strdup(ast_node, content));
+    ast_node->node.content.original = MC(handlebars_talloc_strdup(ast_node, content));
     return ast_node;
 }
 
@@ -324,13 +297,10 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_hash_pair(
     struct handlebars_ast_node * value, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_HASH_PAIR);
     ast_node->loc = *locinfo;
-    ast_node->node.hash_pair.key = handlebars_talloc_strdup(ast_node, key);
-    __MEMCHECK(ast_node->node.hash_pair.key);
+    ast_node->node.hash_pair.key = MC(handlebars_talloc_strdup(ast_node, key));
     ast_node->node.hash_pair.value = talloc_steal(ast_node, value);
-
     return ast_node;
 }
 
@@ -340,15 +310,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
 	    unsigned strip, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
-    // Construct the ast node
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_INTERMEDIATE);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
     ast_node->node.intermediate.path = talloc_steal(ast_node, path);
     ast_node->node.intermediate.params = talloc_steal(ast_node, params);
     ast_node->node.intermediate.hash = talloc_steal(ast_node, hash);
-
     return ast_node;
 }
 
@@ -357,13 +324,11 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
         bool chained, unsigned strip, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_INVERSE);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
     ast_node->node.inverse.program = talloc_steal(ast_node, program);
     ast_node->node.inverse.chained = chained;
-
     return ast_node;
 }
 
@@ -371,10 +336,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_null(
     struct handlebars_context * context, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_NUL);
     ast_node->loc = *locinfo;
-
     return ast_node;
 }
 
@@ -383,12 +346,9 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_number(
     struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_NUMBER);
     ast_node->loc = *locinfo;
-    ast_node->node.number.value = handlebars_talloc_strdup(ast_node, number);
-    __MEMCHECK(ast_node->node.number.value);
-
+    ast_node->node.number.value = MC(handlebars_talloc_strdup(ast_node, number));
     return ast_node;
 }
 
@@ -440,7 +400,6 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_program(
     bool chained, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
@@ -448,7 +407,6 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_program(
     ast_node->node.program.block_param1 = talloc_steal(ast_node, block_param1);
     ast_node->node.program.block_param2 = talloc_steal(ast_node, block_param2);
     ast_node->node.program.chained = chained;
-
     return ast_node;
 }
 
@@ -457,17 +415,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path(
     char * original, int depth, bool data, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-
-    assert(parts != NULL);
-    assert(original != NULL);
-
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PATH);
     ast_node->loc = *locinfo;
     ast_node->node.path.parts = talloc_steal(ast_node, parts);
     ast_node->node.path.original = talloc_steal(ast_node, original);
     ast_node->node.path.data = data;
     ast_node->node.path.depth = depth;
-
     return ast_node;
 }
 
@@ -476,23 +429,14 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    char * newpart;
 
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PATH_SEGMENT);
     ast_node->loc = *locinfo;
-
-    ast_node->node.path_segment.original = handlebars_talloc_strdup(ast_node, part);
-    __MEMCHECK(ast_node->node.path_segment.original);
-
-    newpart = handlebars_talloc_strdup(ast_node, part);
-    __MEMCHECK(newpart);
-    newpart = handlebars_ast_helper_strip_id_literal(newpart);
-    ast_node->node.path_segment.part = newpart;
-    __MEMCHECK(ast_node->node.path_segment.part);
+    ast_node->node.path_segment.original = MC(handlebars_talloc_strdup(ast_node, part));
+    ast_node->node.path_segment.part = handlebars_ast_helper_strip_id_literal(MC(handlebars_talloc_strdup(ast_node, part)));;
     
     if( separator != NULL ) {
-        ast_node->node.path_segment.separator = handlebars_talloc_strdup(ast_node, separator);
-        __MEMCHECK(ast_node->node.path_segment.separator);
+        ast_node->node.path_segment.separator = MC(handlebars_talloc_strdup(ast_node, separator));
     }
 
     return ast_node;
@@ -528,7 +472,6 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     // Create the program node
     program = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
     statements = talloc_steal(program, handlebars_ast_list_ctor(context));
-    __MEMCHECK(statements);
     program->node.program.statements = statements;
     handlebars_ast_list_append(statements, talloc_steal(program, content));
     ast_node->node.raw_block.program = program;
@@ -568,8 +511,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_string(
 
     ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_STRING);
     ast_node->loc = *locinfo;
-    ast_node->node.string.value = handlebars_talloc_strdup(ast_node, string);
-    __MEMCHECK(ast_node->node.string.value);
+    ast_node->node.string.value = MC(handlebars_talloc_strdup(ast_node, string));
 
     return ast_node;
 }

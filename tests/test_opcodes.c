@@ -8,28 +8,38 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_compiler.h"
+#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "utils.h"
 
 static TALLOC_CTX * ctx;
+static struct handlebars_context * context;
+static struct handlebars_compiler * compiler;
 
 static void setup(void)
 {
     handlebars_memory_fail_disable();
     ctx = talloc_new(NULL);
+    context = handlebars_context_ctor_ex(ctx);
+    compiler = handlebars_compiler_ctor(context);
 }
 
 static void teardown(void)
 {
     handlebars_memory_fail_disable();
+    handlebars_compiler_dtor(compiler);
+    handlebars_context_dtor(context);
     talloc_free(ctx);
+    compiler = NULL;
+    context = NULL;
     ctx = NULL;
 }
 
 START_TEST(test_opcode_ctor)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_append);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_append);
     
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append, opcode->type);
@@ -40,13 +50,17 @@ END_TEST
 
 START_TEST(test_opcode_ctor_failed_alloc)
 {
-    struct handlebars_opcode * opcode;
-    
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_append);
+    handlebars_opcode_ctor(compiler, handlebars_opcode_type_append);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
+
+    ck_assert(0);
 }
 END_TEST
 
@@ -54,7 +68,7 @@ START_TEST(test_opcode_ctor_long)
 {
     struct handlebars_opcode * opcode;
     
-    opcode = handlebars_opcode_ctor_long(ctx, handlebars_opcode_type_get_context, 1);
+    opcode = handlebars_opcode_ctor_long(compiler, handlebars_opcode_type_get_context, 1);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
     ck_assert_int_eq(1, opcode->op1.data.longval);
@@ -65,13 +79,17 @@ END_TEST
 
 START_TEST(test_opcode_ctor_long_failed_alloc)
 {
-    struct handlebars_opcode * opcode;
-    
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_long(ctx, handlebars_opcode_type_get_context, 1);
+    handlebars_opcode_ctor_long(compiler, handlebars_opcode_type_get_context, 1);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
+
+    ck_assert(0);
 }
 END_TEST
 
@@ -80,7 +98,7 @@ START_TEST(test_opcode_ctor_long_string)
     struct handlebars_opcode * opcode;
     const char * str = "blah";
     
-    opcode = handlebars_opcode_ctor_long_string(ctx, handlebars_opcode_type_get_context, 1, str);
+    opcode = handlebars_opcode_ctor_long_string(compiler, handlebars_opcode_type_get_context, 1, str);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
     ck_assert_int_eq(1, opcode->op1.data.longval);
@@ -95,12 +113,18 @@ START_TEST(test_opcode_ctor_long_string_failed_alloc)
 {
     struct handlebars_opcode * opcode;
     const char * str = "blah";
+
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        ck_assert(1);
+        return;
+    }
     
     handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_long_string(ctx, handlebars_opcode_type_get_context, 1, str);
+    handlebars_opcode_ctor_long_string(compiler, handlebars_opcode_type_get_context, 1, str);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
+
+    ck_assert(0);
 }
 END_TEST
 
@@ -109,7 +133,7 @@ START_TEST(test_opcode_ctor_string)
     struct handlebars_opcode * opcode;
     const char * str = "foo";
     
-    opcode = handlebars_opcode_ctor_string(ctx, handlebars_opcode_type_append_content, str);
+    opcode = handlebars_opcode_ctor_string(compiler, handlebars_opcode_type_append_content, str);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
     ck_assert_str_eq(str, opcode->op1.data.stringval);
@@ -123,12 +147,18 @@ START_TEST(test_opcode_ctor_string_failed_alloc)
 {
     struct handlebars_opcode * opcode;
     const char * str = "foo";
-    
+
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_string(ctx, handlebars_opcode_type_append_content, str);
+    opcode = handlebars_opcode_ctor_string(compiler, handlebars_opcode_type_append_content, str);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
+
+    ck_assert(0);
 }
 END_TEST
 
@@ -138,7 +168,7 @@ START_TEST(test_opcode_ctor_string2)
     const char * str1 = "foo";
     const char * str2 = "bar";
     
-    opcode = handlebars_opcode_ctor_string2(ctx, handlebars_opcode_type_append_content, str1, str2);
+    opcode = handlebars_opcode_ctor_string2(compiler, handlebars_opcode_type_append_content, str1, str2);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
     ck_assert_str_eq(str1, opcode->op1.data.stringval);
@@ -152,15 +182,20 @@ END_TEST
 
 START_TEST(test_opcode_ctor_string2_failed_alloc)
 {
-    struct handlebars_opcode * opcode;
     const char * str1 = "foo";
     const char * str2 = "bar";
-    
+
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_string2(ctx, handlebars_opcode_type_append_content, str1, str2);
+    handlebars_opcode_ctor_string2(compiler, handlebars_opcode_type_append_content, str1, str2);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
+
+    ck_assert(0);
 }
 END_TEST
 
@@ -169,7 +204,7 @@ START_TEST(test_opcode_ctor_string_long)
     struct handlebars_opcode * opcode;
     const char * str = "foo";
     
-    opcode = handlebars_opcode_ctor_string_long(ctx, handlebars_opcode_type_append_content, str, 3);
+    opcode = handlebars_opcode_ctor_string_long(compiler, handlebars_opcode_type_append_content, str, 3);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
     ck_assert_str_eq(str, opcode->op1.data.stringval);
@@ -182,14 +217,19 @@ END_TEST
 
 START_TEST(test_opcode_ctor_string_long_failed_alloc)
 {
-    struct handlebars_opcode * opcode;
     const char * str = "foo";
-    
+
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_string_long(ctx, handlebars_opcode_type_append_content, str, 3);
+    handlebars_opcode_ctor_string_long(compiler, handlebars_opcode_type_append_content, str, 3);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
+
+    ck_assert(0);
 }
 END_TEST
 
@@ -286,7 +326,7 @@ START_TEST(test_operand_set_stringval)
     const char * str = "bar";
     int ret;
     
-    ret = handlebars_operand_set_stringval(ctx, &op, str);
+    ret = handlebars_operand_set_stringval(compiler, &op, str);
     
     ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
     ck_assert_int_eq(handlebars_operand_type_string, op.type);
@@ -300,15 +340,18 @@ START_TEST(test_operand_set_stringval_failed_alloc)
 {
     struct handlebars_operand op;
     const char * str = "bar";
-    int ret;
-    
+
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    ret = handlebars_operand_set_stringval(ctx, &op, str);
+    handlebars_operand_set_stringval(compiler, &op, str);
     handlebars_memory_fail_disable();
-    
-    ck_assert_int_eq(HANDLEBARS_NOMEM, ret);
-    ck_assert_int_eq(handlebars_operand_type_null, op.type);
-    ck_assert_ptr_eq(NULL, op.data.stringval);
+
+    ck_assert(0);
 }
 END_TEST
 
@@ -322,7 +365,7 @@ START_TEST(test_operand_set_arrayval)
     const char ** ptr1;
     char ** ptr2;
     
-    ret = handlebars_operand_set_arrayval(ctx, &op, strs);
+    ret = handlebars_operand_set_arrayval(compiler, &op, strs);
     
     ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
     ck_assert_int_eq(handlebars_operand_type_array, op.type);

@@ -204,16 +204,9 @@ START_TEST(handlebars_spec_parser)
             ck_assert_msg(0, lesigh);
         }
     } else {
-        errno = 0;
-        
-        //char * output = handlebars_ast_print(ctx->program, 0);
-        struct handlebars_ast_printer_context printctx = handlebars_ast_print2(ctx->program, 0);
-        //_handlebars_ast_print(ctx->program, &printctx);
-        char * output = printctx.output;
+        char * output = handlebars_ast_print(ctx, ctx->program, 0);
         
         if( !test->exception ) {
-            ck_assert_int_eq(0, errno);
-            ck_assert_int_eq(0, printctx.error);
             ck_assert_ptr_ne(NULL, output);
             if( strcmp(test->expected, output) == 0 ) {
                 ck_assert_str_eq(test->expected, output);

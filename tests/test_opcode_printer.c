@@ -8,23 +8,33 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_compiler.h"
+#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcodes.h"
 #include "utils.h"
 
 static TALLOC_CTX * ctx;
+static struct handlebars_context * context;
+static struct handlebars_compiler * compiler;
 
 static void setup(void)
 {
     handlebars_memory_fail_disable();
     ctx = talloc_new(NULL);
+    context = handlebars_context_ctor_ex(ctx);
+    compiler = handlebars_compiler_ctor(context);
 }
 
 static void teardown(void)
 {
     handlebars_memory_fail_disable();
+    handlebars_compiler_dtor(compiler);
+    handlebars_context_dtor(context);
     talloc_free(ctx);
+    compiler = NULL;
+    context = NULL;
     ctx = NULL;
 }
 
@@ -92,11 +102,11 @@ END_TEST
 
 START_TEST(test_opcode_print_1)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_ambiguous_block_value);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_ambiguous_block_value);
     char * str;
     char * expected = "ambiguousBlockValue";
     
-    str = handlebars_opcode_print(ctx, opcode);
+    str = handlebars_opcode_print(compiler, opcode);
     
     ck_assert_str_eq(expected, str);
     
@@ -107,12 +117,12 @@ END_TEST
 
 START_TEST(test_opcode_print_2)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_get_context);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_get_context);
     char * str;
     char * expected = "getContext[LONG:2358]";
     
     handlebars_operand_set_longval(&opcode->op1, 2358);
-    str = handlebars_opcode_print(ctx, opcode);
+    str = handlebars_opcode_print(compiler, opcode);
     
     ck_assert_str_eq(expected, str);
     
@@ -123,14 +133,14 @@ END_TEST
 
 START_TEST(test_opcode_print_3)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_invoke_helper);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invoke_helper);
     char * str;
     char * expected = "invokeHelper[LONG:123][STRING:baz][LONG:456]";
     
     handlebars_operand_set_longval(&opcode->op1, 123);
     handlebars_operand_set_stringval(opcode, &opcode->op2, "baz");
     handlebars_operand_set_longval(&opcode->op3, 456);
-    str = handlebars_opcode_print(ctx, opcode);
+    str = handlebars_opcode_print(compiler, opcode);
     
     ck_assert_str_eq(expected, str);
     
@@ -141,7 +151,7 @@ END_TEST
 
 START_TEST(test_opcode_print_4)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_lookup_on_context);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_on_context);
     char * str;
     char * expected = "lookupOnContext[LONG:123][STRING:baz][LONG:456][STRING:bat]";
 
@@ -149,7 +159,7 @@ START_TEST(test_opcode_print_4)
     handlebars_operand_set_stringval(opcode, &opcode->op2, "baz");
     handlebars_operand_set_longval(&opcode->op3, 456);
     handlebars_operand_set_stringval(opcode, &opcode->op4, "bat");
-    str = handlebars_opcode_print(ctx, opcode);
+    str = handlebars_opcode_print(compiler, opcode);
 
     ck_assert_str_eq(expected, str);
 

@@ -16,19 +16,10 @@
 
 
 
-static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
-void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx);
-
-
-
 #define __APPEND(ptr) \
     do { \
         if( likely(ptr != NULL) ) { \
-            ctx->output = _handlebars_talloc_strdup_append_buffer(ctx->output, ptr); \
-            if( unlikely(ctx->output == NULL) ) { \
-                ctx->error = errno = ENOMEM; \
-                return; \
-            } \
+            ctx->output = MC(_handlebars_talloc_strdup_append_buffer(ctx->output, ptr)); \
         } \
     } while(0)
 
@@ -51,6 +42,14 @@ void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context
 
 #define __PRINT(node) \
     _handlebars_ast_print(node, ctx)
+
+static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
+void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx);
+
+
+
+#undef CONTEXT
+#define CONTEXT ctx->ctx
 
 void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx)
 {
@@ -363,8 +362,6 @@ static void _handlebars_ast_print_path(struct handlebars_ast_node * ast_node, st
     }
 }
 
-
-
 static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     if( unlikely(ast_node == NULL) ) {
@@ -418,41 +415,19 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
     }
 }
 
-struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_ast_node * ast_node, int flags)
-{
-    struct handlebars_ast_printer_context ctx;
-    
-    // Setup print context
-    ctx.error = 0;
-    ctx.length = 0;
-    ctx.padding = 0;
-    ctx.flags = flags;
-    ctx.in_partial = 0;
-    
-    // Allocate initial string
-    ctx.output = handlebars_talloc_strdup(NULL, "");
-    if( unlikely(ctx.output == NULL) ) {
-        ctx.error = errno = ENOMEM;
-        goto error;
-    }
-    
-    // Main print
-    _handlebars_ast_print(ast_node, &ctx);
-    
-    // Trim whitespace off right end of output
-    handlebars_rtrim(ctx.output, " \t\r\n");
-    
-    // Check for error and free
-    if( unlikely(ctx.error && ctx.output != NULL) )  {
-        handlebars_talloc_free(ctx.output);
-        ctx.output = NULL;
-    }
+#undef CONTEXT
+#define CONTEXT context
 
-error:
-    return ctx;
-}
-
-char * handlebars_ast_print(struct handlebars_ast_node * ast_node, int flags)
+char * handlebars_ast_print(struct handlebars_context * context, struct handlebars_ast_node * ast_node, int flags)
 {
-    return handlebars_ast_print2(ast_node, flags).output;
+    char * output;
+    struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(context, struct handlebars_ast_printer_context));
+    ctx->ctx = context;
+    ctx->flags = flags;
+    ctx->output = MC(handlebars_talloc_strdup(context, ""));
+    _handlebars_ast_print(ast_node, ctx);
+    output = ctx->output;
+    handlebars_talloc_free(ctx);
+    handlebars_rtrim(output, " \t\r\n");
+    return output;
 }

@@ -18,15 +18,6 @@
 #include "handlebars_utils.h"
 #include "handlebars_whitespace.h"
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(cond) \
-    do { \
-        if( unlikely(!cond) ) { \
-            handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-        } \
-    } while(0)
-
 
 
 int handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * statements,
@@ -232,8 +223,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_contex
                         }
                     }
                     if( match ) {
-                        current->node.partial.indent = handlebars_talloc_strdup(current, match);
-                        __MEMCHECK(current->node.partial.indent);
+                        current->node.partial.indent = MC(handlebars_talloc_strdup(current, match));
                     }
                 }
             }

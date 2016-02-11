@@ -14,34 +14,14 @@
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(ptr) \
-    do { \
-        if( unlikely(ptr == NULL) ) { \
-            handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-        } \
-    } while(0)
+
 
 struct handlebars_token * handlebars_token_ctor(struct handlebars_context * context, int token_int, const char * text, size_t length)
 {
-    struct handlebars_token * token;
-    char * textdup;
-    
-    // Allocate token
-    token = handlebars_talloc_zero(context, struct handlebars_token);
-    __MEMCHECK(token);
-    
-    // Assign int token and length
+    struct handlebars_token * token = MC(handlebars_talloc_zero(context, struct handlebars_token));
     token->token = token_int;
-    
-    // Copy string and null terminate
-    textdup = handlebars_talloc_strndup(token, text, length);
-    __MEMCHECK(textdup);
-
-    token->text = textdup;
+    token->text = MC(handlebars_talloc_strndup(token, text, length));
     token->length = length;
-    
     return token;
 }
 

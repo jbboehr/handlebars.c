@@ -13,27 +13,16 @@
 #include "handlebars_stack.h"
 #include "handlebars_value.h"
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(ptr) \
-    do { \
-        if( unlikely(ptr == NULL) ) { \
-            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-        } \
-    } while(0)
-
 
 
 #define CONTEXT ctx
 
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 {
-    struct handlebars_stack * stack = handlebars_talloc_zero(ctx, struct handlebars_stack);
-    __MEMCHECK(stack);
+    struct handlebars_stack * stack = MC(handlebars_talloc_zero(ctx, struct handlebars_stack));
     stack->ctx = ctx;
     stack->i = 0;
-    stack->v = handlebars_talloc_array(stack, struct handlebars_value *, 32);
-    __MEMCHECK(stack->v);
+    stack->v = MC(handlebars_talloc_array(stack, struct handlebars_value *, 32));
     return stack;
 }
 
@@ -70,8 +59,7 @@ struct handlebars_value * handlebars_stack_push(struct handlebars_stack * stack,
         do {
             s += 32;
         } while( s <= stack->i );
-        nv = handlebars_talloc_realloc(stack, stack->v, struct handlebars_value *, s);
-        __MEMCHECK(nv);
+        nv = MC(handlebars_talloc_realloc(stack, stack->v, struct handlebars_value *, s));
         stack->v = nv;
     }
 

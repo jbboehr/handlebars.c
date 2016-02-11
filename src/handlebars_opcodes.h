@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+struct handlebars_compiler;
+
 /**
  * @brief Opcode types
  */
@@ -121,7 +123,7 @@ struct handlebars_opcode_get_context {
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor(
-        void * ctx, enum handlebars_opcode_type type);
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type) HBSARN;
 
 /**
  * @brief Construct an opcode with a boolean operand
@@ -132,7 +134,7 @@ struct handlebars_opcode * handlebars_opcode_ctor(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_boolean(
-        void * ctx, enum handlebars_opcode_type type, bool arg);
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, bool arg) HBSARN;
 
 /**
  * @brief Construct an opcode with a long operand
@@ -143,7 +145,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_boolean(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_long(
-        void * ctx, enum handlebars_opcode_type type, long arg);
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, long arg) HBSARN;
 
 /**
  * @brief Construct an opcode with a long and a string operand
@@ -155,7 +157,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_long(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_long_string(
-        void * ctx, enum handlebars_opcode_type type, long arg1, const char * arg2);
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, long arg1, const char * arg2) HBSARN;
 
 /**
  * @brief Construct an opcode with a string operand
@@ -166,7 +168,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_long_string(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string(
-        void * ctx, enum handlebars_opcode_type type, const char * arg);
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg) HBSARN;
 
 /**
  * @brief Construct an opcode with two string operands
@@ -178,7 +180,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_string(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string2(
-        void * ctx, enum handlebars_opcode_type type, const char * arg1, const char * arg2);
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg1, const char * arg2) HBSARN;
 
 /**
  * @brief Construct an opcode with a string and a long operand
@@ -190,7 +192,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_string2(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string_long(
-        void * ctx, enum handlebars_opcode_type type, const char * arg1, long arg2);
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg1, long arg2) HBSARN;
 
 /**
  * @brief Set the value of an operand to null
@@ -226,7 +228,7 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
  * @param[in] arg The string value
  * @return void
  */
-int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg);
+int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char * arg);
 
 /**
  * @brief Set the value of an operand to an array
@@ -236,7 +238,7 @@ int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * ope
  * @param[in] arg The array value
  * @return void
  */
-int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * operand, const char ** arg);
+int handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char ** arg);
 
 /**
  * @brief Get a string for the integral opcode type. Should match the 

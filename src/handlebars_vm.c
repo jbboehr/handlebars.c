@@ -27,20 +27,12 @@
 #define ACCEPT_NAMED_FUNCTION(name) static void name (struct handlebars_vm * vm, struct handlebars_opcode * opcode)
 #define ACCEPT_FUNCTION(name) ACCEPT_NAMED_FUNCTION(ACCEPT_FN(name))
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(cond) \
-    do { \
-        if( unlikely(!cond) ) { \
-            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-        } \
-    } while(0)
-
 
 
 struct literal {
     char * value;
 };
+
 struct setup_ctx {
     const char * name;
     size_t param_size;
@@ -61,16 +53,13 @@ ACCEPT_FUNCTION(push_context);
 
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 {
-    struct handlebars_vm * vm = handlebars_talloc_zero(ctx, struct handlebars_vm);
-    __MEMCHECK(vm);
-
+    struct handlebars_vm * vm = MC(handlebars_talloc_zero(ctx, struct handlebars_vm));
     vm->ctx = ctx;
     vm->frameStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
     vm->depths = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
     vm->stack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
     vm->hashStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
     vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-
     return vm;
 }
 
@@ -83,8 +72,7 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * ctx)
 {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
-    struct handlebars_options * options = handlebars_talloc_zero(vm, struct handlebars_options);
-    __MEMCHECK(options);
+    struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
 
     ctx->options = options;
 
@@ -171,10 +159,11 @@ static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars
     if( NULL == (tmp = handlebars_value_expression(result, escape)) ) {
         return;
     }
+#ifndef NDEBUG
     fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
+#endif
     frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
-    frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp);
-    __MEMCHECK(frame->buffer);
+    frame->buffer = MC(handlebars_talloc_strdup_append_buffer(frame->buffer, tmp));
     handlebars_talloc_free(tmp);
 }
 
@@ -270,8 +259,7 @@ ACCEPT_FUNCTION(append_content)
     assert(opcode->type == handlebars_opcode_type_append_content);
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    frame->buffer = handlebars_talloc_strdup_append(frame->buffer, opcode->op1.data.stringval);
-    __MEMCHECK(frame->buffer);
+    frame->buffer = MC(handlebars_talloc_strdup_append(frame->buffer, opcode->op1.data.stringval));
 }
 
 ACCEPT_FUNCTION(assign_to_hash)
@@ -453,8 +441,7 @@ ACCEPT_FUNCTION(invoke_partial)
     setup_options(vm, &ctx);
 
     if( opcode->op2.type == handlebars_operand_type_long ) {
-        name = handlebars_talloc_asprintf(vm, "%ld", opcode->op2.data.longval);
-        __MEMCHECK(name);
+        name = MC(handlebars_talloc_asprintf(vm, "%ld", opcode->op2.data.longval));
     } else if( opcode->op2.type == handlebars_operand_type_string ) {
         name = opcode->op2.data.stringval;
     }
@@ -554,8 +541,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
     if( vm2->buffer ) {
         char *tmp2 = handlebars_indent(vm2, vm2->buffer, opcode->op3.data.stringval);
-        frame->buffer = handlebars_talloc_strdup_append_buffer(frame->buffer, tmp2);
-        __MEMCHECK(frame->buffer);
+        frame->buffer = MC(handlebars_talloc_strdup_append_buffer(frame->buffer, tmp2));
         handlebars_talloc_free(tmp2);
     }
 
@@ -724,8 +710,7 @@ ACCEPT_FUNCTION(push_program)
 
     assert(opcode->type == handlebars_opcode_type_push_program);
 
-    long * program = handlebars_talloc(vm, long);
-    __MEMCHECK(program);
+    long * program = MC(handlebars_talloc(vm, long));
 
     if( opcode->op1.type == handlebars_operand_type_long ) {
         *program = opcode->op1.data.longval;
@@ -803,8 +788,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     struct handlebars_value * top = handlebars_stack_top(vm->stack);
     assert(top != NULL);
     if( top->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        struct handlebars_options * options = handlebars_talloc_zero(vm, struct handlebars_options);
-        __MEMCHECK(options);
+        struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
         options->params = handlebars_stack_ctor(vm->ctx);
         handlebars_stack_set(options->params, 0, frame->context);
         options->scope = frame->context;
@@ -884,12 +868,10 @@ char * handlebars_vm_execute_program_ex(
     struct handlebars_vm_frame * parent_frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
 
     // Push the frame stack
-	struct handlebars_vm_frame * frame = handlebars_talloc_zero(vm, struct handlebars_vm_frame);
-    __MEMCHECK(frame);
+	struct handlebars_vm_frame * frame = MC(handlebars_talloc_zero(vm, struct handlebars_vm_frame));
 
     handlebars_stack_push_ptr(vm->frameStack, frame);
-    frame->buffer = handlebars_talloc_strdup(vm, "");
-    __MEMCHECK(frame->buffer);
+    frame->buffer = MC(handlebars_talloc_strdup(vm, ""));
 
     // Set program
     frame->program = program;
@@ -965,8 +947,7 @@ static void preprocess_program(struct handlebars_vm * vm, struct handlebars_comp
 
     // Realloc
     if( compiler->guid >= talloc_array_length(vm->programs) ) {
-        vm->programs = handlebars_talloc_realloc(vm, vm->programs, struct handlebars_compiler *, talloc_array_length(vm->programs) * 2);
-        __MEMCHECK(vm->programs);
+        vm->programs = MC(handlebars_talloc_realloc(vm, vm->programs, struct handlebars_compiler *, talloc_array_length(vm->programs) * 2));
     }
 
     vm->programs[compiler->guid] = compiler;
@@ -992,8 +973,7 @@ void handlebars_vm_execute(
     }
 
     // Preprocess
-    vm->programs = handlebars_talloc_array(vm, struct handlebars_compiler *, 32);
-    __MEMCHECK(vm->programs);
+    vm->programs = MC(handlebars_talloc_array(vm, struct handlebars_compiler *, 32));
     preprocess_program(vm, compiler);
 
     // Save context

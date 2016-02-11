@@ -64,9 +64,6 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx)
         // Make token object
         text = (lval->text == NULL ? "" : lval->text);
         token = talloc_steal(list, handlebars_token_ctor(ctx, token_int, text, strlen(text)));
-        if( unlikely(token == NULL) ) {
-            break;
-        }
         
         // Append
         handlebars_token_list_append(list, token);

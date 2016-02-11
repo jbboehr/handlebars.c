@@ -15,6 +15,7 @@ extern "C" {
 
 // Declarations
 struct handlebars_ast;
+struct handlebars_context;
 
 /**
  * @brief Flags to control printer behaviour. Note: not currently used
@@ -36,32 +37,25 @@ enum handlebars_ast_printer_flags
  * @brief AST printer context object
  */
 struct handlebars_ast_printer_context {
-  int flags;
-  int padding;
-  int error;
-  char * output;
-  size_t length;
-  long counter;
-  int in_partial;
+    struct handlebars_context * ctx;
+    int flags;
+    int padding;
+    int error;
+    char * output;
+    size_t length;
+    long counter;
+    int in_partial;
 };
 
 /**
  * @brief Print an AST into a human-readable string.
- * 
+ *
+ * @param[in] context The handlebars context
  * @param[in] ast_node The AST to print
  * @param[in] flags The printer flags
  * @return The printed string
  */
-char * handlebars_ast_print(struct handlebars_ast_node * ast_node, int flags);
-
-/**
- * @brief Print an AST into a human-readable string.
- * 
- * @param[in] ast_node The AST to print
- * @param[in] flags The printer flags
- * @return The printer context
- */
-struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_ast_node * ast_node, int flags);
+char * handlebars_ast_print(struct handlebars_context * context, struct handlebars_ast_node * ast_node, int flags) HBSARN;
 
 #ifdef	__cplusplus
 }

@@ -27,23 +27,13 @@
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(cond) \
-    do { \
-        if( unlikely(!cond) ) { \
-            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-        } \
-    } while(0)
-
 
 
 #define CONTEXT ctx
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
 {
-    struct handlebars_value * value = handlebars_talloc_zero(ctx, struct handlebars_value);
-    __MEMCHECK(value);
+    struct handlebars_value * value = MC(handlebars_talloc_zero(ctx, struct handlebars_value));
     value->ctx = ctx;
     value->refcount = 1;
     return value;
@@ -110,7 +100,7 @@ char * handlebars_value_get_strval(struct handlebars_value * value)
             break;
     }
 
-    __MEMCHECK(ret);
+    MEMCHK(ret);
 
     return ret;
 }
@@ -180,14 +170,12 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
-            __MEMCHECK(it);
+            it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
             it->value = value;
             it->current = handlebars_stack_get(value->v.stack, 0);
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
-            it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
-            __MEMCHECK(it);
+            it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
             entry = value->v.map->first;
             if( entry ) {
                 it->value = value;
@@ -201,8 +189,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             it = value->handlers->iterator(value);
             break;
         default:
-            it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
-            __MEMCHECK(it);
+            it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
             break;
     }
 
@@ -254,12 +241,10 @@ bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
 
 char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
 {
-    char * buf = handlebars_talloc_strdup(value->ctx, "");
+    char * buf = MC(handlebars_talloc_strdup(value->ctx, ""));
     struct handlebars_value_iterator * it;
     char indent[64];
     char indent2[64];
-
-    __MEMCHECK(buf);
 
     if( value == NULL ) {
         handlebars_talloc_strdup_append_buffer(buf, "(nil)");
@@ -313,9 +298,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             break;
     }
 
-    __MEMCHECK(buf);
-
-    return buf;
+    return MC(buf);
 }
 
 char * handlebars_value_expression(struct handlebars_value * value, bool escape)
@@ -369,17 +352,15 @@ char * handlebars_value_expression(struct handlebars_value * value, bool escape)
             break;
     }
 
-    __MEMCHECK(ret);
+    MEMCHK(ret);
 
     if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
-        char * esc = handlebars_htmlspecialchars(ret);
+        char * esc = MC(handlebars_htmlspecialchars(ret));
         handlebars_talloc_free(ret);
         ret = esc;
     }
 
-    __MEMCHECK(ret);
-
-    return ret;
+    return MC(ret);
 }
 
 struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
@@ -416,9 +397,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             break;
     }
 
-    __MEMCHECK(new_value);
-
-    return new_value;
+    return MC(new_value);
 }
 
 void handlebars_value_dtor(struct handlebars_value * value)
@@ -479,8 +458,7 @@ struct handlebars_value * handlebars_value_from_json_object(struct handlebars_co
                 break;
             case json_type_string:
                 value->type = HANDLEBARS_VALUE_TYPE_STRING;
-                value->v.strval = handlebars_talloc_strdup(value, json_object_get_string(json));
-                __MEMCHECK(value->v.strval);
+                value->v.strval = MC(handlebars_talloc_strdup(value, json_object_get_string(json)));
                 break;
 
             case json_type_object:
@@ -580,8 +558,7 @@ struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_cont
                 }
                 // String
                 value->type = HANDLEBARS_VALUE_TYPE_STRING;
-                value->v.strval = handlebars_talloc_strndup(value, node->data.scalar.value, node->data.scalar.length);
-                __MEMCHECK(value->v.strval);
+                value->v.strval = MC(handlebars_talloc_strndup(value, node->data.scalar.value, node->data.scalar.length));
             }
             break;
         default:
@@ -597,8 +574,7 @@ done:
 struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml)
 {
     struct handlebars_value * value = NULL;
-    struct _yaml_ctx * yctx = talloc_zero(ctx, struct _yaml_ctx);
-    __MEMCHECK(yctx);
+    struct _yaml_ctx * yctx = MC(handlebars_talloc_zero(ctx, struct _yaml_ctx));
     talloc_set_destructor(yctx, _yaml_ctx_dtor);
     yaml_parser_initialize(&yctx->parser);
     yaml_parser_set_input_string(&yctx->parser, (unsigned char *) yaml, strlen(yaml));

@@ -13,18 +13,10 @@
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 
+
+
 #define CONTEXT options->vm->ctx
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(cond) \
-    do { \
-        if( unlikely(!cond) ) { \
-            handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-        } \
-    } while(0)
 #define SAFE_RETURN(val) return val ? val : handlebars_value_ctor(CONTEXT)
-
-
 
 static const char * names[] = {
     "helperMissing", "blockHelperMissing", "each", "if",
@@ -92,8 +84,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     result = handlebars_value_ctor(CONTEXT);
 
     if( context->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
-        __MEMCHECK(options2);
+        options2 = MC(handlebars_talloc_zero(options->vm, struct handlebars_options));
         options2->params = talloc_steal(options2, handlebars_stack_ctor(CONTEXT));
         handlebars_stack_push(options2->params, options->scope);
         ret = context->v.helper(options);

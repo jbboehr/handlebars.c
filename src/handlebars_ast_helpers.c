@@ -21,15 +21,6 @@
 
 
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(cond) \
-    do { \
-        if( unlikely(!cond) ) { \
-            handlebars_context_throw(context, HANDLEBARS_NOMEM, "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"); \
-        } \
-    } while(0)
-
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         struct handlebars_context * context, struct handlebars_ast_node * open_block,
         struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_and_program,
@@ -211,8 +202,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     int count = 0;
     
     // Allocate the original strings
-    original = handlebars_talloc_strdup(context, data ? "@" : "");
-    __MEMCHECK(original);
+    original = MC(handlebars_talloc_strdup(context, data ? "@" : ""));
     
     // Iterate over parts and process
     handlebars_ast_list_foreach(parts, item, tmp) {
@@ -225,11 +215,9 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         
         // Append to original
         if( separator ) {
-            original = handlebars_talloc_strdup_append(original, separator);
-            __MEMCHECK(original);
+            original = MC(handlebars_talloc_strdup_append(original, separator));
         }
-        original = handlebars_talloc_strdup_append(original, part);
-        __MEMCHECK(original);
+        original = MC(handlebars_talloc_strdup_append(original, part));
         
         // Handle paths
         if( !is_literal && (strcmp(part, "..") == 0 || strcmp(part, ".") == 0 || strcmp(part, "this") == 0) ) {

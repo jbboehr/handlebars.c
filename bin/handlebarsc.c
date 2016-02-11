@@ -247,8 +247,8 @@ static int do_parse(void)
         goto error;
     }
 
-    struct handlebars_ast_printer_context printctx = handlebars_ast_print2(ctx->program, 0);
-    fprintf(stdout, "%s\n", printctx.output);
+    output =  handlebars_ast_print(ctx, ctx->program, 0);
+    fprintf(stdout, "%s\n", output);
 
 error:
     handlebars_context_dtor(ctx);

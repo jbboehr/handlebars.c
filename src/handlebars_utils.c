@@ -106,6 +106,9 @@ char * handlebars_htmlspecialchars(const char * str)
 
     // Alloc new string
     r = newstr = handlebars_talloc_array(NULL, char, newsize + 1);
+    if( unlikely(!newstr) ) {
+        return NULL;
+    }
     memset(newstr, 0, newsize + 1);
 
     // Copy
