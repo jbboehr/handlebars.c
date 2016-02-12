@@ -48,7 +48,7 @@ ACCEPT_FUNCTION(push_context);
 
 
 
-
+#undef CONTEXT
 #define CONTEXT ctx
 
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
@@ -68,11 +68,27 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 
 
 
+static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, const char * name)
+{
+    struct handlebars_value * helper;
+    helper = handlebars_value_map_find(vm->helpers, name);
+    if( !helper ) {
+        if( !vm->builtins ) {
+            vm->builtins = handlebars_builtins(vm->ctx);
+        }
+        helper = handlebars_value_map_find(vm->builtins, name);
+    }
+    return helper;
+}
 
 static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * ctx)
 {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
+    long * inverse;
+    long * program;
+    size_t i, j;
+    struct handlebars_value * placeholder;
 
     ctx->options = options;
 
@@ -82,17 +98,15 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
     options->vm = vm;
 
     // programs
-    long * inverse = handlebars_stack_pop_type(vm->stack, long);
-    long * program = handlebars_stack_pop_type(vm->stack, long);
+    inverse = handlebars_stack_pop_type(vm->stack, long);
+    program = handlebars_stack_pop_type(vm->stack, long);
 
     options->program = program ? *program : -1;
     options->inverse = inverse ? *inverse : -1;
 
     // params
-    size_t i = ctx->param_size;
-
-    size_t j;
-    struct handlebars_value * placeholder = handlebars_value_ctor(vm->ctx);
+    i = ctx->param_size;
+    placeholder = handlebars_value_ctor(vm->ctx);
     for( j = 0; j < i; j++ ) {
         handlebars_stack_set(ctx->params, j, placeholder);
     }
@@ -121,6 +135,7 @@ static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ct
 {
     setup_options(vm, ctx);
 
+    /* Disable this for now
     if( ctx->use_register ) {
         struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
         if( ctx->use_register == 2 ) {
@@ -131,6 +146,7 @@ static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ct
             handlebars_stack_push(ctx->params, frame->options_register);
         }
     }
+    */
 
     // Don't include options in oarams for now
     /*
@@ -147,7 +163,7 @@ static inline void setup_helper(struct handlebars_vm * vm, struct setup_ctx * ct
 {
     ctx->params = handlebars_stack_ctor(vm->ctx);
     setup_params(vm, ctx);
-    ctx->helper = handlebars_value_map_find(vm->helpers, ctx->name);
+    ctx->helper = get_helper(vm, ctx->name);
 }
 
 static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, bool escape)
@@ -160,9 +176,9 @@ static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars
     if( NULL == (tmp = handlebars_value_expression(result, escape)) ) {
         return;
     }
-#ifndef NDEBUG
-    fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
-#endif
+//#ifndef NDEBUG
+//    fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
+//#endif
     frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     frame->buffer = MC(handlebars_talloc_strdup_append_buffer(frame->buffer, tmp));
     handlebars_talloc_free(tmp);
@@ -213,6 +229,7 @@ static inline char * dump_stack(struct handlebars_stack * stack)
 
 
 
+
 ACCEPT_FUNCTION(ambiguous_block_value)
 {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
@@ -230,7 +247,7 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     handlebars_stack_set(ctx.params, 0, current);
 
     if( vm->last_helper == NULL ) {
-        struct handlebars_value * helper = handlebars_value_map_find(vm->helpers, "blockHelperMissing");
+        struct handlebars_value * helper = get_helper(vm, "blockHelperMissing");
 
         assert(helper != NULL);
         assert(helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
@@ -293,7 +310,7 @@ ACCEPT_FUNCTION(block_value)
     assert(current != NULL);
     handlebars_stack_set(ctx.params, 0, current);
 
-    helper = handlebars_value_map_find(vm->helpers, "blockHelperMissing");
+    helper = get_helper(vm, "blockHelperMissing");
 
     assert(helper != NULL);
     assert(helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
@@ -355,7 +372,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         assert(result != NULL);
         handlebars_stack_push(vm->stack, result);
     } else {
-        struct handlebars_value * fn = handlebars_value_map_find(vm->helpers, "helperMissing");
+        struct handlebars_value * fn = get_helper(vm, "helperMissing");
         assert(fn != NULL);
         assert(fn->type == HANDLEBARS_VALUE_TYPE_HELPER);
         struct handlebars_value * result = fn->v.helper(ctx.options);
@@ -382,7 +399,7 @@ ACCEPT_FUNCTION(invoke_helper)
     setup_helper(vm, &ctx);
 
     if( opcode->op3.data.boolval ) { // isSimple
-        if( NULL != (fn2 = handlebars_value_map_find(vm->helpers, ctx.name)) ) {
+        if( NULL != (fn2 = get_helper(vm, ctx.name)) ) {
             fn = fn2;
         }
     }
@@ -392,7 +409,7 @@ ACCEPT_FUNCTION(invoke_helper)
     }
 
     if( !fn || fn->type != HANDLEBARS_VALUE_TYPE_HELPER ) {
-        fn = handlebars_value_map_find(vm->helpers, "helperMissing");
+        fn = get_helper(vm, "helperMissing");
     }
 
     if( !fn || !fn->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
@@ -656,9 +673,10 @@ ACCEPT_FUNCTION(lookup_on_context)
 
     if( value ) {
         do {
-            if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+
+            if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
                 value = handlebars_value_map_find(value, *arr);
-            } else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY && sscanf(*arr, "%ld", &index) ) {
+            } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY && sscanf(*arr, "%ld", &index) ) {
                 value = handlebars_value_array_find(value, index);
             } else {
                 value = NULL;
@@ -811,9 +829,11 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
 		struct handlebars_opcode * opcode = compiler->opcodes[i];
 
         // Print opcode?
-        char * tmp = handlebars_opcode_print(vm, opcode);
-        fprintf(stdout, "V[%d] P[%d] OPCODE: %s\n", vm->depth, compiler->guid, tmp);
-        talloc_free(tmp);
+//#ifndef NDEBUG
+//        char * tmp = handlebars_opcode_print(vm, opcode);
+//        fprintf(stdout, "V[%d] P[%d] OPCODE: %s\n", vm->depth, compiler->guid, tmp);
+//        talloc_free(tmp);
+//#endif
 
 		switch( opcode->type ) {
             ACCEPT(ambiguous_block_value);
@@ -840,8 +860,7 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
             ACCEPT(push_string_param);
             ACCEPT(resolve_possible_lambda);
             default:
-                tmp = handlebars_talloc_asprintf(vm, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
-                handlebars_vm_throw(vm, 0, tmp);
+                handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
                 break;
         }
 	}

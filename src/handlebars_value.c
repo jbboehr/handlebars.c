@@ -438,42 +438,40 @@ struct handlebars_value * handlebars_value_from_json_object(struct handlebars_co
 {
     struct handlebars_value * value = handlebars_value_ctor(ctx);
 
-    if( value ) {
-        switch( json_object_get_type(json) ) {
-            case json_type_null:
-                // do nothing
-                break;
-            case json_type_boolean:
-                value->type = HANDLEBARS_VALUE_TYPE_BOOLEAN;
-                value->v.bval = json_object_get_boolean(json);
-                break;
-            case json_type_double:
-                value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
-                value->v.dval = json_object_get_double(json);
-                break;
-            case json_type_int:
-                value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
-                // @todo make sure sizing is correct
-                value->v.lval = json_object_get_int64(json);
-                break;
-            case json_type_string:
-                value->type = HANDLEBARS_VALUE_TYPE_STRING;
-                value->v.strval = MC(handlebars_talloc_strdup(value, json_object_get_string(json)));
-                break;
+    switch( json_object_get_type(json) ) {
+        case json_type_null:
+            // do nothing
+            break;
+        case json_type_boolean:
+            value->type = HANDLEBARS_VALUE_TYPE_BOOLEAN;
+            value->v.bval = json_object_get_boolean(json);
+            break;
+        case json_type_double:
+            value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
+            value->v.dval = json_object_get_double(json);
+            break;
+        case json_type_int:
+            value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
+            // @todo make sure sizing is correct
+            value->v.lval = json_object_get_int64(json);
+            break;
+        case json_type_string:
+            value->type = HANDLEBARS_VALUE_TYPE_STRING;
+            value->v.strval = MC(handlebars_talloc_strdup(value, json_object_get_string(json)));
+            break;
 
-            case json_type_object:
-            case json_type_array:
-                value->type = HANDLEBARS_VALUE_TYPE_USER;
-                value->handlers = handlebars_value_get_std_json_handlers();
-                value->v.usr = (void *) json;
-                // Increment refcount?
-                json_object_get(json);
-                break;
-            default:
-                // ruh roh
-                assert(0);
-                break;
-        }
+        case json_type_object:
+        case json_type_array:
+            value->type = HANDLEBARS_VALUE_TYPE_USER;
+            value->handlers = handlebars_value_get_std_json_handlers();
+            value->v.usr = (void *) json;
+            // Increment refcount?
+            json_object_get(json);
+            break;
+        default:
+            // ruh roh
+            assert(0);
+            break;
     }
 
     return value;

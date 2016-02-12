@@ -31,6 +31,8 @@ endif
 # Main
 include_HEADERS = \
 	handlebars.h \
+    handlebars.lex.h \
+    handlebars.tab.h \
 	handlebars_ast.h \
 	handlebars_ast_helpers.h \
 	handlebars_ast_list.h \
@@ -42,7 +44,9 @@ include_HEADERS = \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcodes.h \
+	handlebars_private.h \
 	handlebars_scanners.h \
+	handlebars_stack.h \
 	handlebars_token.h \
 	handlebars_token_list.h \
 	handlebars_token_printer.h \
@@ -50,9 +54,7 @@ include_HEADERS = \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
 	handlebars_vm.h \
-	handlebars_whitespace.h \
-	handlebars.tab.h \
-	handlebars.lex.h
+	handlebars_whitespace.h
 
 GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c
 CLEANFILES = $(GENSOURCE)
