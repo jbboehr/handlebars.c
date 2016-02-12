@@ -239,6 +239,16 @@ bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
     return ret;
 }
 
+struct handlebars_value * handlebars_value_call(struct handlebars_value * value, struct handlebars_options * options)
+{
+    if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+        return value->v.helper(options);
+    } else if( value->type == HANDLEBARS_VALUE_TYPE_USER && value->handlers->call ) {
+        return value->handlers->call(value, options);
+    }
+    return NULL;
+}
+
 char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
 {
     char * buf = MC(handlebars_talloc_strdup(value->ctx, ""));

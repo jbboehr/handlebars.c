@@ -184,7 +184,8 @@ static struct handlebars_value_handlers handlebars_value_std_json_handlers = {
         &std_json_map_find,
         &std_json_array_find,
         &std_json_iterator_ctor,
-        &std_json_iterator_next
+        &std_json_iterator_next,
+        NULL // call
 };
 
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers()

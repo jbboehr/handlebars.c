@@ -80,6 +80,7 @@ long handlebars_value_get_intval(struct handlebars_value * value);
 double handlebars_value_get_floatval(struct handlebars_value * value);
 
 char * handlebars_value_expression(struct handlebars_value * value, bool escape) HBSARN;
+char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBSARN;
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx) HBSARN;
 struct handlebars_value * handlebars_value_copy(struct handlebars_value * value) HBSARN;
@@ -93,8 +94,8 @@ struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_co
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);
 struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value) HBSARN;
 bool handlebars_value_iterator_next(struct handlebars_value_iterator * it);
+struct handlebars_value * handlebars_value_call(struct handlebars_value * value, struct handlebars_options * options);
 
-char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBSARN;
 
 static inline int handlebars_value_addref(struct handlebars_value * value) {
     return ++value->refcount;

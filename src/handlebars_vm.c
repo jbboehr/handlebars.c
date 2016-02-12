@@ -253,7 +253,7 @@ ACCEPT_FUNCTION(ambiguous_block_value)
         assert(helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
         assert(ctx.options != NULL);
 
-        struct handlebars_value * result = helper->v.helper(ctx.options);
+        struct handlebars_value * result = handlebars_value_call(helper, ctx.options);
         append_to_buffer(vm, result, 0);
     }
 }
@@ -315,7 +315,7 @@ ACCEPT_FUNCTION(block_value)
     assert(helper != NULL);
     assert(helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
 
-    result = helper->v.helper(ctx.options);
+    result = handlebars_value_call(helper, ctx.options);
     append_to_buffer(vm, result, 0);
 }
 
@@ -365,17 +365,17 @@ ACCEPT_FUNCTION(invoke_ambiguous)
 
     if( ctx.helper != NULL ) {
         assert(ctx.helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
-        struct handlebars_value *result = ctx.helper->v.helper(ctx.options);
+        struct handlebars_value *result = handlebars_value_call(ctx.helper, ctx.options);
         append_to_buffer(vm, result, 0);
     } else if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        struct handlebars_value * result = value->v.helper(ctx.options);
+        struct handlebars_value * result = handlebars_value_call(value, ctx.options);
         assert(result != NULL);
         handlebars_stack_push(vm->stack, result);
     } else {
         struct handlebars_value * fn = get_helper(vm, "helperMissing");
         assert(fn != NULL);
         assert(fn->type == HANDLEBARS_VALUE_TYPE_HELPER);
-        struct handlebars_value * result = fn->v.helper(ctx.options);
+        struct handlebars_value * result = handlebars_value_call(fn, ctx.options);
         append_to_buffer(vm, result, 0);
         handlebars_stack_push(vm->stack, value);
     }
@@ -416,7 +416,7 @@ ACCEPT_FUNCTION(invoke_helper)
         handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "Helper missing: %s", ctx.name);
     }
 
-    result = fn->v.helper(ctx.options);
+    result = handlebars_value_call(fn, ctx.options);
     if( !result ) {
         result = handlebars_value_ctor(vm->ctx);
     }
@@ -439,7 +439,7 @@ ACCEPT_FUNCTION(invoke_known_helper) {
     assert(ctx.options != NULL);
     assert(ctx.helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
 
-    struct handlebars_value * result = ctx.helper->v.helper(ctx.options);
+    struct handlebars_value * result = handlebars_value_call(ctx.helper, ctx.options);
     append_to_buffer(vm, result, 0);
 }
 
@@ -488,7 +488,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // If partial is a function?
     if( partial->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        partial = partial->v.helper(ctx.options);
+        partial = handlebars_value_call(partial, ctx.options);
     }
 
     // Construct new context
@@ -811,7 +811,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
         options->params = handlebars_stack_ctor(vm->ctx);
         handlebars_stack_set(options->params, 0, frame->context);
         options->scope = frame->context;
-        struct handlebars_value * result = top->v.helper(options);
+        struct handlebars_value * result = handlebars_value_call(top, options);
         if( !result ) {
             result = handlebars_value_ctor(vm->ctx);
         }
