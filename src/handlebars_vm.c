@@ -76,7 +76,7 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
 
     ctx->options = options;
 
-    options->name = ctx->name ? handlebars_talloc_strdup(options, ctx->name) : NULL;
+    options->name = ctx->name ? MC(handlebars_talloc_strdup(options, ctx->name)) : NULL;
     options->hash = handlebars_stack_pop(vm->stack);
     options->scope = frame->context;
     options->vm = vm;
@@ -119,10 +119,10 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
 
 static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ctx)
 {
-    struct handlebars_vm_frame * frame;
     setup_options(vm, ctx);
+
     if( ctx->use_register ) {
-        frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+        struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
         if( ctx->use_register == 2 ) {
             assert(frame->options_register != NULL);
             handlebars_stack_push(ctx->params, frame->options_register);
@@ -131,6 +131,7 @@ static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ct
             handlebars_stack_push(ctx->params, frame->options_register);
         }
     }
+
     // Don't include options in oarams for now
     /*
     if( ctx->params != NULL ) {
