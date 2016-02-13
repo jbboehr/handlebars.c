@@ -173,7 +173,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
             it->value = value;
             it->current = handlebars_stack_get(value->v.stack, 0);
-            it->length = handlebars_stack_length(value->v.stack) - 1;
+            it->length = handlebars_stack_length(value->v.stack);
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
             it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
@@ -183,7 +183,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
                 it->usr = (void *) entry;
                 it->key = entry->key;
                 it->current = entry->value;
-                it->length = value->v.map->i - 1;
+                it->length = value->v.map->i;
                 handlebars_value_addref(it->current);
             }
             break;

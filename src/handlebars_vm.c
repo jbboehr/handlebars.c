@@ -126,6 +126,7 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
     // @todo check useData
     if( frame->data ) {
         options->data = frame->data;
+    //} else if( vm->flags & handlebars_compiler_flag_use_data ) {
     } else {
         options->data = handlebars_value_ctor(vm->ctx);
     }

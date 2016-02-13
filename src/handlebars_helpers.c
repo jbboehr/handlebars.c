@@ -133,7 +133,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     }
 
     it = handlebars_value_iterator_ctor(context);
-    len = it->length;
+    len = handlebars_value_count(context) - 1;
 
     for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
         struct handlebars_value * key;
@@ -144,7 +144,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
         }
 
         key = handlebars_value_ctor(CONTEXT);
-        if( it->value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        if( it->key /*it->value->type == HANDLEBARS_VALUE_TYPE_MAP*/ ) {
             handlebars_value_string(key, it->key);
         } else {
             handlebars_value_integer(key, it->index);
@@ -154,10 +154,10 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
             struct handlebars_value * index = handlebars_value_ctor(CONTEXT);
             struct handlebars_value * first = handlebars_value_ctor(CONTEXT);
             struct handlebars_value * last = handlebars_value_ctor(CONTEXT);
-            if( it->value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-                handlebars_value_integer(index, i);
-            } else {
+            if( it->index ) { // @todo zero?
                 handlebars_value_integer(index, it->index);
+            } else {
+                handlebars_value_integer(index, i);
             }
             handlebars_value_boolean(first, i == 0);
             handlebars_value_boolean(last, i == len);
