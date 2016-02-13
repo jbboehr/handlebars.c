@@ -28,6 +28,22 @@ const char ** handlebars_builtins_names(void)
     return names;
 }
 
+static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, const char * name)
+{
+    struct handlebars_value * helper;
+    helper = handlebars_value_map_find(vm->helpers, name);
+    if( !helper ) {
+        if( !vm->builtins ) {
+            vm->builtins = handlebars_builtins(vm->ctx);
+        }
+        helper = handlebars_value_map_find(vm->builtins, name);
+    }
+    return helper;
+}
+
+
+
+
 struct handlebars_value * handlebars_builtin_block_helper_missing(struct handlebars_options * options)
 {
     struct handlebars_value * context;
@@ -261,9 +277,9 @@ struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * 
 
     handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
-    helper = handlebars_value_map_find(options->vm->helpers, "if");
+    helper = get_helper(options->vm, "if");
     assert(helper != NULL);
-    result = helper->v.helper(options);
+    result = handlebars_value_call(helper, options);
 
     SAFE_RETURN(result);
 }

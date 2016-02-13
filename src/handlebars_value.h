@@ -129,6 +129,11 @@ static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
     }
 }
 
+static inline bool handlebars_value_is_callable(struct handlebars_value * value ) {
+    // @todo make this correct
+    return value->type == HANDLEBARS_VALUE_TYPE_HELPER || value->type == HANDLEBARS_VALUE_TYPE_USER;
+}
+
 static inline bool handlebars_value_is_empty(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:

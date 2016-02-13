@@ -176,9 +176,11 @@ static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars
     if( NULL == (tmp = handlebars_value_expression(result, escape)) ) {
         return;
     }
-//#ifndef NDEBUG
-//    fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
-//#endif
+#ifndef NDEBUG
+    if( getenv("DEBUG") ) {
+        fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
+    }
+#endif
     frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     frame->buffer = MC(handlebars_talloc_strdup_append_buffer(frame->buffer, tmp));
     handlebars_talloc_free(tmp);
@@ -352,6 +354,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     struct handlebars_value * value = handlebars_stack_pop(vm->stack);
     struct setup_ctx ctx = {0};
+    struct handlebars_value * fn;
 
     ACCEPT_FN(empty_hash)(vm, opcode);
 
@@ -371,8 +374,16 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         struct handlebars_value * result = handlebars_value_call(value, ctx.options);
         assert(result != NULL);
         handlebars_stack_push(vm->stack, result);
+    } else if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+        // @todo improve this
+        struct handlebars_value * result = handlebars_value_call(value, ctx.options);
+        if( result == NULL ) {
+            goto missing;
+        }
+        handlebars_stack_push(vm->stack, result);
     } else {
-        struct handlebars_value * fn = get_helper(vm, "helperMissing");
+missing:
+        fn = get_helper(vm, "helperMissing");
         assert(fn != NULL);
         assert(fn->type == HANDLEBARS_VALUE_TYPE_HELPER);
         struct handlebars_value * result = handlebars_value_call(fn, ctx.options);
@@ -404,15 +415,15 @@ ACCEPT_FUNCTION(invoke_helper)
         }
     }
 
-    if( !fn || fn->type != HANDLEBARS_VALUE_TYPE_HELPER ) {
+    if( !fn || !handlebars_value_is_callable(fn) ) {
         fn = value;
     }
 
-    if( !fn || fn->type != HANDLEBARS_VALUE_TYPE_HELPER ) {
+    if( !fn || !handlebars_value_is_callable(fn) ) {
         fn = get_helper(vm, "helperMissing");
     }
 
-    if( !fn || !fn->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+    if( !fn || !handlebars_value_is_callable(fn) ) {
         handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "Helper missing: %s", ctx.name);
     }
 
@@ -420,7 +431,7 @@ ACCEPT_FUNCTION(invoke_helper)
     if( !result ) {
         result = handlebars_value_ctor(vm->ctx);
     }
-    fprintf(stderr, "APPEND TO BUFFER: %s\n", handlebars_value_dump(result, 0));
+
     handlebars_stack_push(vm->stack, result);
 }
 
@@ -829,11 +840,13 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
 		struct handlebars_opcode * opcode = compiler->opcodes[i];
 
         // Print opcode?
-//#ifndef NDEBUG
-//        char * tmp = handlebars_opcode_print(vm, opcode);
-//        fprintf(stdout, "V[%d] P[%d] OPCODE: %s\n", vm->depth, compiler->guid, tmp);
-//        talloc_free(tmp);
-//#endif
+#ifndef NDEBUG
+        if( getenv("DEBUG") ) {
+            char *tmp = handlebars_opcode_print(vm, opcode);
+            fprintf(stdout, "V[%d] P[%d] OPCODE: %s\n", vm->depth, compiler->guid, tmp);
+            talloc_free(tmp);
+        }
+#endif
 
 		switch( opcode->type ) {
             ACCEPT(ambiguous_block_value);
