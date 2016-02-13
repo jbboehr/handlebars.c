@@ -99,11 +99,13 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     context = handlebars_stack_get(options->params, 0);
     result = handlebars_value_ctor(CONTEXT);
 
-    if( context->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+    if( handlebars_value_is_callable(context) ) {
         options2 = MC(handlebars_talloc_zero(options->vm, struct handlebars_options));
         options2->params = talloc_steal(options2, handlebars_stack_ctor(CONTEXT));
+        options2->vm = options->vm;
+        options2->scope = options->scope;
         handlebars_stack_push(options2->params, options->scope);
-        ret = context->v.helper(options);
+        ret = handlebars_value_call(context, options2);
         if( !ret ) {
             goto whoopsie;
         }
@@ -234,11 +236,11 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
     struct handlebars_value * ret = NULL;
     char * result;
 
-    if( conditional->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+    if( handlebars_value_is_callable(conditional) ) {
         struct handlebars_options * options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
         options2->params = talloc_steal(options2, handlebars_stack_ctor(CONTEXT));
         handlebars_stack_push(options2->params, options->scope);
-        ret = conditional->v.helper(options);
+        ret = handlebars_value_call(conditional, options);
         handlebars_value_delref(conditional);
         conditional = ret;
         if( !conditional ) {
@@ -291,11 +293,11 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
     struct handlebars_value * block_params;
     struct handlebars_value * ret = NULL;
 
-    if( context->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+    if( handlebars_value_is_callable(context) ) {
         struct handlebars_options * options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
         options2->params = talloc_steal(options2, handlebars_stack_ctor(CONTEXT));
         handlebars_stack_push(options2->params, options->scope);
-        ret = context->v.helper(options);
+        ret = handlebars_value_call(context, options);
         if( !ret ) {
             ret = handlebars_value_ctor(CONTEXT);
         }

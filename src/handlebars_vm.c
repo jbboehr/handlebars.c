@@ -252,7 +252,7 @@ ACCEPT_FUNCTION(ambiguous_block_value)
         struct handlebars_value * helper = get_helper(vm, "blockHelperMissing");
 
         assert(helper != NULL);
-        assert(helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
+        assert(handlebars_value_is_callable(helper));
         assert(ctx.options != NULL);
 
         struct handlebars_value * result = handlebars_value_call(helper, ctx.options);
@@ -315,7 +315,7 @@ ACCEPT_FUNCTION(block_value)
     helper = get_helper(vm, "blockHelperMissing");
 
     assert(helper != NULL);
-    assert(helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
+    assert(handlebars_value_is_callable(helper));
 
     result = handlebars_value_call(helper, ctx.options);
     append_to_buffer(vm, result, 0);
@@ -367,7 +367,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     vm->last_helper = ctx.helper ? ctx.name : NULL;
 
     if( ctx.helper != NULL ) {
-        assert(ctx.helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
+        assert(handlebars_value_is_callable(ctx.helper));
         struct handlebars_value *result = handlebars_value_call(ctx.helper, ctx.options);
         append_to_buffer(vm, result, 0);
     } else if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
@@ -385,7 +385,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
 missing:
         fn = get_helper(vm, "helperMissing");
         assert(fn != NULL);
-        assert(fn->type == HANDLEBARS_VALUE_TYPE_HELPER);
+        assert(handlebars_value_is_callable(fn));
         struct handlebars_value * result = handlebars_value_call(fn, ctx.options);
         append_to_buffer(vm, result, 0);
         handlebars_stack_push(vm->stack, value);
@@ -448,7 +448,7 @@ ACCEPT_FUNCTION(invoke_known_helper) {
 
     assert(ctx.helper != NULL);
     assert(ctx.options != NULL);
-    assert(ctx.helper->type == HANDLEBARS_VALUE_TYPE_HELPER);
+    assert(handlebars_value_is_callable(ctx.helper));
 
     struct handlebars_value * result = handlebars_value_call(ctx.helper, ctx.options);
     append_to_buffer(vm, result, 0);
@@ -498,7 +498,7 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     // If partial is a function?
-    if( partial->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+    if( handlebars_value_is_callable(partial) ) {
         partial = handlebars_value_call(partial, ctx.options);
     }
 
@@ -817,7 +817,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
     struct handlebars_value * top = handlebars_stack_top(vm->stack);
     assert(top != NULL);
-    if( top->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+    if( handlebars_value_is_callable(top) ) {
         struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
         options->params = handlebars_stack_ctor(vm->ctx);
         handlebars_stack_set(options->params, 0, frame->context);
