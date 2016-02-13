@@ -128,29 +128,15 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
         }
     }
 
-    /*
-    if( context->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        len = context->v.map->i - 1;
-    } else if( context->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        len = handlebars_stack_length(context->v.stack) - 1;
-    } else if( context->type == HANDLEBARS_VALUE_TYPE_USER ) {
-        // @todo
-    } else {
-        goto whoopsie;
-    }
-     */
     if( handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_MAP && handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
         goto whoopsie;
     }
-    /*
-     */
 
     it = handlebars_value_iterator_ctor(context);
     len = it->length;
 
     for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
         struct handlebars_value * key;
-
 
         if( it->current->type == HANDLEBARS_VALUE_TYPE_NULL ) {
             i++;

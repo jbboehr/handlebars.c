@@ -195,7 +195,7 @@ static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
     for( i = handlebars_stack_length(vm->depths); i > 0; i-- ) {
         value = handlebars_stack_get(vm->depths, i - 1);
         if( !value ) continue;
-        if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
             tmp = handlebars_value_map_find(value, key);
             if( tmp != NULL ) {
                 break;
