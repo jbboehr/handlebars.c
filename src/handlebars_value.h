@@ -43,6 +43,7 @@ enum handlebars_value_flags {
 };
 
 struct handlebars_value_iterator {
+    size_t length;
     size_t index;
     const char * key;
     struct handlebars_value * value;
@@ -130,8 +131,17 @@ static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
 }
 
 static inline bool handlebars_value_is_callable(struct handlebars_value * value ) {
+    return handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_HELPER;
+    /*
     // @todo make this correct
-    return value->type == HANDLEBARS_VALUE_TYPE_HELPER || value->type == HANDLEBARS_VALUE_TYPE_USER;
+    if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
+        return true;
+    } else if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+
+    }
+    return false;
+    //return value->type == HANDLEBARS_VALUE_TYPE_HELPER || ;
+     */
 }
 
 static inline bool handlebars_value_is_empty(struct handlebars_value * value) {

@@ -72,7 +72,7 @@ static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, co
 {
     struct handlebars_value * helper;
     helper = handlebars_value_map_find(vm->helpers, name);
-    if( !helper ) {
+    if( !helper || helper->type == HANDLEBARS_VALUE_TYPE_NULL ) {
         if( !vm->builtins ) {
             vm->builtins = handlebars_builtins(vm->ctx);
         }
@@ -366,7 +366,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     setup_helper(vm, &ctx);
     vm->last_helper = ctx.helper ? ctx.name : NULL;
 
-    if( ctx.helper != NULL ) {
+    if( ctx.helper != NULL && ctx.helper->type != HANDLEBARS_VALUE_TYPE_NULL ) {
         assert(handlebars_value_is_callable(ctx.helper));
         struct handlebars_value *result = handlebars_value_call(ctx.helper, ctx.options);
         append_to_buffer(vm, result, 0);
