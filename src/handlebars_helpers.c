@@ -238,8 +238,10 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
     if( handlebars_value_is_callable(conditional) ) {
         struct handlebars_options * options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
         options2->params = talloc_steal(options2, handlebars_stack_ctor(CONTEXT));
+        options2->vm = options->vm;
+        options2->scope = options->scope;
         handlebars_stack_push(options2->params, options->scope);
-        ret = handlebars_value_call(conditional, options);
+        ret = handlebars_value_call(conditional, options2);
         handlebars_value_delref(conditional);
         conditional = ret;
         if( !conditional ) {

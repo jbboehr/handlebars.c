@@ -19,6 +19,7 @@ typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebar
 typedef struct handlebars_value_iterator * (*handlebars_iterator_ctor_func)(struct handlebars_value * value);
 typedef bool (*handlebars_iterator_next_func)(struct handlebars_value_iterator * it);
 typedef struct handlebars_value * (*handlebars_call_func)(struct handlebars_value * value, struct handlebars_options * options);
+typedef long (*handlebars_count_func)(struct handlebars_value * value);
 
 struct handlebars_value_handlers {
     handlebars_copy_func copy;
@@ -30,6 +31,7 @@ struct handlebars_value_handlers {
     handlebars_iterator_ctor_func iterator;
     handlebars_iterator_next_func next;
     handlebars_call_func call;
+    handlebars_count_func count;
 };
 
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void) HBSARN;

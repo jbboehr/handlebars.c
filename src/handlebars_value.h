@@ -7,6 +7,7 @@
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_stack.h"
+#include "handlebars_value_handlers.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -144,6 +145,19 @@ static inline bool handlebars_value_is_callable(struct handlebars_value * value 
      */
 }
 
+static inline long handlebars_value_count(struct handlebars_value * value) {
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            return handlebars_stack_length(value->v.stack);
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            return value->v.map->i - 1;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            return value->handlers->count(value);
+    }
+
+    return -1;
+}
+
 static inline bool handlebars_value_is_empty(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
@@ -161,6 +175,7 @@ static inline bool handlebars_value_is_empty(struct handlebars_value * value) {
         case HANDLEBARS_VALUE_TYPE_MAP:
             return NULL == value->v.map->first;
         case HANDLEBARS_VALUE_TYPE_USER:
+            return handlebars_value_count(value) == 0; // Doesn't include -1
         default:
             return 0;
     }
