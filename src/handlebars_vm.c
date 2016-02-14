@@ -650,7 +650,7 @@ ACCEPT_FUNCTION(lookup_data)
     if( val ) {
         for (; *arr != NULL; arr++) {
             char *part = *arr;
-            if (val == NULL || val->type != HANDLEBARS_VALUE_TYPE_MAP) {
+            if (val == NULL || handlebars_value_get_type(val) != HANDLEBARS_VALUE_TYPE_MAP) {
                 break;
             }
             val = handlebars_value_map_find(val, part);
