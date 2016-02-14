@@ -533,11 +533,10 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Get context
     // @todo change parent to new vm?
-    // @todo hash
     struct handlebars_value * context1 = handlebars_stack_get(ctx.options->params, 0);
     struct handlebars_value * context2 = handlebars_value_ctor(vm2->ctx);
     struct handlebars_value_iterator * it;
-    if( context1 && context1->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+    if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP ) {
         handlebars_value_map_init(context2);
         it = handlebars_value_iterator_ctor(context1);
         for( ; it->current ; handlebars_value_iterator_next(it) ) {
