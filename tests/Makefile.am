@@ -16,7 +16,6 @@ check_PROGRAMS = \
 	test_token_printer \
 	test_utils \
 	test_value \
-	test_vm \
 	test_spec_handlebars_parser \
 	test_spec_handlebars_tokenizer \
 	test_spec_handlebars_compiler \
@@ -38,7 +37,6 @@ test_token_list_SOURCES = utils.h utils.c fixtures.c test_token_list.c
 test_token_printer_SOURCES = utils.h utils.c fixtures.c test_token_printer.c
 test_utils_SOURCES = utils.h utils.c fixtures.c test_utils.c
 test_value_SOURCES = utils.h utils.c fixtures.c test_value.c
-test_vm_SOURCES = utils.h utils.c fixtures.c test_vm.c
 test_spec_handlebars_parser_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_parser.c
 test_spec_handlebars_tokenizer_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_tokenizer.c
 test_spec_handlebars_compiler_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_compiler.c
@@ -61,7 +59,6 @@ TESTS = \
 	test_token_printer \
 	test_utils \
 	test_value \
-	test_vm \
 	test_spec_handlebars_parser \
 	test_spec_handlebars_tokenizer \
 	test_spec_handlebars_compiler \
