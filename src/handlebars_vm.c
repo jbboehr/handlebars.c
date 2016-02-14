@@ -822,6 +822,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
         struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
         options->params = handlebars_stack_ctor(vm->ctx);
         handlebars_stack_set(options->params, 0, frame->context);
+        options->vm = vm;
         options->scope = frame->context;
         struct handlebars_value * result = handlebars_value_call(top, options);
         if( !result ) {
