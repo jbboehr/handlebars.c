@@ -213,11 +213,12 @@ struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * 
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
     struct handlebars_value * field = handlebars_stack_get(options->params, 1);
     struct handlebars_value * result = NULL;
+    enum handlebars_value_type type = handlebars_value_get_type(context);
 
-    if( context->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+    if( type == HANDLEBARS_VALUE_TYPE_MAP ) {
         const char * tmp = handlebars_value_get_strval(field);
         result = handlebars_value_map_find(context, tmp);
-    } else if( context->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+    } else if( type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
         // @todo sscanf?
         if( field->type == HANDLEBARS_VALUE_TYPE_INTEGER ) {
             result = handlebars_value_array_find(context, handlebars_value_get_intval(field));
