@@ -339,10 +339,8 @@ ACCEPT_FUNCTION(get_context) {
     size_t length = handlebars_stack_length(vm->depths);
 
     if( depth >= length ) {
-        // error
-        // @todo
+        // @todo should we throw?
         vm->last_context = NULL;
-        //assert(0);
     } else if( depth == 0 ) {
         vm->last_context = handlebars_stack_top(vm->depths);
     } else {
@@ -477,8 +475,10 @@ ACCEPT_FUNCTION(invoke_partial)
     }
     if( opcode->op1.data.boolval ) {
         tmp = handlebars_stack_pop(vm->stack);
-        name = handlebars_value_get_strval(tmp);
-        handlebars_value_delref(tmp);
+        if( tmp ) { // @todo why is this null?
+            name = handlebars_value_get_strval(tmp);
+            handlebars_value_delref(tmp);
+        }
         ctx.options->name = NULL; // fear
     }
 
@@ -593,9 +593,9 @@ ACCEPT_FUNCTION(lookup_block_param)
     sscanf(*(opcode->op1.data.arrayval + 1), "%ld", &blockParam2);
 
     struct handlebars_value * v1 = handlebars_stack_get(vm->blockParamStack, handlebars_stack_length(vm->blockParamStack) - blockParam1 - 1);
-    if( !v1 || v1->type != HANDLEBARS_VALUE_TYPE_ARRAY ) goto done;
+    if( !v1 || handlebars_value_get_type(v1) != HANDLEBARS_VALUE_TYPE_ARRAY ) goto done;
 
-    struct handlebars_value * v2 = handlebars_stack_get(v1->v.stack, blockParam2);
+    struct handlebars_value * v2 = handlebars_value_array_find(v1, blockParam2);
     if( !v2 ) goto done;
 
     char ** arr = opcode->op2.data.arrayval;
