@@ -1000,10 +1000,14 @@ void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
 		struct handlebars_value * context)
 {
+    bool prev = vm->ctx->e.ok;
+
     // Save jump buffer
-    vm->ctx->e.ok = true;
-    if( setjmp(vm->ctx->e.jmp) ) {
-        goto done;
+    if( !prev ) {
+        vm->ctx->e.ok = true;
+        if( setjmp(vm->ctx->e.jmp) ) {
+            goto done;
+        }
     }
 
     // Preprocess
@@ -1018,10 +1022,10 @@ void handlebars_vm_execute(
     vm->buffer = handlebars_vm_execute_program_ex(vm, 0, context, vm->data, NULL);
 
 done:
-    vm->ctx->e.ok = false;
-
     // Release context
     handlebars_value_delref(context);
+
+    compiler->ctx->e.ok = prev;
 }
 
 void handlebars_vm_throw(struct handlebars_vm * vm, long num, const char * msg)
