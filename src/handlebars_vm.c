@@ -450,7 +450,8 @@ ACCEPT_FUNCTION(invoke_known_helper) {
     assert(handlebars_value_is_callable(ctx.helper));
 
     struct handlebars_value * result = handlebars_value_call(ctx.helper, ctx.options);
-    append_to_buffer(vm, result, 0);
+    handlebars_stack_push(vm->stack, result);
+    //append_to_buffer(vm, result, 0);
 }
 
 ACCEPT_FUNCTION(invoke_partial)
