@@ -22,9 +22,9 @@ addons:
       - libtalloc-dev
       - pkg-config
 
-cache:
-  directories:
-    - $HOME/build
+cache: false
+#  directories:
+#    - $HOME/build
 
 before_install:
   - travis_retry gem install coveralls-lcov
