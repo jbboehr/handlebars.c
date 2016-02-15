@@ -3,40 +3,41 @@ language: c
 compiler:
   - gcc
 
+sudo: require
+
+dist: trusty
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - "ppa:jbboehr/check"
+    packages:
+      - automake
+      - bison
+      - check
+      - flex
+      - gcc-4.9
+      - lcov
+      - libjson-c-dev
+      - libpcre3-dev
+      - libtalloc-dev
+      - libyaml-dev
+      - pkg-config
+
+cache: false
+
 branches:
   only:
     - master
     - travis
 
-sudo: false
-
-# autoconf automake gawk gcc git-core libtool m4 make
-addons:
-  apt:
-    packages:
-      - bison
-      - flex
-      - lcov
-      - libjson0-dev
-      - libpcre3-dev
-      - libtalloc-dev
-      - pkg-config
-
-cache: false
-#  directories:
-#    - $HOME/build
-
 before_install:
   - travis_retry gem install coveralls-lcov
 
 install:
-  - ./.travis.sh
-  - export PATH="$HOME/build/bin:$PATH"
-  - export CFLAGS="-L$HOME/build/lib"
-  - export CPPFLAGS="-I$HOME/build/include"
-  - export PKG_CONFIG_PATH="$HOME/build/lib/pkgconfig"
   - ./bootstrap
-  - ./configure --prefix=$HOME/build  CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
+  - ./configure --prefix=$HOME/build  CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage" CC="gcc-4.9"
   - make clean all
 
 before_script:
