@@ -392,22 +392,6 @@ START_TEST(test_handlebars_spec)
     // Execute
     handlebars_vm_execute(vm, compiler, context);
 
-    // Memdebug
-    if( memdebug ) {
-        handlebars_stack_dtor(vm->stack);
-        handlebars_stack_dtor(vm->frameStack);
-        handlebars_stack_dtor(vm->depths);
-        handlebars_stack_dtor(vm->hashStack);
-        handlebars_stack_dtor(vm->blockParamStack);
-        handlebars_value_try_delref(vm->last_context);
-        handlebars_value_delref(context);
-        handlebars_value_delref(vm->helpers);
-        handlebars_value_delref(vm->partials);
-        handlebars_value_try_delref(vm->builtins);
-        handlebars_value_try_delref(vm->data);
-        talloc_report_full(ctx, stderr);
-    }
-
 #ifndef NDEBUG
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
@@ -453,6 +437,16 @@ START_TEST(test_handlebars_spec)
                                                    test->tmpl, test->expected, vm->buffer);
             ck_abort_msg(tmp);
         }
+    }
+
+    // Memdebug
+    handlebars_vm_dtor(vm);
+    handlebars_value_delref(context);
+    handlebars_value_delref(vm->helpers);
+    handlebars_value_delref(vm->partials);
+    handlebars_value_try_delref(vm->data);
+    if( memdebug ) {
+        talloc_report_full(ctx, stderr);
     }
 
 done:
@@ -530,7 +524,7 @@ int main(void)
     // Generate report for memdebug
     if( memdebug ) {
         // What should we free here?
-        //handlebars_talloc_free(rootctx);
+        handlebars_talloc_free(rootctx);
         //handlebars_talloc_free(tests);
         talloc_report_full(NULL, stderr);
     }

@@ -53,10 +53,10 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
             json_object_object_foreach(intern, k, v) {
                 new_value = handlebars_value_from_json_object(value->ctx, v);
                 handlebars_map_add(value->v.map, k, new_value);
-                handlebars_value_delref(new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
                 }
+                handlebars_value_delref(new_value);
             }
             break;
         }
@@ -67,10 +67,10 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
             for( i = 0, l = json_object_array_length(intern); i < l; i++ ) {
                 new_value = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, i));
                 handlebars_stack_set(value->v.map, i, new_value);
-                handlebars_value_delref(new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
                 }
+                handlebars_value_delref(new_value);
             }
             break;
         }

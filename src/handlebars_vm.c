@@ -67,6 +67,21 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 #define CONTEXT vm->ctx
 
 
+void handlebars_vm_dtor(struct handlebars_vm * vm)
+{
+    handlebars_stack_dtor(vm->frameStack);
+    if( vm->depths ) {
+        handlebars_stack_dtor(vm->depths);
+    }
+    handlebars_stack_dtor(vm->stack);
+    handlebars_stack_dtor(vm->hashStack);
+    if( vm->blockParamStack ) {
+        handlebars_stack_dtor(vm->blockParamStack);
+    }
+    handlebars_value_try_delref(vm->builtins);
+    handlebars_value_try_delref(vm->last_context);
+    handlebars_talloc_free(vm);
+}
 
 static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, const char * name)
 {
@@ -262,9 +277,9 @@ ACCEPT_FUNCTION(ambiguous_block_value)
         append_to_buffer(vm, result, 0);
 
         handlebars_value_delref(helper);
-        handlebars_options_dtor(ctx.options);
     }
 
+    handlebars_options_dtor(ctx.options);
     handlebars_value_delref(current);
 }
 
@@ -333,6 +348,7 @@ ACCEPT_FUNCTION(block_value)
 
     handlebars_value_delref(helper);
     handlebars_value_delref(current);
+    handlebars_options_dtor(ctx.options);
 }
 
 ACCEPT_FUNCTION(empty_hash)
@@ -529,30 +545,29 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Construct new context
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
-    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
-    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
-    // Get tempalte
+    // Save jump buffer
+    context->e.ok = true;
+    if( setjmp(context->e.jmp) ) {
+        handlebars_context_throw_ex(vm->ctx, context->e.num, &context->e.loc, context->e.msg);
+    }
+
+    // Get template
     context->tmpl = handlebars_value_get_strval(partial);
     if( !*context->tmpl ) {
         goto done;
     }
 
+    // Construct intermediate compiler and VM
+    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
+    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
+
     // Parse
     handlebars_parse(context);
-    if( context->e.num ) {
-        handlebars_vm_throw(vm, context->e.num, context->e.msg);
-    }
 
     // Compile
     handlebars_compiler_set_flags(compiler, vm->flags);
-    /* if( vm->known_helpers ) {
-        compiler->known_helpers = (const char **) test->known_helpers;
-    } */
     handlebars_compiler_compile(compiler, context->program);
-    if( context->e.num ) {
-        handlebars_context_throw_ex(vm->ctx, context->e.num, &context->e.loc, context->e.msg);
-    }
 
     // Get context
     // @todo change parent to new vm?
@@ -576,8 +591,12 @@ ACCEPT_FUNCTION(invoke_partial)
         }
     } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {
         context2 = ctx.options->hash;
+        if( context2 ) {
+            handlebars_value_addref(context2);
+        }
     } else {
         context2 = context1;
+        context1 = NULL;
     }
 
     // Setup new VM
@@ -590,10 +609,6 @@ ACCEPT_FUNCTION(invoke_partial)
     // @todo block params
 
     handlebars_vm_execute(vm2, compiler, context2);
-    if( context->e.num ) {
-        handlebars_context_dtor(context);
-        handlebars_context_throw_ex(vm->ctx, context->e.num, &context->e.loc, context->e.msg);
-    }
 
     if( vm2->buffer ) {
         char *tmp2 = handlebars_indent(vm2, vm2->buffer, opcode->op3.data.stringval);
@@ -601,11 +616,16 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_talloc_free(tmp2);
     }
 
+    handlebars_value_try_delref(context1);
+    handlebars_value_try_delref(context2);
+    vm2->blockParamStack = NULL;
+    vm2->depths = NULL;
+    handlebars_vm_dtor(vm2);
+    handlebars_compiler_dtor(compiler);
+
 done:
     handlebars_context_dtor(context);
     handlebars_value_try_delref(partial);
-    //handlebars_value_try_delref(context1);
-    //handlebars_value_delref(context2);
     handlebars_options_dtor(ctx.options);
 }
 

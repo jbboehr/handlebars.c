@@ -47,6 +47,7 @@ struct handlebars_vm {
 };
 
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBSARN;
+void handlebars_vm_dtor(struct handlebars_vm * vm);
 
 void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
