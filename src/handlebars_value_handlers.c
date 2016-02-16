@@ -81,7 +81,8 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
     value->flags &= ~HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
 }
 
-static enum handlebars_value_type std_json_type(struct handlebars_value * value) {
+static enum handlebars_value_type std_json_type(struct handlebars_value * value)
+{
     struct json_object * intern = (struct json_object *) value->v.usr;
     switch( json_object_get_type(intern) ) {
         case json_type_object: return HANDLEBARS_VALUE_TYPE_MAP;
@@ -98,7 +99,8 @@ static enum handlebars_value_type std_json_type(struct handlebars_value * value)
     }
 }
 
-static struct handlebars_value * std_json_map_find(struct handlebars_value * value, const char * key) {
+static struct handlebars_value * std_json_map_find(struct handlebars_value * value, const char * key)
+{
     struct json_object * intern = (struct json_object *) value->v.usr;
     struct json_object * item = json_object_object_get(intern, key);
     if( item == NULL ) {
@@ -107,7 +109,8 @@ static struct handlebars_value * std_json_map_find(struct handlebars_value * val
     return handlebars_value_from_json_object(value->ctx, item);
 }
 
-static struct handlebars_value * std_json_array_find(struct handlebars_value * value, size_t index) {
+static struct handlebars_value * std_json_array_find(struct handlebars_value * value, size_t index)
+{
     struct json_object * intern = (struct json_object *) value->v.usr;
     struct json_object * item = json_object_array_get_idx(intern, (int) index);
     if( item == NULL ) {
@@ -119,7 +122,7 @@ static struct handlebars_value * std_json_array_find(struct handlebars_value * v
 struct handlebars_value_iterator * std_json_iterator_ctor(struct handlebars_value * value)
 {
     struct json_object * intern = (struct json_object *) value->v.usr;
-    struct handlebars_value_iterator * it = handlebars_talloc(value, struct handlebars_value_iterator);
+    struct handlebars_value_iterator * it = handlebars_talloc_zero(value, struct handlebars_value_iterator);
     struct lh_entry * entry;
 
     it->value = value;

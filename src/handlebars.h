@@ -38,6 +38,9 @@ struct handlebars_token_list;
 #endif
 #define HBSARN HBS_ATTR_RETURNS_NONNULL
 
+#define HBS_S1(x) #x
+#define HBS_S2(x) HBS_S1(x)
+
 /**
  * @brief Enumeration of error types
  */

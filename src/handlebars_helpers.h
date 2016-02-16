@@ -13,6 +13,7 @@ struct handlebars_value;
 struct handlebars_vm;
 
 struct handlebars_options {
+    struct handlebars_vm * vm;
     long inverse;
     long program;
     char * name;
@@ -22,10 +23,11 @@ struct handlebars_options {
     struct handlebars_value * hash;
     struct handlebars_value * hash_types;
     struct handlebars_value * hash_contexts;
-    struct handlebars_vm * vm;
 };
 
 typedef struct handlebars_value * (*handlebars_helper_func)(struct handlebars_options * options);
+
+void handlebars_options_dtor(struct handlebars_options * options);
 
 const char ** handlebars_builtins_names(void) HBSARN;
 struct handlebars_value * handlebars_builtins(struct handlebars_context * ctx);

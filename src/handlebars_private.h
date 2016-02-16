@@ -35,9 +35,6 @@ struct handlebars_context;
 #define HBS_TYPEOF(ptr) void *
 #endif
 
-#define HBS_S1(x) #x
-#define HBS_S2(x) HBS_S1(x)
-
 #define CONTEXT context
 #define MEMCHK_MSG "Out of memory  [" HBS_S2(__FILE__) ":" HBS_S2(__LINE__) "]"
 #define MEMCHK(cond) \

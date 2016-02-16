@@ -98,11 +98,32 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
 bool handlebars_value_iterator_next(struct handlebars_value_iterator * it);
 struct handlebars_value * handlebars_value_call(struct handlebars_value * value, struct handlebars_options * options);
 
-
+#if 0
+static inline int _handlebars_value_addref(struct handlebars_value * value, const char * loc) {
+    fprintf(stderr, "ADDREF [%p] [%d] %s\n", value, value->refcount, loc);
+    return ++value->refcount;
+}
+#define handlebars_value_addref(value) _handlebars_value_addref(value, "[" HBS_S2(__FILE__) ":" HBS_S2(__LINE__) "]")
+#else
 static inline int handlebars_value_addref(struct handlebars_value * value) {
     return ++value->refcount;
 }
+#endif
 
+#if 0
+static inline int _handlebars_value_delref(struct handlebars_value * value, const char * loc) {
+    fprintf(stderr, "DELREF [%p] [%d] %s\n", value, value->refcount, loc);
+    if( value->refcount <= 1 ) {
+        if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
+            handlebars_value_dtor(value);
+        }
+        handlebars_talloc_free(value);
+        return 0;
+    }
+    return --value->refcount;
+}
+#define handlebars_value_delref(value) _handlebars_value_delref(value, "[" HBS_S2(__FILE__) ":" HBS_S2(__LINE__) "]")
+#else
 static inline int handlebars_value_delref(struct handlebars_value * value) {
     if( value->refcount <= 1 ) {
         if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
@@ -112,6 +133,14 @@ static inline int handlebars_value_delref(struct handlebars_value * value) {
         return 0;
     }
     return --value->refcount;
+}
+#endif
+
+static inline int handlebars_value_try_delref(struct handlebars_value * value) {
+    if( value ) {
+        return handlebars_value_delref(value);
+    }
+    return -1;
 }
 
 static inline int handlebars_value_refcount(struct handlebars_value * value) {
@@ -209,7 +238,7 @@ static inline void handlebars_value_string(struct handlebars_value * value, cons
     value->v.strval = handlebars_talloc_strdup(value, strval);
 }
 
-static inline void handelbars_value_string_steal(struct handlebars_value * value, char * strval) {
+static inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.strval = talloc_steal(value, strval);

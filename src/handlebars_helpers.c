@@ -43,6 +43,17 @@ static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, co
 
 
 
+void handlebars_options_dtor(struct handlebars_options * options)
+{
+    //handlebars_value_try_delref(options->scope);
+    handlebars_value_try_delref(options->data);
+    handlebars_value_try_delref(options->hash);
+    handlebars_stack_dtor(options->params);
+    handlebars_talloc_free(options);
+}
+
+
+
 
 struct handlebars_value * handlebars_builtin_block_helper_missing(struct handlebars_options * options)
 {
@@ -61,8 +72,8 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
     } else if( handlebars_value_is_empty(context) && !is_zero ) {
         result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        // @todo use hash lookup
-        return handlebars_builtin_each(options);
+        struct handlebars_value * each = get_helper(options->vm, "each");
+        ret = handlebars_value_call(each, options);
     } else {
         // For object, etc
         result = handlebars_vm_execute_program(options->vm, options->program, context);
@@ -70,9 +81,10 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
 
     if( result ) {
         ret = handlebars_value_ctor(CONTEXT);
-        ret->type = HANDLEBARS_VALUE_TYPE_STRING;
-        ret->v.strval = talloc_steal(ret, result);
+        handlebars_value_string_steal(ret, result);
     }
+
+    handlebars_value_try_delref(context);
 
     SAFE_RETURN(ret);
 }
@@ -107,18 +119,19 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
         handlebars_stack_push(options2->params, options->scope);
         ret = handlebars_value_call(context, options2);
         if( !ret ) {
+            handlebars_options_dtor(options2);
             goto whoopsie;
         }
         handlebars_value_delref(context);
         context = ret;
+        handlebars_options_dtor(options2);
     }
 
     handlebars_value_string(result, "");
 
     if( use_data ) {
         data = handlebars_value_ctor(CONTEXT);
-        data->type = HANDLEBARS_VALUE_TYPE_MAP;
-        data->v.map = talloc_steal(data, handlebars_map_ctor(CONTEXT));
+        handlebars_value_map_init(data);
         if( handlebars_value_get_type(options->data) == HANDLEBARS_VALUE_TYPE_MAP ) {
             struct handlebars_value_iterator *it2 = handlebars_value_iterator_ctor(options->data);
             for (; it2->current != NULL; handlebars_value_iterator_next(it2)) {
@@ -172,8 +185,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
         }
 
         block_params = handlebars_value_ctor(CONTEXT);
-        block_params->type = HANDLEBARS_VALUE_TYPE_ARRAY;
-        block_params->v.stack = talloc_steal(block_params, handlebars_stack_ctor(CONTEXT));
+        handlebars_value_array_init(block_params);
         handlebars_stack_set(block_params->v.stack, 0, it->current);
         handlebars_stack_set(block_params->v.stack, 1, key);
 
@@ -187,6 +199,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
 
         i++;
     }
+    handlebars_talloc_free(it);
 
 whoopsie:
     if( i == 0 ) {
@@ -195,6 +208,9 @@ whoopsie:
             result->v.strval = handlebars_talloc_strdup_append(result->v.strval, tmp);
         }
     }
+
+    handlebars_value_try_delref(context);
+    handlebars_value_try_delref(data);
 
     SAFE_RETURN(result);
 }
@@ -225,6 +241,9 @@ struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * 
         }
     }
 
+    handlebars_value_try_delref(context);
+    handlebars_value_try_delref(field);
+
     SAFE_RETURN(result);
 }
 
@@ -249,6 +268,7 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
             conditional = handlebars_value_ctor(CONTEXT);
         }
         ret = NULL;
+        handlebars_options_dtor(options2);
     }
 
     if( !handlebars_value_is_empty(conditional) ) {
@@ -266,8 +286,7 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
 
     if( result ) {
         ret = handlebars_value_ctor(CONTEXT);
-        ret->type = HANDLEBARS_VALUE_TYPE_STRING;
-        ret->v.strval = talloc_steal(ret, result);
+        handlebars_value_string_steal(ret, result);
     }
 
     SAFE_RETURN(ret);
@@ -279,11 +298,17 @@ struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * 
     struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
     struct handlebars_value * result = NULL;
 
+    if( !conditional ) {
+        conditional = handlebars_value_ctor(CONTEXT);
+    }
     handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
     helper = get_helper(options->vm, "if");
     assert(helper != NULL);
     result = handlebars_value_call(helper, options);
+
+    handlebars_value_delref(helper);
+    handlebars_value_delref(conditional);
 
     SAFE_RETURN(result);
 }
@@ -292,7 +317,7 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
 {
     char * result = NULL;
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
-    struct handlebars_value * block_params;
+    struct handlebars_value * block_params = NULL;
     struct handlebars_value * ret = NULL;
 
     if( handlebars_value_is_callable(context) ) {
@@ -306,6 +331,7 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
         handlebars_value_delref(context);
         context = ret;
         ret = NULL;
+        handlebars_options_dtor(options2);
     }
 
     if( context == NULL ) {
@@ -315,20 +341,19 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
         result = handlebars_vm_execute_program(options->vm, options->inverse, context);
     } else {
         block_params = handlebars_value_ctor(CONTEXT);
-        block_params->type = HANDLEBARS_VALUE_TYPE_ARRAY;
-        block_params->v.stack = talloc_steal(block_params, handlebars_stack_ctor(CONTEXT));
+        handlebars_value_array_init(block_params);
         handlebars_stack_set(block_params->v.stack, 0, context);
 
         result = handlebars_vm_execute_program_ex(options->vm, options->program, context, options->data, block_params);
     }
 
-    handlebars_value_delref(context);
-
     if( result ) {
         ret = handlebars_value_ctor(CONTEXT);
-        ret->type = HANDLEBARS_VALUE_TYPE_STRING;
-        ret->v.strval = talloc_steal(ret, result);
+        handlebars_value_string_steal(ret, result);
     }
+
+    handlebars_value_delref(context);
+    handlebars_value_try_delref(block_params);
 
     SAFE_RETURN(ret);
 }
@@ -340,6 +365,7 @@ struct handlebars_value * handlebars_builtins(struct handlebars_context * ctx)
         tmp->type = HANDLEBARS_VALUE_TYPE_HELPER; \
         tmp->v.helper = func; \
         handlebars_map_add(value->v.map, #name, tmp); \
+        handlebars_value_delref(tmp); \
     } while(0)
 
     struct handlebars_value * value;

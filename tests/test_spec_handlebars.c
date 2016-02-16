@@ -48,8 +48,9 @@ struct generic_test {
     struct json_object * raw;
 };
 
+static int memdebug;
 static TALLOC_CTX * rootctx;
-static struct generic_test * tests;
+static struct generic_test ** tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
 static char * spec_dir;
@@ -70,33 +71,31 @@ static void loadSpecTest(json_object * object)
     json_object * cur = NULL;
 
     // Get test
-    struct generic_test * test = &(tests[tests_len++]);
-    memset(test, 0, sizeof(struct generic_test));
-    //test->ctx = handlebars_context_ctor_ex(rootctx);
+    struct generic_test * test = tests[tests_len++] = handlebars_talloc_zero(tests, struct generic_test);
     test->raw = object;
 
     // Get description
     cur = json_object_object_get(object, "description");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->description = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->description = handlebars_talloc_strdup(test, json_object_get_string(cur));
     }
 
     // Get it
     cur = json_object_object_get(object, "it");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->it = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->it = handlebars_talloc_strdup(test, json_object_get_string(cur));
     }
 
     // Get template
     cur = json_object_object_get(object, "template");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->tmpl = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->tmpl = handlebars_talloc_strdup(test, json_object_get_string(cur));
     }
 
     // Get expected
     cur = json_object_object_get(object, "expected");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->expected = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->expected = handlebars_talloc_strdup(test, json_object_get_string(cur));
     } else {
         fprintf(stderr, "Warning: Expected was not a string\n");
     }
@@ -104,7 +103,7 @@ static void loadSpecTest(json_object * object)
     // Get message
     cur = json_object_object_get(object, "message");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->message = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->message = handlebars_talloc_strdup(test, json_object_get_string(cur));
     }
 
     // Get exception
@@ -149,12 +148,13 @@ static void loadSpecTest(json_object * object)
         test->flags = json_load_compile_flags(cur);
         struct json_object * cur2 = json_object_object_get(cur, "knownHelpers");
         if( cur2 ) {
-            test->known_helpers = json_load_known_helpers(rootctx, cur2);
+            test->known_helpers = json_load_known_helpers(test, cur2);
         }
     }
 }
 
-static int loadSpec(const char * spec) {
+static int loadSpec(const char * spec)
+{
     int error = 0;
     char * data = NULL;
     size_t data_len = 0;
@@ -193,7 +193,7 @@ static int loadSpec(const char * spec) {
 
     // (Re)Allocate tests array
     tests_size += array_len;
-    tests = talloc_realloc(rootctx, tests, struct generic_test, tests_size);
+    tests = talloc_realloc(rootctx, tests, struct generic_test *, tests_size);
 
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -273,7 +273,7 @@ int shouldnt_skip(struct generic_test * test)
 
 START_TEST(test_handlebars_spec)
 {
-    struct generic_test * test = &tests[_i];
+    struct generic_test * test = tests[_i];
     struct handlebars_context * ctx;
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
@@ -340,6 +340,7 @@ START_TEST(test_handlebars_spec)
                 handlebars_map_update(vm->helpers->v.map, it->key, it->current);
             //}
         }
+        handlebars_talloc_free(it);
         handlebars_value_delref(helpers);
     }
     if( test->helpers ) {
@@ -351,6 +352,7 @@ START_TEST(test_handlebars_spec)
             handlebars_map_update(vm->helpers->v.map, it->key, it->current);
             //}
         }
+        handlebars_talloc_free(it);
         handlebars_value_delref(helpers);
     }
 
@@ -373,23 +375,38 @@ START_TEST(test_handlebars_spec)
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
             handlebars_map_update(vm->partials->v.map, it->key, it->current);
         }
+        handlebars_talloc_free(it);
         handlebars_value_delref(partials);
     }
 
     // Load context
     context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
-    handlebars_value_addref(context);
     load_fixtures(context);
 
     // Load data
     if( test->data ) {
         vm->data = handlebars_value_from_json_object(ctx, test->data);
-        handlebars_value_convert(vm->data);
         load_fixtures(vm->data);
     }
 
     // Execute
     handlebars_vm_execute(vm, compiler, context);
+
+    // Memdebug
+    if( memdebug ) {
+        handlebars_stack_dtor(vm->stack);
+        handlebars_stack_dtor(vm->frameStack);
+        handlebars_stack_dtor(vm->depths);
+        handlebars_stack_dtor(vm->hashStack);
+        handlebars_stack_dtor(vm->blockParamStack);
+        handlebars_value_try_delref(vm->last_context);
+        handlebars_value_delref(context);
+        handlebars_value_delref(vm->helpers);
+        handlebars_value_delref(vm->partials);
+        handlebars_value_try_delref(vm->builtins);
+        handlebars_value_try_delref(vm->data);
+        talloc_report_full(ctx, stderr);
+    }
 
 #ifndef NDEBUG
     if( test->expected ) {
@@ -438,7 +455,6 @@ START_TEST(test_handlebars_spec)
         }
     }
 
-    //ck_assert_str_eq(vm->buffer, test->expected);
 done:
     handlebars_context_dtor(ctx);
     ck_assert_int_eq(1, talloc_total_blocks(memctx));
@@ -470,7 +486,6 @@ Suite * parser_suite(void)
 int main(void)
 {
     int number_failed;
-    int memdebug;
     int error;
 
     // Check if memdebug enabled
@@ -511,8 +526,12 @@ int main(void)
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 
+
     // Generate report for memdebug
     if( memdebug ) {
+        // What should we free here?
+        //handlebars_talloc_free(rootctx);
+        //handlebars_talloc_free(tests);
         talloc_report_full(NULL, stderr);
     }
 

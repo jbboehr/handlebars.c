@@ -25,8 +25,10 @@ FIXTURE_FN(20974934)
     // "function (arg) { return typeof arg; }"
     struct handlebars_value * arg = handlebars_stack_get(options->params, 0);
     if( arg->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+        handlebars_value_delref(arg);
         FIXTURE_STRING("undefined");
     } else {
+        handlebars_value_delref(arg);
         FIXTURE_STRING("not undefined");
     }
 }
@@ -39,6 +41,7 @@ FIXTURE_FN(49286285)
     char * r2 = handlebars_talloc_strdup(result, "bar");
     handlebars_talloc_strdup_append(r2, r1);
     handlebars_value_string(result, r2);
+    handlebars_value_delref(arg);
     return result;
 }
 
@@ -68,7 +71,7 @@ FIXTURE_FN(454102302)
     // @todo implement undefined?
     struct handlebars_value * prefix = handlebars_stack_get(options->params, 0);
     assert(prefix->type == HANDLEBARS_VALUE_TYPE_NULL);
-    char * tmp = "undefined";
+    const char * tmp = "undefined";
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
     return result;
@@ -89,7 +92,11 @@ FIXTURE_FN(459219799)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
+
+    handlebars_value_delref(prefix);
+    handlebars_value_delref(url);
     handlebars_talloc_free(tmp);
+    handlebars_talloc_free(res);
     return result;
 }
 
@@ -127,7 +134,12 @@ FIXTURE_FN(510017722)
     char * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
+
     handlebars_talloc_free(tmp);
+    handlebars_value_delref(bp1);
+    handlebars_value_delref(bp2);
+    handlebars_value_delref(block_params);
+    handlebars_value_delref(context);
     return result;
 }
 
@@ -146,7 +158,12 @@ FIXTURE_FN(585442881)
     char * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
+
     handlebars_talloc_free(tmp);
+    handlebars_value_delref(greeting);
+    handlebars_value_delref(context);
+    handlebars_value_delref(cruel);
+    handlebars_value_delref(world);
     return result;
 }
 
@@ -1554,12 +1571,14 @@ void load_fixtures(struct handlebars_value * value)
             if( child ) {
                 // Convert to helper
                 convert_value_to_fixture(value);
+                handlebars_value_delref(child);
             } else {
                 // Recurse
                 it = handlebars_value_iterator_ctor(value);
                 for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
                     load_fixtures(it->current);
                 }
+                handlebars_talloc_free(it);
             }
             break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
@@ -1567,6 +1586,7 @@ void load_fixtures(struct handlebars_value * value)
             for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
                 load_fixtures(it->current);
             }
+            handlebars_talloc_free(it);
             break;
     }
 }

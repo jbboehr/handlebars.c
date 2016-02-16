@@ -165,32 +165,44 @@ void * handlebars_stack_push_ptr(struct handlebars_stack * stack, void * ptr)
 void * handlebars_stack_pop_ptr(struct handlebars_stack * stack)
 {
     struct handlebars_value * value = handlebars_stack_pop(stack);
+    void * ptr;
 
     if( unlikely(value == NULL || value->type != HANDLEBARS_VALUE_TYPE_PTR) ) {
         return NULL;
     }
 
-    return value->v.ptr;
+    // @todo this may not be safe if ptr is owned by value - steal?
+    ptr = value->v.ptr;
+    handlebars_value_delref(value);
+    return ptr;
 }
 
 void * handlebars_stack_top_ptr(struct handlebars_stack * stack)
 {
     struct handlebars_value * value = handlebars_stack_top(stack);
+    void * ptr;
 
     if( unlikely(value == NULL || value->type != HANDLEBARS_VALUE_TYPE_PTR) ) {
         return NULL;
     }
 
-    return value->v.ptr;
+    // @todo this may not be safe if ptr is owned by value - steal?
+    ptr = value->v.ptr;
+    handlebars_value_delref(value);
+    return ptr;
 }
 
 void * handlebars_stack_get_ptr(struct handlebars_stack * stack, size_t offset)
 {
     struct handlebars_value * value = handlebars_stack_get(stack, offset);
+    void * ptr;
 
     if( unlikely(value == NULL || value->type != HANDLEBARS_VALUE_TYPE_PTR) ) {
         return NULL;
     }
 
-    return value->v.ptr;
+    // @todo this may not be safe if ptr is owned by value - steal?
+    ptr = value->v.ptr;
+    handlebars_value_delref(value);
+    return ptr;
 }
