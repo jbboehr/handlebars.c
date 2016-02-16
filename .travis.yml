@@ -3,7 +3,7 @@ language: c
 compiler:
   - gcc
 
-sudo: require
+sudo: required
 
 dist: trusty
 

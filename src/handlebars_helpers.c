@@ -226,6 +226,10 @@ struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_op
 
 struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * options)
 {
+    if( handlebars_stack_length(options->params) < 2 ) {
+        handlebars_context_throw(options->vm->ctx, HANDLEBARS_ERROR, "lookup requires two parameters");
+    }
+
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
     struct handlebars_value * field = handlebars_stack_get(options->params, 1);
     struct handlebars_value * result = NULL;

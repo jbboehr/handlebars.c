@@ -69,7 +69,7 @@ struct handlebars_value {
         struct handlebars_options * options;
 	} v;
     int refcount;
-	void * ctx;
+	struct handlebars_context * ctx;
 };
 
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);

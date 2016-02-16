@@ -192,6 +192,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             break;
         default:
             it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
+            //handlebars_context_throw(value->ctx, HANDLEBARS_ERROR, "Cannot iterator over type %d", value->type);
             break;
     }
 
