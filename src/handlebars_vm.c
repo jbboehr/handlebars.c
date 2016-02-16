@@ -868,6 +868,7 @@ ACCEPT_FUNCTION(push_string)
     handlebars_value_delref(value);
 }
 
+/*
 ACCEPT_FUNCTION(push_string_param)
 {
     assert(opcode->op1.type == handlebars_operand_type_string);
@@ -889,6 +890,7 @@ ACCEPT_FUNCTION(push_string_param)
         handlebars_value_delref(value);
     }
 }
+*/
 
 ACCEPT_FUNCTION(resolve_possible_lambda)
 {
@@ -953,7 +955,7 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
             ACCEPT(push_program);
             ACCEPT(push_literal);
             ACCEPT(push_string);
-            ACCEPT(push_string_param);
+            //ACCEPT(push_string_param);
             ACCEPT(resolve_possible_lambda);
             default:
                 handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
