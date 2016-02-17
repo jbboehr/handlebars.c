@@ -50,9 +50,10 @@ END_TEST
 START_TEST(test_compiler_ctor_failed_alloc)
 {
     struct handlebars_compiler * compiler;
+    jmp_buf buf;
 
-    ctx->e.ok = true;
-    if( setjmp(ctx->e.jmp) ) {
+    ctx->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }

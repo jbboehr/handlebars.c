@@ -45,13 +45,13 @@ END_TEST
 START_TEST(test_token_ctor_failed_alloc)
 {
     struct handlebars_token * token;
+	jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
-        // Should get here
-        ck_assert(1);
-        return;
-    }
+	context->e.jmp = &buf;
+	if( setjmp(buf) ) {
+		ck_assert(1);
+		return;
+	}
 
     handlebars_memory_fail_enable();
     token = handlebars_token_ctor(context, OPEN, "{{", strlen("{{"));
@@ -64,13 +64,13 @@ END_TEST
 START_TEST(test_token_ctor_failed_alloc2)
 {
     struct handlebars_token * token;
+	jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
-        // Should get here
-        ck_assert(1);
-        return;
-    }
+	context->e.jmp = &buf;
+	if( setjmp(buf) ) {
+		ck_assert(1);
+		return;
+	}
 
     handlebars_memory_fail_counter(2);
     token = handlebars_token_ctor(context, OPEN, "{{", strlen("{{"));

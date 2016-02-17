@@ -33,8 +33,7 @@ struct handlebars_context
         long num;
         char * msg;
         struct handlebars_locinfo loc;
-        jmp_buf jmp;
-        bool ok;
+        jmp_buf * jmp;
     } e;
 
     const char * tmpl;

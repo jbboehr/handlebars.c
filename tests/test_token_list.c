@@ -48,12 +48,12 @@ START_TEST(test_token_list_append_failed_alloc)
 {
 	struct handlebars_token_list * list = handlebars_token_list_ctor(context);
 	struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
+	jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
-        ck_assert_int_eq(context->e.num, HANDLEBARS_NOMEM);
-        handlebars_token_list_dtor(list);
+		handlebars_token_list_dtor(list);
         return;
     }
 
@@ -84,11 +84,11 @@ END_TEST
 START_TEST(test_token_list_ctor_failed_alloc)
 {
 	struct handlebars_token_list * list;
+	jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert_int_eq(context->e.num, HANDLEBARS_NOMEM);
-        handlebars_token_list_dtor(list);
         return;
     }
 
@@ -120,9 +120,10 @@ START_TEST(test_token_list_prepend_failed_alloc)
 {
 	struct handlebars_token_list * list = handlebars_token_list_ctor(context);
 	struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
+	jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert_int_eq(context->e.num, HANDLEBARS_NOMEM);
         handlebars_token_list_dtor(list);
         return;

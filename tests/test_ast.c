@@ -43,9 +43,10 @@ END_TEST
 START_TEST(test_ast_node_ctor_failed_alloc)
 {
     struct handlebars_ast_node * node;
+    jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         // Should get here
         ck_assert(1);
         return;

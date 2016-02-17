@@ -259,13 +259,15 @@ START_TEST(test_yy_error)
     struct handlebars_context * context = handlebars_context_ctor();
     struct YYLTYPE loc;
     const char * err = "sample error message";
+    jmp_buf buf;
+
     loc.first_line = 1;
     loc.first_column = 2;
     loc.last_line = 3;
     loc.last_column = 4;
 
-    context->e.ok = true;
-    if( !setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( !setjmp(buf) ) {
         handlebars_yy_error(&loc, context, err);
     }
     

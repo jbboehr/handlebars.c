@@ -50,8 +50,10 @@ END_TEST
 
 START_TEST(test_opcode_ctor_failed_alloc)
 {
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    jmp_buf buf;
+
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }
@@ -79,8 +81,10 @@ END_TEST
 
 START_TEST(test_opcode_ctor_long_failed_alloc)
 {
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    jmp_buf buf;
+
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }
@@ -113,9 +117,10 @@ START_TEST(test_opcode_ctor_long_string_failed_alloc)
 {
     struct handlebars_opcode * opcode;
     const char * str = "blah";
+    jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }
@@ -147,9 +152,10 @@ START_TEST(test_opcode_ctor_string_failed_alloc)
 {
     struct handlebars_opcode * opcode;
     const char * str = "foo";
+    jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }
@@ -184,9 +190,10 @@ START_TEST(test_opcode_ctor_string2_failed_alloc)
 {
     const char * str1 = "foo";
     const char * str2 = "bar";
+    jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }
@@ -218,9 +225,10 @@ END_TEST
 START_TEST(test_opcode_ctor_string_long_failed_alloc)
 {
     const char * str = "foo";
+    jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }
@@ -340,9 +348,10 @@ START_TEST(test_operand_set_stringval_failed_alloc)
 {
     struct handlebars_operand op;
     const char * str = "bar";
+    jmp_buf buf;
 
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }

@@ -497,6 +497,7 @@ ACCEPT_FUNCTION(invoke_partial)
     struct setup_ctx ctx = {0};
     struct handlebars_value * tmp;
     char * name = NULL;
+    jmp_buf buf;
 
     assert(opcode->op1.type == handlebars_operand_type_boolean);
     assert(opcode->op2.type == handlebars_operand_type_string || opcode->op2.type == handlebars_operand_type_null || opcode->op2.type == handlebars_operand_type_long);
@@ -547,8 +548,8 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
 
     // Save jump buffer
-    context->e.ok = true;
-    if( setjmp(context->e.jmp) ) {
+    context->e.jmp = &buf;
+    if( setjmp(buf) ) {
         handlebars_context_throw_ex(vm->ctx, context->e.num, &context->e.loc, context->e.msg);
     }
 
@@ -1087,12 +1088,13 @@ void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
 		struct handlebars_value * context)
 {
-    bool prev = vm->ctx->e.ok;
+    jmp_buf * prev = vm->ctx->e.jmp;
+    jmp_buf buf;
 
     // Save jump buffer
     if( !prev ) {
-        vm->ctx->e.ok = true;
-        if( setjmp(vm->ctx->e.jmp) ) {
+        vm->ctx->e.jmp = &buf;
+        if( setjmp(buf) ) {
             goto done;
         }
     }
@@ -1112,7 +1114,7 @@ done:
     // Release context
     handlebars_value_delref(context);
 
-    compiler->ctx->e.ok = prev;
+    vm->ctx->e.jmp = prev;
 }
 
 void handlebars_vm_throw(struct handlebars_vm * vm, long num, const char * msg)

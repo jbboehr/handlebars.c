@@ -82,8 +82,8 @@ void handlebars_context_throw(struct handlebars_context * context, enum handleba
     va_start(ap, msg);
     _set_err(context, num, NULL, msg, ap);
     va_end(ap);
-    if( context->e.ok ) {
-        longjmp(context->e.jmp, num);
+    if( context->e.jmp ) {
+        longjmp(*context->e.jmp, num);
     } else {
         fprintf(stderr, "Throw with invalid jmp_buf: %s\n", msg);
         abort();
@@ -96,8 +96,8 @@ void handlebars_context_throw_ex(struct handlebars_context * context, enum handl
     va_start(ap, msg);
     _set_err(context, num, loc, msg, ap);
     va_end(ap);
-    if( context->e.ok ) {
-        longjmp(context->e.jmp, num);
+    if( context->e.jmp ) {
+        longjmp(*context->e.jmp, num);
     } else {
         fprintf(stderr, "Throw with invalid jmp_buf: %s\n", msg);
         abort();
