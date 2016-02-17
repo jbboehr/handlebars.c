@@ -1053,11 +1053,12 @@ static void preprocess_opcode(struct handlebars_vm * vm, struct handlebars_opcod
     struct handlebars_compiler * child;
 
     if( opcode->type == handlebars_opcode_type_push_program ) {
-        if( opcode->op1.type == handlebars_operand_type_long ) {
+        if( opcode->op1.type == handlebars_operand_type_long && !opcode->op4.data.boolval ) {
             program = opcode->op1.data.longval;
             assert(program < compiler->children_length);
             child = compiler->children[program];
             opcode->op1.data.longval = child->guid;
+            opcode->op4.data.boolval = 1;
         }
     }
 }
