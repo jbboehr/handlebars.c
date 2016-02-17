@@ -1,4 +1,8 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <check.h>
 #include <talloc.h>
 
@@ -9,27 +13,9 @@
 #include "handlebars_memory.h"
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
-static struct handlebars_context * context;
-
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-    context = handlebars_context_ctor_ex(ctx);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    handlebars_context_dtor(context);
-    talloc_free(ctx);
-    ctx = NULL;
-}
-
 START_TEST(test_ast_list_append)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
@@ -47,7 +33,7 @@ END_TEST
 
 START_TEST(test_ast_list_append_failed_alloc)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     jmp_buf buf;
 
@@ -74,7 +60,7 @@ END_TEST
 
 START_TEST(test_ast_list_ctor)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     
     ck_assert_ptr_ne(list, NULL);
     
@@ -93,7 +79,7 @@ START_TEST(test_ast_list_ctor_failed_alloc)
     }
     
     handlebars_memory_fail_enable();
-    handlebars_ast_list_ctor(context);
+    handlebars_ast_list_ctor(parser);
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -102,7 +88,7 @@ END_TEST
 
 START_TEST(test_ast_list_prepend)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_prepend(list, node1);
@@ -120,7 +106,7 @@ END_TEST
 
 START_TEST(test_ast_list_prepend_failed_alloc)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     jmp_buf buf;
 
@@ -148,7 +134,7 @@ END_TEST
 START_TEST(test_ast_list_remove_single)
 {
     // Only item
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
     
@@ -165,7 +151,7 @@ END_TEST
 START_TEST(test_ast_list_remove_first)
 {
     // Not only item
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
@@ -185,7 +171,7 @@ END_TEST
 
 START_TEST(test_ast_list_remove_middle)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node3 = handlebars_talloc(list, struct handlebars_ast_node);
@@ -207,7 +193,7 @@ END_TEST
 
 START_TEST(test_ast_list_remove_last)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
@@ -227,7 +213,7 @@ END_TEST
 
 START_TEST(test_ast_list_remove_empty)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     
     ck_assert_int_eq(0, handlebars_ast_list_remove(list, node1));

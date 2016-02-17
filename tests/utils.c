@@ -27,12 +27,48 @@
 #endif
 
 #include "utils.h"
+#include "handlebars.h"
 #include "handlebars_compiler.h"
+#include "handlebars_context.h"
 #include "handlebars_helpers.h"
 #include "handlebars_value.h"
-
+#include "handlebars_vm.h"
 
 const int MOD_ADLER = 65521;
+
+
+
+TALLOC_CTX * root;
+struct handlebars_context * context;
+struct handlebars_parser * parser;
+struct handlebars_compiler * compiler;
+struct handlebars_vm * vm;
+int init_blocks;
+
+void default_setup(void)
+{
+    handlebars_memory_fail_disable();
+    context = handlebars_context_ctor_ex(root);
+    parser = handlebars_parser_ctor(context);
+    compiler = handlebars_compiler_ctor(context, parser);
+    vm = handlebars_vm_ctor(context);
+    init_blocks = talloc_total_blocks(context);
+}
+
+void default_teardown(void)
+{
+    handlebars_memory_fail_disable();
+    handlebars_vm_dtor(vm);
+    handlebars_compiler_dtor(compiler);
+    handlebars_parser_dtor(parser);
+    handlebars_context_dtor(context);
+    vm = NULL;
+    compiler = NULL;
+    parser = NULL;
+    context = NULL;
+}
+
+
 
 int file_get_contents(const char * filename, char ** buf, size_t * len)
 {

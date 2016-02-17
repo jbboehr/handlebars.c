@@ -1,4 +1,8 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <check.h>
 #include <talloc.h>
 
@@ -11,20 +15,6 @@
 #include "utils.h"
 
 
-static TALLOC_CTX * ctx;
-
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    talloc_free(ctx);
-    ctx = NULL;
-}
 
 START_TEST(test_ast_helper_set_strip_flags)
 {
@@ -51,51 +41,51 @@ START_TEST(test_ast_helper_strip_comment)
 {
     char * tmp;
 
-    tmp = handlebars_talloc_strdup(ctx, "");
+    tmp = handlebars_talloc_strdup(context, "");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "blah");
+    tmp = handlebars_talloc_strdup(context, "blah");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, "blah");
 
-    tmp = handlebars_talloc_strdup(ctx, "{");
+    tmp = handlebars_talloc_strdup(context, "{");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, "{");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{!");
+    tmp = handlebars_talloc_strdup(context, "{{!");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{~!--");
+    tmp = handlebars_talloc_strdup(context, "{{~!--");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{!-- blah");
+    tmp = handlebars_talloc_strdup(context, "{{!-- blah");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, " blah");
 
-    tmp = handlebars_talloc_strdup(ctx, "}}");
+    tmp = handlebars_talloc_strdup(context, "}}");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "--}}");
+    tmp = handlebars_talloc_strdup(context, "--}}");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{!}}");
+    tmp = handlebars_talloc_strdup(context, "{{!}}");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{! foo }}");
+    tmp = handlebars_talloc_strdup(context, "{{! foo }}");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, " foo ");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{!-- bar --}}");
+    tmp = handlebars_talloc_strdup(context, "{{!-- bar --}}");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, " bar ");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{~!-- baz --~}}");
+    tmp = handlebars_talloc_strdup(context, "{{~!-- baz --~}}");
     handlebars_ast_helper_strip_comment(tmp);
     ck_assert_str_eq(tmp, " baz ");
 }

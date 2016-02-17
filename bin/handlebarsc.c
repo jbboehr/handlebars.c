@@ -34,7 +34,8 @@ enum handlebarsc_mode {
     handlebarsc_mode_version,
     handlebarsc_mode_lex,
     handlebarsc_mode_parse,
-    handlebarsc_mode_compile
+    handlebarsc_mode_compile,
+    handlebarsc_mode_execute
 };
 
 static enum handlebarsc_mode mode;
@@ -55,6 +56,7 @@ static void readOpts(int argc, char * argv[])
         {"lex",       no_argument,              0,  'l' },
         {"parse",     no_argument,              0,  'p' },
         {"compile",   no_argument,              0,  'c' },
+        {"execute",   no_argument,              0,  'e' },
         {"version",   no_argument,              0,  'V' },
         // input
         {"template",  required_argument,        0,  't' },
@@ -88,6 +90,9 @@ start:
             break;
         case 'c':
             mode = handlebarsc_mode_compile;
+            break;
+        case 'e':
+            mode = handlebarsc_mode_execute;
             break;
         case 'V':
             mode = handlebarsc_mode_version;
@@ -230,7 +235,6 @@ static int do_parse(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     char * output;
-    //int retval;
     int error = 0;
     
     readInput();
@@ -241,8 +245,8 @@ static int do_parse(void)
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
         parser->ignore_standalone = 1;
     }
-    
-    /*retval =*/ handlebars_yy_parse(ctx);
+
+    handlebars_parse(parser);
     
     if( ctx->e.num != NULL ) {
         output = handlebars_context_get_errmsg(ctx);
@@ -251,7 +255,7 @@ static int do_parse(void)
         goto error;
     }
 
-    output =  handlebars_ast_print(ctx, parser->program, 0);
+    output =  handlebars_ast_print(parser, parser->program, 0);
     fprintf(stdout, "%s\n", output);
 
 error:
@@ -265,7 +269,6 @@ static int do_compile(void)
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_opcode_printer * printer;
-    //int retval;
     int error = 0;
     
     ctx = handlebars_context_ctor();
@@ -284,7 +287,7 @@ static int do_compile(void)
     parser->tmpl = input_buf;
     
     // Parse
-    /*retval =*/ handlebars_yy_parse(ctx);
+    handlebars_parse(parser);
 
     if( ctx->e.num ) {
         fprintf(stderr, "ERROR: %s\n", ctx->e.msg);
@@ -309,6 +312,11 @@ error:
     return error;
 }
 
+static int do_execute(void)
+{
+    return 1;
+}
+
 int main(int argc, char * argv[])
 {
     if( argc <= 1 ) {
@@ -329,6 +337,7 @@ int main(int argc, char * argv[])
         case handlebarsc_mode_lex: return do_lex();
         case handlebarsc_mode_parse: return do_parse();
         case handlebarsc_mode_compile: return do_compile();
+        case handlebarsc_mode_execute: return do_execute();
         default: return do_usage();
     }
 }

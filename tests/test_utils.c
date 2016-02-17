@@ -1,4 +1,8 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <check.h>
 #include <talloc.h>
 
@@ -10,20 +14,7 @@
 #include "handlebars.tab.h"
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    talloc_free(ctx);
-    ctx = NULL;
-}
 
 START_TEST(test_addcslashes)
 {
@@ -79,31 +70,31 @@ END_TEST
 START_TEST(test_htmlspecialchars)
 {
     char * out = handlebars_htmlspecialchars("&");
-    talloc_steal(ctx, out);
+    talloc_steal(root, out);
     ck_assert_str_eq("&amp;", out);
     handlebars_talloc_free(out);
 }
 {
     char * out = handlebars_htmlspecialchars("<");
-    talloc_steal(ctx, out);
+    talloc_steal(root, out);
     ck_assert_str_eq("&lt;", out);
     handlebars_talloc_free(out);
 }
 {
     char * out = handlebars_htmlspecialchars(">");
-    talloc_steal(ctx, out);
+    talloc_steal(root, out);
     ck_assert_str_eq("&gt;", out);
     handlebars_talloc_free(out);
 }
 {
     char * out = handlebars_htmlspecialchars("'");
-    talloc_steal(ctx, out);
+    talloc_steal(root, out);
     ck_assert_str_eq("&#x27;", out);
     handlebars_talloc_free(out);
 }
 {
     char * out = handlebars_htmlspecialchars("\"");
-    talloc_steal(ctx, out);
+    talloc_steal(root, out);
     ck_assert_str_eq("&quot;", out);
     handlebars_talloc_free(out);
 }
@@ -111,7 +102,7 @@ START_TEST(test_htmlspecialchars)
     const char * in = "a&b<c>d\'e\"f";
     const char * exp = "a&amp;b&lt;c&gt;d&#x27;e&quot;f";
     char * out = handlebars_htmlspecialchars(in);
-    talloc_steal(ctx, out);
+    talloc_steal(root, out);
     ck_assert_str_eq(exp, out);
     handlebars_talloc_free(out);
 }
@@ -119,21 +110,21 @@ END_TEST
 
 START_TEST(test_ltrim)
 {
-    char * in = handlebars_talloc_strdup(ctx, " \n \r test ");
+    char * in = handlebars_talloc_strdup(root, " \n \r test ");
     char * ret = handlebars_ltrim(in, " \t\r\n");
     ck_assert_str_eq(in, "test ");
     ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(ctx, "\n  ");
+    char * in = handlebars_talloc_strdup(root, "\n  ");
     char * ret = handlebars_ltrim(in, " \t");
     ck_assert_str_eq(in, "\n  ");
     ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(ctx, "");
+    char * in = handlebars_talloc_strdup(root, "");
     char * ret = handlebars_ltrim(in, "");
     ck_assert_str_eq(in, "");
     ck_assert_ptr_eq(in, ret);
@@ -143,19 +134,19 @@ END_TEST
 
 START_TEST(test_rtrim)
 {
-    char * in = handlebars_talloc_strdup(ctx, "test \n \r ");
+    char * in = handlebars_talloc_strdup(root, "test \n \r ");
     handlebars_rtrim(in, " \t\r\n");
     ck_assert_str_eq(in, "test");
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(ctx, "\n");
+    char * in = handlebars_talloc_strdup(root, "\n");
     handlebars_rtrim(in, " \v\t\r\n");
     ck_assert_str_eq(in, "");
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(ctx, "");
+    char * in = handlebars_talloc_strdup(root, "");
     handlebars_rtrim(in, "");
     ck_assert_str_eq(in, "");
     handlebars_talloc_free(in);
@@ -164,7 +155,7 @@ END_TEST
 
 START_TEST(test_stripcslashes)
 {
-    char * input = handlebars_talloc_strdup(ctx, "\\n\\r");
+    char * input = handlebars_talloc_strdup(root, "\\n\\r");
     size_t input_len = strlen(input);
     const char * expected = "\n\r";
     handlebars_stripcslashes_ex(input, &input_len);
@@ -172,7 +163,7 @@ START_TEST(test_stripcslashes)
     handlebars_talloc_free(input);
 }
 {
-    char * input = handlebars_talloc_strdup(ctx, "\\065\\x64");
+    char * input = handlebars_talloc_strdup(root, "\\065\\x64");
     size_t input_len = strlen(input);
     const char * expected = "5d";
     handlebars_stripcslashes_ex(input, &input_len);
@@ -180,7 +171,7 @@ START_TEST(test_stripcslashes)
     handlebars_talloc_free(input);
 }
 {
-    char * input = handlebars_talloc_strdup(ctx, "");
+    char * input = handlebars_talloc_strdup(root, "");
     size_t input_len = strlen(input);
     const char * expected = "";
     handlebars_stripcslashes_ex(input, &input_len);
@@ -188,7 +179,7 @@ START_TEST(test_stripcslashes)
     handlebars_talloc_free(input);
 }
 {
-    char * input = handlebars_talloc_strdup(ctx, "\\{");
+    char * input = handlebars_talloc_strdup(root, "\\{");
     size_t input_len = strlen(input);
     const char * expected = "{";
     handlebars_stripcslashes_ex(input, &input_len);
@@ -196,7 +187,7 @@ START_TEST(test_stripcslashes)
     handlebars_talloc_free(input);
 }
 {
-    char * input = handlebars_talloc_strdup(ctx, "\\a\\t\\v\\b\\f\\\\");
+    char * input = handlebars_talloc_strdup(root, "\\a\\t\\v\\b\\f\\\\");
     size_t input_len = strlen(input);
     const char * expected = "\a\t\v\b\f\\";
     handlebars_stripcslashes_ex(input, &input_len);
@@ -204,7 +195,7 @@ START_TEST(test_stripcslashes)
     handlebars_talloc_free(input);
 }
 {
-    char * input = handlebars_talloc_strdup(ctx, "\\x3");
+    char * input = handlebars_talloc_strdup(root, "\\x3");
     size_t input_len = strlen(input);
     const char * expected = "\x3";
     handlebars_stripcslashes_ex(input, &input_len);
@@ -212,7 +203,7 @@ START_TEST(test_stripcslashes)
     handlebars_talloc_free(input);
 }
 {
-    char * input = handlebars_talloc_strdup(ctx, "\\0test");
+    char * input = handlebars_talloc_strdup(root, "\\0test");
     size_t input_len = 6;
 
     handlebars_stripcslashes_ex(input, &input_len);
@@ -227,7 +218,7 @@ END_TEST
 
 START_TEST(test_handlebars_str_reduce)
 {
-    char * input = handlebars_talloc_strdup(ctx, "abcdef");
+    char * input = handlebars_talloc_strdup(root, "abcdef");
     const char * search = "bcd";
     const char * replace = "qq";
     const char * expected = "aqqef";
@@ -236,7 +227,7 @@ START_TEST(test_handlebars_str_reduce)
     handlebars_talloc_free(input);
 }
 {
-    char * input = handlebars_talloc_strdup(ctx, "");
+    char * input = handlebars_talloc_strdup(root, "");
     const char * search = "a";
     const char * replace = "";
     const char * expected = "";
@@ -245,7 +236,7 @@ START_TEST(test_handlebars_str_reduce)
     handlebars_talloc_free(input);
 }
 /*{
-    char * input = handlebars_talloc_strdup(ctx, "");
+    char * input = handlebars_talloc_strdup(root, "");
     const char * search = "asd";
     const char * replace = "asdasd";
     input = handlebars_str_reduce(input, search, replace);
@@ -256,7 +247,6 @@ END_TEST
 
 START_TEST(test_yy_error)
 {
-    struct handlebars_context * context = handlebars_context_ctor();
     struct YYLTYPE loc;
     const char * err = "sample error message";
     jmp_buf buf;
@@ -268,7 +258,7 @@ START_TEST(test_yy_error)
 
     context->e.jmp = &buf;
     if( !setjmp(buf) ) {
-        handlebars_yy_error(&loc, context, err);
+        handlebars_yy_error(&loc, parser, err);
     }
     
     ck_assert_int_eq(context->e.num, HANDLEBARS_PARSEERR);
@@ -277,8 +267,6 @@ START_TEST(test_yy_error)
     ck_assert_int_eq(context->e.loc.first_column, loc.first_column);
     ck_assert_int_eq(context->e.loc.last_line, loc.last_line);
     ck_assert_int_eq(context->e.loc.last_column, loc.last_column);
-    
-    handlebars_context_dtor(context);
 }
 END_TEST
 
@@ -298,7 +286,7 @@ END_TEST
 
 START_TEST(test_yy_free)
 {
-    char * tmp = handlebars_talloc_strdup(ctx, "");
+    char * tmp = handlebars_talloc_strdup(root, "");
     int count;
     
     handlebars_memory_fail_enable();
@@ -321,7 +309,7 @@ END_TEST
 
 START_TEST(test_yy_realloc)
 {
-    char * tmp = handlebars_talloc_strdup(ctx, "");
+    char * tmp = handlebars_talloc_strdup(root, "");
     
     tmp = handlebars_yy_realloc(tmp, 10, NULL);
     
@@ -336,7 +324,7 @@ END_TEST
 
 START_TEST(test_yy_realloc_failed_alloc)
 {
-    char * tmp = handlebars_talloc_strdup(ctx, "");
+    char * tmp = handlebars_talloc_strdup(root, "");
     char * tmp2;
     
     handlebars_memory_fail_enable();

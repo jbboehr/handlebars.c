@@ -207,11 +207,13 @@ START_TEST(handlebars_spec_tokenizer)
 {
     struct tokenizer_test * test = &tests[_i];
     struct handlebars_context * ctx = handlebars_context_ctor();
-    
-    ctx->tmpl = test->tmpl;
+    struct handlebars_parser * parser;
+
+    parser = handlebars_parser_ctor(ctx);
+    parser->tmpl = test->tmpl;
     
     // Prepare token list
-    struct handlebars_token_list * actual = handlebars_token_list_ctor(ctx);
+    struct handlebars_token_list * actual = handlebars_token_list_ctor(parser);
     size_t actual_len = 0;
     struct handlebars_token * token = NULL;
     
@@ -220,9 +222,9 @@ START_TEST(handlebars_spec_tokenizer)
     YYLTYPE yylloc_param;
     int token_int = 0;
     do {
-        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, ctx->scanner);
+        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
         if( token_int == END || token_int == INVALID ) break;
-        YYSTYPE * lval = handlebars_yy_get_lval(ctx->scanner);
+        YYSTYPE * lval = handlebars_yy_get_lval(parser->scanner);
         
         // Make token object
         char * text = (lval->text == NULL ? "" : lval->text);

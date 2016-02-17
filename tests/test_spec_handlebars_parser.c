@@ -165,12 +165,13 @@ START_TEST(handlebars_spec_parser)
 {
     struct parser_test * test = &tests[_i];
     struct handlebars_context * ctx = handlebars_context_ctor();
+    struct handlebars_parser * parser;
     char * errmsg;
     char errlinestr[32];
-    
-    ctx->tmpl = test->tmpl;
-    
-    handlebars_parse(ctx);
+
+    parser = handlebars_parser_ctor(ctx);
+    parser->tmpl = test->tmpl;
+    handlebars_parse(parser);
     
     if( ctx->e.num ) {
         char * errmsg = handlebars_context_get_errmsg(ctx);
@@ -204,7 +205,7 @@ START_TEST(handlebars_spec_parser)
             ck_assert_msg(0, lesigh);
         }
     } else {
-        char * output = handlebars_ast_print(ctx, ctx->program, 0);
+        char * output = handlebars_ast_print(ctx, parser->program, 0);
         
         if( !test->exception ) {
             ck_assert_ptr_ne(NULL, output);

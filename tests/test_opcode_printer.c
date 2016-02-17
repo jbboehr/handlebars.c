@@ -1,11 +1,11 @@
 
-#include <check.h>
-#include <string.h>
-#include <talloc.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include <check.h>
+#include <string.h>
+#include <talloc.h>
 
 #include "handlebars.h"
 #include "handlebars_compiler.h"
@@ -15,33 +15,12 @@
 #include "handlebars_opcodes.h"
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
-static struct handlebars_context * context;
-static struct handlebars_compiler * compiler;
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-    context = handlebars_context_ctor_ex(ctx);
-    compiler = handlebars_compiler_ctor(context);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    handlebars_compiler_dtor(compiler);
-    handlebars_context_dtor(context);
-    talloc_free(ctx);
-    compiler = NULL;
-    context = NULL;
-    ctx = NULL;
-}
 
 START_TEST(test_operand_print_append_null)
 {
     struct handlebars_operand op;
-    char * str = handlebars_talloc_strdup(ctx, "");
+    char * str = handlebars_talloc_strdup(context, "");
     
     handlebars_operand_set_null(&op);
     str = handlebars_operand_print_append(str, &op);
@@ -55,7 +34,7 @@ END_TEST
 START_TEST(test_operand_print_append_boolean)
 {
     struct handlebars_operand op;
-    char * str = handlebars_talloc_strdup(ctx, "");
+    char * str = handlebars_talloc_strdup(context, "");
     
     handlebars_operand_set_boolval(&op, 1);
     str = handlebars_operand_print_append(str, &op);
@@ -69,7 +48,7 @@ END_TEST
 START_TEST(test_operand_print_append_long)
 {
     struct handlebars_operand op;
-    char * str = handlebars_talloc_strdup(ctx, "");
+    char * str = handlebars_talloc_strdup(context, "");
     
     handlebars_operand_set_longval(&op, 2358);
     str = handlebars_operand_print_append(str, &op);
@@ -83,9 +62,9 @@ END_TEST
 START_TEST(test_operand_print_append_string)
 {
     struct handlebars_operand op;
-    char * str = handlebars_talloc_strdup(ctx, "");
+    char * str = handlebars_talloc_strdup(context, "");
     
-    handlebars_operand_set_stringval(ctx, &op, "baz");
+    handlebars_operand_set_stringval(compiler, &op, "baz");
     str = handlebars_operand_print_append(str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[STRING:baz]", str);

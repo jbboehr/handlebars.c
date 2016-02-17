@@ -17,23 +17,12 @@
 #include "handlebars.lex.h"
 #include "utils.h"
 
-static TALLOC_CTX * rootctx;
 
 // @todo try to get this to include every language feature
 static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} "
         "{{#a}}{{^}}{{/a}} {{bar baz=foo}} {{> partial}} {{../depth}} {{this}} "
         "{{#unless}}{{else}}{{/unless}} {{&unescaped}} {{~strip~}}  "
         "{{!-- comment --}} {{! coment }} {{blah (a (b)}}";
-
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-}
 
 START_TEST(test_random_alloc_fail_tokenizer)
 {
@@ -42,14 +31,14 @@ START_TEST(test_random_alloc_fail_tokenizer)
     struct handlebars_token_list * list;
 
     for( i = 1; i < 300; i++ ) {
-        struct handlebars_context * ctx = handlebars_context_ctor();
-        talloc_steal(rootctx, ctx);
-        ctx->tmpl = tmpl;
+        struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+        struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+        parser->tmpl = tmpl;
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
-        list = handlebars_lex(ctx);
+        list = handlebars_lex(parser);
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);
@@ -64,14 +53,14 @@ START_TEST(test_random_alloc_fail_parser)
     int retval;
 
     for( i = 1; i < 300; i++ ) {
-        struct handlebars_context * ctx = handlebars_context_ctor();
-        talloc_steal(rootctx, ctx);
-        ctx->tmpl = tmpl;
+        struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+        struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+        parser->tmpl = tmpl;
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
-        handlebars_parse(ctx);
+        handlebars_parse(parser);
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);
@@ -86,16 +75,16 @@ START_TEST(test_random_alloc_fail_compiler)
         int retval;
 
         for( i = 1; i < 300; i++ ) {
-            struct handlebars_context * ctx = handlebars_context_ctor();
-            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
-            talloc_steal(rootctx, ctx);
-            ctx->tmpl = tmpl;
-            handlebars_parse(ctx);
+            struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+            struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx, parser);
+            parser->tmpl = tmpl;
+            handlebars_parse(parser);
 
             // For now, don't do yy alloc
             handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
             handlebars_memory_fail_counter(i);
-            handlebars_compiler_compile(compiler, ctx->program);
+            handlebars_compiler_compile(compiler, parser->program);
             handlebars_memory_fail_disable();
 
             handlebars_context_dtor(ctx);
@@ -109,16 +98,16 @@ START_TEST(test_random_alloc_fail_vm)
         int retval;
 
         for( i = 1; i < 300; i++ ) {
-            struct handlebars_context * ctx = handlebars_context_ctor();
-            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
+            struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+            struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx, parser);
             struct handlebars_vm * vm = handlebars_vm_ctor(ctx);
             struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"foo\": {\"bar\": 2}}");
             handlebars_value_convert(value);
 
-            talloc_steal(rootctx, ctx);
-            ctx->tmpl = tmpl;
-            handlebars_parse(ctx);
-            handlebars_compiler_compile(compiler, ctx->program);
+            parser->tmpl = tmpl;
+            handlebars_parse(parser);
+            handlebars_compiler_compile(compiler, parser->program);
 
             // For now, don't do yy alloc
             handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
@@ -162,7 +151,6 @@ int main(void)
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    rootctx = talloc_new(NULL);
     
     s = parser_suite();
     sr = srunner_create(s);
@@ -175,7 +163,6 @@ int main(void)
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
     
 error:
-    talloc_free(rootctx);
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }

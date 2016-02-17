@@ -310,7 +310,7 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
-        struct handlebars_compiler * subcompiler = handlebars_compiler_ctor(compiler->ctx);
+        struct handlebars_compiler * subcompiler = handlebars_compiler_ctor(compiler->ctx, compiler->parser);
         
         array_item = json_object_array_get_idx(cur, i);
         if( json_object_get_type(array_item) != json_type_object ) {
@@ -329,12 +329,14 @@ error:
 static char * loadTestOpcodesPrint(json_object * object)
 {
     struct handlebars_context * context;
+    struct handlebars_compiler * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_opcode_printer * printer;
     char * output;
 
     context = handlebars_context_ctor_ex(rootctx);
-    compiler = handlebars_compiler_ctor(context);
+    parser = handlebars_parser_ctor(context);
+    compiler = handlebars_compiler_ctor(context, parser);
     printer = handlebars_opcode_printer_ctor(compiler);
     
     loadTestCompiler(compiler, object);
@@ -613,6 +615,7 @@ START_TEST(handlebars_spec_compiler)
 {
     struct compiler_test * test = &tests[_i];
     struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_opcode_printer * printer;
     
@@ -625,15 +628,16 @@ START_TEST(handlebars_spec_compiler)
 
     // Initialize
     ctx = handlebars_context_ctor();
-    ctx->ignore_standalone = test->opt_ignore_standalone;
-    compiler = handlebars_compiler_ctor(ctx);
+    parser = handlebars_parser_ctor(ctx);
+    parser->ignore_standalone = test->opt_ignore_standalone;
+    compiler = handlebars_compiler_ctor(ctx, parser);
     printer = handlebars_opcode_printer_ctor(ctx);
     
     //printf("TEMPLATE: %s\n", test->tmpl);
     
     // Parse
-    ctx->tmpl = test->tmpl;
-    handlebars_parse(ctx);
+    parser->tmpl = test->tmpl;
+    handlebars_parse(parser);
 
     //ck_assert_int_eq(retval <= 0, test->exception > 0);
     
@@ -643,7 +647,7 @@ START_TEST(handlebars_spec_compiler)
         compiler->known_helpers = (const char **) test->known_helpers;
     }
 
-    handlebars_compiler_compile(compiler, ctx->program);
+    handlebars_compiler_compile(compiler, parser->program);
     ck_assert_int_eq(0, ctx->e.num);
     
     // Printer

@@ -279,6 +279,7 @@ static inline void run_test(struct generic_test * test, int _i)
 {
     struct handlebars_context * ctx;
     struct handlebars_compiler * compiler;
+    struct handlebars_parser * parser;
     struct handlebars_vm * vm;
     struct handlebars_value * context;
     struct handlebars_value * helpers;
@@ -300,12 +301,13 @@ static inline void run_test(struct generic_test * test, int _i)
 
     // Initialize
     ctx = handlebars_context_ctor_ex(memctx);
+    parser = handlebars_parser_ctor(ctx);
     //ctx->ignore_standalone = test->opt_ignore_standalone;
-    compiler = handlebars_compiler_ctor(ctx);
+    compiler = handlebars_compiler_ctor(ctx, parser);
 
     // Parse
-    ctx->tmpl = test->tmpl;
-    handlebars_parse(ctx);
+    parser->tmpl = test->tmpl;
+    handlebars_parse(parser);
 
     // Check error
     if( ctx->e.num ) {
@@ -320,7 +322,7 @@ static inline void run_test(struct generic_test * test, int _i)
         compiler->known_helpers = (const char **) test->known_helpers;
     }
 
-    handlebars_compiler_compile(compiler, ctx->program);
+    handlebars_compiler_compile(compiler, parser->program);
     if( ctx->e.num ) {
         // @todo check message
         ck_assert_int_eq(1, test->exception);

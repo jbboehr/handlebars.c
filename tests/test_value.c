@@ -1,11 +1,11 @@
 
-#include <check.h>
-#include <stdio.h>
-#include <talloc.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include <check.h>
+#include <stdio.h>
+#include <talloc.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
 #include <json-c/json.h>
@@ -25,23 +25,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_value.h"
 
-static TALLOC_CTX * ctx;
-static struct handlebars_context * context;
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-    context = handlebars_context_ctor_ex(ctx);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    handlebars_context_dtor(context);
-    talloc_free(ctx);
-    ctx = NULL;
-}
 
 START_TEST(test_boolean_true)
 {
@@ -63,7 +47,7 @@ START_TEST(test_boolean_json_true)
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -76,7 +60,7 @@ START_TEST(test_boolean_yaml_true)
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -89,7 +73,7 @@ START_TEST(test_boolean_json_false)
     ck_assert_int_eq(handlebars_value_get_boolval(value), 0);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -102,7 +86,7 @@ START_TEST(test_int)
     ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -115,7 +99,7 @@ START_TEST(test_int_yaml)
     ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -129,7 +113,7 @@ START_TEST(test_float)
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -143,7 +127,7 @@ START_TEST(test_float_yaml)
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -157,7 +141,7 @@ START_TEST(test_string)
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -201,7 +185,7 @@ START_TEST(test_array_iterator)
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -250,7 +234,7 @@ START_TEST(test_map_iterator)
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -271,7 +255,7 @@ START_TEST(test_array_iterator_json)
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -299,7 +283,7 @@ START_TEST(test_map_iterator_json)
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -329,7 +313,7 @@ START_TEST(test_array_find)
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -359,7 +343,7 @@ START_TEST(test_map_find)
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -410,7 +394,7 @@ START_TEST(test_complex)
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST
@@ -430,7 +414,7 @@ START_TEST(test_convert)
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
-    ck_assert_int_eq(2, talloc_total_blocks(context));
+    ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
 #endif
 }
 END_TEST

@@ -194,6 +194,7 @@ START_TEST(test_mustache_spec)
 {
     struct mustache_test * test = &tests[_i];
     struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
     struct handlebars_value_iterator * it;
@@ -218,12 +219,13 @@ START_TEST(test_mustache_spec)
 
     // Initialize
     ctx = talloc_steal(memctx, test->ctx);
+    parser = handlebars_parser_ctor(ctx);
     //ctx->ignore_standalone = test->opt_ignore_standalone;
-    compiler = handlebars_compiler_ctor(ctx);
+    compiler = handlebars_compiler_ctor(ctx, parser);
 
     // Parse
-    ctx->tmpl = test->tmpl;
-    handlebars_parse(ctx);
+    parser->tmpl = test->tmpl;
+    handlebars_parse(parser);
 
     // Check error
     if( ctx->e.msg != NULL ) {
@@ -233,7 +235,7 @@ START_TEST(test_mustache_spec)
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
 
-    handlebars_compiler_compile(compiler, ctx->program);
+    handlebars_compiler_compile(compiler, parser->program);
     if( ctx->e.num ) {
         ck_assert_msg(0, ctx->e.num);
     }

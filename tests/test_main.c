@@ -1,10 +1,10 @@
 
-#include <check.h>
-#include <talloc.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include <check.h>
+#include <talloc.h>
 
 #include "handlebars.h"
 #include "handlebars_context.h"
@@ -16,15 +16,7 @@
 #include "handlebars.lex.h"
 #include "utils.h"
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-}
 
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-}
 
 START_TEST(test_version)
 {
@@ -60,12 +52,11 @@ END_TEST
 
 START_TEST(test_lex)
 {
-    struct handlebars_context * ctx = handlebars_context_ctor();
     struct handlebars_token_list * list;
     
-    ctx->tmpl = "{{foo}}";
+    parser->tmpl = "{{foo}}";
     
-    list = handlebars_lex(ctx);
+    list = handlebars_lex(parser);
     
     ck_assert_ptr_ne(NULL, list->first);
     ck_assert_int_eq(OPEN, list->first->data->token);
@@ -78,8 +69,6 @@ START_TEST(test_lex)
     ck_assert_ptr_ne(NULL, list->first->next->next);
     ck_assert_int_eq(CLOSE, list->first->next->next->data->token);
     ck_assert_str_eq("}}", list->first->next->next->data->text);
-    
-    handlebars_context_dtor(ctx);
 }
 END_TEST
 

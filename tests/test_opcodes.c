@@ -1,11 +1,11 @@
 
-#include <check.h>
-#include <string.h>
-#include <talloc.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include <check.h>
+#include <string.h>
+#include <talloc.h>
 
 #include "handlebars.h"
 #include "handlebars_compiler.h"
@@ -14,28 +14,7 @@
 #include "handlebars_opcodes.h"
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
-static struct handlebars_context * context;
-static struct handlebars_compiler * compiler;
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-    context = handlebars_context_ctor_ex(ctx);
-    compiler = handlebars_compiler_ctor(context);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    handlebars_compiler_dtor(compiler);
-    handlebars_context_dtor(context);
-    talloc_free(ctx);
-    compiler = NULL;
-    context = NULL;
-    ctx = NULL;
-}
 
 START_TEST(test_opcode_ctor)
 {

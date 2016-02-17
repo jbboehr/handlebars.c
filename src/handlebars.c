@@ -55,6 +55,7 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
         errno = ENOMEM;
         goto done;
     }
+    parser->ctx = ctx;
 
     // Set the current context in a variable for yyalloc >.>
     _handlebars_parser_init_current = parser;

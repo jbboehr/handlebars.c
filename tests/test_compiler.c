@@ -1,11 +1,11 @@
 
-#include <check.h>
-#include <string.h>
-#include <talloc.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include <check.h>
+#include <string.h>
+#include <talloc.h>
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -20,26 +20,11 @@
 
 
 
-static struct handlebars_context * ctx;
-
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = handlebars_context_ctor();
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    handlebars_context_dtor(ctx);
-    ctx = NULL;
-}
-
 START_TEST(test_compiler_ctor)
 {
     struct handlebars_compiler * compiler;
     
-    compiler = handlebars_compiler_ctor(ctx);
+    compiler = handlebars_compiler_ctor(context, parser);
     
     ck_assert_ptr_ne(NULL, compiler);
     
@@ -49,17 +34,16 @@ END_TEST
 
 START_TEST(test_compiler_ctor_failed_alloc)
 {
-    struct handlebars_compiler * compiler;
     jmp_buf buf;
 
-    ctx->e.jmp = &buf;
+    context->e.jmp = &buf;
     if( setjmp(buf) ) {
         ck_assert(1);
         return;
     }
 
     handlebars_memory_fail_enable();
-    compiler = handlebars_compiler_ctor(ctx);
+    handlebars_compiler_ctor(context, parser);
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -70,7 +54,7 @@ START_TEST(test_compiler_dtor)
 {
     struct handlebars_compiler * compiler;
     
-    compiler = handlebars_compiler_ctor(ctx);
+    compiler = handlebars_compiler_ctor(context, parser);
     handlebars_compiler_dtor(compiler);
 }
 END_TEST
@@ -79,7 +63,7 @@ START_TEST(test_compiler_get_flags)
 {
     struct handlebars_compiler * compiler;
     
-    compiler = handlebars_compiler_ctor(ctx);
+    compiler = handlebars_compiler_ctor(context, parser);
     
     ck_assert_int_eq(0, handlebars_compiler_get_flags(compiler));
     
@@ -95,7 +79,7 @@ START_TEST(test_compiler_set_flags)
 {
     struct handlebars_compiler * compiler;
     
-    compiler = handlebars_compiler_ctor(ctx);
+    compiler = handlebars_compiler_ctor(context, parser);
     
     // Make sure it changes option flags
     handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_string_params);
@@ -123,16 +107,16 @@ START_TEST(test_compiler_is_known_helper)
     const char * helper3 = "foobar";
     const char * helper4 = "";
     
-    compiler = handlebars_compiler_ctor(ctx);
+    compiler = handlebars_compiler_ctor(context, parser);
     //ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, NULL));
     
-    id = handlebars_ast_node_ctor(ctx, HANDLEBARS_AST_NODE_PATH);
+    id = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PATH);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    id->node.path.parts = parts = handlebars_ast_list_ctor(ctx);
+    id->node.path.parts = parts = handlebars_ast_list_ctor(parser);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment = handlebars_ast_node_ctor(ctx, HANDLEBARS_AST_NODE_PATH);
+    path_segment = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PATH);
     handlebars_ast_list_append(parts, path_segment);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
@@ -157,10 +141,10 @@ START_TEST(test_compiler_opcode)
     struct handlebars_compiler * compiler;
     struct handlebars_opcode * op1;
     struct handlebars_opcode * op2;
-    compiler = handlebars_compiler_ctor(ctx);
+    compiler = handlebars_compiler_ctor(context, parser);
     
-    op1 = handlebars_opcode_ctor(ctx, handlebars_opcode_type_append);
-    op2 = handlebars_opcode_ctor(ctx, handlebars_opcode_type_append_escaped);
+    op1 = handlebars_opcode_ctor(compiler, handlebars_opcode_type_append);
+    op2 = handlebars_opcode_ctor(compiler, handlebars_opcode_type_append_escaped);
     
     handlebars_compiler_opcode(compiler, op1);
     ck_assert_ptr_ne(NULL, compiler->opcodes);
