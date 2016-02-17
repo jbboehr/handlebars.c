@@ -50,10 +50,12 @@ struct generic_test {
 
 static int memdebug;
 static TALLOC_CTX * rootctx;
+TALLOC_CTX * memctx;
 static struct generic_test ** tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
 static char * spec_dir;
+static int runs = 1;
 
 static void loadOptions(struct generic_test * test, json_object * object)
 {
@@ -271,16 +273,16 @@ int shouldnt_skip(struct generic_test * test)
 #undef MYCCHECK
 }
 
-START_TEST(test_handlebars_spec)
+#define NDEBUG
+
+static inline void run_test(struct generic_test * test, int _i)
 {
-    struct generic_test * test = tests[_i];
     struct handlebars_context * ctx;
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
     struct handlebars_value * context;
     struct handlebars_value * helpers;
     struct handlebars_value_iterator * it;
-    TALLOC_CTX * memctx = talloc_new(rootctx);
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
@@ -453,7 +455,28 @@ done:
     handlebars_context_dtor(ctx);
     ck_assert_int_eq(1, talloc_total_blocks(memctx));
 }
+
+START_TEST(test_handlebars_spec)
+{
+    struct generic_test * test = tests[_i];
+    int i;
+
+    for( i = 0; i < runs; i++ ) {
+        run_test(test, _i);
+    }
+}
 END_TEST
+
+static void setup(void)
+{
+    memctx = talloc_new(rootctx);
+}
+
+static void teardown(void)
+{
+    talloc_free(memctx);
+    memctx = NULL;
+}
 
 Suite * parser_suite(void)
 {
@@ -472,6 +495,7 @@ Suite * parser_suite(void)
 
     // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
     tcase_add_loop_test(tc_handlebars_spec, test_handlebars_spec, start, end);
+    tcase_add_checked_fixture(tc_handlebars_spec, setup, teardown);
     suite_add_tcase(s, tc_handlebars_spec);
 
     return s;
@@ -488,6 +512,11 @@ int main(void)
         talloc_enable_leak_report_full();
     }
     rootctx = talloc_new(NULL);
+
+    // Get runs
+    if( getenv("TEST_RUNS") ) {
+        runs = atoi(getenv("TEST_RUNS"));
+    }
 
     // Load specs
     // Load the spec

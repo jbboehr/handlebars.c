@@ -1,0 +1,3 @@
+
+/* Disable refcounting of handlebars values */
+#undef HANDLEBARS_NO_REFCOUNT

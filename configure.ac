@@ -24,7 +24,7 @@ AC_DEFINE([PACKAGE_DESCRIPTION], ["Library for handlebars"], [Description])
 AC_SUBST([PACKAGE_DESCRIPTION], ["Library for handlebars"])
 
 AC_CONFIG_AUX_DIR([build])
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_HEADERS([config.h src/handlebars_config.h])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -189,6 +189,14 @@ AS_IF([test "x$with_mustache_spec" != "xno"], [
 
 # pcre
 AC_CHECK_LIB([pcre], [pcre_version])
+
+# refcounting
+AC_ARG_ENABLE([refcounting],
+	[AS_HELP_STRING([--disable-refcounting], [disable refcounting of handlebars values])], [])
+
+AS_IF([test "x$enable_refcounting" == "xno"], [
+    AC_DEFINE([HANDLEBARS_NO_REFCOUNT], [1], [Disable refcounting of handlebars values])
+])
 
 # talloc
 AC_CHECK_LIB([talloc], [talloc_version_major], , [

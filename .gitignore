@@ -54,6 +54,7 @@ config.status
 configure
 libtool
 stamp-h1
+stamp-h2
 
 # distros
 *.tar.gz

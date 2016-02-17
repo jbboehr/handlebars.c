@@ -18,6 +18,7 @@ struct handlebars_value;
 struct handlebars_stack {
     struct handlebars_context * ctx;
     size_t i;
+    size_t s;
     struct handlebars_value ** v;
 };
 

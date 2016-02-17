@@ -38,6 +38,7 @@ include_HEADERS = \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
 	handlebars_compiler.h \
+	handlebars_config.h \
 	handlebars_context.h \
 	handlebars_helpers.h \
 	handlebars_map.h \
@@ -64,6 +65,7 @@ lib_LTLIBRARIES=libhandlebars.la
 
 libhandlebars_la_SOURCES = \
 	$(GENSOURCE) \
+	handlebars_config.h \
 	handlebars_memory.h \
 	handlebars_memory.c \
 	handlebars.h \

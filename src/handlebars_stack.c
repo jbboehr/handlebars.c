@@ -22,7 +22,8 @@ struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
     struct handlebars_stack * stack = MC(handlebars_talloc_zero(ctx, struct handlebars_stack));
     stack->ctx = ctx;
     stack->i = 0;
-    stack->v = MC(handlebars_talloc_array(stack, struct handlebars_value *, 32));
+    stack->s = 32;
+    stack->v = MC(handlebars_talloc_array(stack, struct handlebars_value *, stack->s));
     return stack;
 }
 
@@ -31,11 +32,13 @@ struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 
 void handlebars_stack_dtor(struct handlebars_stack * stack)
 {
+#ifndef HANDLEBARS_NO_REFCOUNT
     size_t i;
     for( i = 0; i < stack->i; i++ ) {
         struct handlebars_value * value = stack->v[i];
         handlebars_value_delref(value);
     }
+#endif
     handlebars_talloc_free(stack);
 }
 
@@ -52,7 +55,7 @@ struct handlebars_value * handlebars_stack_push(struct handlebars_stack * stack,
     assert(stack != NULL);
     assert(value != NULL);
 
-    s = talloc_array_length(stack->v);
+    s = stack->s;
 
     // Resize array if necessary
     if( stack->i <= s ) {

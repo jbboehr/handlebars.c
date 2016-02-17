@@ -27,12 +27,14 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx)
 
 void handlebars_map_dtor(struct handlebars_map * map)
 {
+#ifndef HANDLEBARS_NO_REFCOUNT
     struct handlebars_map_entry * entry;
     struct handlebars_map_entry * tmp;
 
     handlebars_map_foreach(map, entry, tmp) {
         handlebars_value_delref(entry->value);
     }
+#endif
 
     handlebars_talloc_free(map);
 }

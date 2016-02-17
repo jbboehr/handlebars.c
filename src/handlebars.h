@@ -7,6 +7,7 @@
 #ifndef HANDLEBARS_H
 #define HANDLEBARS_H
 
+#include "handlebars_config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

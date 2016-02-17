@@ -104,10 +104,12 @@ static inline int _handlebars_value_addref(struct handlebars_value * value, cons
     return ++value->refcount;
 }
 #define handlebars_value_addref(value) _handlebars_value_addref(value, "[" HBS_S2(__FILE__) ":" HBS_S2(__LINE__) "]")
-#else
+#elif !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_addref(struct handlebars_value * value) {
     return ++value->refcount;
 }
+#else
+#define handlebars_value_addref
 #endif
 
 #if 0
@@ -123,7 +125,7 @@ static inline int _handlebars_value_delref(struct handlebars_value * value, cons
     return --value->refcount;
 }
 #define handlebars_value_delref(value) _handlebars_value_delref(value, "[" HBS_S2(__FILE__) ":" HBS_S2(__LINE__) "]")
-#else
+#elif !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_delref(struct handlebars_value * value) {
     if( value->refcount <= 1 ) {
         if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
@@ -134,18 +136,28 @@ static inline int handlebars_value_delref(struct handlebars_value * value) {
     }
     return --value->refcount;
 }
+#else
+#define handlebars_value_delref
 #endif
 
+#if !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_try_delref(struct handlebars_value * value) {
     if( value ) {
         return handlebars_value_delref(value);
     }
     return -1;
 }
+#else
+#define handlebars_value_try_delref
+#endif
 
+#if !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_refcount(struct handlebars_value * value) {
     return value->refcount;
 }
+#else
+#define handlebars_value_refcount(v) 999
+#endif
 
 static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
     switch( value->type ) {
