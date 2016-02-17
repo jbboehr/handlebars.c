@@ -182,6 +182,12 @@ static inline bool handlebars_compiler_is_known_helper(
             return 1;
         }
     }
+
+    for( ptr = handlebars_builtins_names() ; *ptr ; ++ptr ) {
+        if( strcmp(helper_name, *ptr) == 0 ) {
+            return 1;
+        }
+    }
     
     return 0;
 }
