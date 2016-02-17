@@ -7,6 +7,15 @@ sudo: required
 
 dist: trusty
 
+env:
+  global:
+    - PREFIX="$HOME/build"
+    - PATH="$PREFIX/bin:$PATH"
+    - CFLAGS="-L$PREFIX/lib"
+    - CPPFLAGS="-I$PREFIX/include"
+    - PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+    - CC="gcc-4.9"
+
 addons:
   apt:
     sources:
@@ -36,8 +45,9 @@ before_install:
   - travis_retry gem install coveralls-lcov
 
 install:
+  - ./.travis.sh
   - ./bootstrap
-  - ./configure --prefix=$HOME/build  CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage" CC="gcc-4.9"
+  - ./configure --prefix="$PREFIX"  CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
   - make clean all
 
 before_script:
