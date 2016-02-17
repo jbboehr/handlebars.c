@@ -91,13 +91,15 @@ static inline void handlebars_compiler_accept_decorator(
 
 
 
+#undef CONTEXT
 #define CONTEXT ctx
 
-struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx)
+struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx, struct handlebars_parser * parser)
 {
     struct handlebars_compiler * compiler;
     compiler = MC(handlebars_talloc_zero(ctx, struct handlebars_compiler));
     compiler->ctx = ctx;
+    compiler->parser = parser;
     compiler->known_helpers = handlebars_builtins_names();
     compiler->bps = MC(handlebars_talloc_zero(compiler, struct handlebars_block_param_stack));
     return compiler;
@@ -145,6 +147,37 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, int fl
 
 
 // Utilities
+
+char ** handlebars_ast_node_get_id_parts(struct handlebars_compiler * compiler, struct handlebars_ast_node * ast_node)
+{
+    size_t num;
+    char ** arr;
+    char ** arrptr;
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+
+    if( !ast_node || ast_node->type != HANDLEBARS_AST_NODE_PATH ) {
+        return NULL;
+    }
+
+    num = handlebars_ast_list_count(ast_node->node.path.parts);
+    if( num == 0 ) {
+        return NULL;
+    }
+
+    arrptr = arr = MC(handlebars_talloc_array(compiler, char *, num + 1));
+
+    handlebars_ast_list_foreach(ast_node->node.path.parts, item, tmp) {
+        assert(item->data);
+        if( likely(item->data->type == HANDLEBARS_AST_NODE_PATH_SEGMENT) ) {
+            *arrptr = MC(handlebars_talloc_strdup(arr, item->data->node.path_segment.part));
+            ++arrptr;
+        }
+    }
+    *arrptr++ = NULL;
+
+    return arr;
+}
 
 static inline void handlebars_compiler_add_depth(
         struct handlebars_compiler * compiler,
@@ -253,7 +286,7 @@ static inline long handlebars_compiler_compile_program(
     assert(program->type == HANDLEBARS_AST_NODE_PROGRAM ||
            program->type == HANDLEBARS_AST_NODE_CONTENT);
     
-    subcompiler = talloc_steal(compiler, MC(handlebars_compiler_ctor(compiler->ctx)));
+    subcompiler = talloc_steal(compiler, MC(handlebars_compiler_ctor(compiler->ctx, compiler->parser)));
     
     // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
@@ -344,9 +377,9 @@ static inline void handlebars_compiler_push_param(
                     *tmp2 = '.';
                 }
             }
-            handlebars_operand_set_stringval(opcode, &opcode->op1, tmp);
+            handlebars_operand_set_stringval(compiler, &opcode->op1, tmp);
         }
-        handlebars_operand_set_stringval(opcode, &opcode->op2, handlebars_ast_node_readable_type(param->type));
+        handlebars_operand_set_stringval(compiler, &opcode->op2, handlebars_ast_node_readable_type(param->type));
         __PUSH(opcode);
         /*
         __OPS2(push_string_param, 
@@ -384,15 +417,15 @@ static inline void handlebars_compiler_push_param(
                 block_param_arr[1] = &tmp[16];
                 block_param_arr[2] = NULL;
                 
-                handlebars_operand_set_stringval(opcode, &opcode->op1, "BlockParam");
-                handlebars_operand_set_arrayval(opcode, &opcode->op2, block_param_arr);
-                parts_arr = (const char **) MC(handlebars_ast_node_get_id_parts(compiler->ctx, param));
+                handlebars_operand_set_stringval(compiler, &opcode->op1, "BlockParam");
+                handlebars_operand_set_arrayval(compiler, &opcode->op2, block_param_arr);
+                parts_arr = (const char **) MC(handlebars_ast_node_get_id_parts(compiler, param));
                 if( *parts_arr ) {
                     block_param_parts = MC(handlebars_implode(".", parts_arr + 1));
-                    handlebars_operand_set_stringval(opcode, &opcode->op3, block_param_parts);
+                    handlebars_operand_set_stringval(compiler, &opcode->op3, block_param_parts);
                     handlebars_talloc_free(block_param_parts);
                 } else {
-                    handlebars_operand_set_stringval(opcode, &opcode->op3, "");
+                    handlebars_operand_set_stringval(compiler, &opcode->op3, "");
                 }
                 handlebars_talloc_free(parts_arr);
                 __PUSH(opcode);
@@ -406,7 +439,7 @@ static inline void handlebars_compiler_push_param(
                 } else if( *strval == '.' && *(strval + 1) == '/' ) {
                     strval += 2;
                 }
-                handlebars_operand_set_stringval(opcode, &opcode->op1, handlebars_ast_node_readable_type(param->type));
+                handlebars_operand_set_stringval(compiler, &opcode->op1, handlebars_ast_node_readable_type(param->type));
                 // @todo need to remove leading .
                 if( param->type == HANDLEBARS_AST_NODE_BOOLEAN ) {
                     handlebars_operand_set_boolval(&opcode->op2, strcmp(strval, "true") == 0);
@@ -415,9 +448,9 @@ static inline void handlebars_compiler_push_param(
                     sscanf(strval, "%10ld", &lval);
                     handlebars_operand_set_longval(&opcode->op2, lval);
                 } else if( param->type == HANDLEBARS_AST_NODE_STRING ) {
-                    handlebars_operand_set_stringval(opcode, &opcode->op2, strval ? strval : "");
+                    handlebars_operand_set_stringval(compiler, &opcode->op2, strval ? strval : "");
                 } else {
-                    handlebars_operand_set_stringval(opcode, &opcode->op2, strval);
+                    handlebars_operand_set_stringval(compiler, &opcode->op2, strval);
                 }
                 __PUSH(opcode);
             }
@@ -490,9 +523,9 @@ static inline void handlebars_compiler_transform_literal_to_path(
 		case HANDLEBARS_AST_NODE_STRING:
 			val = handlebars_ast_node_get_string_mode_value(path);
 			// Make parts
-			part = talloc_steal(node, handlebars_ast_node_ctor(compiler->ctx, HANDLEBARS_AST_NODE_PATH_SEGMENT));
+			part = talloc_steal(node, handlebars_ast_node_ctor(compiler->parser, HANDLEBARS_AST_NODE_PATH_SEGMENT));
 			part->node.path_segment.part = MC(handlebars_talloc_strdup(part, val));
-			parts = talloc_steal(node, handlebars_ast_list_ctor(compiler->ctx));
+			parts = talloc_steal(node, handlebars_ast_list_ctor(compiler->parser));
 		    handlebars_ast_list_append(parts, part);
 		    // Re-jigger node
 		    memset(path, 0, sizeof(struct handlebars_ast_node));
@@ -699,14 +732,14 @@ static inline void _handlebars_compiler_accept_partial(
     		__OPS(push_literal, "undefined");
     	} else {
 			if( !params ) {
-				params = talloc_steal(node, handlebars_ast_list_ctor(compiler->ctx));
+				params = talloc_steal(node, handlebars_ast_list_ctor(compiler->parser));
 				if( node->type == HANDLEBARS_AST_NODE_PARTIAL ) {
 					node->node.partial.params = params;
 				} else if( node->type == HANDLEBARS_AST_NODE_PARTIAL_BLOCK ) {
 					node->node.partial_block.params = params;
 				}
 			}
-			tmp = talloc_steal(params, handlebars_ast_node_ctor(compiler->ctx, HANDLEBARS_AST_NODE_PATH));
+			tmp = talloc_steal(params, handlebars_ast_node_ctor(compiler->parser, HANDLEBARS_AST_NODE_PATH));
 			handlebars_ast_list_append(params, tmp);
     	}
     }
@@ -745,10 +778,10 @@ static inline void _handlebars_compiler_accept_partial(
             if( lv ) {
                 handlebars_operand_set_longval(&opcode->op2, lv);
             } else {
-                handlebars_operand_set_stringval(opcode, &opcode->op2, strval);
+                handlebars_operand_set_stringval(compiler, &opcode->op2, strval);
             }
         }
-        handlebars_operand_set_stringval(opcode, &opcode->op3, indent ? indent : "");
+        handlebars_operand_set_stringval(compiler, &opcode->op3, indent ? indent : "");
         __PUSH(opcode);
     } while(0);
 
@@ -830,7 +863,7 @@ static inline void handlebars_compiler_accept_decorator(
         }
 
         origcompiler = compiler;
-        subcompiler = talloc_steal(compiler, handlebars_compiler_ctor(compiler->ctx));
+        subcompiler = talloc_steal(compiler, handlebars_compiler_ctor(compiler->ctx, compiler->parser));
         compiler->decorators[compiler->decorators_length++] = subcompiler;
         compiler = subcompiler;
         
@@ -895,7 +928,7 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
     
     do {
         struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invoke_ambiguous);
-        handlebars_operand_set_stringval(opcode, &opcode->op1, name);
+        handlebars_operand_set_stringval(compiler, &opcode->op1, name);
         handlebars_operand_set_boolval(&opcode->op2, is_block);
         __PUSH(opcode);
         //__OPSL(invoke_ambiguous, name, is_block);
@@ -1022,9 +1055,9 @@ static inline void handlebars_compiler_accept_path(
         block_param_arr[2] = NULL;
         
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_block_param);
-        handlebars_operand_set_arrayval(opcode, &opcode->op1, block_param_arr);
-        parts_arr = MC(handlebars_ast_node_get_id_parts(compiler->ctx, path));
-        handlebars_operand_set_arrayval(compiler, &opcode->op2, parts_arr);
+        handlebars_operand_set_arrayval(compiler, &opcode->op1, block_param_arr);
+        parts_arr = MC(handlebars_ast_node_get_id_parts(compiler, path));
+        handlebars_operand_set_arrayval(compiler, &opcode->op2, (const char **) parts_arr);
         //opcode->op2.type = handlebars_operand_type_array;
         //opcode->op2.data.arrayval = talloc_steal(opcode, parts_arr);
         __PUSH(opcode);
@@ -1032,9 +1065,9 @@ static inline void handlebars_compiler_accept_path(
         __OPN(push_context);
     } else if( path->node.path.data ) {
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_data);
-        parts_arr = MC(handlebars_ast_node_get_id_parts(compiler->ctx, path));
+        parts_arr = MC(handlebars_ast_node_get_id_parts(compiler, path));
         handlebars_operand_set_longval(&opcode->op1, path->node.path.depth);
-        handlebars_operand_set_arrayval(compiler, &opcode->op2, parts_arr);
+        handlebars_operand_set_arrayval(compiler, &opcode->op2, (const char **) parts_arr);
         if( path->node.path.strict ) {
         	handlebars_operand_set_boolval(&opcode->op3, path->node.path.strict);
         }
@@ -1042,8 +1075,8 @@ static inline void handlebars_compiler_accept_path(
         __PUSH(opcode);
     } else {
         opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_lookup_on_context);
-        parts_arr = MC(handlebars_ast_node_get_id_parts(compiler->ctx, path));
-        handlebars_operand_set_arrayval(compiler, &opcode->op1, parts_arr);
+        parts_arr = MC(handlebars_ast_node_get_id_parts(compiler, path));
+        handlebars_operand_set_arrayval(compiler, &opcode->op1, (const char **) parts_arr);
         if( path->node.path.falsy ) {
         	handlebars_operand_set_boolval(&opcode->op2, path->node.path.falsy);
         }
@@ -1110,7 +1143,7 @@ static inline void handlebars_compiler_accept_boolean(
 
 static inline void handlebars_compiler_accept_nul(
         struct handlebars_compiler * compiler,
-        struct handlebars_ast_node * number
+        HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * node
 ) {
     assert(number != NULL);
     assert(number->type == HANDLEBARS_AST_NODE_NUL);
@@ -1120,7 +1153,7 @@ static inline void handlebars_compiler_accept_nul(
 
 static inline void handlebars_compiler_accept_undefined(
         struct handlebars_compiler * compiler,
-        struct handlebars_ast_node * number
+        HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * node
 ) {
     assert(number != NULL);
     assert(number->type == HANDLEBARS_AST_NODE_UNDEFINED);

@@ -20,9 +20,11 @@
 #include "handlebars.tab.h"
 
 
+#undef CONTEXT
+#define CONTEXT parser->ctx
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
-        struct handlebars_context * context, struct handlebars_ast_node * open_block,
+        struct handlebars_parser * parser, struct handlebars_ast_node * open_block,
         struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_and_program,
         struct handlebars_ast_node * close, int inverted,
         struct handlebars_locinfo * locinfo)
@@ -45,7 +47,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         open_str = handlebars_ast_node_get_string_mode_value(open_block_path);
         close_str = handlebars_ast_node_get_string_mode_value(close_block_path);
         if( close_block_path && 0 != strcmp(open_str, close_str) ) {
-            handlebars_context_throw_ex(context, HANDLEBARS_PARSEERR, locinfo,  "%s doesn't match %s", open_str, close_str);
+            handlebars_context_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo,  "%s doesn't match %s", open_str, close_str);
         }
     }
 
@@ -55,7 +57,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
 
     // @todo this isn't supposed to be null I think...
     if( !program ) {
-        program = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
+        program = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
     }
     program->node.program.block_param1 = open_block->node.intermediate.block_param1;
     program->node.program.block_param2 = open_block->node.intermediate.block_param2;
@@ -64,7 +66,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         assert(inverse_and_program->type == HANDLEBARS_AST_NODE_INVERSE);
 
         if( is_decorator ) {
-            handlebars_context_throw_ex(context, HANDLEBARS_PARSEERR, locinfo, "Unexpected inverse block on decorator");
+            handlebars_context_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "Unexpected inverse block on decorator");
         }
 
         if( inverse_and_program->node.inverse.chained ) {
@@ -99,7 +101,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         inverse = tmp;
     }
     
-    ast_node = handlebars_ast_node_ctor_block(context, open_block, program, inverse,
+    ast_node = handlebars_ast_node_ctor_block(parser, open_block, program, inverse,
                 open_block->strip, inverse_strip, close ? close->strip : 0, locinfo);
 
     ast_node->node.block.is_decorator = is_decorator;
@@ -107,7 +109,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
-        struct handlebars_context * context, struct handlebars_ast_node * open_inverse_chain,
+        struct handlebars_parser * parser, struct handlebars_ast_node * open_inverse_chain,
         struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_chain,
         struct handlebars_locinfo * locinfo)
 {
@@ -116,18 +118,18 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
     struct handlebars_ast_node * program_node;
     struct handlebars_ast_node * ast_node;
     
-    block_node = handlebars_ast_helper_prepare_block(context, open_inverse_chain, program, inverse_chain, inverse_chain, 0, locinfo);
-    statements = handlebars_ast_list_ctor(context);
+    block_node = handlebars_ast_helper_prepare_block(parser, open_inverse_chain, program, inverse_chain, inverse_chain, 0, locinfo);
+    statements = handlebars_ast_list_ctor(parser);
     handlebars_ast_list_append(statements, block_node);
-    program_node = handlebars_ast_node_ctor_program(context, statements, NULL, NULL, 0, 1, locinfo);
-    ast_node = handlebars_ast_node_ctor_inverse(context, program_node, 1, 
+    program_node = handlebars_ast_node_ctor_program(parser, statements, NULL, NULL, 0, 1, locinfo);
+    ast_node = handlebars_ast_node_ctor_inverse(parser, program_node, 1,
                     (open_inverse_chain ? open_inverse_chain->strip : 0), locinfo);
     
     return ast_node;
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
-        struct handlebars_context * context, struct handlebars_ast_node * intermediate,
+        struct handlebars_parser * parser, struct handlebars_ast_node * intermediate,
         char * open, unsigned strip, struct handlebars_locinfo * locinfo)
 {
     char c = 0;
@@ -135,7 +137,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     struct handlebars_ast_node * path = intermediate->node.intermediate.path;
     struct handlebars_ast_list * params = intermediate->node.intermediate.params;
     struct handlebars_ast_node * hash = intermediate->node.intermediate.hash;
-    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_MUSTACHE);
+    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_MUSTACHE);
     
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
@@ -164,7 +166,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
-    struct handlebars_context * context, struct handlebars_ast_node * open,
+    struct handlebars_parser * parser, struct handlebars_ast_node * open,
     struct handlebars_ast_node * program, struct handlebars_ast_node * close,
     struct handlebars_locinfo * locinfo)
 {
@@ -181,15 +183,15 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
         open_str = handlebars_ast_node_get_string_mode_value(open_block_path);
         close_str = handlebars_ast_node_get_string_mode_value(close_block_path);
         if( close_block_path && 0 != strcmp(open_str, close_str) ) {
-            handlebars_context_throw_ex(context, HANDLEBARS_PARSEERR, locinfo, "%s doesn't match %s", open_str, close_str);
+            handlebars_context_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "%s doesn't match %s", open_str, close_str);
         }
     }
 
-	return handlebars_ast_node_ctor_partial_block(context, open, program, close, locinfo);
+	return handlebars_ast_node_ctor_partial_block(parser, open, program, close, locinfo);
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
-        struct handlebars_context * context, struct handlebars_ast_list * parts,
+        struct handlebars_parser * parser, struct handlebars_ast_list * parts,
         bool data, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_list_item * item;
@@ -202,7 +204,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     int count = 0;
     
     // Allocate the original strings
-    original = MC(handlebars_talloc_strdup(context, data ? "@" : ""));
+    original = MC(handlebars_talloc_strdup(parser, data ? "@" : ""));
     
     // Iterate over parts and process
     handlebars_ast_list_foreach(parts, item, tmp) {
@@ -222,7 +224,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         // Handle paths
         if( !is_literal && (strcmp(part, "..") == 0 || strcmp(part, ".") == 0 || strcmp(part, "this") == 0) ) {
             if( count > 0 ) {
-                handlebars_context_throw_ex(context, HANDLEBARS_ERROR, locinfo, "Invalid path: %s", original);
+                handlebars_context_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "Invalid path: %s", original);
             } else if( strcmp(part, "..") == 0 ) {
                 depth++;
             }
@@ -233,14 +235,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         }
     }
     
-    return handlebars_ast_node_ctor_path(context, parts, original, depth, data, locinfo);
+    return handlebars_ast_node_ctor_path(parser, parts, original, depth, data, locinfo);
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
-        struct handlebars_context * context, struct handlebars_ast_node * open_raw_block, 
+        struct handlebars_parser * parser, struct handlebars_ast_node * open_raw_block, 
         const char * content, const char * close, struct handlebars_locinfo * locinfo)
 {
-    struct handlebars_ast_node * ast_node;
     struct handlebars_ast_node * content_node;
     struct handlebars_ast_node * open_block_path;
     
@@ -250,14 +251,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     
     open_block_path = open_raw_block->node.intermediate.path;
     if( 0 != strcmp(open_block_path->node.path.original, close) ) {
-        handlebars_context_throw_ex(context, HANDLEBARS_ERROR, locinfo, "%s doesn't match %s", open_block_path->node.path.original, close);
+        handlebars_context_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "%s doesn't match %s", open_block_path->node.path.original, close);
     }
     
     // Create the content node
-    content_node = handlebars_ast_node_ctor_content(context, content, locinfo);
+    content_node = handlebars_ast_node_ctor_content(parser, content, locinfo);
     
     // Create the raw block node
-    return handlebars_ast_node_ctor_raw_block(context, open_raw_block, content_node, locinfo);
+    return handlebars_ast_node_ctor_raw_block(parser, open_raw_block, content_node, locinfo);
 }
 
 static void handlebars_ast_helper_strip_comment_left(char * comment)

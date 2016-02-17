@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 // Declarations
-struct handlebars_context;
+struct handlebars_parser;
 struct handlebars_token;
 
 /**
@@ -29,7 +29,7 @@ struct handlebars_token_list_item {
  * @brief Token linked list root
  */
 struct handlebars_token_list {
-    struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
     struct handlebars_token_list_item * first;
     struct handlebars_token_list_item * last;
 };
@@ -59,7 +59,7 @@ int handlebars_token_list_append(struct handlebars_token_list * list, struct han
  * @param[in] ctx The talloc memory context
  * @return The newly constructed list
  */
-struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_context * context) HBSARN;
+struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_parser * parser) HBSARN;
 
 /**
  * @brief Destruct a token list

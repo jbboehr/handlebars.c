@@ -37,7 +37,7 @@ enum handlebars_ast_printer_flags
  * @brief AST printer context object
  */
 struct handlebars_ast_printer_context {
-    struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
     int flags;
     int padding;
     int error;
@@ -55,7 +55,7 @@ struct handlebars_ast_printer_context {
  * @param[in] flags The printer flags
  * @return The printed string
  */
-char * handlebars_ast_print(struct handlebars_context * context, struct handlebars_ast_node * ast_node, int flags) HBSARN;
+char * handlebars_ast_print(struct handlebars_parser * parser, struct handlebars_ast_node * ast_node, int flags) HBSARN;
 
 #ifdef	__cplusplus
 }

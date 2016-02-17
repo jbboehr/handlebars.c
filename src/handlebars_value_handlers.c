@@ -66,7 +66,7 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
 
             for( i = 0, l = json_object_array_length(intern); i < l; i++ ) {
                 new_value = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, i));
-                handlebars_stack_set(value->v.map, i, new_value);
+                handlebars_stack_set(value->v.stack, i, new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
                 }
@@ -133,7 +133,7 @@ struct handlebars_value_iterator * std_json_iterator_ctor(struct handlebars_valu
             if( entry ) {
                 it->usr = (void *) entry;
                 it->key = (char *) entry->k;
-                it->current = handlebars_value_from_json_object(value->ctx, entry->v);
+                it->current = handlebars_value_from_json_object(value->ctx, (json_object *) entry->v);
                 it->length = json_object_object_length(intern);
             }
             break;
@@ -175,6 +175,9 @@ bool std_json_iterator_next(struct handlebars_value_iterator * it)
                 it->current = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, it->index));
             }
             break;
+        default:
+            // @todo throw
+            break;
     }
 
     return ret;
@@ -186,13 +189,11 @@ long std_json_count(struct handlebars_value * value)
     switch( json_object_get_type(intern) ) {
         case json_type_object:
             return json_object_object_length(intern);
-            break;
         case json_type_array:
             return json_object_array_length(intern);
-            break;
+        default:
+            return -1;
     }
-
-    return -1;
 
 }
 

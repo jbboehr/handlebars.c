@@ -14,6 +14,7 @@
 
 
 
+#undef CONTEXT
 #define CONTEXT compiler->ctx
 
 struct handlebars_opcode * handlebars_opcode_ctor(

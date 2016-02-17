@@ -15,6 +15,7 @@ extern "C" {
 
 // Declarations
 struct handlebars_ast_node;
+struct handlebars_parser;
 
 /**
  * @brief AST node linked list item
@@ -29,7 +30,7 @@ struct handlebars_ast_list_item {
  * @brief AST node linked list root
  */
 struct handlebars_ast_list {
-    struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
     struct handlebars_ast_list_item * first;
     struct handlebars_ast_list_item * last;
     size_t count;
@@ -68,7 +69,7 @@ int handlebars_ast_list_count(struct handlebars_ast_list * list);
  * @param[in] ctx The talloc memory context
  * @return The newly constructed list
  */
-struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_context * context) HBSARN;
+struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_parser * parser) HBSARN;
 
 /**
  * @brief Destruct an AST node list

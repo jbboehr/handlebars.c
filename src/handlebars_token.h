@@ -31,7 +31,7 @@ struct handlebars_token {
  * @param[in] length Length of the text
  * @return the new token object
  */
-struct handlebars_token * handlebars_token_ctor(struct handlebars_context * ctx, int token_int, const char * text, size_t length) HBSARN;
+struct handlebars_token * handlebars_token_ctor(struct handlebars_parser * parser, int token_int, const char * text, size_t length) HBSARN;
 
 /**
  * @brief Destruct a token

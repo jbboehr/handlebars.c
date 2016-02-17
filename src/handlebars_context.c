@@ -16,52 +16,22 @@
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
-struct handlebars_context * _handlebars_context_init_current = NULL;
-
 struct handlebars_context * handlebars_context_ctor_ex(void * ctx)
 {
     struct handlebars_context * context = NULL;
-    int lexerr = 0;
     
     // Allocate struct as new top level talloc context
     context = handlebars_talloc_zero(ctx, struct handlebars_context);
     if( unlikely(context == NULL) ) {
         // Mainly doing this for consistency with lex init
         errno = ENOMEM;
-        goto done;
     }
-    
-    // Set the current context in a variable for yyalloc >.>
-    _handlebars_context_init_current = context;
-    
-    // Initialize lexer
-    // @todo set a destructor on the context object to deinit the lexerf
-    lexerr = handlebars_yy_lex_init(&context->scanner);
-    if( unlikely(lexerr != 0) ) {
-        // Failure, free context and return null
-        handlebars_talloc_free(context);
-        context = NULL;
-        goto done;
-    }
-  
-    // Set the extra on the lexer
-    handlebars_yy_set_extra(context, context->scanner);
-  
-done:
-    _handlebars_context_init_current = NULL;
+
     return context;
 }
 
 void handlebars_context_dtor(struct handlebars_context * context)
 {
-    if( unlikely(context == NULL) ) {
-        return;
-    }
-    if( likely(context->scanner != NULL) ) {
-        // Note: it has int return value, but appears to always return 0
-        handlebars_yy_lex_destroy(context->scanner);
-        context->scanner = NULL;
-    }
     handlebars_talloc_free(context);
 }
 

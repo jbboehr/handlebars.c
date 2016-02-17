@@ -15,6 +15,7 @@
 
 
 
+#undef CONTEXT
 #define CONTEXT options->vm->ctx
 #define SAFE_RETURN(val) return val ? val : handlebars_value_ctor(CONTEXT)
 
@@ -95,7 +96,6 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     struct handlebars_value_iterator * it;
     struct handlebars_value * result = NULL;
     short use_data;
-    use_data = (options->data != NULL);
     struct handlebars_value * data = NULL;
     struct handlebars_value * block_params = NULL;
     char * tmp;
@@ -103,6 +103,8 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     size_t len;
     struct handlebars_options * options2;
     struct handlebars_value * ret = NULL;
+
+    use_data = (options->data != NULL);
 
     if( handlebars_stack_length(options->params) < 1 ) {
         handlebars_vm_throw(options->vm, HANDLEBARS_ERROR, "Must pass iterator to #each");

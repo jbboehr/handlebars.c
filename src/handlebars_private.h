@@ -3,6 +3,7 @@
 #define HANDLEBARS_PRIVATE_H
 
 #include "handlebars.h"
+#include "handlebars_context.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -49,7 +50,7 @@ struct handlebars_context;
 static inline void * handlebars_check(struct handlebars_context * context, void * ptr, const char * msg)
 {
     if( unlikely(ptr == NULL) ) {
-        handlebars_context_throw(context, HANDLEBARS_NOMEM, msg);
+        handlebars_context_throw(context, HANDLEBARS_NOMEM, "%s", msg);
     }
     return ptr;
 }

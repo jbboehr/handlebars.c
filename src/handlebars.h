@@ -100,6 +100,17 @@ struct handlebars_locinfo
 };
 #define YYLTYPE handlebars_locinfo
 
+struct handlebars_parser
+{
+    struct handlebars_context * ctx;
+    const char * tmpl;
+    int tmplReadOffset;
+    void * scanner;
+    struct handlebars_ast_node * program;
+    bool whitespace_root_seen;
+    bool ignore_standalone;
+};
+
 /**
  * @brief Get the library version as an integer
  * @return The version of handlebars as an integer
@@ -116,20 +127,24 @@ const char * handlebars_spec_version_string(void) HBSARN;
 
 const char * handlebars_mustache_spec_version_string(void) HBSARN;
 
+struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ctx);
+
+void handlebars_parser_dtor(struct handlebars_parser * parser);
+
 /**
  * @brief Convenience function for lexing to a token list
  * 
  * @param[in] ctx
  * @return the token list
  */
-struct handlebars_token_list * handlebars_lex(struct handlebars_context * ctx) HBSARN;
+struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser) HBSARN;
 
-bool handlebars_parse(struct handlebars_context * ctx);
+bool handlebars_parse(struct handlebars_parser * parser);
 
 // Flex/Bison prototypes
 int handlebars_yy_get_column(void * yyscanner);
 void handlebars_yy_set_column(int column_no, void * yyscanner);
-int handlebars_yy_parse(struct handlebars_context * context);
+int handlebars_yy_parse(struct handlebars_parser * parser);
 
 #ifdef	__cplusplus
 }

@@ -233,9 +233,10 @@ static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
 static inline char * dump_stack(struct handlebars_stack * stack)
 {
     struct handlebars_value * tmp = handlebars_value_ctor(stack->ctx);
+    char * str;
     tmp->type = HANDLEBARS_VALUE_TYPE_ARRAY;
     tmp->v.stack = stack;
-    char * str = handlebars_value_dump(tmp, 0);
+    str = handlebars_value_dump(tmp, 0);
     talloc_steal(stack, str);
     handlebars_talloc_free(tmp);
     return str;
@@ -253,6 +254,9 @@ static inline char * dump_stack(struct handlebars_stack * stack)
 ACCEPT_FUNCTION(ambiguous_block_value)
 {
     struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_value * current;
+    struct handlebars_value * result;
+    struct handlebars_value * helper;
     struct setup_ctx ctx = {0};
 
     ctx.name = vm->last_helper;
@@ -260,20 +264,20 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     handlebars_stack_push(ctx.params, frame->context);
     setup_params(vm, &ctx);
 
-    struct handlebars_value * current = handlebars_stack_pop(vm->stack);
+    current = handlebars_stack_pop(vm->stack);
     if( !current ) { // @todo I don't think this should happen
         current = handlebars_value_ctor(vm->ctx);
     }
     handlebars_stack_set(ctx.params, 0, current);
 
     if( vm->last_helper == NULL ) {
-        struct handlebars_value * helper = get_helper(vm, "blockHelperMissing");
+        helper = get_helper(vm, "blockHelperMissing");
 
         assert(helper != NULL);
         assert(handlebars_value_is_callable(helper));
         assert(ctx.options != NULL);
 
-        struct handlebars_value * result = handlebars_value_call(helper, ctx.options);
+        result = handlebars_value_call(helper, ctx.options);
         append_to_buffer(vm, result, 0);
 
         handlebars_value_delref(helper);
@@ -364,7 +368,7 @@ ACCEPT_FUNCTION(get_context)
     assert(opcode->type == handlebars_opcode_type_get_context);
     assert(opcode->op1.type == handlebars_operand_type_long);
 
-    long depth = opcode->op1.data.longval;
+    size_t depth = (size_t) opcode->op1.data.longval;
     size_t length = handlebars_stack_length(vm->depths);
 
     if( depth >= length ) {
@@ -553,22 +557,23 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_context_throw_ex(vm->ctx, context->e.num, &context->e.loc, context->e.msg);
     }
 
-    // Get template
-    context->tmpl = handlebars_value_get_strval(partial);
-    if( !*context->tmpl ) {
+    // Construct parser
+    struct handlebars_parser * parser = handlebars_parser_ctor(context);
+    parser->tmpl = handlebars_value_get_strval(partial);
+    if( !*parser->tmpl ) {
         goto done;
     }
 
     // Construct intermediate compiler and VM
-    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
+    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context, parser);
     struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
     // Parse
-    handlebars_parse(context);
+    handlebars_parse(parser);
 
     // Compile
     handlebars_compiler_set_flags(compiler, vm->flags);
-    handlebars_compiler_compile(compiler, context->program);
+    handlebars_compiler_compile(compiler, parser->program);
 
     // Get context
     // @todo change parent to new vm?

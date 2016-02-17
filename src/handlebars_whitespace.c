@@ -20,6 +20,9 @@
 
 
 
+#undef CONTEXT
+#define CONTEXT parser->ctx
+
 int handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * statements,
         struct handlebars_ast_node * statement, bool is_root)
 {
@@ -164,17 +167,17 @@ int handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
 
 
 
-static inline void handlebars_whitespace_accept_program(struct handlebars_context * context,
+static inline void handlebars_whitespace_accept_program(struct handlebars_parser * parser,
         struct handlebars_ast_node * program)
 {
-    bool is_root = !context->whitespace_root_seen;
+    bool is_root = !parser->whitespace_root_seen;
     int error = HANDLEBARS_SUCCESS;
     struct handlebars_ast_list * statements = program->node.program.statements;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
-    bool do_standalone = 1; //!context->ignore_standalone;
-    
-    context->whitespace_root_seen = 1;
+    bool do_standalone = 1; //!parser->ignore_standalone;
+
+    parser->whitespace_root_seen = 1;
     
     if( !statements ) {
         return;
@@ -188,7 +191,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_contex
         bool close_standalone;
         bool inline_standalone;
           
-        handlebars_whitespace_accept(context, current);
+        handlebars_whitespace_accept(parser, current);
         if( !current || !(current->strip & handlebars_ast_strip_flag_set) ) {
             continue;
         }
@@ -280,7 +283,7 @@ static inline struct handlebars_ast_node * _handlebars_whitespace_get_program(st
     return NULL;
 }
 
-static inline void handlebars_whitespace_accept_block(struct handlebars_context * context,
+static inline void handlebars_whitespace_accept_block(struct handlebars_parser * parser,
         struct handlebars_ast_node * block)
 {
     struct handlebars_ast_node * program;
@@ -288,10 +291,10 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_context 
     struct handlebars_ast_node * firstInverse;
     struct handlebars_ast_node * lastInverse;
     unsigned strip = 0;
-    bool do_standalone = true; //!context->ignore_standalone;
+    bool do_standalone = true; //!parser->ignore_standalone;
     
-    handlebars_whitespace_accept(context, block->node.block.program);
-    handlebars_whitespace_accept(context, block->node.block.inverse);
+    handlebars_whitespace_accept(parser, block->node.block.program);
+    handlebars_whitespace_accept(parser, block->node.block.inverse);
     
     program = (block->node.block.program ? block->node.block.program : block->node.block.inverse);
     inverse = (block->node.block.program ? block->node.block.inverse : NULL);
@@ -353,25 +356,25 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_context 
     block->strip = strip;
 }
 
-static inline void handlebars_whitespace_accept_partial(struct handlebars_context * context,
+static inline void handlebars_whitespace_accept_partial(struct handlebars_parser * parser,
         struct handlebars_ast_node * partial)
 {
     partial->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
 }
 
-static inline void handlebars_whitespace_accept_mustache(struct handlebars_context * context,
+static inline void handlebars_whitespace_accept_mustache(struct handlebars_parser * parser,
         struct handlebars_ast_node * mustache)
 {
     // nothing?
 }
 
-static inline void handlebars_whitespace_accept_comment(struct handlebars_context * context,
+static inline void handlebars_whitespace_accept_comment(struct handlebars_parser * parser,
         struct handlebars_ast_node * comment)
 {
     comment->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
 }
 
-static inline void handlebars_whitespace_accept_raw_block(struct handlebars_context * context,
+static inline void handlebars_whitespace_accept_raw_block(struct handlebars_parser * parser,
         struct handlebars_ast_node * raw_block)
 {
     struct handlebars_ast_node * program;
@@ -383,8 +386,8 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_cont
     assert(raw_block != NULL);
     assert(raw_block->type == HANDLEBARS_AST_NODE_RAW_BLOCK);
     
-    handlebars_whitespace_accept(context, raw_block->node.raw_block.program);
-    handlebars_whitespace_accept(context, raw_block->node.raw_block.inverse);
+    handlebars_whitespace_accept(parser, raw_block->node.raw_block.program);
+    handlebars_whitespace_accept(parser, raw_block->node.raw_block.inverse);
     
     program = (raw_block->node.raw_block.program ? raw_block->node.raw_block.program : raw_block->node.raw_block.inverse);
     inverse = (raw_block->node.raw_block.program ? raw_block->node.raw_block.inverse : NULL);
@@ -450,7 +453,7 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_cont
     raw_block->strip = strip;
 }
 
-void handlebars_whitespace_accept(struct handlebars_context * context,
+void handlebars_whitespace_accept(struct handlebars_parser * parser,
         struct handlebars_ast_node * node)
 {
     if( unlikely(node == NULL) ) {
@@ -459,17 +462,17 @@ void handlebars_whitespace_accept(struct handlebars_context * context,
     
     switch( node->type ) {
         case HANDLEBARS_AST_NODE_BLOCK: 
-            return handlebars_whitespace_accept_block(context, node);
+            return handlebars_whitespace_accept_block(parser, node);
         case HANDLEBARS_AST_NODE_COMMENT: 
-            return handlebars_whitespace_accept_comment(context, node);
+            return handlebars_whitespace_accept_comment(parser, node);
         case HANDLEBARS_AST_NODE_MUSTACHE: 
-            return handlebars_whitespace_accept_mustache(context, node);
+            return handlebars_whitespace_accept_mustache(parser, node);
         case HANDLEBARS_AST_NODE_PARTIAL: 
-            return handlebars_whitespace_accept_partial(context, node);
+            return handlebars_whitespace_accept_partial(parser, node);
         case HANDLEBARS_AST_NODE_PROGRAM: 
-            return handlebars_whitespace_accept_program(context, node);
+            return handlebars_whitespace_accept_program(parser, node);
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
-            return handlebars_whitespace_accept_raw_block(context, node);
+            return handlebars_whitespace_accept_raw_block(parser, node);
         
         // LCOV_EXCL_START
         // These don't do anything

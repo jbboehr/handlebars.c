@@ -15,6 +15,7 @@
 
 
 
+#undef CONTEXT
 #define CONTEXT ctx
 
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)

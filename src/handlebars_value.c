@@ -29,6 +29,7 @@
 
 
 
+#undef CONTEXT
 #define CONTEXT ctx
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
@@ -201,13 +202,14 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
 
 bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
 {
-    assert(it != NULL);
-    assert(it->value != NULL);
-
-    struct handlebars_value * value = it->value;
+    struct handlebars_value * value;
     struct handlebars_map_entry * entry;
     bool ret = false;
 
+    assert(it != NULL);
+    assert(it->value != NULL);
+
+    value = it->value;
     if( it->current != NULL ) {
         handlebars_value_delref(it->current);
         it->current = NULL;
@@ -292,7 +294,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             it = handlebars_value_iterator_ctor(value);
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
                 char * tmp = handlebars_value_dump(it->current, depth + 1);
-                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%d => %s\n", indent2, it->index, tmp);
+                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%ld => %s\n", indent2, it->index, tmp);
                 handlebars_talloc_free(tmp);
             }
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "]");
@@ -431,6 +433,9 @@ void handlebars_value_dtor(struct handlebars_value * value)
             assert(value->handlers != NULL);
             value->handlers->dtor(value);
             break;
+        default:
+            // do nothing
+            break;
     }
 
     talloc_free_children(value);
@@ -537,7 +542,7 @@ struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_cont
                 yaml_node_t * valueNode = yaml_document_get_node(document, pair->value);
                 assert(keyNode->type == YAML_SCALAR_NODE);
                 tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
-                handlebars_map_add(value->v.map, keyNode->data.scalar.value, tmp);
+                handlebars_map_add(value->v.map, (const char *) keyNode->data.scalar.value, tmp);
             }
             break;
         case YAML_SEQUENCE_NODE:

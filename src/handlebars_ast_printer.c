@@ -49,7 +49,7 @@ void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context
 
 
 #undef CONTEXT
-#define CONTEXT ctx->ctx
+#define CONTEXT ctx->parser->ctx
 
 void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx)
 {
@@ -300,12 +300,12 @@ static void _handlebars_ast_print_boolean(struct handlebars_ast_node * ast_node,
     __APPEND("}");
 }
 
-static void _handlebars_ast_print_undefined(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_print_undefined(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPEND("UNDEFINED");
 }
 
-static void _handlebars_ast_print_null(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_print_null(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPEND("NULL");
 }
@@ -416,15 +416,15 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
 }
 
 #undef CONTEXT
-#define CONTEXT context
+#define CONTEXT parser->ctx
 
-char * handlebars_ast_print(struct handlebars_context * context, struct handlebars_ast_node * ast_node, int flags)
+char * handlebars_ast_print(struct handlebars_parser * parser, struct handlebars_ast_node * ast_node, int flags)
 {
     char * output;
-    struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(context, struct handlebars_ast_printer_context));
-    ctx->ctx = context;
+    struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(parser, struct handlebars_ast_printer_context));
+    ctx->parser = parser;
     ctx->flags = flags;
-    ctx->output = MC(handlebars_talloc_strdup(context, ""));
+    ctx->output = MC(handlebars_talloc_strdup(parser, ""));
     _handlebars_ast_print(ast_node, ctx);
     output = ctx->output;
     handlebars_talloc_free(ctx);

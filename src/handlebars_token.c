@@ -15,10 +15,12 @@
 #include "handlebars.tab.h"
 
 
+#undef CONTEXT
+#define CONTEXT parser->ctx
 
-struct handlebars_token * handlebars_token_ctor(struct handlebars_context * context, int token_int, const char * text, size_t length)
+struct handlebars_token * handlebars_token_ctor(struct handlebars_parser * parser, int token_int, const char * text, size_t length)
 {
-    struct handlebars_token * token = MC(handlebars_talloc_zero(context, struct handlebars_token));
+    struct handlebars_token * token = MC(handlebars_talloc_zero(parser, struct handlebars_token));
     token->token = token_int;
     token->text = MC(handlebars_talloc_strndup(token, text, length));
     token->length = length;

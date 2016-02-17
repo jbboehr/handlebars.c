@@ -189,12 +189,14 @@ static int do_version(void)
 static int do_lex(void)
 {
     struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
     struct handlebars_token * token = NULL;
     int token_int = 0;
     
     readInput();
     ctx = handlebars_context_ctor();
-    ctx->tmpl = input_buf;
+    parser = handlebars_parser_ctor(ctx);
+    parser->tmpl = input_buf;
     
     // Run
     do {
@@ -204,11 +206,11 @@ static int do_lex(void)
         char * text;
         char * output;
         
-        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, ctx->scanner);
+        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
         if( token_int == END || token_int == INVALID ) {
             break;
         }
-        lval = handlebars_yy_get_lval(ctx->scanner);
+        lval = handlebars_yy_get_lval(parser->scanner);
         
         // Make token object
         text = (lval->text == NULL ? "" : lval->text);
@@ -226,16 +228,18 @@ static int do_lex(void)
 static int do_parse(void)
 {
     struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
     char * output;
     //int retval;
     int error = 0;
     
     readInput();
     ctx = handlebars_context_ctor();
-    ctx->tmpl = input_buf;
+    parser = handlebars_parser_ctor(ctx);
+    parser->tmpl = input_buf;
     
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
-        ctx->ignore_standalone = 1;
+        parser->ignore_standalone = 1;
     }
     
     /*retval =*/ handlebars_yy_parse(ctx);
@@ -247,7 +251,7 @@ static int do_parse(void)
         goto error;
     }
 
-    output =  handlebars_ast_print(ctx, ctx->program, 0);
+    output =  handlebars_ast_print(ctx, parser->program, 0);
     fprintf(stdout, "%s\n", output);
 
 error:
@@ -258,24 +262,26 @@ error:
 static int do_compile(void)
 {
     struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_opcode_printer * printer;
     //int retval;
     int error = 0;
     
     ctx = handlebars_context_ctor();
-    compiler = handlebars_compiler_ctor(ctx);
+    parser = handlebars_parser_ctor(ctx);
+    compiler = handlebars_compiler_ctor(ctx, parser);
     printer = handlebars_opcode_printer_ctor(ctx);
     
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
-        ctx->ignore_standalone = 1;
+        parser->ignore_standalone = 1;
     }
     
     handlebars_compiler_set_flags(compiler, compiler_flags);
     
     // Read
     readInput();
-    ctx->tmpl = input_buf;
+    parser->tmpl = input_buf;
     
     // Parse
     /*retval =*/ handlebars_yy_parse(ctx);
@@ -286,7 +292,7 @@ static int do_compile(void)
     }
     
     // Compile
-    handlebars_compiler_compile(compiler, ctx->program);
+    handlebars_compiler_compile(compiler, parser->program);
 
     if( ctx->e.num ) {
         fprintf(stderr, "ERROR: %s\n", ctx->e.msg);

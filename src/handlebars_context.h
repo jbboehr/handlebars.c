@@ -35,13 +35,6 @@ struct handlebars_context
         struct handlebars_locinfo loc;
         jmp_buf * jmp;
     } e;
-
-    const char * tmpl;
-    int tmplReadOffset;
-    void * scanner;
-    struct handlebars_ast_node * program;
-    bool whitespace_root_seen;
-    bool ignore_standalone;
 };
 
 /**

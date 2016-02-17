@@ -19,6 +19,12 @@
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
+
+
+extern struct handlebars_parser * _handlebars_parser_init_current;
+
+
+
 char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char * what, size_t what_length)
 {
     char flags[256];
@@ -97,8 +103,9 @@ char * handlebars_htmlspecialchars(const char * str)
 
     // Estimate new size
     for( p = str; *p; p++ ) {
-        if( flags[*p] != NULL ) {
-            newsize += strlen(flags[*p]);
+        unsigned char c = (unsigned char) *p;
+        if( flags[c] != NULL ) {
+            newsize += strlen(flags[c]);
         } else {
             newsize++;
         }
@@ -113,9 +120,10 @@ char * handlebars_htmlspecialchars(const char * str)
 
     // Copy
     for( p = str; *p; p++ ) {
-        if( flags[*p] ) {
-            tmp = strlen(flags[*p]);
-            memcpy(r, flags[*p], tmp);
+        unsigned char c = (unsigned char) *p;
+        if( flags[c] ) {
+            tmp = strlen(flags[c]);
+            memcpy(r, flags[c], tmp);
             r += tmp;
         } else {
             *r = *p;
@@ -144,7 +152,7 @@ char * handlebars_implode(const char * sep, const char ** arr)
     return val;
 }
 
-char * handlebars_indent(void * ctx, const char * str, const char * indent)
+char * handlebars_indent(void * ctx, char * str, const char * indent)
 {
     size_t len, i;
     char * out = handlebars_talloc_strdup(ctx, "");
@@ -320,7 +328,9 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
 	int replacement_len = strlen(replacement);
 	int substr_len = strlen(substr);
 	int string_len = strlen(string);
+#ifndef NDEBUG
     int counter = 0;
+#endif
 	
 	assert(replacement_len <= substr_len);
 	assert(substr_len > 0);
@@ -344,22 +354,22 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
 }
 
 
-void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_context * context)
+void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser)
 {
     int numBytesToRead = maxBytesToRead;
-    int bytesRemaining = strlen(context->tmpl) - context->tmplReadOffset;
+    int bytesRemaining = strlen(parser->tmpl) - parser->tmplReadOffset;
     int i;
     if( numBytesToRead > bytesRemaining ) {
         numBytesToRead = bytesRemaining;
     }
     for( i = 0; i < numBytesToRead; i++ ) {
-        buffer[i] = context->tmpl[context->tmplReadOffset+i];
+        buffer[i] = parser->tmpl[parser->tmplReadOffset+i];
     }
     *numBytesRead = numBytesToRead;
-    context->tmplReadOffset += numBytesToRead;
+    parser->tmplReadOffset += numBytesToRead;
 }
 
-void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_context * context, const char * err)
+void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_parser * parser, const char * err)
 {
     assert(context != NULL);
 
@@ -367,7 +377,7 @@ void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_con
     fprintf(stderr, "%d : %s\n", lloc->first_line, err);
 #endif
 
-    handlebars_context_throw_ex(context, HANDLEBARS_PARSEERR, lloc, err);
+    handlebars_context_throw_ex(parser->ctx, HANDLEBARS_PARSEERR, lloc, err);
 }
 
 void handlebars_yy_fatal_error(const char * msg, HANDLEBARS_ATTR_UNUSED void * yyscanner)
@@ -390,15 +400,15 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
     // Note: it looks like the yyscanner is allocated before we can pass in
     // a handlebars context...
     // Also look into the performance hit for doing this
-    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
-    return (void *) _handlebars_yy_alloc(ctx, bytes, "handlebars_yy_alloc");
+    struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_parser_init_current);
+    return (void *) _handlebars_yy_alloc(parser, bytes, "handlebars_yy_alloc");
 }
 
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
     // Going to skip wrappers for now
-    struct handlebars_context * ctx = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_context_init_current);
-    return (void *) _handlebars_yy_realloc(ctx, ptr, sizeof(char), bytes, "handlebars_yy_realloc");
+    struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_parser_init_current);
+    return (void *) _handlebars_yy_realloc(parser, ptr, sizeof(char), bytes, "handlebars_yy_realloc");
 }
 
 void handlebars_yy_free(void * ptr, HANDLEBARS_ATTR_UNUSED void * yyscanner)

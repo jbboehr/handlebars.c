@@ -19,10 +19,13 @@
 
 
 
-struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_context * context, enum handlebars_ast_node_type type)
+#undef CONTEXT
+#define CONTEXT parser->ctx
+
+struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_parser * parser, enum handlebars_ast_node_type type)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = MC(handlebars_talloc_zero(context, struct handlebars_ast_node));
+    ast_node = MC(handlebars_talloc_zero(parser, struct handlebars_ast_node));
     ast_node->type = type;
     return ast_node;
 }
@@ -51,37 +54,6 @@ const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_no
     
     assert(path_segment->type == HANDLEBARS_AST_NODE_PATH_SEGMENT);
     return (const char *) path_segment->node.path_segment.part;
-}
-
-char ** handlebars_ast_node_get_id_parts(struct handlebars_context * context, struct handlebars_ast_node * ast_node)
-{
-    size_t num;
-    char ** arr;
-    char ** arrptr;
-    struct handlebars_ast_list_item * item;
-    struct handlebars_ast_list_item * tmp;
-    
-    if( !ast_node || ast_node->type != HANDLEBARS_AST_NODE_PATH ) {
-        return NULL;
-    }
-    
-    num = handlebars_ast_list_count(ast_node->node.path.parts);
-    if( num == 0 ) {
-        return NULL;
-    }
-
-    arrptr = arr = MC(handlebars_talloc_array(context, char *, num + 1));
-    
-    handlebars_ast_list_foreach(ast_node->node.path.parts, item, tmp) {
-        assert(item->data);
-        if( likely(item->data->type == HANDLEBARS_AST_NODE_PATH_SEGMENT) ) {
-            *arrptr = MC(handlebars_talloc_strdup(arr, item->data->node.path_segment.part));
-            ++arrptr;
-        }
-    }
-    *arrptr++ = NULL;
-    
-    return arr;
 }
 
 const char * handlebars_ast_node_get_string_mode_value(struct handlebars_ast_node * node)
@@ -224,7 +196,7 @@ const char * handlebars_ast_node_readable_type(int type)
 
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_block(
-    struct handlebars_context * context, struct handlebars_ast_node * intermediate,
+    struct handlebars_parser * parser, struct handlebars_ast_node * intermediate,
     struct handlebars_ast_node * program, struct handlebars_ast_node * inverse,
     unsigned open_strip, unsigned inverse_strip, unsigned close_strip,
     struct handlebars_locinfo * locinfo)
@@ -232,7 +204,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
     struct handlebars_ast_node * ast_node;
 
     // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_BLOCK);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_BLOCK);
     ast_node->loc = *locinfo;
 
     if( intermediate ) {
@@ -256,12 +228,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
-    struct handlebars_context * context, const char * boolean,
+    struct handlebars_parser * parser, const char * boolean,
     struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
 
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_BOOLEAN);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_BOOLEAN);
     ast_node->loc = *locinfo;
     ast_node->node.boolean.value = MC(handlebars_talloc_strdup(ast_node, boolean));
 
@@ -269,11 +241,11 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_comment(
-        struct handlebars_context * context, const char * comment,
+        struct handlebars_parser * parser, const char * comment,
         struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_COMMENT);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_COMMENT);
     ast_node->loc = *locinfo;
     ast_node->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
     ast_node->node.comment.value = MC(handlebars_talloc_strdup(ast_node, comment));
@@ -281,11 +253,11 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_comment(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_content(
-        struct handlebars_context * context, const char * content,
+        struct handlebars_parser * parser, const char * content,
         struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_CONTENT);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_CONTENT);
     ast_node->loc = *locinfo;
     ast_node->node.content.value = MC(handlebars_talloc_strdup(ast_node, content));
     ast_node->node.content.original = MC(handlebars_talloc_strdup(ast_node, content));
@@ -293,11 +265,11 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_content(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_hash_pair(
-    struct handlebars_context * context, const char * key,
+    struct handlebars_parser * parser, const char * key,
     struct handlebars_ast_node * value, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_HASH_PAIR);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_HASH_PAIR);
     ast_node->loc = *locinfo;
     ast_node->node.hash_pair.key = MC(handlebars_talloc_strdup(ast_node, key));
     ast_node->node.hash_pair.value = talloc_steal(ast_node, value);
@@ -305,12 +277,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_hash_pair(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
-	    struct handlebars_context * context, struct handlebars_ast_node * path,
+	    struct handlebars_parser * parser, struct handlebars_ast_node * path,
 	    struct handlebars_ast_list * params, struct handlebars_ast_node * hash,
 	    unsigned strip, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_INTERMEDIATE);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_INTERMEDIATE);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
     ast_node->node.intermediate.path = talloc_steal(ast_node, path);
@@ -320,11 +292,11 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
-	    struct handlebars_context * context, struct handlebars_ast_node * program,
+	    struct handlebars_parser * parser, struct handlebars_ast_node * program,
         bool chained, unsigned strip, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_INVERSE);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_INVERSE);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
     ast_node->node.inverse.program = talloc_steal(ast_node, program);
@@ -333,31 +305,31 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_null(
-    struct handlebars_context * context, struct handlebars_locinfo * locinfo)
+    struct handlebars_parser * parser, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_NUL);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_NUL);
     ast_node->loc = *locinfo;
     return ast_node;
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_number(
-    struct handlebars_context * context, const char * number,
+    struct handlebars_parser * parser, const char * number,
     struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_NUMBER);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_NUMBER);
     ast_node->loc = *locinfo;
     ast_node->node.number.value = MC(handlebars_talloc_strdup(ast_node, number));
     return ast_node;
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
-        struct handlebars_context * context, struct handlebars_ast_node * name,
+        struct handlebars_parser * parser, struct handlebars_ast_node * name,
         struct handlebars_ast_list * params, struct handlebars_ast_node * hash,
         unsigned strip, struct handlebars_locinfo * yylloc)
 {
-    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PARTIAL);
+    struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PARTIAL);
     ast_node->loc = *yylloc;
     ast_node->strip = strip;
     ast_node->node.partial.name = talloc_steal(ast_node, name);
@@ -367,13 +339,13 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
-    struct handlebars_context * context, struct handlebars_ast_node * open,
+    struct handlebars_parser * parser, struct handlebars_ast_node * open,
     struct handlebars_ast_node * program, struct handlebars_ast_node * close,
     struct handlebars_locinfo * loc)
 {
     struct handlebars_ast_node * ast_node;
 
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PARTIAL_BLOCK);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PARTIAL_BLOCK);
     ast_node->loc = *loc;
 
     if( open ) {
@@ -395,12 +367,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_program(
-    struct handlebars_context * context, struct handlebars_ast_list * statements,
+    struct handlebars_parser * parser, struct handlebars_ast_list * statements,
     char * block_param1, char * block_param2, unsigned strip,
     bool chained, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
     ast_node->node.program.statements = talloc_steal(ast_node, statements);
@@ -411,11 +383,11 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_program(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_path(
-    struct handlebars_context * context, struct handlebars_ast_list * parts,
+    struct handlebars_parser * parser, struct handlebars_ast_list * parts,
     char * original, int depth, bool data, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PATH);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PATH);
     ast_node->loc = *locinfo;
     ast_node->node.path.parts = talloc_steal(ast_node, parts);
     ast_node->node.path.original = talloc_steal(ast_node, original);
@@ -425,12 +397,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
-    struct handlebars_context * context, const char * part, const char * separator,
+    struct handlebars_parser * parser, const char * part, const char * separator,
     struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
 
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PATH_SEGMENT);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PATH_SEGMENT);
     ast_node->loc = *locinfo;
     ast_node->node.path_segment.original = MC(handlebars_talloc_strdup(ast_node, part));
     ast_node->node.path_segment.part = handlebars_ast_helper_strip_id_literal(MC(handlebars_talloc_strdup(ast_node, part)));;
@@ -443,7 +415,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
-    struct handlebars_context * context, struct handlebars_ast_node * intermediate,
+    struct handlebars_parser * parser, struct handlebars_ast_node * intermediate,
     struct handlebars_ast_node * content,  struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
@@ -454,7 +426,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     struct handlebars_ast_list * statements;
 
     // Construct the ast node
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_RAW_BLOCK);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_RAW_BLOCK);
     ast_node->loc = *locinfo;
     
     // Assign the content
@@ -470,8 +442,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     assert(hash == NULL || hash->type == HANDLEBARS_AST_NODE_HASH);
 
     // Create the program node
-    program = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_PROGRAM);
-    statements = talloc_steal(program, handlebars_ast_list_ctor(context));
+    program = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
+    statements = talloc_steal(program, handlebars_ast_list_ctor(parser));
     program->node.program.statements = statements;
     handlebars_ast_list_append(statements, talloc_steal(program, content));
     ast_node->node.raw_block.program = program;
@@ -486,7 +458,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
-	    struct handlebars_context * context,
+	    struct handlebars_parser * parser,
 	    struct handlebars_ast_node * intermediate,
 	    struct handlebars_locinfo * locinfo)
 {
@@ -494,7 +466,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
 
     assert(intermediate != NULL);
 
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_SEXPR);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_SEXPR);
     ast_node->loc = *locinfo;
     ast_node->node.sexpr.path = talloc_steal(ast_node, intermediate->node.intermediate.path);
     ast_node->node.sexpr.params = talloc_steal(ast_node, intermediate->node.intermediate.params);
@@ -504,12 +476,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_string(
-    struct handlebars_context * context, const char * string,
+    struct handlebars_parser * parser, const char * string,
     struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
 
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_STRING);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_STRING);
     ast_node->loc = *locinfo;
     ast_node->node.string.value = MC(handlebars_talloc_strdup(ast_node, string));
 
@@ -517,11 +489,11 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_string(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
-    struct handlebars_context * context, struct handlebars_locinfo * locinfo)
+    struct handlebars_parser * parser, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
 
-    ast_node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_UNDEFINED);
+    ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_UNDEFINED);
     ast_node->loc = *locinfo;
 
     return ast_node;

@@ -194,9 +194,9 @@ static inline long handlebars_value_count(struct handlebars_value * value) {
             return value->v.map->i;
         case HANDLEBARS_VALUE_TYPE_USER:
             return value->handlers->count(value);
+        default:
+            return -1;
     }
-
-    return -1;
 }
 
 static inline bool handlebars_value_is_empty(struct handlebars_value * value) {

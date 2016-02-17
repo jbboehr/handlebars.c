@@ -15,17 +15,18 @@
 
 
 
-#define CONTEXT context
+#undef CONTEXT
+#define CONTEXT parser->ctx
 
-struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_context * context)
+struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_parser * parser)
 {
-    struct handlebars_token_list * list = MC(handlebars_talloc_zero(context, struct handlebars_token_list));
-    list->ctx = context;
+    struct handlebars_token_list * list = MC(handlebars_talloc_zero(parser, struct handlebars_token_list));
+    list->parser = parser;
     return list;
 }
 
 #undef CONTEXT
-#define CONTEXT list->ctx
+#define CONTEXT list->parser->ctx
 
 int handlebars_token_list_append(struct handlebars_token_list * list, struct handlebars_token * token)
 {

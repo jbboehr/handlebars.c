@@ -41,7 +41,7 @@ char * handlebars_htmlspecialchars(const char * str);
 
 char * handlebars_implode(const char * sep, const char ** arr);
 
-char * handlebars_indent(void * ctx, const char * str, const char * indent);
+char * handlebars_indent(void * ctx, char * str, const char * indent);
 
 /**
  * @brief Trims a set of characters off the left end of string. Trims in
@@ -95,7 +95,7 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
  * @param[in] err The error message
  * @return void
  */
-void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_context * context, const char * err) HBS_ATTR_NORETURN;
+void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_parser * parser, const char * err) HBS_ATTR_NORETURN;
 
 /**
  * @brief Handle a fatal error in the parser. Prints message to stderr and exits with code 2.
@@ -115,7 +115,7 @@ void handlebars_yy_fatal_error(const char * msg, void * yyscanner) HBS_ATTR_NORE
  * @param[in] context The handlebars context
  * @return void
  */
-void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_context * context);
+void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser);
 
 /**
  * @brief Print a parser value

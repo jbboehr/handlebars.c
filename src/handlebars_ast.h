@@ -208,7 +208,7 @@ struct handlebars_ast_node {
  * @return the newly constructed AST node
  */
 struct handlebars_ast_node * handlebars_ast_node_ctor(
-		struct handlebars_context * context, enum handlebars_ast_node_type type) HBSARN;
+		struct handlebars_parser * parser, enum handlebars_ast_node_type type) HBSARN;
 
 /**
  * @brief Destruct an AST node
@@ -226,15 +226,6 @@ void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
  * @return The string
  */
 const char * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node);
-
-/**
- * @brief Get an array of parts of an ID AST node.
- * 
- * @param[in] ctx The talloc memory context
- * @param[in] ast_node The AST node
- * @return The string array
- */
-char ** handlebars_ast_node_get_id_parts(struct handlebars_context * context, struct handlebars_ast_node * ast_node);
 
 /**
  * @brief Get the string mode value of an AST node. Returns NULL if not 
@@ -262,7 +253,7 @@ const char * handlebars_ast_node_readable_type(int type);
 // Specialized constructors
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_block(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_ast_node * intermediate,
     struct handlebars_ast_node * program,
     struct handlebars_ast_node * inverse,
@@ -273,32 +264,32 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
 ) HBSARN;
     
 struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     const char * boolean,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_comment(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     const char * comment,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_content(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     const char * content,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_hash_pair(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     const char * key,
     struct handlebars_ast_node * value,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
-	    struct handlebars_context * context,
+	    struct handlebars_parser * parser,
         struct handlebars_ast_node * path,
 	    struct handlebars_ast_list * params,
         struct handlebars_ast_node * hash,
@@ -307,7 +298,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
-	    struct handlebars_context * context,
+	    struct handlebars_parser * parser,
         struct handlebars_ast_node * program,
 		bool chained,
         unsigned strip,
@@ -315,18 +306,18 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_null(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_number(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     const char * number,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_ast_node * partial_name,
     struct handlebars_ast_list * params,
     struct handlebars_ast_node * hash,
@@ -335,7 +326,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_ast_node * open,
     struct handlebars_ast_node * program,
     struct handlebars_ast_node * close,
@@ -343,7 +334,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_program(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_ast_list * statements,
     char * block_param1,
     char * block_param2,
@@ -353,7 +344,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_program(
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_path(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_ast_list * parts,
     char * original,
     int depth,
@@ -362,33 +353,33 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path(
 ) HBSARN;
     
 struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     const char * part,
     const char * separator,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_ast_node * intermediate,
     struct handlebars_ast_node * content,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_ast_node * intermediate,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_string(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     const char * string,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
-    struct handlebars_context * context,
+    struct handlebars_parser * parser,
     struct handlebars_locinfo * locinfo
 ) HBSARN;
 

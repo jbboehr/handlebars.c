@@ -19,6 +19,7 @@ struct handlebars_ast_node;
 struct handlebars_compiler;
 struct handlebars_context;
 struct handlebars_opcode;
+struct handlebars_parser;
 
 /**
  * @brief Flags to control compiler behaviour
@@ -125,6 +126,7 @@ struct handlebars_source_node_stack {
  */
 struct handlebars_compiler {
     struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
 
     struct handlebars_opcode ** opcodes;
     size_t opcodes_length;
@@ -194,7 +196,7 @@ void handlebars_compiler_compile(
  * @param[in] ctx The memory context
  * @return the compiler context pointer
  */
-struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx) HBSARN;
+struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx, struct handlebars_parser * parser) HBSARN;
 
 /**
  * @brief Free a compiler context and it's resources.
@@ -221,6 +223,15 @@ int handlebars_compiler_get_flags(struct handlebars_compiler * compiler);
  * @return void
  */
 void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, int flags);
+
+/**
+ * @brief Get an array of parts of an ID AST node.
+ *
+ * @param[in] ctx The talloc memory context
+ * @param[in] ast_node The AST node
+ * @return The string array
+ */
+char ** handlebars_ast_node_get_id_parts(struct handlebars_compiler * compiler, struct handlebars_ast_node * ast_node);
 
 #ifdef	__cplusplus
 }

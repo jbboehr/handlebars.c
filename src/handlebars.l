@@ -16,7 +16,7 @@
 #include "handlebars.tab.h"
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *)yyextra)
+#define CONTEXT (((struct handlebars_parser *)yyextra)->ctx)
 
 // Make sure nothing goes to stdout
 #define ECHO

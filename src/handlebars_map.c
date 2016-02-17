@@ -13,6 +13,7 @@
 
 
 
+#undef CONTEXT
 #define CONTEXT ctx
 
 struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx)
