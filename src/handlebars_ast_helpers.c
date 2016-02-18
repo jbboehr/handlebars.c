@@ -20,7 +20,7 @@
 
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) parser)
+#define CONTEXT HBSCTX(parser)
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         struct handlebars_parser * parser, struct handlebars_ast_node * open_block,

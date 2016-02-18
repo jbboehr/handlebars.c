@@ -16,7 +16,7 @@
 
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) parser)
+#define CONTEXT HBSCTX(parser)
 
 struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_parser * parser)
 {
@@ -26,7 +26,7 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_parser *
 }
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) list->parser)
+#define CONTEXT HBSCTX(list->parser)
 
 int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {

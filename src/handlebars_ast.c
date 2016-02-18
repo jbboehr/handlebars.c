@@ -19,7 +19,7 @@
 
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) parser)
+#define CONTEXT HBSCTX(parser)
 
 struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_parser * parser, enum handlebars_ast_node_type type)
 {

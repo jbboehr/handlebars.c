@@ -28,7 +28,7 @@ const char ** handlebars_builtins_names(void)
 }
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) vm)
+#define CONTEXT HBSCTX(vm)
 
 static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, const char * name)
 {
@@ -44,7 +44,7 @@ static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, co
 }
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) options->vm)
+#define CONTEXT HBSCTX(options->vm)
 
 void handlebars_options_dtor(struct handlebars_options * options)
 {

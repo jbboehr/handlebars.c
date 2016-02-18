@@ -258,3 +258,18 @@ void handlebars_context_throw_ex(struct handlebars_context * context, enum handl
         abort();
     }
 }
+
+struct handlebars_context * _HBSCTX(void * ctx, const char * loc)
+{
+    struct handlebars_context * r = (
+            talloc_get_type(ctx, struct handlebars_context) ?:
+            talloc_get_type(ctx, struct handlebars_parser) ?:
+            talloc_get_type(ctx, struct handlebars_compiler) ?:
+            talloc_get_type(ctx, struct handlebars_vm)
+    );
+    if( !r ) {
+        fprintf(stderr, "Not a context at %s\n", loc);
+        abort();
+    }
+    return r;
+}

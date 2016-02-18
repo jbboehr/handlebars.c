@@ -43,9 +43,9 @@ struct handlebars_token_list;
 #define HBS_S1(x) #x
 #define HBS_S2(x) HBS_S1(x)
 
-#define handlebars_setjmp(ctx) setjmp(*(((struct handlebars_context *) ctx)->jmp))
-#define handlebars_setjmp_cp(ctx, ctx2) setjmp(*(((struct handlebars_context *) ctx)->jmp = ctx2->jmp))
-#define handlebars_setjmp_ex(ctx, buf) setjmp(*(((struct handlebars_context *) ctx)->jmp = (buf)))
+#define handlebars_setjmp(ctx) setjmp(*(HBSCTX(ctx)->jmp))
+#define handlebars_setjmp_cp(ctx, ctx2) setjmp(*(HBSCTX(ctx)->jmp = ctx2->jmp))
+#define handlebars_setjmp_ex(ctx, buf) setjmp(*(HBSCTX(ctx)->jmp = (buf)))
 
 /**
  * @brief Enumeration of error types
@@ -201,6 +201,13 @@ char * handlebars_error_message_js(struct handlebars_context * context);
 int handlebars_yy_get_column(void * yyscanner);
 void handlebars_yy_set_column(int column_no, void * yyscanner);
 int handlebars_yy_parse(struct handlebars_parser * parser);
+
+#ifndef NDEBUG
+struct handlebars_context * _HBSCTX(void * ctx, const char * loc);
+#define HBSCTX(ctx) _HBSCTX(ctx, HBS_S2(__FILE__) ":" HBS_S2(__LINE__))
+#else
+#define HBSCTX(ctx) ((struct handlebars_context *)ctx)
+#endif
 
 #ifdef	__cplusplus
 }

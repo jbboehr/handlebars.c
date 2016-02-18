@@ -104,7 +104,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context 
 };
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) compiler)
+#define CONTEXT HBSCTX(compiler)
 
 void handlebars_compiler_dtor(struct handlebars_compiler * compiler)
 {

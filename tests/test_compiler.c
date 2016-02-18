@@ -60,26 +60,16 @@ END_TEST
 
 START_TEST(test_compiler_get_flags)
 {
-    struct handlebars_compiler * compiler;
-    
-    compiler = handlebars_compiler_ctor(context, parser);
-    
     ck_assert_int_eq(0, handlebars_compiler_get_flags(compiler));
     
     compiler->flags = handlebars_compiler_flag_all;
     
     ck_assert_int_eq(handlebars_compiler_flag_all, handlebars_compiler_get_flags(compiler));
-    
-    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 
 START_TEST(test_compiler_set_flags)
 {
-    struct handlebars_compiler * compiler;
-    
-    compiler = handlebars_compiler_ctor(context, parser);
-    
     // Make sure it changes option flags
     handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_string_params);
     ck_assert_int_eq(handlebars_compiler_flag_string_params, compiler->flags);
@@ -90,14 +80,11 @@ START_TEST(test_compiler_set_flags)
     ck_assert_int_eq(handlebars_compiler_flag_track_ids, compiler->flags);
     ck_assert_int_eq(0, compiler->string_params);
     ck_assert_int_eq(1, compiler->track_ids);
-    
-    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 
 START_TEST(test_compiler_is_known_helper)
 {
-    struct handlebars_compiler * compiler;
     struct handlebars_ast_node * id;
     struct handlebars_ast_list * parts;
     struct handlebars_ast_node * path_segment;
@@ -105,8 +92,7 @@ START_TEST(test_compiler_is_known_helper)
     const char * helper2 = "unless";
     const char * helper3 = "foobar";
     const char * helper4 = "";
-    
-    compiler = handlebars_compiler_ctor(context, parser);
+
     //ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, NULL));
     
     id = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PATH);
@@ -130,17 +116,13 @@ START_TEST(test_compiler_is_known_helper)
     
     path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper4);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
-    
-    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 
 START_TEST(test_compiler_opcode)
 {
-    struct handlebars_compiler * compiler;
     struct handlebars_opcode * op1;
     struct handlebars_opcode * op2;
-    compiler = handlebars_compiler_ctor(context, parser);
     
     op1 = handlebars_opcode_ctor(compiler, handlebars_opcode_type_append);
     op2 = handlebars_opcode_ctor(compiler, handlebars_opcode_type_append_escaped);
@@ -156,8 +138,6 @@ START_TEST(test_compiler_opcode)
     ck_assert_int_ne(0, compiler->opcodes_size);
     ck_assert_int_eq(2, compiler->opcodes_length);
     ck_assert_ptr_eq(op2, *(compiler->opcodes + 1));
-    
-    handlebars_compiler_dtor(compiler);
 }
 END_TEST
 

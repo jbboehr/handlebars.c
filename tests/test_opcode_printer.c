@@ -116,7 +116,7 @@ START_TEST(test_opcode_print_3)
     char * expected = "invokeHelper[LONG:123][STRING:baz][LONG:456]";
     
     handlebars_operand_set_longval(&opcode->op1, 123);
-    handlebars_operand_set_stringval(opcode, &opcode->op2, "baz");
+    handlebars_operand_set_stringval(compiler, &opcode->op2, "baz");
     handlebars_operand_set_longval(&opcode->op3, 456);
     str = handlebars_opcode_print(compiler, opcode);
     
@@ -134,9 +134,9 @@ START_TEST(test_opcode_print_4)
     char * expected = "lookupOnContext[LONG:123][STRING:baz][LONG:456][STRING:bat]";
 
     handlebars_operand_set_longval(&opcode->op1, 123);
-    handlebars_operand_set_stringval(opcode, &opcode->op2, "baz");
+    handlebars_operand_set_stringval(compiler, &opcode->op2, "baz");
     handlebars_operand_set_longval(&opcode->op3, 456);
-    handlebars_operand_set_stringval(opcode, &opcode->op4, "bat");
+    handlebars_operand_set_stringval(compiler, &opcode->op4, "bat");
     str = handlebars_opcode_print(compiler, opcode);
 
     ck_assert_str_eq(expected, str);

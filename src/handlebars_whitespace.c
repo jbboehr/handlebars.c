@@ -20,7 +20,7 @@
 
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) parser)
+#define CONTEXT HBSCTX(parser)
 
 int handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * statements,
         struct handlebars_ast_node * statement, bool is_root)

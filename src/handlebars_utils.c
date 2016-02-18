@@ -353,7 +353,7 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
 }
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) parser)
+#define CONTEXT HBSCTX(parser)
 
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser)
 {

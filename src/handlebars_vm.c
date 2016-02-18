@@ -63,7 +63,7 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 }
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) vm)
+#define CONTEXT HBSCTX(vm)
 
 
 void handlebars_vm_dtor(struct handlebars_vm * vm)

@@ -65,9 +65,12 @@ static char * export_dir = NULL;
 static const int opcode_printer_flags = 0; //handlebars_opcode_printer_flag_locations;
 
 
-static int loadTestOpcodeOperand(struct handlebars_opcode * opcode, 
-        struct handlebars_operand * operand, json_object * object)
-{
+static int loadTestOpcodeOperand(
+        struct handlebars_compiler * compiler,
+        struct handlebars_opcode * opcode,
+        struct handlebars_operand * operand,
+        json_object * object
+) {
     if( !object ) {
         return 0;
     }
@@ -79,7 +82,7 @@ static int loadTestOpcodeOperand(struct handlebars_opcode * opcode,
             handlebars_operand_set_boolval(operand, json_object_get_boolean(object) ? 1 : 0);
             break;
         case json_type_string:
-            handlebars_operand_set_stringval(opcode, operand, json_object_get_string(object));
+            handlebars_operand_set_stringval(compiler, operand, json_object_get_string(object));
             break;
         case json_type_int:
             handlebars_operand_set_longval(operand, json_object_get_int(object));
@@ -103,7 +106,7 @@ static int loadTestOpcodeOperand(struct handlebars_opcode * opcode,
         case json_type_double: {
             char tmp[64];
             snprintf(tmp, 63, "%g", json_object_get_double(object));
-            handlebars_operand_set_stringval(opcode, operand, tmp);
+            handlebars_operand_set_stringval(compiler, operand, tmp);
             //handlebars_operand_set_stringval(opcode, operand, json_object_get_string(object));
             break;
         }
@@ -115,8 +118,11 @@ static int loadTestOpcodeOperand(struct handlebars_opcode * opcode,
     return 0;
 }
 
-static int loadTestOpcodeLoc(struct handlebars_opcode * opcode, json_object * object)
-{
+static int loadTestOpcodeLoc(
+        struct handlebars_compiler * compiler,
+        struct handlebars_opcode * opcode,
+        json_object * object
+) {
     struct json_object * cur = NULL;
     struct json_object * line = NULL;
     struct json_object * column = NULL;
@@ -196,22 +202,22 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
     switch( array_len ) {
 		case 4: {
             array_item = json_object_array_get_idx(cur, 3);
-            loadTestOpcodeOperand(opcode, &opcode->op4, array_item);
+            loadTestOpcodeOperand(compiler, opcode, &opcode->op4, array_item);
 		}
         /* no break */
         case 3: {
             array_item = json_object_array_get_idx(cur, 2);
-            loadTestOpcodeOperand(opcode, &opcode->op3, array_item);
+            loadTestOpcodeOperand(compiler, opcode, &opcode->op3, array_item);
         }
         /* no break */
         case 2: {
             array_item = json_object_array_get_idx(cur, 1);
-            loadTestOpcodeOperand(opcode, &opcode->op2, array_item);
+            loadTestOpcodeOperand(compiler, opcode, &opcode->op2, array_item);
         }
         /* no break */
         case 1: {
             array_item = json_object_array_get_idx(cur, 0);
-            loadTestOpcodeOperand(opcode, &opcode->op1, array_item);
+            loadTestOpcodeOperand(compiler, opcode, &opcode->op1, array_item);
             break;
         }
     }
@@ -223,7 +229,7 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
         //fprintf(stderr, "Opcode loc was not an object!\n");
         //goto error;
     } else {
-        loadTestOpcodeLoc(opcode, cur);
+        loadTestOpcodeLoc(compiler, opcode, cur);
     }
     
 error:

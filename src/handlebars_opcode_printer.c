@@ -17,7 +17,7 @@
 
 
 #undef CONTEXT
-#define CONTEXT ((struct handlebars_context *) compiler)
+#define CONTEXT HBSCTX(compiler)
 
 struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_compiler * compiler)
 {
