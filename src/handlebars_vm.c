@@ -68,6 +68,7 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 
 void handlebars_vm_dtor(struct handlebars_vm * vm)
 {
+#ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_stack_dtor(vm->frameStack);
     if( vm->depths ) {
         handlebars_stack_dtor(vm->depths);
@@ -79,6 +80,7 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
     }
     handlebars_value_try_delref(vm->builtins);
     handlebars_value_try_delref(vm->last_context);
+#endif
     handlebars_talloc_free(vm);
 }
 
@@ -1104,8 +1106,15 @@ void handlebars_vm_execute(
     }
 
     // Preprocess
-    vm->programs = MC(handlebars_talloc_array(vm, struct handlebars_compiler *, 32));
-    preprocess_program(vm, compiler);
+    if( compiler->programs ) {
+        vm->programs = compiler->programs;
+        vm->guid_index = compiler->programs_index;
+    } else {
+        vm->programs = MC(handlebars_talloc_array(vm, struct handlebars_compiler *, 32));
+        preprocess_program(vm, compiler);
+        compiler->programs = talloc_steal(compiler, vm->programs);
+        compiler->programs_index = vm->guid_index;
+    }
 
     // Save context
     handlebars_value_addref(context);

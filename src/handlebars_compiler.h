@@ -180,6 +180,9 @@ struct handlebars_compiler {
      * @brief Number of block params used
      */
     int block_params;
+
+    struct handlebars_compiler ** programs;
+    size_t programs_index;
 };
 
 /**

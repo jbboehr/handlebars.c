@@ -21,7 +21,7 @@ extern "C" {
 struct handlebars_ast_node;
 struct handlebars_token_list;
 
-// Macros
+// Attributes
 #if (__GNUC__ >= 3)
 #define HBS_ATTR_NORETURN __attribute__ ((noreturn))
 #define HBS_ATTR_PRINTF(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
@@ -33,6 +33,8 @@ struct handlebars_token_list;
 #define HBS_ATTR_UNUSED
 #define HBS_ATTR_NONNULL
 #endif
+
+// returns_nonnull
 #if (__GNUC__ >= 5) || ((__GNUC__ >= 4) && (__GNUC_MINOR__ >= 9))
 #define HBS_ATTR_RETURNS_NONNULL  __attribute__((returns_nonnull))
 #else
@@ -40,8 +42,42 @@ struct handlebars_token_list;
 #endif
 #define HBSARN HBS_ATTR_RETURNS_NONNULL
 
+// typeof
+#if (__GNUC__ >= 3)
+#define HBS_TYPEOF(ptr) __typeof__(ptr)
+#else
+#define HBS_TYPEOF(ptr) void *
+#endif
+
+// builtin_expect
+#ifdef HAVE___BUILTIN_EXPECT
+#  define handlebars_likely(x)   __builtin_expect(!!(x), 1)
+#  define handlebars_unlikely(x) __builtin_expect(!!(x), 0)
+#else
+#  define handlebars_likely(x) (x)
+#  define handlebars_unlikely(x) (x)
+#endif
+
+// unused
+#ifdef HAVE_VAR_ATTRIBUTE_UNUSED
+#  define HANDLEBARS_ATTR_UNUSED __attribute__((__unused__))
+#else
+#  define HANDLEBARS_ATTR_UNUSED
+#endif
+
+// Macros
 #define HBS_S1(x) #x
 #define HBS_S2(x) HBS_S1(x)
+#define HBS_LOC HBS_S2(__FILE__) ":" HBS_S2(__LINE__)
+
+#define HANDLEBARS_MEMCHECK_MSG "Out of memory  [" HBS_LOC "]"
+#define HANDLEBARS_MEMCHECK(cond, ctx) \
+    do { \
+        if( handlebars_unlikely(!cond) ) { \
+            handlebars_context_throw(ctx, HANDLEBARS_NOMEM, HANDLEBARS_MEMCHECK_MSG); \
+        } \
+    } while(0)
+#define HBS_MEMCHK(cond) MEMCHKEX(cond, CONTEXT)
 
 #define handlebars_setjmp(ctx) setjmp(*(HBSCTX(ctx)->jmp))
 #define handlebars_setjmp_cp(ctx, ctx2) setjmp(*(HBSCTX(ctx)->jmp = ctx2->jmp))
@@ -201,6 +237,14 @@ char * handlebars_error_message_js(struct handlebars_context * context);
 int handlebars_yy_get_column(void * yyscanner);
 void handlebars_yy_set_column(int column_no, void * yyscanner);
 int handlebars_yy_parse(struct handlebars_parser * parser);
+
+static inline void * handlebars_check(struct handlebars_context * context, void * ptr, const char * msg)
+{
+    if( handlebars_unlikely(ptr == NULL) ) {
+        handlebars_context_throw(context, HANDLEBARS_NOMEM, "%s", msg);
+    }
+    return ptr;
+}
 
 #ifndef NDEBUG
 struct handlebars_context * _HBSCTX(void * ctx, const char * loc);
