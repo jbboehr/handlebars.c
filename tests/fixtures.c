@@ -37,10 +37,9 @@ FIXTURE_FN(49286285)
 {
     struct handlebars_value * arg = handlebars_stack_get(options->params, 0);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    char * r1 = handlebars_value_get_strval(arg);
-    char * r2 = handlebars_talloc_strdup(result, "bar");
-    handlebars_talloc_strdup_append(r2, r1);
-    handlebars_value_string(result, r2);
+    handlebars_value_string_steal(result, handlebars_talloc_asprintf(
+            arg, "%s%s", "bar",  handlebars_value_get_strval(arg)
+    ));
     handlebars_value_delref(arg);
     return result;
 }
@@ -486,14 +485,13 @@ FIXTURE_FN(1198465479)
     struct handlebars_value * exclaim = handlebars_value_map_find(options->scope, "exclaim");
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     char * tmp = handlebars_talloc_asprintf(
-            result,
+            options,
             "%s %s%s",
             handlebars_value_get_strval(adjective),
             handlebars_value_get_strval(noun),
             (handlebars_value_get_boolval(exclaim) ? "!" : "")
     );
-    handlebars_value_string(result, tmp);
-    handlebars_talloc_free(tmp);
+    handlebars_value_string_steal(result, tmp);
     return result;
 }
 
@@ -509,8 +507,7 @@ FIXTURE_FN(1283397100)
     struct handlebars_value * context = handlebars_value_from_json_string(CONTEXT, "{\"exclaim\": \"?\"}");
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     char * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
-    handlebars_value_string(result, tmp);
-    handlebars_talloc_free(tmp);
+    handlebars_value_string_steal(result, tmp);
     return result;
 }
 
@@ -998,13 +995,12 @@ FIXTURE_FN(2961119846)
     struct handlebars_value * noun = handlebars_value_map_find(options->scope, "noun");
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     char * tmp = handlebars_talloc_asprintf(
-            result,
+            options,
             "%s %s",
             handlebars_value_get_strval(adjective),
             handlebars_value_get_strval(noun)
     );
-    handlebars_value_string(result, tmp);
-    handlebars_talloc_free(tmp);
+    handlebars_value_string_steal(result, tmp);
     return result;
 }
 
@@ -1044,10 +1040,9 @@ FIXTURE_FN(3065257350)
         i++;
     }
     char * tmp2 = handlebars_vm_execute_program(options->vm, options->program, options->scope);
-    handlebars_talloc_strdup_append(tmp, tmp2);
+    tmp = handlebars_talloc_strdup_append(tmp, tmp2);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
-    handlebars_talloc_free(tmp);
+    handlebars_value_string_steal(result, tmp);
     handlebars_talloc_free(tmp2);
     return result;
 }
@@ -1095,8 +1090,7 @@ FIXTURE_FN(3206093801)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
-    handlebars_talloc_free(tmp);
+    handlebars_value_string_steal(result, tmp);
     return result;
 }
 
@@ -1225,10 +1219,10 @@ FIXTURE_FN(3659403207)
     // "function (value) {\n        return 'bar ' + value;\n    }"
     struct handlebars_value * arg = handlebars_stack_get(options->params, 0);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    char * r1 = handlebars_value_get_strval(arg);
-    char * r2 = handlebars_talloc_strdup(result, "bar ");
-    handlebars_talloc_strdup_append(r2, r1);
-    handlebars_value_string(result, r2);
+    handlebars_value_string_steal(result, handlebars_talloc_asprintf(
+            arg, "%s%s", "bar ",  handlebars_value_get_strval(arg)
+    ));
+    handlebars_value_delref(arg);
     return result;
 }
 

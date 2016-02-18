@@ -64,6 +64,7 @@ struct handlebars_value * handlebars_stack_push(struct handlebars_stack * stack,
             s += 32;
         } while( s <= stack->i );
         nv = MC(handlebars_talloc_realloc(stack, stack->v, struct handlebars_value *, s));
+        stack->s = s;
         stack->v = nv;
     }
 
