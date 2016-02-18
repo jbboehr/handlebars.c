@@ -6,13 +6,11 @@
 
 #include <assert.h>
 #include <getopt.h>
-#include <src/handlebars_context.h>
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
-#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_token.h"

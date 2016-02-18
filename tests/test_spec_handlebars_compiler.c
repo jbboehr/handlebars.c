@@ -16,12 +16,10 @@
 #include <json/json.h>
 #include <json/json_object.h>
 #include <json/json_tokener.h>
-#include <src/handlebars_context.h>
-
 #endif
 
+#include "handlebars.h"
 #include "handlebars_compiler.h"
-#include "handlebars_context.h"
 #include "handlebars_helpers.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"

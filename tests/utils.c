@@ -29,7 +29,6 @@
 #include "utils.h"
 #include "handlebars.h"
 #include "handlebars_compiler.h"
-#include "handlebars_context.h"
 #include "handlebars_helpers.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"

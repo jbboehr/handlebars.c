@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"

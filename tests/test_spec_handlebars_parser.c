@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <pcre.h>
 #include <talloc.h>
-#include <src/handlebars_context.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
 #include "json-c/json.h"
@@ -23,11 +22,8 @@
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
-#include "handlebars_context.h"
 #include "handlebars_memory.h"
-#include "handlebars_token.h"
 #include "handlebars_token_list.h"
-#include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"

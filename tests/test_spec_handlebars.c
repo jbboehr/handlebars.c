@@ -17,7 +17,7 @@
 #include <json/json_tokener.h>
 #endif
 
-#include "handlebars_context.h"
+#include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_memory.h"

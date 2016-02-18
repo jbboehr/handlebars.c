@@ -3,7 +3,6 @@
 #define HANDLEBARS_PRIVATE_H
 
 #include "handlebars.h"
-#include "handlebars_context.h"
 
 #ifdef	__cplusplus
 extern "C" {

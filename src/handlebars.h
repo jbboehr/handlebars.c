@@ -11,13 +11,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <setjmp.h>
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
 // Declarations
-struct handlebars_context;
+struct handlebars_ast_node;
 struct handlebars_token_list;
 
 // Macros
@@ -100,6 +101,19 @@ struct handlebars_locinfo
 };
 #define YYLTYPE handlebars_locinfo
 
+/**
+ * @brief
+ */
+struct handlebars_context
+{
+    struct {
+        long num;
+        char * msg;
+        struct handlebars_locinfo loc;
+        jmp_buf * jmp;
+    } e;
+};
+
 struct handlebars_parser
 {
     struct handlebars_context * ctx;
@@ -127,6 +141,22 @@ const char * handlebars_spec_version_string(void) HBSARN;
 
 const char * handlebars_mustache_spec_version_string(void) HBSARN;
 
+/**
+ * @brief Construct a context object. Used as the root talloc pointer.
+ *
+ * @return the context pointer
+ */
+struct handlebars_context * handlebars_context_ctor_ex(void * ctx);
+#define handlebars_context_ctor() handlebars_context_ctor_ex(NULL)
+
+/**
+ * @brief Free a context and it's resources.
+ *
+ * @param[in] context
+ * @return void
+ */
+void handlebars_context_dtor(struct handlebars_context * context);
+
 struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ctx);
 
 void handlebars_parser_dtor(struct handlebars_parser * parser);
@@ -140,6 +170,29 @@ void handlebars_parser_dtor(struct handlebars_parser * parser);
 struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser) HBSARN;
 
 bool handlebars_parse(struct handlebars_parser * parser);
+
+void handlebars_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...) HBS_ATTR_NORETURN HBS_ATTR_PRINTF(3, 4);
+void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...) HBS_ATTR_NORETURN  HBS_ATTR_PRINTF(4, 5);
+#define handlebars_context_throw handlebars_throw
+#define handlebars_context_throw_ex handlebars_throw_ex
+
+/**
+ * @brief Get the error message from a context, or NULL.
+ *
+ * @param[in] context
+ * @return the error message
+ */
+char * handlebars_error_message(struct handlebars_context * context);
+#define handlebars_context_get_errmsg handlebars_error_message
+
+/**
+ * @brief Get the error message from a context, or NULL (compatibility for handlebars specification)
+ *
+ * @param[in] context
+ * @return the error message
+ */
+char * handlebars_error_message_js(struct handlebars_context * context);
+#define handlebars_context_get_errmsg_js handlebars_error_message_js
 
 // Flex/Bison prototypes
 int handlebars_yy_get_column(void * yyscanner);

@@ -9,7 +9,6 @@
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
-#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars.tab.h"
 #include "utils.h"

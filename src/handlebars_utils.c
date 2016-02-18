@@ -12,7 +12,6 @@
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
-#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_utils.h"
@@ -353,6 +352,8 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
 	return orig;
 }
 
+#undef CONTEXT
+#define CONTEXT parser->ctx
 
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser)
 {
@@ -371,13 +372,13 @@ void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, s
 
 void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_parser * parser, const char * err)
 {
-    assert(context != NULL);
+    assert(parser != NULL);
 
 #if defined(YYDEBUG) && YYDEBUG
     fprintf(stderr, "%d : %s\n", lloc->first_line, err);
 #endif
 
-    handlebars_context_throw_ex(parser->ctx, HANDLEBARS_PARSEERR, lloc, err);
+    handlebars_context_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, lloc, err);
 }
 
 void handlebars_yy_fatal_error(const char * msg, HANDLEBARS_ATTR_UNUSED void * yyscanner)
@@ -399,7 +400,6 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
 {
     // Note: it looks like the yyscanner is allocated before we can pass in
     // a handlebars context...
-    // Also look into the performance hit for doing this
     struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_parser_init_current);
     return (void *) _handlebars_yy_alloc(parser, bytes, "handlebars_yy_alloc");
 }

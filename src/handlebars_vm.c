@@ -7,9 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "handlebars.h"
 #include "handlebars_private.h"
 #include "handlebars_compiler.h"
-#include "handlebars_context.h"
 #include "handlebars_value.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
@@ -17,8 +17,8 @@
 #include "handlebars_opcode_printer.h"
 #include "handlebars_stack.h"
 #include "handlebars_utils.h"
-
 #include "handlebars_vm.h"
+
 
 
 #define OPCODE_NAME(name) handlebars_opcode_type_ ## name
@@ -458,7 +458,7 @@ ACCEPT_FUNCTION(invoke_helper)
     }
 
     if( !fn || !handlebars_value_is_callable(fn) ) {
-        handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "Helper missing: %s", ctx.name);
+        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Helper missing: %s", ctx.name);
     }
 
     result = handlebars_value_call(fn, ctx.options);
@@ -537,7 +537,7 @@ ACCEPT_FUNCTION(invoke_partial)
         if( vm->flags & handlebars_compiler_flag_compat ) {
             return;
         } else {
-            handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "The partial %s could not be found", name);
+            handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s could not be found", name);
         }
     }
 
@@ -554,7 +554,7 @@ ACCEPT_FUNCTION(invoke_partial)
     // Save jump buffer
     context->e.jmp = &buf;
     if( setjmp(buf) ) {
-        handlebars_context_throw_ex(vm->ctx, context->e.num, &context->e.loc, context->e.msg);
+        handlebars_context_throw_ex(CONTEXT, context->e.num, &context->e.loc, context->e.msg);
     }
 
     // Construct parser
@@ -964,7 +964,7 @@ void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler 
             //ACCEPT(push_string_param);
             ACCEPT(resolve_possible_lambda);
             default:
-                handlebars_context_throw(vm->ctx, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
+                handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
                 break;
         }
 	}
@@ -1121,9 +1121,4 @@ done:
     handlebars_value_delref(context);
 
     vm->ctx->e.jmp = prev;
-}
-
-void handlebars_vm_throw(struct handlebars_vm * vm, long num, const char * msg)
-{
-    handlebars_context_throw(vm->ctx, num, msg);
 }

@@ -5,7 +5,7 @@
 
 #include <assert.h>
 
-#include "handlebars_context.h"
+#include "handlebars.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -107,7 +107,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     use_data = (options->data != NULL);
 
     if( handlebars_stack_length(options->params) < 1 ) {
-        handlebars_vm_throw(options->vm, HANDLEBARS_ERROR, "Must pass iterator to #each");
+        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Must pass iterator to #each");
     }
 
     context = handlebars_stack_get(options->params, 0);
@@ -221,7 +221,7 @@ struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_op
 {
     if( handlebars_stack_length(options->params) != 0 ) {
         char * msg = handlebars_talloc_asprintf(options->vm, "Missing helper: \"%s\"", options->name);
-        handlebars_vm_throw(options->vm, HANDLEBARS_ERROR, msg);
+        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, msg);
     }
     SAFE_RETURN(NULL);
 }
