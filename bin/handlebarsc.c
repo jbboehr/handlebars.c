@@ -271,7 +271,7 @@ static int do_compile(void)
     
     ctx = handlebars_context_ctor();
     parser = handlebars_parser_ctor(ctx);
-    compiler = handlebars_compiler_ctor(ctx, parser);
+    compiler = handlebars_compiler_ctor(ctx);
     printer = handlebars_opcode_printer_ctor(ctx);
     
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {

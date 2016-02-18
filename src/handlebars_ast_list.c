@@ -16,17 +16,17 @@
 
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(parser)
+#define CONTEXT HBSCTX(context)
 
-struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_parser * parser)
+struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_context * context)
 {
-    struct handlebars_ast_list * list = MC(handlebars_talloc_zero(parser, struct handlebars_ast_list));
-    list->parser = parser;
+    struct handlebars_ast_list * list = MC(handlebars_talloc_zero(CONTEXT, struct handlebars_ast_list));
+    list->ctx = CONTEXT;
     return list;
 }
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(list->parser)
+#define CONTEXT HBSCTX(list->ctx)
 
 int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {

@@ -91,13 +91,12 @@ static inline void handlebars_compiler_accept_decorator(
 
 
 #undef CONTEXT
-#define CONTEXT ctx
+#define CONTEXT HBSCTX(context)
 
-struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx, struct handlebars_parser * parser)
+struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * context)
 {
     struct handlebars_compiler * compiler;
-    compiler = MC(handlebars_talloc_zero(ctx, struct handlebars_compiler));
-    compiler->parser = parser;
+    compiler = MC(handlebars_talloc_zero(CONTEXT, struct handlebars_compiler));
     compiler->known_helpers = handlebars_builtins_names();
     compiler->bps = MC(handlebars_talloc_zero(compiler, struct handlebars_block_param_stack));
     return compiler;
@@ -284,7 +283,7 @@ static inline long handlebars_compiler_compile_program(
     assert(program->type == HANDLEBARS_AST_NODE_PROGRAM ||
            program->type == HANDLEBARS_AST_NODE_CONTENT);
     
-    subcompiler = talloc_steal(compiler, MC(handlebars_compiler_ctor(CONTEXT, compiler->parser)));
+    subcompiler = talloc_steal(compiler, MC(handlebars_compiler_ctor(CONTEXT)));
     
     // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
@@ -521,9 +520,9 @@ static inline void handlebars_compiler_transform_literal_to_path(
 		case HANDLEBARS_AST_NODE_STRING:
 			val = handlebars_ast_node_get_string_mode_value(path);
 			// Make parts
-			part = talloc_steal(node, handlebars_ast_node_ctor(compiler->parser, HANDLEBARS_AST_NODE_PATH_SEGMENT));
+			part = talloc_steal(node, handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PATH_SEGMENT));
 			part->node.path_segment.part = MC(handlebars_talloc_strdup(part, val));
-			parts = talloc_steal(node, handlebars_ast_list_ctor(compiler->parser));
+			parts = talloc_steal(node, handlebars_ast_list_ctor(CONTEXT));
 		    handlebars_ast_list_append(parts, part);
 		    // Re-jigger node
 		    memset(path, 0, sizeof(struct handlebars_ast_node));
@@ -730,14 +729,14 @@ static inline void _handlebars_compiler_accept_partial(
     		__OPS(push_literal, "undefined");
     	} else {
 			if( !params ) {
-				params = talloc_steal(node, handlebars_ast_list_ctor(compiler->parser));
+				params = talloc_steal(node, handlebars_ast_list_ctor(CONTEXT));
 				if( node->type == HANDLEBARS_AST_NODE_PARTIAL ) {
 					node->node.partial.params = params;
 				} else if( node->type == HANDLEBARS_AST_NODE_PARTIAL_BLOCK ) {
 					node->node.partial_block.params = params;
 				}
 			}
-			tmp = talloc_steal(params, handlebars_ast_node_ctor(compiler->parser, HANDLEBARS_AST_NODE_PATH));
+			tmp = talloc_steal(params, handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PATH));
 			handlebars_ast_list_append(params, tmp);
     	}
     }
@@ -861,7 +860,7 @@ static inline void handlebars_compiler_accept_decorator(
         }
 
         origcompiler = compiler;
-        subcompiler = talloc_steal(compiler, handlebars_compiler_ctor(CONTEXT, compiler->parser));
+        subcompiler = talloc_steal(compiler, handlebars_compiler_ctor(CONTEXT));
         compiler->decorators[compiler->decorators_length++] = subcompiler;
         compiler = subcompiler;
         

@@ -23,7 +23,7 @@ START_TEST(test_compiler_ctor)
 {
     struct handlebars_compiler * compiler;
     
-    compiler = handlebars_compiler_ctor(context, parser);
+    compiler = handlebars_compiler_ctor(context);
     
     ck_assert_ptr_ne(NULL, compiler);
     
@@ -42,7 +42,7 @@ START_TEST(test_compiler_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_compiler_ctor(context, parser);
+    handlebars_compiler_ctor(context);
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -53,7 +53,7 @@ START_TEST(test_compiler_dtor)
 {
     struct handlebars_compiler * compiler;
     
-    compiler = handlebars_compiler_ctor(context, parser);
+    compiler = handlebars_compiler_ctor(context);
     handlebars_compiler_dtor(compiler);
 }
 END_TEST

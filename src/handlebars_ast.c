@@ -19,15 +19,18 @@
 
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(parser)
+#define CONTEXT HBSCTX(context)
 
-struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_parser * parser, enum handlebars_ast_node_type type)
+struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_context * context, enum handlebars_ast_node_type type)
 {
     struct handlebars_ast_node * ast_node;
-    ast_node = MC(handlebars_talloc_zero(parser, struct handlebars_ast_node));
+    ast_node = MC(handlebars_talloc_zero(context, struct handlebars_ast_node));
     ast_node->type = type;
     return ast_node;
 }
+
+#undef CONTEXT
+#define CONTEXT HBSCTX(parser)
 
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node)
 {

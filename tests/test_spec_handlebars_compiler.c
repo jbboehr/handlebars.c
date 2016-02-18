@@ -314,7 +314,7 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
-        struct handlebars_compiler * subcompiler = handlebars_compiler_ctor((struct handlebars_context *)compiler, compiler->parser);
+        struct handlebars_compiler * subcompiler = handlebars_compiler_ctor(HBSCTX(compiler));
         
         array_item = json_object_array_get_idx(cur, i);
         if( json_object_get_type(array_item) != json_type_object ) {
@@ -325,7 +325,7 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
         compiler->children[compiler->children_length++] = subcompiler;
         loadTestCompiler(subcompiler, array_item);
     }
-    
+
 error:
     return error;
 }
@@ -340,7 +340,7 @@ static char * loadTestOpcodesPrint(json_object * object)
 
     context = handlebars_context_ctor_ex(rootctx);
     parser = handlebars_parser_ctor(context);
-    compiler = handlebars_compiler_ctor(context, parser);
+    compiler = handlebars_compiler_ctor(HBSCTX(context));
     printer = handlebars_opcode_printer_ctor(compiler);
     
     loadTestCompiler(compiler, object);
@@ -634,7 +634,7 @@ START_TEST(handlebars_spec_compiler)
     ctx = handlebars_context_ctor();
     parser = handlebars_parser_ctor(ctx);
     parser->ignore_standalone = test->opt_ignore_standalone;
-    compiler = handlebars_compiler_ctor(ctx, parser);
+    compiler = handlebars_compiler_ctor(ctx);
     printer = handlebars_opcode_printer_ctor(ctx);
     
     //printf("TEMPLATE: %s\n", test->tmpl);

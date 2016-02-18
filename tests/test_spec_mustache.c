@@ -221,7 +221,7 @@ START_TEST(test_mustache_spec)
     ctx = talloc_steal(memctx, test->ctx);
     parser = handlebars_parser_ctor(ctx);
     //ctx->ignore_standalone = test->opt_ignore_standalone;
-    compiler = handlebars_compiler_ctor(ctx, parser);
+    compiler = handlebars_compiler_ctor(ctx);
 
     // Parse
     parser->tmpl = test->tmpl;

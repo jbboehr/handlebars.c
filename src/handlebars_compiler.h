@@ -197,7 +197,7 @@ void handlebars_compiler_compile(
  * @param[in] ctx The memory context
  * @return the compiler context pointer
  */
-struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * ctx, struct handlebars_parser * parser) HBSARN;
+struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * context) HBSARN;
 
 /**
  * @brief Free a compiler context and it's resources.

@@ -76,7 +76,7 @@ START_TEST(test_random_alloc_fail_compiler)
         for( i = 1; i < 300; i++ ) {
             struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
             struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
-            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx, parser);
+            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
             parser->tmpl = tmpl;
             handlebars_parse(parser);
 
@@ -99,7 +99,7 @@ START_TEST(test_random_alloc_fail_vm)
         for( i = 1; i < 300; i++ ) {
             struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
             struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
-            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx, parser);
+            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
             struct handlebars_vm * vm = handlebars_vm_ctor(ctx);
             struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"foo\": {\"bar\": 2}}");
             handlebars_value_convert(value);

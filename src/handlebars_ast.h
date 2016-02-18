@@ -208,7 +208,9 @@ struct handlebars_ast_node {
  * @return the newly constructed AST node
  */
 struct handlebars_ast_node * handlebars_ast_node_ctor(
-		struct handlebars_parser * parser, enum handlebars_ast_node_type type) HBSARN;
+		struct handlebars_context * context,
+		enum handlebars_ast_node_type type
+) HBSARN;
 
 /**
  * @brief Destruct an AST node

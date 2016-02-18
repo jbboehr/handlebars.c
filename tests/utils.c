@@ -49,7 +49,7 @@ void default_setup(void)
     handlebars_memory_fail_disable();
     context = handlebars_context_ctor_ex(root);
     parser = handlebars_parser_ctor(context);
-    compiler = handlebars_compiler_ctor(context, parser);
+    compiler = handlebars_compiler_ctor(context);
     vm = handlebars_vm_ctor(context);
     init_blocks = talloc_total_blocks(context);
 }

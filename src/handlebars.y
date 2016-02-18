@@ -172,14 +172,14 @@ program :
       $$ = handlebars_ast_node_ctor_program(parser, $1, NULL, NULL, 0, 0, &@$);
     }
   | "" {
-      struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+      struct handlebars_ast_list * list = handlebars_ast_list_ctor(CONTEXT);
       $$ = handlebars_ast_node_ctor_program(parser, list, NULL, NULL, 0, 0, &@$);
     }
   ;
 
 statements
   : statement {
-      $$ = handlebars_ast_list_ctor(parser);
+      $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, $1);
     }
   | statements statement {
@@ -315,7 +315,7 @@ inverse_and_program
     }
   | INVERSE {
       struct handlebars_ast_node * program_node;
-      program_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
+      program_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PROGRAM);
       $$ = handlebars_ast_node_ctor_inverse(parser, program_node, 0, 
               handlebars_ast_helper_strip_flags($1, $1), &@$);
     }
@@ -363,7 +363,7 @@ partial_block
       $$ = handlebars_ast_helper_prepare_partial_block(parser, $1, $2, $3, &@$);
   }
   | open_partial_block close_block {
-      struct handlebars_ast_node * program = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
+      struct handlebars_ast_node * program = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PROGRAM);
       $$ = handlebars_ast_helper_prepare_partial_block(parser, $1, program, $2, &@$);
   }
 
@@ -388,7 +388,7 @@ open_partial_block
 
 params
   : param {
-      $$ = handlebars_ast_list_ctor(parser);
+      $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, $1);
     }
   | params param {
@@ -438,7 +438,7 @@ intermediate3
 
 hash
   : hash_pairs {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_HASH);
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_HASH);
       ast_node->node.hash.pairs = $1;
       $$ = ast_node;
     }
@@ -450,7 +450,7 @@ hash_pairs
       $$ = $1;
     }
   | hash_pair {
-      $$ = handlebars_ast_list_ctor(parser);
+      $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, $1);
     }
   ;
@@ -531,7 +531,7 @@ path_segments
       ast_node = handlebars_ast_node_ctor_path_segment(parser, $1, NULL, &@$);
       MEMCHK(ast_node); // this is weird
       
-      $$ = handlebars_ast_list_ctor(parser);
+      $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, ast_node);
     }
   ;

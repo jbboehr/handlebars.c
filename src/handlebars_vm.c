@@ -564,7 +564,7 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     // Construct intermediate compiler and VM
-    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context, parser);
+    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
     struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
     // Parse
