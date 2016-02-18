@@ -54,11 +54,11 @@ ACCEPT_FUNCTION(push_context);
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_vm * vm = MC(handlebars_talloc_zero(ctx, struct handlebars_vm));
-    vm->frameStack = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
-    vm->depths = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
-    vm->stack = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
-    vm->hashStack = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
-    vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
+    vm->frameStack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
+    vm->depths = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
+    vm->stack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
+    vm->hashStack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
+    vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
     return vm;
 }
 
@@ -1093,13 +1093,12 @@ void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
 		struct handlebars_value * context)
 {
-    jmp_buf * prev = vm->ctx.jmp;
+    jmp_buf * prev = HBSCTX(vm)->jmp;
     jmp_buf buf;
 
     // Save jump buffer
     if( !prev ) {
-        vm->ctx.jmp = &buf;
-        if( setjmp(buf) ) {
+        if( handlebars_setjmp_ex(vm, &buf) ) {
             goto done;
         }
     }
@@ -1119,5 +1118,5 @@ done:
     // Release context
     handlebars_value_delref(context);
 
-    vm->ctx.jmp = prev;
+    HBSCTX(vm)->jmp = prev;
 }

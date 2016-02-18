@@ -160,12 +160,12 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
     struct handlebars_token_list * list;
-    jmp_buf * prev = parser->ctx.jmp;
+    jmp_buf * prev = HBSCTX(parser)->jmp;
     jmp_buf buf;
 
     // Save jump buffer
     if( !prev ) {
-        parser->ctx.jmp = &buf;
+        HBSCTX(parser)->jmp = &buf;
         if (setjmp(buf)) {
             goto done;
         }
@@ -196,19 +196,18 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
     } while( 1 );
 
 done:
-    parser->ctx.jmp = prev;
+    HBSCTX(parser)->jmp = prev;
     return list;
 }
 
 bool handlebars_parse(struct handlebars_parser * parser)
 {
-    jmp_buf * prev = parser->ctx.jmp;
+    jmp_buf * prev = HBSCTX(parser)->jmp;
     jmp_buf buf;
 
     // Save jump buffer
     if( !prev ) {
-        parser->ctx.jmp = &buf;
-        if (setjmp(buf)) {
+        if( handlebars_setjmp_ex(parser, &buf) ) {
             goto done;
         }
     }
@@ -216,7 +215,7 @@ bool handlebars_parse(struct handlebars_parser * parser)
     handlebars_yy_parse(parser);
 
 done:
-    parser->ctx.jmp = prev;
+    HBSCTX(parser)->jmp = prev;
     return parser->program != NULL;
 }
 

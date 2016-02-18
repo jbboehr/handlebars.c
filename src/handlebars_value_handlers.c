@@ -22,10 +22,13 @@
 
 
 
+#undef CONTEXT
+#define CONTEXT HBSCTX(value->ctx)
+
 static struct handlebars_value * std_json_copy(struct handlebars_value * value)
 {
     const char * str = json_object_to_json_string(value->v.usr);
-    return handlebars_value_from_json_string(value->ctx, str);
+    return handlebars_value_from_json_string(CONTEXT, str);
 }
 
 static void std_json_dtor(struct handlebars_value * value)
@@ -51,7 +54,7 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
         case json_type_object: {
             handlebars_value_map_init(value);
             json_object_object_foreach(intern, k, v) {
-                new_value = handlebars_value_from_json_object(value->ctx, v);
+                new_value = handlebars_value_from_json_object(CONTEXT, v);
                 handlebars_map_add(value->v.map, k, new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
@@ -65,7 +68,7 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
             size_t i, l;
 
             for( i = 0, l = json_object_array_length(intern); i < l; i++ ) {
-                new_value = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, i));
+                new_value = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, i));
                 handlebars_stack_set(value->v.stack, i, new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
@@ -106,7 +109,7 @@ static struct handlebars_value * std_json_map_find(struct handlebars_value * val
     if( item == NULL ) {
         return NULL;
     }
-    return handlebars_value_from_json_object(value->ctx, item);
+    return handlebars_value_from_json_object(CONTEXT, item);
 }
 
 static struct handlebars_value * std_json_array_find(struct handlebars_value * value, size_t index)
@@ -116,7 +119,7 @@ static struct handlebars_value * std_json_array_find(struct handlebars_value * v
     if( item == NULL ) {
         return NULL;
     }
-    return handlebars_value_from_json_object(value->ctx, item);
+    return handlebars_value_from_json_object(CONTEXT, item);
 }
 
 struct handlebars_value_iterator * std_json_iterator_ctor(struct handlebars_value * value)
@@ -133,13 +136,13 @@ struct handlebars_value_iterator * std_json_iterator_ctor(struct handlebars_valu
             if( entry ) {
                 it->usr = (void *) entry;
                 it->key = (char *) entry->k;
-                it->current = handlebars_value_from_json_object(value->ctx, (json_object *) entry->v);
+                it->current = handlebars_value_from_json_object(CONTEXT, (json_object *) entry->v);
                 it->length = json_object_object_length(intern);
             }
             break;
         case json_type_array:
             it->index = 0;
-            it->current = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, it->index));
+            it->current = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, it->index));
             it->length = json_object_array_length(intern);
             break;
         default:
@@ -165,14 +168,14 @@ bool std_json_iterator_next(struct handlebars_value_iterator * it)
                 ret = true;
                 it->usr = (void *) (entry = entry->next);
                 it->key = (char *) entry->k;
-                it->current = handlebars_value_from_json_object(value->ctx, entry->v);
+                it->current = handlebars_value_from_json_object(CONTEXT, entry->v);
             }
             break;
         case json_type_array:
             if( it->index < json_object_array_length(intern) - 1 ) {
                 ret = true;
                 it->index++;
-                it->current = handlebars_value_from_json_object(value->ctx, json_object_array_get_idx(intern, it->index));
+                it->current = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, it->index));
             }
             break;
         default:

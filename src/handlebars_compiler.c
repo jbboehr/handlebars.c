@@ -1288,18 +1288,17 @@ void handlebars_compiler_compile(
         struct handlebars_compiler * compiler,
         struct handlebars_ast_node * node
 ) {
-    jmp_buf * prev = compiler->ctx.jmp;
+    jmp_buf * prev = HBSCTX(compiler)->jmp;
     jmp_buf buf;
 
     // Save jump buffer
     if( !prev ) {
-        compiler->ctx.jmp = &buf;
-        if (setjmp(buf)) {
+        if( handlebars_setjmp_ex(compiler, &buf) ) {
             goto done;
         }
     }
 
     handlebars_compiler_accept(compiler, node);
 done:
-    compiler->ctx.jmp = prev;
+    HBSCTX(compiler)->jmp = prev;
 }

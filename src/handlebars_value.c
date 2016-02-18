@@ -30,18 +30,18 @@
 
 
 #undef CONTEXT
-#define CONTEXT ctx
+#define CONTEXT HBSCTX(ctx)
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_value * value = MC(handlebars_talloc_zero(ctx, struct handlebars_value));
-    value->ctx = ctx;
+    value->ctx = CONTEXT;
     value->refcount = 1;
     return value;
 }
 
 #undef CONTEXT
-#define CONTEXT value->ctx
+#define CONTEXT HBSCTX(value->ctx)
 
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value)
 {
@@ -257,7 +257,7 @@ struct handlebars_value * handlebars_value_call(struct handlebars_value * value,
 
 char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
 {
-    char * buf = MC(handlebars_talloc_strdup(value->ctx, ""));
+    char * buf = MC(handlebars_talloc_strdup(CONTEXT, ""));
     struct handlebars_value_iterator * it;
     char indent[64];
     char indent2[64];
@@ -325,31 +325,31 @@ char * handlebars_value_expression(struct handlebars_value * value, bool escape)
     switch( handlebars_value_get_type(value) ) {
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
             if( handlebars_value_get_boolval(value) ) {
-                ret = handlebars_talloc_strdup(value->ctx, "true");
+                ret = handlebars_talloc_strdup(CONTEXT, "true");
             } else {
-                ret = handlebars_talloc_strdup(value->ctx, "false");
+                ret = handlebars_talloc_strdup(CONTEXT, "false");
             }
             break;
 
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            ret = handlebars_talloc_asprintf(value->ctx, "%g", handlebars_value_get_floatval(value));
+            ret = handlebars_talloc_asprintf(CONTEXT, "%g", handlebars_value_get_floatval(value));
             break;
 
         case HANDLEBARS_VALUE_TYPE_INTEGER:
-            ret = handlebars_talloc_asprintf(value->ctx, "%ld", handlebars_value_get_intval(value));
+            ret = handlebars_talloc_asprintf(CONTEXT, "%ld", handlebars_value_get_intval(value));
             break;
 
         case HANDLEBARS_VALUE_TYPE_NULL:
-            ret = handlebars_talloc_strdup(value->ctx, "");
+            ret = handlebars_talloc_strdup(CONTEXT, "");
             break;
 
         case HANDLEBARS_VALUE_TYPE_STRING:
-            ret = handlebars_talloc_strdup(value->ctx, handlebars_value_get_strval(value));
+            ret = handlebars_talloc_strdup(CONTEXT, handlebars_value_get_strval(value));
             break;
 
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             // Convert to string >.>
-            ret = handlebars_talloc_strdup(value->ctx, "");
+            ret = handlebars_talloc_strdup(CONTEXT, "");
             it = handlebars_value_iterator_ctor(value);
             bool first = true;
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
@@ -364,7 +364,7 @@ char * handlebars_value_expression(struct handlebars_value * value, bool escape)
         case HANDLEBARS_VALUE_TYPE_MAP:
         case HANDLEBARS_VALUE_TYPE_USER:
         default:
-            ret = handlebars_talloc_strdup(value->ctx, "");
+            ret = handlebars_talloc_strdup(CONTEXT, "");
             break;
     }
 
@@ -388,7 +388,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            new_value = handlebars_value_ctor(value->ctx);
+            new_value = handlebars_value_ctor(CONTEXT);
             handlebars_value_array_init(new_value);
             it = handlebars_value_iterator_ctor(value);
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
@@ -396,7 +396,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             }
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
-            new_value = handlebars_value_ctor(value->ctx);
+            new_value = handlebars_value_ctor(CONTEXT);
             handlebars_value_map_init(new_value);
             it = handlebars_value_iterator_ctor(value);
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
@@ -408,7 +408,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             break;
 
         default:
-            new_value = handlebars_value_ctor(value->ctx);
+            new_value = handlebars_value_ctor(CONTEXT);
             memcpy(&new_value->v, &value->v, sizeof(value->v));
             break;
     }

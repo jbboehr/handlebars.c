@@ -14,17 +14,17 @@
 
 
 #undef CONTEXT
-#define CONTEXT ctx
+#define CONTEXT HBSCTX(ctx)
 
 struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_map * map = MC(handlebars_talloc_zero(ctx, struct handlebars_map));
-    map->ctx = ctx;
+    map->ctx = CONTEXT;
     return map;
 }
 
 #undef CONTEXT
-#define CONTEXT map->ctx
+#define CONTEXT HBSCTX(map->ctx)
 
 void handlebars_map_dtor(struct handlebars_map * map)
 {

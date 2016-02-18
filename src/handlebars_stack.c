@@ -16,12 +16,12 @@
 
 
 #undef CONTEXT
-#define CONTEXT ctx
+#define CONTEXT HBSCTX(ctx)
 
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_stack * stack = MC(handlebars_talloc_zero(ctx, struct handlebars_stack));
-    stack->ctx = ctx;
+    stack->ctx = CONTEXT;
     stack->i = 0;
     stack->s = 32;
     stack->v = MC(handlebars_talloc_array(stack, struct handlebars_value *, stack->s));
@@ -29,7 +29,7 @@ struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 }
 
 #undef CONTEXT
-#define CONTEXT stack->ctx
+#define CONTEXT HBSCTX(stack->ctx)
 
 void handlebars_stack_dtor(struct handlebars_stack * stack)
 {
@@ -123,7 +123,7 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
 
     // Out-of-bounds
     if( offset >= stack->i ) {
-        handlebars_context_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds");
+        handlebars_context_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds");
     }
 
     old = stack->v[offset];
@@ -153,7 +153,7 @@ void handlebars_stack_reverse(struct handlebars_stack * stack)
 
 void * handlebars_stack_push_ptr(struct handlebars_stack * stack, void * ptr)
 {
-    struct handlebars_value * value = handlebars_value_ctor(stack->ctx);
+    struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
 
     assert(value != NULL);
     assert(ptr != NULL);
