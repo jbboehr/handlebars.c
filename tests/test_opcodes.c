@@ -30,8 +30,7 @@ START_TEST(test_opcode_ctor_failed_alloc)
 {
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
         return;
     }
@@ -61,8 +60,7 @@ START_TEST(test_opcode_ctor_long_failed_alloc)
 {
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
         return;
     }
@@ -97,8 +95,7 @@ START_TEST(test_opcode_ctor_long_string_failed_alloc)
     const char * str = "blah";
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
         return;
     }
@@ -132,8 +129,7 @@ START_TEST(test_opcode_ctor_string_failed_alloc)
     const char * str = "foo";
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
         return;
     }
@@ -170,8 +166,7 @@ START_TEST(test_opcode_ctor_string2_failed_alloc)
     const char * str2 = "bar";
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
         return;
     }
@@ -205,8 +200,7 @@ START_TEST(test_opcode_ctor_string_long_failed_alloc)
     const char * str = "foo";
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
         return;
     }
@@ -328,8 +322,7 @@ START_TEST(test_operand_set_stringval_failed_alloc)
     const char * str = "bar";
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
         return;
     }

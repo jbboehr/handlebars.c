@@ -15,8 +15,6 @@
 
 
 
-#undef CONTEXT
-#define CONTEXT options->vm->ctx
 #define SAFE_RETURN(val) return val ? val : handlebars_value_ctor(CONTEXT)
 
 static const char * names[] = {
@@ -29,20 +27,24 @@ const char ** handlebars_builtins_names(void)
     return names;
 }
 
+#undef CONTEXT
+#define CONTEXT ((struct handlebars_context *) vm)
+
 static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, const char * name)
 {
     struct handlebars_value * helper;
     helper = handlebars_value_map_find(vm->helpers, name);
     if( !helper ) {
         if( !vm->builtins ) {
-            vm->builtins = handlebars_builtins(vm->ctx);
+            vm->builtins = handlebars_builtins(CONTEXT);
         }
         helper = handlebars_value_map_find(vm->builtins, name);
     }
     return helper;
 }
 
-
+#undef CONTEXT
+#define CONTEXT ((struct handlebars_context *) options->vm)
 
 void handlebars_options_dtor(struct handlebars_options * options)
 {
@@ -52,9 +54,6 @@ void handlebars_options_dtor(struct handlebars_options * options)
     handlebars_stack_dtor(options->params);
     handlebars_talloc_free(options);
 }
-
-
-
 
 struct handlebars_value * handlebars_builtin_block_helper_missing(struct handlebars_options * options)
 {
@@ -229,7 +228,7 @@ struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_op
 struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * options)
 {
     if( handlebars_stack_length(options->params) < 2 ) {
-        handlebars_context_throw(options->vm->ctx, HANDLEBARS_ERROR, "lookup requires two parameters");
+        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "lookup requires two parameters");
     }
 
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);

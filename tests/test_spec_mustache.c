@@ -228,16 +228,16 @@ START_TEST(test_mustache_spec)
     handlebars_parse(parser);
 
     // Check error
-    if( ctx->e.msg != NULL ) {
-        ck_assert_msg(0, ctx->e.msg);
+    if( ctx->msg != NULL ) {
+        ck_assert_msg(0, ctx->msg);
     }
 
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
 
     handlebars_compiler_compile(compiler, parser->program);
-    if( ctx->e.num ) {
-        ck_assert_msg(0, ctx->e.num);
+    if( ctx->num ) {
+        ck_assert_msg(0, ctx->num);
     }
 
     // Setup VM
@@ -263,12 +263,12 @@ START_TEST(test_mustache_spec)
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
         fprintf(stderr, "ACTUAL: %s\n", vm->buffer);
         fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
-    } else if( ctx->e.msg ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e.msg);
+    } else if( ctx->msg ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->msg);
     }
 #endif
 
-    ck_assert_msg(ctx->e.msg == NULL, ctx->e.msg);
+    ck_assert_msg(ctx->msg == NULL, ctx->msg);
     ck_assert_ptr_ne(vm->buffer, NULL);
 
     if (strcmp(vm->buffer, test->expected) != 0) {

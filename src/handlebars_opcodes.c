@@ -15,7 +15,7 @@
 
 
 #undef CONTEXT
-#define CONTEXT compiler->ctx
+#define CONTEXT ((struct handlebars_context *) compiler)
 
 struct handlebars_opcode * handlebars_opcode_ctor(
         struct handlebars_compiler * compiler, enum handlebars_opcode_type type)

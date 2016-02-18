@@ -63,7 +63,7 @@ int handlebars_yy_debug = 0;
 #endif
 
 #undef CONTEXT
-#define CONTEXT parser->ctx
+#define CONTEXT ((struct handlebars_context *)parser)
 #define scanner parser->scanner
 %}
 

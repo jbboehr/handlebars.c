@@ -310,7 +310,7 @@ static inline void run_test(struct generic_test * test, int _i)
     handlebars_parse(parser);
 
     // Check error
-    if( ctx->e.num ) {
+    if( parser->ctx.num ) {
         // @todo maybe check message
         ck_assert(test->exception);
         goto done;
@@ -323,7 +323,7 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     handlebars_compiler_compile(compiler, parser->program);
-    if( ctx->e.num ) {
+    if( compiler->ctx.num ) {
         // @todo check message
         ck_assert_int_eq(1, test->exception);
         goto done;
@@ -401,35 +401,35 @@ static inline void run_test(struct generic_test * test, int _i)
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
         fprintf(stderr, "ACTUAL: %s\n", vm->buffer);
         fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
-    } else if( ctx->e.msg ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e.msg);
+    } else if( ctx->msg ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->msg);
     }
 #endif
 
     if( test->exception ) {
-        ck_assert_ptr_ne(ctx->e.msg, NULL);
+        ck_assert_ptr_ne(vm->ctx.msg, NULL);
 //        if( test->message ) {
 //            ck_assert_str_eq(vm->errmsg, test->message);
 //        }
         if( test->message == NULL ) {
             // Just check if there was an error
-            ck_assert_str_ne("", ctx->e.msg);
+            ck_assert_str_ne("", vm->ctx.msg);
         } else if( test->message[0] == '/' && test->message[strlen(test->message) - 1] == '/' ) {
             // It's a regex
             char * tmp = strdup(test->message + 1);
             tmp[strlen(test->message) - 2] = '\0';
             char * regex_error = NULL;
-            if( 0 == regex_compare(tmp, ctx->e.msg, &regex_error) ) {
+            if( 0 == regex_compare(tmp, vm->ctx.msg, &regex_error) ) {
                 // ok
             } else {
                 ck_assert_msg(0, regex_error);
             }
             free(tmp);
         } else {
-            ck_assert_str_eq(test->message, ctx->e.msg);
+            ck_assert_str_eq(test->message, vm->ctx.msg);
         }
     } else {
-        ck_assert_msg(ctx->e.msg == NULL, ctx->e.msg);
+        ck_assert_msg(vm->ctx.msg == NULL, vm->ctx.msg);
         ck_assert_ptr_ne(test->expected, NULL);
         ck_assert_ptr_ne(vm->buffer, NULL);
 

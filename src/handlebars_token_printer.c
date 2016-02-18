@@ -16,6 +16,8 @@
 #include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
 
+
+
 char * handlebars_token_print(struct handlebars_token * token, int flags)
 {
     char * str = NULL;

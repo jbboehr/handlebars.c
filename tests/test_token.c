@@ -34,8 +34,7 @@ START_TEST(test_token_ctor_failed_alloc)
     struct handlebars_token * token;
 	jmp_buf buf;
 
-	context->e.jmp = &buf;
-	if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(parser, &buf) ) {
 		ck_assert(1);
 		return;
 	}
@@ -53,8 +52,7 @@ START_TEST(test_token_ctor_failed_alloc2)
     struct handlebars_token * token;
 	jmp_buf buf;
 
-	context->e.jmp = &buf;
-	if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(parser, &buf) ) {
 		ck_assert(1);
 		return;
 	}

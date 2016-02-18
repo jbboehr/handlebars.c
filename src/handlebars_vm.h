@@ -24,7 +24,8 @@ struct handlebars_vm_frame {
 };
 
 struct handlebars_vm {
-    struct handlebars_context * ctx;
+    struct handlebars_context ctx;
+
     struct handlebars_compiler ** programs;
     size_t guid_index;
     long depth;

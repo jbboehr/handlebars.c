@@ -15,7 +15,7 @@
 
 
 #undef CONTEXT
-#define CONTEXT parser->ctx
+#define CONTEXT ((struct handlebars_context *) parser)
 
 struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_parser * parser)
 {
@@ -25,7 +25,7 @@ struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_pars
 }
 
 #undef CONTEXT
-#define CONTEXT list->parser->ctx
+#define CONTEXT ((struct handlebars_context *) list->parser)
 
 int handlebars_token_list_append(struct handlebars_token_list * list, struct handlebars_token * token)
 {

@@ -125,7 +125,8 @@ struct handlebars_source_node_stack {
  * @brief Main compiler state struct
  */
 struct handlebars_compiler {
-    struct handlebars_context * ctx;
+    struct handlebars_context ctx;
+
     struct handlebars_parser * parser;
 
     struct handlebars_opcode ** opcodes;

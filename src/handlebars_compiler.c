@@ -97,7 +97,6 @@ struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context 
 {
     struct handlebars_compiler * compiler;
     compiler = MC(handlebars_talloc_zero(ctx, struct handlebars_compiler));
-    compiler->ctx = ctx;
     compiler->parser = parser;
     compiler->known_helpers = handlebars_builtins_names();
     compiler->bps = MC(handlebars_talloc_zero(compiler, struct handlebars_block_param_stack));
@@ -105,7 +104,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context 
 };
 
 #undef CONTEXT
-#define CONTEXT compiler->ctx
+#define CONTEXT ((struct handlebars_context *) compiler)
 
 void handlebars_compiler_dtor(struct handlebars_compiler * compiler)
 {
@@ -285,7 +284,7 @@ static inline long handlebars_compiler_compile_program(
     assert(program->type == HANDLEBARS_AST_NODE_PROGRAM ||
            program->type == HANDLEBARS_AST_NODE_CONTENT);
     
-    subcompiler = talloc_steal(compiler, MC(handlebars_compiler_ctor(compiler->ctx, compiler->parser)));
+    subcompiler = talloc_steal(compiler, MC(handlebars_compiler_ctor(CONTEXT, compiler->parser)));
     
     // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
@@ -862,7 +861,7 @@ static inline void handlebars_compiler_accept_decorator(
         }
 
         origcompiler = compiler;
-        subcompiler = talloc_steal(compiler, handlebars_compiler_ctor(compiler->ctx, compiler->parser));
+        subcompiler = talloc_steal(compiler, handlebars_compiler_ctor(CONTEXT, compiler->parser));
         compiler->decorators[compiler->decorators_length++] = subcompiler;
         compiler = subcompiler;
         
@@ -1289,12 +1288,12 @@ void handlebars_compiler_compile(
         struct handlebars_compiler * compiler,
         struct handlebars_ast_node * node
 ) {
-    jmp_buf * prev = compiler->ctx->e.jmp;
+    jmp_buf * prev = compiler->ctx.jmp;
     jmp_buf buf;
 
     // Save jump buffer
     if( !prev ) {
-        compiler->ctx->e.jmp = &buf;
+        compiler->ctx.jmp = &buf;
         if (setjmp(buf)) {
             goto done;
         }
@@ -1302,5 +1301,5 @@ void handlebars_compiler_compile(
 
     handlebars_compiler_accept(compiler, node);
 done:
-    compiler->ctx->e.jmp = prev;
+    compiler->ctx.jmp = prev;
 }

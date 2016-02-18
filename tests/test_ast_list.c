@@ -36,8 +36,7 @@ START_TEST(test_ast_list_append_failed_alloc)
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(parser, &buf) ) {
         ck_assert(1);
         handlebars_ast_list_dtor(list);
         return;
@@ -71,8 +70,7 @@ START_TEST(test_ast_list_ctor_failed_alloc)
 {
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(parser, &buf) ) {
         ck_assert(1);
         return;
     }
@@ -109,8 +107,7 @@ START_TEST(test_ast_list_prepend_failed_alloc)
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     jmp_buf buf;
 
-    context->e.jmp = &buf;
-    if( setjmp(buf) ) {
+    if( handlebars_setjmp_ex(parser, &buf) ) {
         ck_assert(1);
         handlebars_ast_list_dtor(list);
         return;

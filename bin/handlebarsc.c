@@ -246,10 +246,10 @@ static int do_parse(void)
 
     handlebars_parse(parser);
     
-    if( ctx->e.num != NULL ) {
+    if( ctx->num != NULL ) {
         output = handlebars_context_get_errmsg(ctx);
         fprintf(stderr, "%s\n", output);
-        error = ctx->e.num;
+        error = ctx->num;
         goto error;
     }
 
@@ -287,16 +287,16 @@ static int do_compile(void)
     // Parse
     handlebars_parse(parser);
 
-    if( ctx->e.num ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e.msg);
+    if( parser->ctx.num ) {
+        fprintf(stderr, "ERROR: %s\n", parser->ctx.msg);
         goto error;
     }
     
     // Compile
     handlebars_compiler_compile(compiler, parser->program);
 
-    if( ctx->e.num ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e.msg);
+    if( compiler->ctx.num ) {
+        fprintf(stderr, "ERROR: %s\n", compiler->ctx.msg);
         goto error;
     }
     

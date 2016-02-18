@@ -35,7 +35,7 @@ START_TEST(test_compiler_ctor_failed_alloc)
 {
     jmp_buf buf;
 
-    context->e.jmp = &buf;
+    context->jmp = &buf;
     if( setjmp(buf) ) {
         ck_assert(1);
         return;

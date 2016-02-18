@@ -54,17 +54,16 @@ ACCEPT_FUNCTION(push_context);
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_vm * vm = MC(handlebars_talloc_zero(ctx, struct handlebars_vm));
-    vm->ctx = ctx;
-    vm->frameStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    vm->depths = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    vm->stack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    vm->hashStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
-    vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(vm->ctx));
+    vm->frameStack = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
+    vm->depths = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
+    vm->stack = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
+    vm->hashStack = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
+    vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(&vm->ctx));
     return vm;
 }
 
 #undef CONTEXT
-#define CONTEXT vm->ctx
+#define CONTEXT ((struct handlebars_context *) vm)
 
 
 void handlebars_vm_dtor(struct handlebars_vm * vm)
@@ -89,7 +88,7 @@ static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, co
     helper = handlebars_value_map_find(vm->helpers, name);
     if( !helper || helper->type == HANDLEBARS_VALUE_TYPE_NULL ) {
         if( !vm->builtins ) {
-            vm->builtins = handlebars_builtins(vm->ctx);
+            vm->builtins = handlebars_builtins(CONTEXT);
         }
         helper = handlebars_value_map_find(vm->builtins, name);
     }
@@ -121,7 +120,7 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
 
     // params
     i = ctx->param_size;
-    placeholder = handlebars_value_ctor(vm->ctx);
+    placeholder = handlebars_value_ctor(CONTEXT);
     for( j = 0; j < i; j++ ) {
         handlebars_stack_set(ctx->params, j, placeholder);
     }
@@ -144,7 +143,7 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
         handlebars_value_addref(frame->data);
     //} else if( vm->flags & handlebars_compiler_flag_use_data ) {
     } else {
-        options->data = handlebars_value_ctor(vm->ctx);
+        options->data = handlebars_value_ctor(CONTEXT);
     }
 }
 
@@ -168,7 +167,7 @@ static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ct
     // Don't include options in oarams for now
     /*
     if( ctx->params != NULL ) {
-        struct handlebars_value * value = handlebars_value_ctor(vm->ctx);
+        struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
         value->type = HANDLEBARS_VALUE_TYPE_OPTIONS;
         value->v.options = ctx->options;
         handlebars_stack_push(ctx->params, value);
@@ -178,7 +177,7 @@ static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ct
 
 static inline void setup_helper(struct handlebars_vm * vm, struct setup_ctx * ctx)
 {
-    ctx->params = handlebars_stack_ctor(vm->ctx);
+    ctx->params = handlebars_stack_ctor(CONTEXT);
     setup_params(vm, ctx);
     ctx->helper = get_helper(vm, ctx->name);
 }
@@ -223,7 +222,7 @@ static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
     }
 
     if( !value ) {
-        value = handlebars_value_ctor(vm->ctx);
+        value = handlebars_value_ctor(CONTEXT);
     }
 
     handlebars_stack_push(vm->stack, value);
@@ -260,13 +259,13 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     struct setup_ctx ctx = {0};
 
     ctx.name = vm->last_helper;
-    ctx.params = handlebars_stack_ctor(vm->ctx);
+    ctx.params = handlebars_stack_ctor(CONTEXT);
     handlebars_stack_push(ctx.params, frame->context);
     setup_params(vm, &ctx);
 
     current = handlebars_stack_pop(vm->stack);
     if( !current ) { // @todo I don't think this should happen
-        current = handlebars_value_ctor(vm->ctx);
+        current = handlebars_value_ctor(CONTEXT);
     }
     handlebars_stack_set(ctx.params, 0, current);
 
@@ -333,7 +332,7 @@ ACCEPT_FUNCTION(block_value)
 
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    ctx.params = handlebars_stack_ctor(vm->ctx);
+    ctx.params = handlebars_stack_ctor(CONTEXT);
     //handlebars_stack_push(ctx.params, frame->context);
     ctx.name = opcode->op1.data.stringval;
     setup_params(vm, &ctx);
@@ -357,7 +356,7 @@ ACCEPT_FUNCTION(block_value)
 
 ACCEPT_FUNCTION(empty_hash)
 {
-    struct handlebars_value * value = handlebars_value_ctor(vm->ctx);
+    struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
     handlebars_value_map_init(value);
     handlebars_stack_push(vm->stack, value);
     handlebars_value_delref(value);
@@ -463,7 +462,7 @@ ACCEPT_FUNCTION(invoke_helper)
 
     result = handlebars_value_call(fn, ctx.options);
     if( !result ) {
-        result = handlebars_value_ctor(vm->ctx);
+        result = handlebars_value_ctor(CONTEXT);
     }
 
     handlebars_stack_push(vm->stack, result);
@@ -507,7 +506,7 @@ ACCEPT_FUNCTION(invoke_partial)
     assert(opcode->op2.type == handlebars_operand_type_string || opcode->op2.type == handlebars_operand_type_null || opcode->op2.type == handlebars_operand_type_long);
     assert(opcode->op3.type == handlebars_operand_type_string);
 
-    ctx.params = handlebars_stack_ctor(vm->ctx);
+    ctx.params = handlebars_stack_ctor(CONTEXT);
     ctx.param_size = 1;
     setup_options(vm, &ctx);
 
@@ -529,7 +528,7 @@ ACCEPT_FUNCTION(invoke_partial)
     if( /*!opcode->op1.data.boolval*/ name ) {
         partial = handlebars_value_map_find(vm->partials, name);
     } /* else {
-        partial = handlebars_value_ctor(vm->ctx);
+        partial = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(partial, name);
     } */
 
@@ -552,9 +551,9 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
 
     // Save jump buffer
-    context->e.jmp = &buf;
+    context->jmp = &buf;
     if( setjmp(buf) ) {
-        handlebars_context_throw_ex(CONTEXT, context->e.num, &context->e.loc, context->e.msg);
+        handlebars_context_throw_ex(CONTEXT, context->num, &context->loc, context->msg);
     }
 
     // Construct parser
@@ -581,7 +580,7 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_value * context2 = NULL;
     struct handlebars_value_iterator * it;
     if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP ) {
-        context2 = handlebars_value_ctor(vm2->ctx);
+        context2 = handlebars_value_ctor(&vm2->ctx);
         handlebars_value_map_init(context2);
         it = handlebars_value_iterator_ctor(context1);
         for( ; it->current ; handlebars_value_iterator_next(it) ) {
@@ -674,7 +673,7 @@ ACCEPT_FUNCTION(lookup_block_param)
 
 done:
     if( !value ) {
-        value = handlebars_value_ctor(vm->ctx);
+        value = handlebars_value_ctor(CONTEXT);
     }
     handlebars_stack_push(vm->stack, value);
     handlebars_value_delref(value);
@@ -723,7 +722,7 @@ ACCEPT_FUNCTION(lookup_data)
     }
 
     if( !val ) {
-        val = handlebars_value_ctor(vm->ctx);
+        val = handlebars_value_ctor(CONTEXT);
     }
 
     handlebars_stack_push(vm->stack, val);
@@ -773,7 +772,7 @@ ACCEPT_FUNCTION(lookup_on_context)
     }
 
     if( !value ) {
-        value = handlebars_value_ctor(vm->ctx);
+        value = handlebars_value_ctor(CONTEXT);
     }
 
     handlebars_value_delref(handlebars_stack_pop(vm->stack));
@@ -785,7 +784,7 @@ ACCEPT_FUNCTION(pop_hash)
 {
     struct handlebars_value * hash = handlebars_stack_pop(vm->hashStack);
     if( !hash ) {
-        hash = handlebars_value_ctor(vm->ctx);
+        hash = handlebars_value_ctor(CONTEXT);
     }
     handlebars_stack_push(vm->stack, hash);
     handlebars_value_delref(hash);
@@ -796,7 +795,7 @@ ACCEPT_FUNCTION(push_context)
     struct handlebars_value * value = vm->last_context;
 
     if( !value ) {
-        value = handlebars_value_ctor(vm->ctx);
+        value = handlebars_value_ctor(CONTEXT);
     } else {
         handlebars_value_addref(value);
     }
@@ -807,7 +806,7 @@ ACCEPT_FUNCTION(push_context)
 
 ACCEPT_FUNCTION(push_hash)
 {
-    struct handlebars_value * hash = handlebars_value_ctor(vm->ctx);
+    struct handlebars_value * hash = handlebars_value_ctor(CONTEXT);
     handlebars_value_map_init(hash);
     handlebars_stack_push(vm->hashStack, hash);
     handlebars_value_delref(hash);
@@ -832,7 +831,7 @@ ACCEPT_FUNCTION(push_program)
 
 ACCEPT_FUNCTION(push_literal)
 {
-    struct handlebars_value * value = handlebars_value_ctor(vm->ctx);
+    struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
 
     switch( opcode->op1.type ) {
         case handlebars_operand_type_string:
@@ -865,7 +864,7 @@ ACCEPT_FUNCTION(push_literal)
 
 ACCEPT_FUNCTION(push_string)
 {
-    struct handlebars_value * value = handlebars_value_ctor(vm->ctx);
+    struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
 
     assert(opcode->op1.type == handlebars_operand_type_string);
 
@@ -883,14 +882,14 @@ ACCEPT_FUNCTION(push_string_param)
     ACCEPT_FN(push_context)(vm, opcode);
 
     do {
-        struct handlebars_value * value = handlebars_value_ctor(vm->ctx);
+        struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(value, opcode->op2.data.stringval);
         handlebars_stack_push(vm->stack, value);
         handlebars_value_delref(value);
     } while(0);
 
     if( 0 != strcmp(opcode->op2.data.stringval, "SubExpression") ) {
-        struct handlebars_value * value = handlebars_value_ctor(vm->ctx);
+        struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(value, opcode->op1.data.stringval);
         handlebars_stack_push(vm->stack, value);
         handlebars_value_delref(value);
@@ -907,13 +906,13 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     assert(top != NULL);
     if( handlebars_value_is_callable(top) ) {
         struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
-        options->params = handlebars_stack_ctor(vm->ctx);
+        options->params = handlebars_stack_ctor(CONTEXT);
         handlebars_stack_set(options->params, 0, frame->context);
         options->vm = vm;
         options->scope = frame->context;
         result = handlebars_value_call(top, options);
         if( !result ) {
-            result = handlebars_value_ctor(vm->ctx);
+            result = handlebars_value_ctor(CONTEXT);
         }
         handlebars_stack_pop(vm->stack);
         handlebars_stack_push(vm->stack, result);
@@ -1094,12 +1093,12 @@ void handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
 		struct handlebars_value * context)
 {
-    jmp_buf * prev = vm->ctx->e.jmp;
+    jmp_buf * prev = vm->ctx.jmp;
     jmp_buf buf;
 
     // Save jump buffer
     if( !prev ) {
-        vm->ctx->e.jmp = &buf;
+        vm->ctx.jmp = &buf;
         if( setjmp(buf) ) {
             goto done;
         }
@@ -1120,5 +1119,5 @@ done:
     // Release context
     handlebars_value_delref(context);
 
-    vm->ctx->e.jmp = prev;
+    vm->ctx.jmp = prev;
 }

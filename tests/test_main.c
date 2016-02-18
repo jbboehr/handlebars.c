@@ -72,104 +72,104 @@ START_TEST(test_lex)
 END_TEST
 
 START_TEST(test_context_ctor_dtor)
-    {
-        struct handlebars_context * context = handlebars_context_ctor();
-        ck_assert_ptr_ne(NULL, context);
-        handlebars_context_dtor(context);
-    }
+{
+    struct handlebars_context * context = handlebars_context_ctor();
+    ck_assert_ptr_ne(NULL, context);
+    handlebars_context_dtor(context);
+}
 END_TEST
 
 START_TEST(test_context_ctor_failed_alloc)
-    {
-        struct handlebars_context * context;
+{
+    struct handlebars_context * context;
 
-        handlebars_memory_fail_enable();
-        context = handlebars_context_ctor();
-        handlebars_memory_fail_disable();
+    handlebars_memory_fail_enable();
+    context = handlebars_context_ctor();
+    handlebars_memory_fail_disable();
 
-        ck_assert_ptr_eq(NULL, context);
-    }
+    ck_assert_ptr_eq(NULL, context);
+}
 END_TEST
 
 START_TEST(test_context_get_errmsg)
-    {
-        struct YYLTYPE loc;
-        char * actual;
-        loc.last_line = 1;
-        loc.last_column = 2;
+{
+    struct YYLTYPE loc;
+    char * actual;
+    loc.last_line = 1;
+    loc.last_column = 2;
 
-        context->e.msg = "test";
-        context->e.loc = loc;
-        actual = handlebars_context_get_errmsg(context);
+    context->msg = "test";
+    context->loc = loc;
+    actual = handlebars_context_get_errmsg(context);
 
-        ck_assert_ptr_ne(NULL, actual);
-        ck_assert_ptr_ne(NULL, strstr(actual, "test"));
-        ck_assert_ptr_ne(NULL, strstr(actual, "line 1"));
-        ck_assert_ptr_ne(NULL, strstr(actual, "column 2"));
-    }
-    {
-        ck_assert_ptr_eq(NULL, handlebars_context_get_errmsg(NULL));
-    }
+    ck_assert_ptr_ne(NULL, actual);
+    ck_assert_ptr_ne(NULL, strstr(actual, "test"));
+    ck_assert_ptr_ne(NULL, strstr(actual, "line 1"));
+    ck_assert_ptr_ne(NULL, strstr(actual, "column 2"));
+}
+{
+    ck_assert_ptr_eq(NULL, handlebars_context_get_errmsg(NULL));
+}
 END_TEST
 
 START_TEST(test_context_get_errmsg_failed_alloc)
-    {
-        struct YYLTYPE loc;
-        char * actual;
-        loc.last_line = 1;
-        loc.last_column = 2;
+{
+    struct YYLTYPE loc;
+    char * actual;
+    loc.last_line = 1;
+    loc.last_column = 2;
 
-        context->e.msg = "test";
-        context->e.loc = loc;
+    context->msg = "test";
+    context->loc = loc;
 
-        handlebars_memory_fail_enable();
-        actual = handlebars_context_get_errmsg(context);
-        handlebars_memory_fail_disable();
+    handlebars_memory_fail_enable();
+    actual = handlebars_context_get_errmsg(context);
+    handlebars_memory_fail_disable();
 
-        //ck_assert_ptr_eq(NULL, actual);
-        ck_assert_ptr_eq(context->e.msg, actual);
-    }
+    //ck_assert_ptr_eq(NULL, actual);
+    ck_assert_ptr_eq(context->msg, actual);
+}
 END_TEST
 
 START_TEST(test_context_get_errmsg_js)
-    {
-        struct YYLTYPE loc;
-        char * actual;
-        loc.last_line = 1;
-        loc.last_column = 2;
+{
+    struct YYLTYPE loc;
+    char * actual;
+    loc.last_line = 1;
+    loc.last_column = 2;
 
-        context->e.msg = "test";
-        context->e.loc = loc;
-        actual = handlebars_context_get_errmsg_js(context);
+    context->msg = "test";
+    context->loc = loc;
+    actual = handlebars_context_get_errmsg_js(context);
 
-        ck_assert_ptr_ne(NULL, actual);
-        ck_assert_ptr_ne(NULL, strstr(actual, "test"));
-        ck_assert_ptr_ne(NULL, strstr(actual, "line 1"));
-        ck_assert_ptr_ne(NULL, strstr(actual, "column 2"));
-        ck_assert_ptr_ne(NULL, strstr(actual, "Parse error"));
-    }
-    {
-        ck_assert_ptr_eq(NULL, handlebars_context_get_errmsg_js(NULL));
-    }
+    ck_assert_ptr_ne(NULL, actual);
+    ck_assert_ptr_ne(NULL, strstr(actual, "test"));
+    ck_assert_ptr_ne(NULL, strstr(actual, "line 1"));
+    ck_assert_ptr_ne(NULL, strstr(actual, "column 2"));
+    ck_assert_ptr_ne(NULL, strstr(actual, "Parse error"));
+}
+{
+    ck_assert_ptr_eq(NULL, handlebars_context_get_errmsg_js(NULL));
+}
 END_TEST
 
 START_TEST(test_context_get_errmsg_js_failed_alloc)
-    {
-        struct YYLTYPE loc;
-        char * actual;
-        loc.last_line = 1;
-        loc.last_column = 2;
+{
+    struct YYLTYPE loc;
+    char * actual;
+    loc.last_line = 1;
+    loc.last_column = 2;
 
-        context->e.msg = "test";
-        context->e.loc = loc;
+    context->msg = "test";
+    context->loc = loc;
 
-        handlebars_memory_fail_enable();
-        actual = handlebars_context_get_errmsg_js(context);
-        handlebars_memory_fail_disable();
+    handlebars_memory_fail_enable();
+    actual = handlebars_context_get_errmsg_js(context);
+    handlebars_memory_fail_disable();
 
-        //ck_assert_ptr_eq(NULL, actual);
-        ck_assert_ptr_eq(context->e.msg, actual);
-    }
+    //ck_assert_ptr_eq(NULL, actual);
+    ck_assert_ptr_eq(context->msg, actual);
+}
 END_TEST
 
 Suite * parser_suite(void)

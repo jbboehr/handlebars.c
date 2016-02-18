@@ -15,7 +15,7 @@
 
 
 #undef CONTEXT
-#define CONTEXT parser->ctx
+#define CONTEXT ((struct handlebars_context *) parser)
 
 struct handlebars_token * handlebars_token_ctor(struct handlebars_parser * parser, int token_int, const char * text, size_t length)
 {

@@ -43,6 +43,10 @@ struct handlebars_token_list;
 #define HBS_S1(x) #x
 #define HBS_S2(x) HBS_S1(x)
 
+#define handlebars_setjmp(ctx) setjmp(*(((struct handlebars_context *) ctx)->jmp))
+#define handlebars_setjmp_cp(ctx, ctx2) setjmp(*(((struct handlebars_context *) ctx)->jmp = ctx2->jmp))
+#define handlebars_setjmp_ex(ctx, buf) setjmp(*(((struct handlebars_context *) ctx)->jmp = (buf)))
+
 /**
  * @brief Enumeration of error types
  */
@@ -106,17 +110,16 @@ struct handlebars_locinfo
  */
 struct handlebars_context
 {
-    struct {
-        long num;
-        char * msg;
-        struct handlebars_locinfo loc;
-        jmp_buf * jmp;
-    } e;
+    long num;
+    char * msg;
+    struct handlebars_locinfo loc;
+    jmp_buf * jmp;
 };
 
 struct handlebars_parser
 {
-    struct handlebars_context * ctx;
+    struct handlebars_context ctx;
+
     const char * tmpl;
     int tmplReadOffset;
     void * scanner;

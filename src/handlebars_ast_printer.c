@@ -49,7 +49,7 @@ void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context
 
 
 #undef CONTEXT
-#define CONTEXT ctx->parser->ctx
+#define CONTEXT ((struct handlebars_context *) ctx->parser)
 
 void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx)
 {
@@ -416,7 +416,7 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
 }
 
 #undef CONTEXT
-#define CONTEXT parser->ctx
+#define CONTEXT ((struct handlebars_context *) parser)
 
 char * handlebars_ast_print(struct handlebars_parser * parser, struct handlebars_ast_node * ast_node, int flags)
 {

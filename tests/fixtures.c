@@ -9,7 +9,7 @@
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 
-#define CONTEXT options->vm->ctx
+#define CONTEXT ((struct handlebars_context *)options->vm)
 #define FIXTURE_FN(hash) static struct handlebars_value * fixture_ ## hash(struct handlebars_options * options)
 #define FIXTURE_STRING(string) \
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT); \
