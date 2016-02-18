@@ -926,10 +926,11 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
 
 void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler * compiler)
 {
-	size_t i;
+	size_t i = compiler->opcodes_length;
+    struct handlebars_opcodes ** opcodes = compiler->opcodes;
 
-	for( i = 0; i < compiler->opcodes_length; i++ ) {
-		struct handlebars_opcode * opcode = compiler->opcodes[i];
+	for( ; i > 0; i-- ) {
+		struct handlebars_opcode * opcode = *opcodes++;
 
         // Print opcode?
 #ifndef NDEBUG
