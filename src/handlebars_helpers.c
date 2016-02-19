@@ -34,6 +34,21 @@ static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, co
     return helper;
 }
 
+static inline struct handlebars_value * call_helper(struct handlebars_options * options, const char * name, unsigned int len)
+{
+    struct handlebars_value * helper;
+    struct handlebars_value * result;
+    handlebars_helper_func fn;
+    if( NULL != (helper = handlebars_value_map_find(options->vm->helpers, name)) ) {
+        result = handlebars_value_call(helper, options);
+        handlebars_value_delref(helper);
+        return result;
+    } else if( NULL != (fn = handlebars_builtins_find(name, len)) ) {
+        return fn(options);
+    }
+    return NULL;
+}
+
 #undef CONTEXT
 #define CONTEXT HBSCTX(options->vm)
 
@@ -63,8 +78,7 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
     } else if( handlebars_value_is_empty(context) && !is_zero ) {
         result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        struct handlebars_value * each = get_helper(options->vm, "each");
-        ret = handlebars_value_call(each, options);
+        ret = call_helper(options, "each", sizeof("each") - 1);
     } else {
         // For object, etc
         result = handlebars_vm_execute_program(options->vm, options->program, context);
@@ -296,7 +310,6 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
 
 struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * options)
 {
-    struct handlebars_value * helper;
     struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
     struct handlebars_value * result = NULL;
 
@@ -305,13 +318,8 @@ struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * 
     }
     handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
-    helper = get_helper(options->vm, "if");
-    assert(helper != NULL);
-    result = handlebars_value_call(helper, options);
-
-    handlebars_value_delref(helper);
+    result = call_helper(options, "if", sizeof("if") - 1);
     handlebars_value_delref(conditional);
-
     SAFE_RETURN(result);
 }
 
