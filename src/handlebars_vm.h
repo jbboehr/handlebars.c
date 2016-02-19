@@ -38,10 +38,17 @@ struct handlebars_vm {
     const char * last_helper;
     struct handlebars_value * last_context;
     char * buffer;
-    struct handlebars_stack * frameStack;
+	struct {
+		size_t i;
+		struct handlebars_vm_frame v[128];
+		struct handlebars_vm_frame * top;
+	} frameStack;
     struct handlebars_stack * depths;
     struct handlebars_stack * stack;
-    struct handlebars_stack * hashStack;
+	struct {
+		size_t i;
+		struct handlebars_value * v[128];
+	} hashStack;
     struct handlebars_stack * blockParamStack;
 };
 

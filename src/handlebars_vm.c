@@ -52,10 +52,8 @@ ACCEPT_FUNCTION(push_context);
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_vm * vm = MC(handlebars_talloc_zero(ctx, struct handlebars_vm));
-    vm->frameStack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
     vm->depths = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
     vm->stack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
-    vm->hashStack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
     vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
     return vm;
 }
@@ -67,16 +65,16 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 void handlebars_vm_dtor(struct handlebars_vm * vm)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_stack_dtor(vm->frameStack);
     if( vm->depths ) {
         handlebars_stack_dtor(vm->depths);
     }
     handlebars_stack_dtor(vm->stack);
-    handlebars_stack_dtor(vm->hashStack);
     if( vm->blockParamStack ) {
         handlebars_stack_dtor(vm->blockParamStack);
     }
     handlebars_value_try_delref(vm->last_context);
+    // @todo clean frameStack?
+    // @todo cleanup hashStack
 #endif
     handlebars_talloc_free(vm);
 }
@@ -98,7 +96,7 @@ static inline struct handlebars_value * call_helper(struct handlebars_options * 
 
 static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * ctx)
 {
-    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_vm_frame * frame = vm->frameStack.top;
     struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
     long * inverse;
     long * program;
@@ -165,7 +163,7 @@ static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars
             fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
         }
 #endif
-        frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+        frame = vm->frameStack.top;
         frame->buffer = MC(handlebars_talloc_strdup_append_buffer(frame->buffer, tmp));
         handlebars_talloc_free(tmp);
     }
@@ -222,7 +220,7 @@ static inline char * dump_stack(struct handlebars_stack * stack)
 
 ACCEPT_FUNCTION(ambiguous_block_value)
 {
-    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_vm_frame * frame = vm->frameStack.top;
     struct handlebars_value * current;
     struct handlebars_value * result;
     struct handlebars_value * helper;
@@ -262,7 +260,7 @@ ACCEPT_FUNCTION(append_escaped)
 
 ACCEPT_FUNCTION(append_content)
 {
-    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_vm_frame * frame = vm->frameStack.top;
 
     assert(opcode->type == handlebars_opcode_type_append_content);
     assert(opcode->op1.type == handlebars_operand_type_string);
@@ -272,7 +270,7 @@ ACCEPT_FUNCTION(append_content)
 
 ACCEPT_FUNCTION(assign_to_hash)
 {
-    struct handlebars_value * hash = handlebars_stack_top(vm->hashStack);
+    struct handlebars_value * hash = vm->hashStack.v[vm->hashStack.i - 1];
     struct handlebars_value * value = handlebars_stack_pop(vm->stack);
 
     assert(opcode->op1.type == handlebars_operand_type_string);
@@ -431,7 +429,7 @@ ACCEPT_FUNCTION(invoke_known_helper)
 
 ACCEPT_FUNCTION(invoke_partial)
 {
-    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_vm_frame * frame = vm->frameStack.top;
     struct setup_ctx ctx = {0};
     struct handlebars_value * tmp;
     char * name = NULL;
@@ -616,7 +614,7 @@ done:
 
 ACCEPT_FUNCTION(lookup_data)
 {
-    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_vm_frame * frame = vm->frameStack.top;
     struct handlebars_value * data = frame->data;
     struct handlebars_value * tmp;
     struct handlebars_value * val = NULL;
@@ -717,7 +715,7 @@ ACCEPT_FUNCTION(lookup_on_context)
 
 ACCEPT_FUNCTION(pop_hash)
 {
-    struct handlebars_value * hash = handlebars_stack_pop(vm->hashStack);
+    struct handlebars_value * hash = vm->hashStack.v[--vm->hashStack.i];
     if( !hash ) {
         hash = handlebars_value_ctor(CONTEXT);
     }
@@ -743,7 +741,7 @@ ACCEPT_FUNCTION(push_hash)
 {
     struct handlebars_value * hash = handlebars_value_ctor(CONTEXT);
     handlebars_value_map_init(hash);
-    handlebars_stack_push(vm->hashStack, hash);
+    vm->hashStack.v[vm->hashStack.i++] = hash;
     handlebars_value_delref(hash);
 }
 
@@ -834,7 +832,7 @@ ACCEPT_FUNCTION(push_string_param)
 
 ACCEPT_FUNCTION(resolve_possible_lambda)
 {
-    struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_vm_frame * frame = vm->frameStack.top;
     struct handlebars_value * top = handlebars_stack_top(vm->stack);
     struct handlebars_value * result;
 
@@ -924,12 +922,14 @@ char * handlebars_vm_execute_program_ex(
 	struct handlebars_compiler * compiler = vm->programs[program];
 
     // Get parent frame
-    struct handlebars_vm_frame * parent_frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
+    struct handlebars_vm_frame * parent_frame = NULL;
+    if( vm->frameStack.i > 0 ) {
+        parent_frame = vm->frameStack.top;
+    }
 
     // Push the frame stack
-	struct handlebars_vm_frame * frame = MC(handlebars_talloc_zero(vm, struct handlebars_vm_frame));
-
-    handlebars_stack_push_ptr(vm->frameStack, frame);
+	struct handlebars_vm_frame * frame = vm->frameStack.top = &vm->frameStack.v[vm->frameStack.i++];
+    memset(frame, 0, sizeof(struct handlebars_vm_frame));
     frame->buffer = MC(handlebars_talloc_strdup(vm, ""));
 
     // Set program
@@ -976,8 +976,8 @@ char * handlebars_vm_execute_program_ex(
 
     // Pop frame
     char * buffer = talloc_steal(vm, frame->buffer);
-    handlebars_stack_pop(vm->frameStack);
-    handlebars_talloc_free(frame);
+    handlebars_value_delref(vm->frameStack.v[--vm->frameStack.i]);
+    vm->frameStack.top = &vm->frameStack.v[vm->frameStack.i - 1];
 
     return buffer;
 }
