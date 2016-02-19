@@ -20,7 +20,6 @@ struct handlebars_vm_frame {
     int program;
     char * buffer;
     struct handlebars_value * last_context;
-    struct handlebars_options * options_register;
 };
 
 struct handlebars_vm {
@@ -33,7 +32,6 @@ struct handlebars_vm {
     struct handlebars_value * context;
     struct handlebars_value * data;
 	struct handlebars_value * helpers;
-	struct handlebars_value * builtins;
 	struct handlebars_value * partials;
     long flags;
 

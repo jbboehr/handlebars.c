@@ -21,19 +21,6 @@
 #undef CONTEXT
 #define CONTEXT HBSCTX(vm)
 
-static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, const char * name)
-{
-    struct handlebars_value * helper;
-    helper = handlebars_value_map_find(vm->helpers, name);
-    if( !helper ) {
-        if( !vm->builtins ) {
-            vm->builtins = handlebars_builtins(CONTEXT);
-        }
-        helper = handlebars_value_map_find(vm->builtins, name);
-    }
-    return helper;
-}
-
 static inline struct handlebars_value * call_helper(struct handlebars_options * options, const char * name, unsigned int len)
 {
     struct handlebars_value * helper;
@@ -368,35 +355,6 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
     SAFE_RETURN(ret);
 }
 
-struct handlebars_value * handlebars_builtins(struct handlebars_context * ctx)
-{
-#define ADDHELPER(name, func) do { \
-        tmp = handlebars_value_ctor(ctx); \
-        tmp->type = HANDLEBARS_VALUE_TYPE_HELPER; \
-        tmp->v.helper = func; \
-        handlebars_map_add(value->v.map, #name, tmp); \
-        handlebars_value_delref(tmp); \
-    } while(0)
-
-    struct handlebars_value * value;
-    struct handlebars_value * tmp;
-
-    assert(ctx != NULL);
-
-    value = handlebars_value_ctor(ctx);
-    handlebars_value_map_init(value);
-
-    ADDHELPER(blockHelperMissing, handlebars_builtin_block_helper_missing);
-    ADDHELPER(each, handlebars_builtin_each);
-    ADDHELPER(helperMissing, handlebars_builtin_helper_missing);
-    ADDHELPER(if, handlebars_builtin_if);
-    ADDHELPER(lookup, handlebars_builtin_lookup);
-    ADDHELPER(unless, handlebars_builtin_unless);
-    ADDHELPER(with, handlebars_builtin_with);
-
-    return value;
-#undef ADDHELPER
-}
 
 
 
@@ -425,10 +383,10 @@ const char ** handlebars_builtins_names(void)
     return names;
 }
 
-//handlebars_helper_func * handlebars_builtins(void)
-//{
-//    return builtins;
-//}
+handlebars_helper_func * handlebars_builtins(void)
+{
+    return builtins;
+}
 
 handlebars_helper_func handlebars_builtins_find(const char * str, unsigned int len)
 {

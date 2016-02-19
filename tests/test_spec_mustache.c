@@ -242,7 +242,7 @@ START_TEST(test_mustache_spec)
 
     // Setup VM
     vm = handlebars_vm_ctor(ctx);
-    vm->helpers = handlebars_builtins(ctx);
+    vm->helpers = handlebars_value_ctor(HBSCTX(vm));
     vm->flags = test->flags;
 
     // Setup partials

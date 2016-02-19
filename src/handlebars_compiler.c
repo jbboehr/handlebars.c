@@ -204,22 +204,20 @@ static inline bool handlebars_compiler_is_known_helper(
         NULL == parts->first || 
         NULL == (path_segment = parts->first->data) ||
         NULL == (helper_name = path_segment->node.path_segment.part) ) {
-        return 0;
+        return false;
+    }
+
+    if( NULL != handlebars_builtins_find(helper_name, strlen(helper_name)) ) {
+        return true;
     }
 
     for( ptr = compiler->known_helpers ; *ptr ; ++ptr ) {
         if( strcmp(helper_name, *ptr) == 0 ) {
-            return 1;
-        }
-    }
-
-    for( ptr = handlebars_builtins_names() ; *ptr ; ++ptr ) {
-        if( strcmp(helper_name, *ptr) == 0 ) {
-            return 1;
+            return true;
         }
     }
     
-    return 0;
+    return false;
 }
 
 static inline enum handlebars_compiler_sexpr_type handlebars_compiler_classify_sexpr(

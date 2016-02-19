@@ -38,9 +38,7 @@ struct setup_ctx {
     size_t param_size;
     struct handlebars_stack * params;
     struct handlebars_options * options;
-    struct handlebars_value * helper;
-    bool is_block_helper;
-    short use_register;
+    //bool is_block_helper;
 };
 
 ACCEPT_FUNCTION(push_context);
@@ -78,23 +76,9 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
     if( vm->blockParamStack ) {
         handlebars_stack_dtor(vm->blockParamStack);
     }
-    handlebars_value_try_delref(vm->builtins);
     handlebars_value_try_delref(vm->last_context);
 #endif
     handlebars_talloc_free(vm);
-}
-
-static inline struct handlebars_value * get_helper(struct handlebars_vm * vm, const char * name)
-{
-    struct handlebars_value * helper;
-    helper = handlebars_value_map_find(vm->helpers, name);
-    if( !helper || helper->type == HANDLEBARS_VALUE_TYPE_NULL ) {
-        if( !vm->builtins ) {
-            vm->builtins = handlebars_builtins(CONTEXT);
-        }
-        helper = handlebars_value_map_find(vm->builtins, name);
-    }
-    return helper;
 }
 
 static inline struct handlebars_value * call_helper(struct handlebars_options * options, const char * name, unsigned int len)
@@ -136,6 +120,10 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
     options->inverse = inverse ? *inverse : -1;
 
     // params
+    if( !ctx->params ) {
+        ctx->params = handlebars_stack_ctor(CONTEXT);
+    }
+
     i = ctx->param_size;
     placeholder = handlebars_value_ctor(CONTEXT);
     for( j = 0; j < i; j++ ) {
@@ -162,41 +150,6 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
     } else {
         options->data = handlebars_value_ctor(CONTEXT);
     }
-}
-
-static inline void setup_params(struct handlebars_vm * vm, struct setup_ctx * ctx)
-{
-    setup_options(vm, ctx);
-
-    /* Disable this for now
-    if( ctx->use_register ) {
-        struct handlebars_vm_frame * frame = handlebars_stack_top_type(vm->frameStack, struct handlebars_vm_frame);
-        if( ctx->use_register == 2 ) {
-            assert(frame->options_register != NULL);
-            handlebars_stack_push(ctx->params, frame->options_register);
-        } else {
-            frame->options_register = ctx->options;
-            handlebars_stack_push(ctx->params, frame->options_register);
-        }
-    }
-    */
-
-    // Don't include options in oarams for now
-    /*
-    if( ctx->params != NULL ) {
-        struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-        value->type = HANDLEBARS_VALUE_TYPE_OPTIONS;
-        value->v.options = ctx->options;
-        handlebars_stack_push(ctx->params, value);
-    }
-    */
-}
-
-static inline void setup_helper(struct handlebars_vm * vm, struct setup_ctx * ctx)
-{
-    ctx->params = handlebars_stack_ctor(CONTEXT);
-    setup_params(vm, ctx);
-    ctx->helper = get_helper(vm, ctx->name);
 }
 
 static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, bool escape)
@@ -278,7 +231,7 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     ctx.name = vm->last_helper;
     ctx.params = handlebars_stack_ctor(CONTEXT);
     handlebars_stack_push(ctx.params, frame->context);
-    setup_params(vm, &ctx);
+    setup_options(vm, &ctx);
 
     current = handlebars_stack_pop(vm->stack);
     if( !current ) { // @todo I don't think this should happen
@@ -342,7 +295,7 @@ ACCEPT_FUNCTION(block_value)
     ctx.params = handlebars_stack_ctor(CONTEXT);
     //handlebars_stack_push(ctx.params, frame->context);
     ctx.name = opcode->op1.data.stringval;
-    setup_params(vm, &ctx);
+    setup_options(vm, &ctx);
 
     current = handlebars_stack_pop(vm->stack);
     assert(current != NULL);
@@ -385,6 +338,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
 {
     struct handlebars_value * value = handlebars_stack_pop(vm->stack);
     struct setup_ctx ctx = {0};
+    struct handlebars_value * result;
     struct handlebars_value * fn;
 
     ACCEPT_FN(empty_hash)(vm, opcode);
@@ -393,33 +347,20 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     assert(opcode->op2.type == handlebars_operand_type_boolean);
 
     ctx.name = opcode->op1.data.stringval;
-    ctx.is_block_helper = opcode->op2.data.boolval;
-    setup_helper(vm, &ctx);
-    vm->last_helper = ctx.helper ? ctx.name : NULL;
+    //ctx.is_block_helper = opcode->op2.data.boolval;
+    setup_options(vm, &ctx);
+    vm->last_helper = NULL;
 
-    if( ctx.helper != NULL && ctx.helper->type != HANDLEBARS_VALUE_TYPE_NULL ) {
-        assert(handlebars_value_is_callable(ctx.helper));
-        struct handlebars_value *result = handlebars_value_call(ctx.helper, ctx.options);
+    if( NULL != (result = call_helper(ctx.options, ctx.name, strlen(ctx.name))) ) {
         append_to_buffer(vm, result, 0);
-    } else if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        struct handlebars_value * result = handlebars_value_call(value, ctx.options);
+        vm->last_helper = ctx.name;
+    } else if( value && handlebars_value_is_callable(value) ) {
+        result = handlebars_value_call(value, ctx.options);
         assert(result != NULL);
         handlebars_stack_push(vm->stack, result);
         handlebars_value_delref(result);
-    } else if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-        // @todo improve this
-        struct handlebars_value * result = handlebars_value_call(value, ctx.options);
-        if( result == NULL ) {
-            goto missing;
-        }
-        handlebars_stack_push(vm->stack, result);
-        handlebars_value_delref(result);
     } else {
-missing:
-        fn = get_helper(vm, "helperMissing");
-        assert(fn != NULL);
-        assert(handlebars_value_is_callable(fn));
-        struct handlebars_value * result = handlebars_value_call(fn, ctx.options);
+        result = call_helper(ctx.options, "helperMissing", sizeof("helperMissing"));
         append_to_buffer(vm, result, 0);
         handlebars_stack_push(vm->stack, value);
     }
@@ -439,7 +380,7 @@ ACCEPT_FUNCTION(invoke_helper)
 
     ctx.name = opcode->op2.data.stringval;
     ctx.param_size = opcode->op1.data.longval;
-    setup_helper(vm, &ctx);
+    setup_options(vm, &ctx);
 
     if( opcode->op3.data.boolval ) { // isSimple
         if( NULL != (result = call_helper(ctx.options, ctx.name, strlen(ctx.name))) ) {
@@ -474,7 +415,7 @@ ACCEPT_FUNCTION(invoke_known_helper)
 
     ctx.param_size = opcode->op1.data.longval;
     ctx.name = opcode->op2.data.stringval;
-    setup_helper(vm, &ctx);
+    setup_options(vm, &ctx);
 
     result = call_helper(ctx.options, ctx.name, strlen(ctx.name));
 

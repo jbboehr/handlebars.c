@@ -334,7 +334,8 @@ static inline void run_test(struct generic_test * test, int _i)
     vm->flags = test->flags;
 
     // Setup helpers
-    vm->helpers = handlebars_builtins(ctx);
+    vm->helpers = handlebars_value_ctor(HBSCTX(vm));
+    handlebars_value_map_init(vm->helpers);
     if( test->globalHelpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->globalHelpers);
         load_fixtures(helpers);
