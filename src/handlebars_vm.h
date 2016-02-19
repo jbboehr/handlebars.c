@@ -48,6 +48,7 @@ struct handlebars_vm {
 	struct {
 		size_t i;
 		struct handlebars_value * v[128];
+		struct handlebars_value ** top;
 	} hashStack;
     struct handlebars_stack * blockParamStack;
 };

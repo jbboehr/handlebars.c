@@ -27,6 +27,12 @@
 #define ACCEPT_NAMED_FUNCTION(name) static void name (struct handlebars_vm * vm, struct handlebars_opcode * opcode)
 #define ACCEPT_FUNCTION(name) ACCEPT_NAMED_FUNCTION(ACCEPT_FN(name))
 
+#define PUSHN(stack) stack.v[stack.i++]
+#define PUSHV(stack, value) stack.v[stack.i++] = value
+#define TOP(stack) stack.top
+#define POP(stack, value) stack.v[--stack.i]
+
+
 
 
 struct literal {
@@ -96,7 +102,7 @@ static inline struct handlebars_value * call_helper(struct handlebars_options * 
 
 static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * ctx)
 {
-    struct handlebars_vm_frame * frame = vm->frameStack.top;
+    struct handlebars_vm_frame * frame = TOP(vm->frameStack);
     struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
     long * inverse;
     long * program;
@@ -163,7 +169,7 @@ static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars
             fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
         }
 #endif
-        frame = vm->frameStack.top;
+        frame = TOP(vm->frameStack);
         frame->buffer = MC(handlebars_talloc_strdup_append_buffer(frame->buffer, tmp));
         handlebars_talloc_free(tmp);
     }
@@ -220,7 +226,7 @@ static inline char * dump_stack(struct handlebars_stack * stack)
 
 ACCEPT_FUNCTION(ambiguous_block_value)
 {
-    struct handlebars_vm_frame * frame = vm->frameStack.top;
+    struct handlebars_vm_frame * frame = TOP(vm->frameStack);
     struct handlebars_value * current;
     struct handlebars_value * result;
     struct handlebars_value * helper;
@@ -260,7 +266,7 @@ ACCEPT_FUNCTION(append_escaped)
 
 ACCEPT_FUNCTION(append_content)
 {
-    struct handlebars_vm_frame * frame = vm->frameStack.top;
+    struct handlebars_vm_frame * frame = TOP(vm->frameStack);
 
     assert(opcode->type == handlebars_opcode_type_append_content);
     assert(opcode->op1.type == handlebars_operand_type_string);
@@ -429,7 +435,7 @@ ACCEPT_FUNCTION(invoke_known_helper)
 
 ACCEPT_FUNCTION(invoke_partial)
 {
-    struct handlebars_vm_frame * frame = vm->frameStack.top;
+    struct handlebars_vm_frame * frame = TOP(vm->frameStack);
     struct setup_ctx ctx = {0};
     struct handlebars_value * tmp;
     char * name = NULL;
@@ -614,7 +620,7 @@ done:
 
 ACCEPT_FUNCTION(lookup_data)
 {
-    struct handlebars_vm_frame * frame = vm->frameStack.top;
+    struct handlebars_vm_frame * frame = TOP(vm->frameStack);
     struct handlebars_value * data = frame->data;
     struct handlebars_value * tmp;
     struct handlebars_value * val = NULL;
@@ -832,7 +838,7 @@ ACCEPT_FUNCTION(push_string_param)
 
 ACCEPT_FUNCTION(resolve_possible_lambda)
 {
-    struct handlebars_vm_frame * frame = vm->frameStack.top;
+    struct handlebars_vm_frame * frame = TOP(vm->frameStack);
     struct handlebars_value * top = handlebars_stack_top(vm->stack);
     struct handlebars_value * result;
 
@@ -928,7 +934,7 @@ char * handlebars_vm_execute_program_ex(
     }
 
     // Push the frame stack
-	struct handlebars_vm_frame * frame = vm->frameStack.top = &vm->frameStack.v[vm->frameStack.i++];
+	struct handlebars_vm_frame * frame = vm->frameStack.top = &PUSHN(vm->frameStack);
     memset(frame, 0, sizeof(struct handlebars_vm_frame));
     frame->buffer = MC(handlebars_talloc_strdup(vm, ""));
 
