@@ -20,7 +20,13 @@ handlebars.lex.h: handlebars.lex.c
 handlebars.lex.c: handlebars.l
 	${FLEX} $(FLEXFLAGS) -o handlebars.lex.c handlebars.l
 endif
-	
+
+# gperf
+if GPERF
+handlebars_helpers_ht.h: handlebars_helpers_ht.gperf
+	$(GPERF) --struct-type --readonly-tables --pic --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf
+endif
+
 # re2c
 if RE2C
 MAINTAINERCLEANFILES = handlebars_scanners.c
@@ -56,7 +62,7 @@ include_HEADERS = \
 	handlebars_vm.h \
 	handlebars_whitespace.h
 
-GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c
+GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c handlebars_helpers_ht.h
 CLEANFILES = $(GENSOURCE)
 BUILT_SOURCES = $(GENSOURCE)
 
