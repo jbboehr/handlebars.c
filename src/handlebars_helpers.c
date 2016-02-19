@@ -6,6 +6,7 @@
 #include <assert.h>
 
 #include "handlebars.h"
+#include "handlebars_helpers_ht.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -16,16 +17,6 @@
 
 
 #define SAFE_RETURN(val) return val ? val : handlebars_value_ctor(CONTEXT)
-
-static const char * names[] = {
-    "helperMissing", "blockHelperMissing", "each", "if",
-    "unless", "with", "log", "lookup", NULL
-};
-
-const char ** handlebars_builtins_names(void)
-{
-    return names;
-}
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(vm)
@@ -225,6 +216,12 @@ struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_op
     SAFE_RETURN(NULL);
 }
 
+struct handlebars_value * handlebars_builtin_log(struct handlebars_options * options)
+{
+    handlebars_context_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "log is not implemented");
+    return NULL;
+}
+
 struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * options)
 {
     if( handlebars_stack_length(options->params) < 2 ) {
@@ -391,4 +388,46 @@ struct handlebars_value * handlebars_builtins(struct handlebars_context * ctx)
 
     return value;
 #undef ADDHELPER
+}
+
+
+
+
+
+
+static const char * names[] = {
+        "helperMissing", "blockHelperMissing", "each", "if",
+        "unless", "with", "log", "lookup", NULL
+};
+
+static handlebars_helper_func builtins[] = {
+        &handlebars_builtin_block_helper_missing,
+        &handlebars_builtin_helper_missing,
+        &handlebars_builtin_each,
+        &handlebars_builtin_if,
+        &handlebars_builtin_unless,
+        &handlebars_builtin_with,
+        &handlebars_builtin_log,
+        &handlebars_builtin_lookup,
+        NULL
+};
+
+const char ** handlebars_builtins_names(void)
+{
+    return names;
+}
+
+//handlebars_helper_func * handlebars_builtins(void)
+//{
+//    return builtins;
+//}
+
+handlebars_helper_func handlebars_builtins_find(const char * str, unsigned int len)
+{
+    const struct handlebars_builtin_pair * pair = in_word_set(str, len);
+    handlebars_helper_func fn = NULL;
+    if( pair ) {
+        fn = builtins[pair->pos];
+    }
+    return fn;
 }
