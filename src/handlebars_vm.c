@@ -96,8 +96,8 @@ static inline struct handlebars_value * call_helper(struct handlebars_options * 
 static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * ctx)
 {
     struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
-    long * inverse;
-    long * program;
+    struct handlebars_value * inverse;
+    struct handlebars_value * program;
     size_t i, j;
     struct handlebars_value * placeholder;
 
@@ -109,11 +109,12 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
     options->vm = vm;
 
     // programs
-    inverse = handlebars_stack_pop_type(vm->stack, long);
-    program = handlebars_stack_pop_type(vm->stack, long);
-
-    options->program = program ? *program : -1;
-    options->inverse = inverse ? *inverse : -1;
+    inverse = handlebars_stack_pop(vm->stack);
+    program = handlebars_stack_pop(vm->stack);
+    options->inverse = inverse ? handlebars_value_get_intval(inverse) : -1;
+    options->program = program ? handlebars_value_get_intval(program) : -1;
+    handlebars_value_try_delref(inverse);
+    handlebars_value_try_delref(program);
 
     // params
     if( !ctx->params ) {
@@ -740,19 +741,15 @@ ACCEPT_FUNCTION(push_hash)
 
 ACCEPT_FUNCTION(push_program)
 {
-    long * program;
-
-    assert(opcode->type == handlebars_opcode_type_push_program);
-
-    program = MC(handlebars_talloc(vm, long));
+    struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
 
     if( opcode->op1.type == handlebars_operand_type_long ) {
-        *program = opcode->op1.data.longval;
+        handlebars_value_integer(value, opcode->op1.data.longval);
     } else {
-        *program = -1;
+        handlebars_value_integer(value, -1);
     }
 
-    handlebars_stack_push_ptr(vm->stack, program);
+    handlebars_stack_push(vm->stack, value);
 }
 
 ACCEPT_FUNCTION(push_literal)
