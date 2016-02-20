@@ -61,7 +61,6 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_vm * vm = MC(handlebars_talloc_zero(ctx, struct handlebars_vm));
     vm->stack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
-    vm->blockParamStack = talloc_steal(vm, handlebars_stack_ctor(HBSCTX(vm)));
     return vm;
 }
 
@@ -73,9 +72,6 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_stack_dtor(vm->stack);
-    if( vm->blockParamStack ) {
-        handlebars_stack_dtor(vm->blockParamStack);
-    }
     handlebars_value_try_delref(vm->last_context);
     // @todo cleanup hashStack
 #endif
@@ -539,9 +535,10 @@ ACCEPT_FUNCTION(invoke_partial)
     vm2->flags = vm->flags;
     vm2->helpers = vm->helpers;
     vm2->partials = vm->partials;
-    memcpy(&vm2->contextStack, &vm->contextStack, sizeof(vm->contextStack)); // @todo copy only part
-    vm2->blockParamStack = vm->blockParamStack;
-    // @todo block params
+
+    // Copy stacks
+    memcpy(&vm2->contextStack, &vm->contextStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->contextStack)));
+    memcpy(&vm2->blockParamStack, &vm->blockParamStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->blockParamStack)));
 
     handlebars_vm_execute(vm2, compiler, context2);
 
@@ -553,7 +550,6 @@ ACCEPT_FUNCTION(invoke_partial)
 
     handlebars_value_try_delref(context1);
     handlebars_value_try_delref(context2);
-    vm2->blockParamStack = NULL;
     handlebars_vm_dtor(vm2);
     handlebars_compiler_dtor(compiler);
 
@@ -575,7 +571,9 @@ ACCEPT_FUNCTION(lookup_block_param)
     sscanf(*(opcode->op1.data.arrayval), "%ld", &blockParam1);
     sscanf(*(opcode->op1.data.arrayval + 1), "%ld", &blockParam2);
 
-    struct handlebars_value * v1 = handlebars_stack_get(vm->blockParamStack, handlebars_stack_length(vm->blockParamStack) - blockParam1 - 1);
+    if( blockParam1 >= LEN(vm->blockParamStack) ) goto done;
+
+    struct handlebars_value * v1 = GET(vm->blockParamStack, blockParam1);
     if( !v1 || handlebars_value_get_type(v1) != HANDLEBARS_VALUE_TYPE_ARRAY ) goto done;
 
     struct handlebars_value * v2 = handlebars_value_array_find(v1, blockParam2);
@@ -934,8 +932,8 @@ char * handlebars_vm_execute_program_ex(
 
     // Set block params
     if( block_params ) {
-        handlebars_stack_push(vm->blockParamStack, block_params);
-        pushed_block_param = 1;
+        PUSH(vm->blockParamStack) = block_params;
+        pushed_block_param = true;
     }
 
     // Execute the program
@@ -948,7 +946,7 @@ char * handlebars_vm_execute_program_ex(
 
     // Pop block params
     if( pushed_block_param ) {
-        handlebars_stack_pop(vm->blockParamStack);
+        POP(vm->blockParamStack);
     }
 
     // Restore data

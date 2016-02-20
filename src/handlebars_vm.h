@@ -14,6 +14,11 @@ struct handlebars_context;
 struct handlebars_map;
 struct handlebars_options;
 
+struct handlebars_vm_stack {
+    size_t i;
+    struct handlebars_value * v[64];
+};
+
 struct handlebars_vm {
     struct handlebars_context ctx;
 
@@ -30,17 +35,11 @@ struct handlebars_vm {
     const char * last_helper;
     struct handlebars_value * last_context;
     char * buffer;
-    
+
     struct handlebars_stack * stack;
-    struct {
-        size_t i;
-        struct handlebars_value * v[128];
-    } contextStack;
-	struct {
-		size_t i;
-		struct handlebars_value * v[32];
-	} hashStack;
-    struct handlebars_stack * blockParamStack;
+    struct handlebars_vm_stack contextStack;
+    struct handlebars_vm_stack hashStack;
+    struct handlebars_vm_stack blockParamStack;
 };
 
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBSARN;
