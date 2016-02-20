@@ -14,9 +14,13 @@ struct handlebars_context;
 struct handlebars_map;
 struct handlebars_options;
 
+#ifndef HANDLEBARS_VM_STACK_SIZE
+#define HANDLEBARS_VM_STACK_SIZE 96
+#endif
+
 struct handlebars_vm_stack {
     size_t i;
-    struct handlebars_value * v[64];
+    struct handlebars_value * v[HANDLEBARS_VM_STACK_SIZE];
 };
 
 struct handlebars_vm {
@@ -25,18 +29,18 @@ struct handlebars_vm {
     struct handlebars_compiler ** programs;
     size_t guid_index;
     long depth;
+    long flags;
 
+    char * buffer;
     struct handlebars_value * context;
     struct handlebars_value * data;
-	struct handlebars_value * helpers;
-	struct handlebars_value * partials;
-    long flags;
+    struct handlebars_value * helpers;
+    struct handlebars_value * partials;
 
     const char * last_helper;
     struct handlebars_value * last_context;
-    char * buffer;
 
-    struct handlebars_stack * stack;
+    struct handlebars_vm_stack stack;
     struct handlebars_vm_stack contextStack;
     struct handlebars_vm_stack hashStack;
     struct handlebars_vm_stack blockParamStack;
