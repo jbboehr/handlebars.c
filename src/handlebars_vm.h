@@ -14,12 +14,6 @@ struct handlebars_context;
 struct handlebars_map;
 struct handlebars_options;
 
-struct handlebars_vm_frame {
-    struct handlebars_value * context;
-    struct handlebars_value * data;
-    char * buffer;
-};
-
 struct handlebars_vm {
     struct handlebars_context ctx;
 
@@ -36,17 +30,12 @@ struct handlebars_vm {
     const char * last_helper;
     struct handlebars_value * last_context;
     char * buffer;
-    /* struct {
+    
+    struct handlebars_stack * stack;
+    struct {
         size_t i;
         struct handlebars_value * v[128];
-    } contextStack; */
-	struct {
-		size_t i;
-		struct handlebars_vm_frame v[128];
-		struct handlebars_vm_frame * top;
-	} frameStack;
-    struct handlebars_stack * depths;
-    struct handlebars_stack * stack;
+    } contextStack;
 	struct {
 		size_t i;
 		struct handlebars_value * v[32];

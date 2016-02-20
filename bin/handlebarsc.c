@@ -203,7 +203,6 @@ static int do_debug(void)
     fprintf(stderr, "sizeof(struct handlebars_parser): %ld\n", sizeof(struct handlebars_parser));
     fprintf(stderr, "sizeof(struct handlebars_value): %ld\n", sizeof(struct handlebars_value));
     fprintf(stderr, "sizeof(struct handlebars_vm): %ld\n", sizeof(struct handlebars_vm));
-    fprintf(stderr, "sizeof(struct handlebars_vm_frame): %ld\n", sizeof(struct handlebars_vm_frame));
     return 0;
 }
 
