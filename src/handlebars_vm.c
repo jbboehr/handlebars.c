@@ -192,7 +192,7 @@ static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
         value = handlebars_value_ctor(CONTEXT);
     }
 
-    PUSH(vm->stack, value); // @todo should we addref
+    PUSH(vm->stack, value);
     handlebars_value_delref(value);
 }
 
@@ -306,7 +306,7 @@ ACCEPT_FUNCTION(empty_hash)
 {
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
     handlebars_value_map_init(value);
-    PUSH(vm->stack, value); // @todo should we addref
+    PUSH(vm->stack, value);
     handlebars_value_delref(value);
 }
 
@@ -352,7 +352,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         result = handlebars_value_call(value, ctx.options);
         assert(result != NULL);
         PUSH(vm->stack, result);
-        //handlebars_value_delref(result);
+        handlebars_value_delref(result);
     } else {
         result = call_helper(ctx.options, "helperMissing", sizeof("helperMissing"));
         append_to_buffer(vm, result, 0);
@@ -703,8 +703,9 @@ ACCEPT_FUNCTION(lookup_on_context)
         value = handlebars_value_ctor(CONTEXT);
     }
 
-    POP(vm->stack);
+    handlebars_value_delref(POP(vm->stack));
     PUSH(vm->stack, value);
+    handlebars_value_delref(value);
 }
 
 ACCEPT_FUNCTION(pop_hash)
@@ -714,6 +715,7 @@ ACCEPT_FUNCTION(pop_hash)
         hash = handlebars_value_ctor(CONTEXT);
     }
     PUSH(vm->stack, hash);
+    handlebars_value_delref(hash);
 }
 
 ACCEPT_FUNCTION(push_context)
@@ -727,7 +729,7 @@ ACCEPT_FUNCTION(push_context)
     }
 
     PUSH(vm->stack, value);
-    //handlebars_value_delref(value);
+    handlebars_value_delref(value);
 }
 
 ACCEPT_FUNCTION(push_hash)
@@ -795,30 +797,6 @@ ACCEPT_FUNCTION(push_string)
     handlebars_value_delref(value);
 }
 
-/*
-ACCEPT_FUNCTION(push_string_param)
-{
-    assert(opcode->op1.type == handlebars_operand_type_string);
-    assert(opcode->op2.type == handlebars_operand_type_string);
-
-    ACCEPT_FN(push_context)(vm, opcode);
-
-    do {
-        struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string(value, opcode->op2.data.stringval);
-        handlebars_stack_push(vm->stack, value);
-        handlebars_value_delref(value);
-    } while(0);
-
-    if( 0 != strcmp(opcode->op2.data.stringval, "SubExpression") ) {
-        struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string(value, opcode->op1.data.stringval);
-        handlebars_stack_push(vm->stack, value);
-        handlebars_value_delref(value);
-    }
-}
-*/
-
 ACCEPT_FUNCTION(resolve_possible_lambda)
 {
     struct handlebars_value * top = TOP(vm->stack);
@@ -835,7 +813,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
         if( !result ) {
             result = handlebars_value_ctor(CONTEXT);
         }
-        POP(vm->stack);
+        handlebars_value_delref(POP(vm->stack));
         PUSH(vm->stack, result);
         handlebars_options_dtor(options);
         handlebars_value_delref(result);

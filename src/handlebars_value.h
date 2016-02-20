@@ -114,7 +114,7 @@ static inline struct handlebars_value * handlebars_value_addref2(struct handleba
 }
 #else
 #define handlebars_value_addref
-#define handlebars_value_addref2(value) value
+#define handlebars_value_addref2(value) (value)
 #endif
 
 #if 0
