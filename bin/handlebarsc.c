@@ -17,6 +17,8 @@
 #include "handlebars_token_list.h"
 #include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
+#include "handlebars_value.h"
+#include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
@@ -33,7 +35,8 @@ enum handlebarsc_mode {
     handlebarsc_mode_lex,
     handlebarsc_mode_parse,
     handlebarsc_mode_compile,
-    handlebarsc_mode_execute
+    handlebarsc_mode_execute,
+    handlebarsc_mode_debug
 };
 
 static enum handlebarsc_mode mode;
@@ -56,6 +59,7 @@ static void readOpts(int argc, char * argv[])
         {"compile",   no_argument,              0,  'c' },
         {"execute",   no_argument,              0,  'e' },
         {"version",   no_argument,              0,  'V' },
+        {"debug",     no_argument,              0,  'd' },
         // input
         {"template",  required_argument,        0,  't' },
         // compiler flags
@@ -94,6 +98,9 @@ start:
             break;
         case 'V':
             mode = handlebarsc_mode_version;
+            break;
+        case 'd':
+            mode = handlebarsc_mode_debug;
             break;
         
         // compiler flags
@@ -186,6 +193,17 @@ static int do_usage(void)
 static int do_version(void)
 {
     fprintf(stderr, "handlebarsc v%s\n", handlebars_version_string());
+    return 0;
+}
+
+static int do_debug(void)
+{
+    fprintf(stderr, "sizeof(struct handlebars_context): %ld\n", sizeof(struct handlebars_context));
+    fprintf(stderr, "sizeof(struct handlebars_compiler): %ld\n", sizeof(struct handlebars_compiler));
+    fprintf(stderr, "sizeof(struct handlebars_parser): %ld\n", sizeof(struct handlebars_parser));
+    fprintf(stderr, "sizeof(struct handlebars_value): %ld\n", sizeof(struct handlebars_value));
+    fprintf(stderr, "sizeof(struct handlebars_vm): %ld\n", sizeof(struct handlebars_vm));
+    fprintf(stderr, "sizeof(struct handlebars_vm_frame): %ld\n", sizeof(struct handlebars_vm_frame));
     return 0;
 }
 
@@ -336,6 +354,7 @@ int main(int argc, char * argv[])
         case handlebarsc_mode_parse: return do_parse();
         case handlebarsc_mode_compile: return do_compile();
         case handlebarsc_mode_execute: return do_execute();
+        case handlebarsc_mode_debug: return do_debug();
         default: return do_usage();
     }
 }
