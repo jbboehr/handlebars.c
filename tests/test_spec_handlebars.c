@@ -445,11 +445,11 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     // Memdebug
-    handlebars_vm_dtor(vm);
     handlebars_value_delref(context);
     handlebars_value_delref(vm->helpers);
     handlebars_value_delref(vm->partials);
     handlebars_value_try_delref(vm->data);
+    handlebars_vm_dtor(vm);
     if( memdebug ) {
         talloc_report_full(ctx, stderr);
     }

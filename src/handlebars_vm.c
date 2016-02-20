@@ -29,12 +29,13 @@
 
 #define LEN(stack) stack.i
 #define BOTTOM(stack) stack.v[0]
-#define GET(stack, pos) stack.v[stack.i - pos - 1]
-#define TOP(stack) (stack.i > 0 ? stack.v[stack.i - 1] : NULL)
+#define GET(stack, pos) handlebars_value_addref2(stack.v[stack.i - pos - 1])
+#define TOP(stack) handlebars_value_addref2(stack.i > 0 ? stack.v[stack.i - 1] : NULL)
 #define POP(stack) (stack.i > 0 ? stack.v[--stack.i] : NULL)
 #define PUSH(stack, value) do { \
         if( stack.i < HANDLEBARS_VM_STACK_SIZE ) { \
             stack.v[stack.i++] = value; \
+            handlebars_value_addref(value); \
         } else { \
             handlebars_context_throw(vm, HANDLEBARS_STACK_OVERFLOW, "Stack overflow in %s", #stack); \
         } \

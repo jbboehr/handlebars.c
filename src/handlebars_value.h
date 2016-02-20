@@ -108,8 +108,13 @@ static inline int _handlebars_value_addref(struct handlebars_value * value, cons
 static inline int handlebars_value_addref(struct handlebars_value * value) {
     return ++value->refcount;
 }
+static inline struct handlebars_value * handlebars_value_addref2(struct handlebars_value * value) {
+    handlebars_value_addref(value);
+    return value;
+}
 #else
 #define handlebars_value_addref
+#define handlebars_value_addref2(value) value
 #endif
 
 #if 0
