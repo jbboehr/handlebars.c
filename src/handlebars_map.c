@@ -3,6 +3,7 @@
 #include "config.h"
 #endif
 
+#include <assert.h>
 #include <string.h>
 
 #include "handlebars.h"
@@ -21,6 +22,9 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_map * map = MC(handlebars_talloc_zero(ctx, struct handlebars_map));
     map->ctx = CONTEXT;
+    map->table_size = 32;
+    map->table = talloc_steal(map, MC(handlebars_talloc_array(ctx, struct handlebars_map_entry *, map->table_size)));
+    memset(map->table, 0, sizeof(struct handlebars_map_entry *) * map->table_size);
     return map;
 }
 
@@ -41,14 +45,92 @@ void handlebars_map_dtor(struct handlebars_map * map)
     handlebars_talloc_free(map);
 }
 
-bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+static inline bool handlebars_map_entry_eq(struct handlebars_map_entry * entry1, struct handlebars_map_entry * entry2)
+{
+    return (
+            entry1->key->hash == entry2->key->hash &&
+            entry1->key->len == entry2->key->len &&
+            0 == strncmp(entry1->key->val, entry2->key->val, entry1->key->len)
+    );
+}
+
+static inline int _ht_add(struct handlebars_map_entry ** table, size_t table_size, struct handlebars_map_entry * entry)
+{
+    unsigned long index = entry->key->hash % (unsigned long) table_size;
+    struct handlebars_map_entry * parent = table[index];
+    if( parent ) {
+        assert(!handlebars_map_entry_eq(parent, entry));
+
+        // Append to end of list
+        while( parent->child ) {
+            parent = parent->child;
+        }
+        parent->child = entry;
+        entry->parent = parent;
+
+#if 0
+        fprintf(stderr, "Collision %s (%ld) %s (%ld)\n", parent->key->val, index, entry->key->val, index);
+#endif
+        return 1;
+    } else {
+        table[index] = entry;
+        return 0;
+    }
+}
+
+static inline void _rehash(struct handlebars_map * map)
+{
+    size_t table_size = map->table_size * 2;
+    struct handlebars_map_entry * entry;
+    struct handlebars_map_entry * tmp;
+    struct handlebars_map_entry ** table;
+
+#if 0
+    fprintf(stderr, "Rehash: entries: %d, collisions: %d, old size: %d, new size: %d\n", map->i, map->collisions, map->table_size, table_size);
+#endif
+
+    // Reset collisions
+    map->collisions = 0;
+
+    // Create new table
+    table = talloc_steal(map, MC(handlebars_talloc_array(CONTEXT, struct handlebars_map_entry *, table_size)));
+    memset(table, 0, sizeof(struct handlebars_map_entry *) * table_size);
+
+    // Reimport entries
+    handlebars_map_foreach(map, entry, tmp) {
+        entry->child = NULL;
+        entry->parent = NULL;
+        _ht_add(table, table_size, entry);
+    }
+
+    // Swap with old table
+    handlebars_talloc_free(map->table);
+    map->table = table;
+    map->table_size = table_size;
+}
+
+static inline struct handlebars_map_entry * _entry_find(struct handlebars_map * map, const char * key, size_t length, unsigned long hash)
+{
+    struct handlebars_map_entry * found = map->table[hash  % map->table_size];
+    while( found ) {
+        if( found->key->len == length && 0 == strncmp(HBS_STRVAL(found->key), key, length) ) {
+            return found;
+        } else {
+            found = found->child;
+        }
+    }
+    return NULL;
+
+}
+
+static inline void _entry_add(struct handlebars_map * map, const char * key, size_t len, unsigned long hash, struct handlebars_value * value)
 {
     struct handlebars_map_entry * entry = MC(handlebars_talloc_zero(map, struct handlebars_map_entry));
-
-    entry->key = talloc_steal(entry, handlebars_string_ctor(CONTEXT, key, len));
+    entry->key = talloc_steal(entry, handlebars_string_ctor_ex(CONTEXT, key, len, hash));
     entry->value = value;
     handlebars_value_addref(value);
 
+    // Add to linked list
     if( !map->first ) {
         map->first = map->last = entry;
     } else {
@@ -57,62 +139,102 @@ bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_
         map->last = entry;
     }
 
-    map->i++;
+    // Add to hash table
+    map->collisions += _ht_add(map->table, map->table_size, entry);
 
-    return 1;
+    // Rehash
+    if( map->i * 1000 / map->table_size > 500 ) { // @todo adjust
+        _rehash(map);
+    }
+
+    map->i++;
+}
+
+static inline void _entry_remove(struct handlebars_map * map, struct handlebars_map_entry * entry)
+{
+    struct handlebars_value * value = entry->value;
+    if( map->first == entry ) {
+        map->first = entry->next;
+    }
+    if( map->last == entry ) {
+        map->last = entry->prev;
+    }
+    if( entry->next ) {
+        entry->next->prev = entry->prev;
+    }
+    if( entry->prev ) {
+        entry->prev->next = entry->next;
+    }
+    if( entry->parent ) {
+        entry->parent->child = entry->child;
+    }
+    if( entry->child ) {
+        entry->child->parent = entry->parent;
+    }
+    handlebars_value_delref(value);
+    handlebars_talloc_free(entry);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+bool handlebars_map_add(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value)
+{
+    _entry_add(map, string->val, string->len, string->hash, value);
+    return true;
+}
+
+bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+{
+    _entry_add(map, key, len, handlebars_string_hash(key), value);
+    return true;
 }
 
 bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
 {
-    struct handlebars_map_entry * entry;
-    struct handlebars_map_entry * tmp;
-    struct handlebars_value * value;
-    short removed = 0;
-
-    handlebars_map_foreach(map, entry, tmp) {
-        if( 0 != strcmp(HBS_STRVAL(entry->key), key) ) {
-            continue;
-        }
-
-        value = entry->value;
-        if( map->first == entry ) {
-            map->first = entry->next;
-        }
-        if( map->last == entry ) {
-            map->last = entry->prev;
-        }
-        if( entry->next ) {
-            entry->next->prev = entry->prev;
-        }
-        if( entry->prev ) {
-            entry->prev->next = entry->next;
-        }
-        handlebars_value_delref(value);
-        handlebars_talloc_free(entry);
-        removed++;
+    unsigned long hash = handlebars_string_hash(key);
+    struct handlebars_map_entry * entry = _entry_find(map, key, len, hash);
+    if( entry ) {
+        _entry_remove(map, entry);
+        return 1;
     }
-
-    map->i -= removed;
-
-    return (bool) removed;
+    return 0;
 }
 
 struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len)
 {
-    struct handlebars_map_entry * entry;
-    struct handlebars_map_entry * tmp;
     struct handlebars_value * value = NULL;
+    struct handlebars_map_entry * entry = _entry_find(map, key, len, handlebars_string_hash(key));
 
-    handlebars_map_foreach(map, entry, tmp) {
-        if( 0 == strcmp(HBS_STRVAL(entry->key), key) ) {
-            value = entry->value;
-            break;
-        }
-    }
-
-    if( value != NULL ) {
+    if( entry ) {
+        value = entry->value;
         handlebars_value_addref(value);
     }
 
     return value;
+}
+
+bool handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+{
+    struct handlebars_string * string = talloc_steal(map, handlebars_string_ctor(CONTEXT, key, len));
+    struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, string->hash);
+    if( entry ) {
+        handlebars_value_delref(entry->value);
+        entry->value = value;
+        handlebars_value_addref(entry->value);
+        handlebars_talloc_free(string);
+        return true;
+    } else {
+        _entry_add(map, string->val, string->len, string->hash, value);
+        return true;
+    }
 }

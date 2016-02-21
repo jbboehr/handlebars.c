@@ -55,7 +55,7 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
             handlebars_value_map_init(value);
             json_object_object_foreach(intern, k, v) {
                 new_value = handlebars_value_from_json_object(CONTEXT, v);
-                handlebars_map_str_add(value->v.map, k, strlen(k), new_value);
+                handlebars_map_str_update(value->v.map, k, strlen(k), new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
                 }

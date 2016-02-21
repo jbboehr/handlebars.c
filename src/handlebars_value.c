@@ -402,7 +402,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             handlebars_value_map_init(new_value);
             it = handlebars_value_iterator_ctor(value);
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
-                handlebars_map_str_add(new_value->v.map, it->key, strlen(it->key), it->current);
+                handlebars_map_str_update(new_value->v.map, it->key, strlen(it->key), it->current);
             }
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
@@ -544,7 +544,7 @@ struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_cont
                 yaml_node_t * valueNode = yaml_document_get_node(document, pair->value);
                 assert(keyNode->type == YAML_SCALAR_NODE);
                 tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
-                handlebars_map_str_add(value->v.map, (const char *) keyNode->data.scalar.value, keyNode->data.scalar.length, tmp);
+                handlebars_map_str_update(value->v.map, (const char *) keyNode->data.scalar.value, keyNode->data.scalar.length, tmp);
             }
             break;
         case YAML_SEQUENCE_NODE:

@@ -27,13 +27,26 @@ static inline unsigned long handlebars_string_hash(unsigned char * str)
     return hash;
 }
 
-static inline struct handlebars_string * handlebars_string_ctor(struct handlebars_context * context, const char * str, size_t len)
+static inline struct handlebars_string * handlebars_string_ctor_ex(struct handlebars_context * context, const char * str, size_t len, unsigned long hash)
 {
     struct handlebars_string * st = handlebars_talloc_size(context, offsetof(struct handlebars_string, val) + len + 1);
     st->len = len;
     memcpy(st->val, str, len);
     st->val[st->len] = 0;
-    st->hash = handlebars_string_hash(st->val);
+    st->hash = hash;
+    return st;
+}
+
+static inline struct handlebars_string * handlebars_string_ctor(struct handlebars_context * context, const char * str, size_t len)
+{
+    return handlebars_string_ctor_ex(context, str, len, handlebars_string_hash(str));
+}
+
+static inline struct handlebars_string * handlebars_string_copy_ctor(struct handlebars_context * context, struct handlebars_string * string)
+{
+    size_t size = offsetof(struct handlebars_string, val) + string->len + 1;
+    struct handlebars_string * st = handlebars_talloc_size(context, size);
+    memcpy(st, string, size);
     return st;
 }
 

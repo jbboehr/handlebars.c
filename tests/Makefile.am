@@ -7,6 +7,7 @@ check_PROGRAMS = \
 	test_ast_helpers \
 	test_ast_list \
 	test_compiler \
+	test_map \
 	test_opcode_printer \
 	test_opcodes \
 	test_scanners \
@@ -27,6 +28,7 @@ test_ast_SOURCES = utils.h utils.c fixtures.c test_ast.c
 test_ast_helpers_SOURCES = utils.h utils.c fixtures.c test_ast_helpers.c
 test_ast_list_SOURCES = utils.h utils.c fixtures.c test_ast_list.c
 test_compiler_SOURCES = utils.h utils.c fixtures.c test_compiler.c
+test_map_SOURCES = utils.h utils.c fixtures.c test_map.c
 test_opcode_printer_SOURCES = utils.h utils.c fixtures.c test_opcode_printer.c
 test_opcodes_SOURCES = utils.h utils.c fixtures.c test_opcodes.c
 test_scanners_SOURCES = utils.h utils.c fixtures.c test_scanners.c
@@ -48,6 +50,7 @@ TESTS = \
 	test_ast_helpers \
 	test_ast_list \
 	test_compiler \
+	test_map \
 	test_opcode_printer \
 	test_opcodes \
 	test_scanners \
