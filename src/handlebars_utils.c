@@ -22,7 +22,19 @@
 
 extern struct handlebars_parser * _handlebars_parser_init_current;
 
+struct htmlspecialchars_pair {
+    const char * str;
+    size_t len;
+};
 
+static const struct htmlspecialchars_pair htmlspecialchars[256] = {
+    ['&']  = {HBS_STRL("&amp;")},
+    ['"']  = {HBS_STRL("&quot;")},
+    ['\''] = {HBS_STRL("&#x27;")}, //"&#039;"
+    ['<']  = {HBS_STRL("&lt;")},
+    ['>']  = {HBS_STRL("&gt;")},
+    ['`']  = {HBS_STRL("&#x60;")},
+};
 
 char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char * what, size_t what_length)
 {
@@ -86,32 +98,19 @@ char * handlebars_htmlspecialchars_append_buffer(char * buf, const char * str, s
 {
     size_t orig_size;
     size_t new_len = len;
-    size_t tmp;
-    char * r;
+    char * out;
     const char * p;
-    const char * s;
-    unsigned char c;
-    const char * flags[256];
+    const struct htmlspecialchars_pair * pair;
 
     if( len <= 0 ) {
         return buf;
     }
 
-    // Setup flags
-    memset(flags, 0, sizeof(flags));
-    flags['&'] = "&amp;";
-    flags['"'] = "&quot;";
-    flags['\''] = "&#x27;"; //"&#039;";
-    flags['<'] = "&lt;";
-    flags['>'] = "&gt;";
-    flags['`'] = "&#x60;";
-
     // Calculate new size
     for( p = str + len - 1; p >= str; p-- ) {
-        c = (unsigned char) *p;
-        s = flags[c];
-        if( s != NULL ) {
-            new_len += strlen(s) - 1; // @todo check if sizeof works
+        pair = &htmlspecialchars[(unsigned char) *p];
+        if( pair->len ) {
+            new_len += pair->len - 1; // @todo check if sizeof works
         }
     }
 
@@ -125,21 +124,18 @@ char * handlebars_htmlspecialchars_append_buffer(char * buf, const char * str, s
     buf = talloc_realloc_size(NULL, buf, orig_size + new_len);
 
     // Copy
-    r = buf + orig_size - 1;
+    out = buf + orig_size - 1;
     for( p = str; *p; p++ ) {
-        c = (unsigned char) *p;
-        s = flags[c];
-        if( s != NULL ) {
-            tmp = strlen(s);
-            memcpy(r, s, tmp);
-            r += tmp;
+        pair = &htmlspecialchars[(unsigned char) *p];
+        if( pair->len ) {
+            memcpy(out, pair->str, pair->len);
+            out += pair->len;
         } else {
-            *r = c;
-            r++;
+            *out++ = *p;
         }
     }
 
-    *r = '\0';
+    *out = '\0';
 
     return buf;
 }

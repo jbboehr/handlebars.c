@@ -66,6 +66,7 @@ struct handlebars_token_list;
 #endif
 
 // Macros
+#define HBS_STRL(str) str, sizeof(str) - 1
 #define HBS_S1(x) #x
 #define HBS_S2(x) HBS_S1(x)
 #define HBS_LOC HBS_S2(__FILE__) ":" HBS_S2(__LINE__)
