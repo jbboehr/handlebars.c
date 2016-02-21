@@ -94,7 +94,7 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
     struct handlebars_value * inverse;
     struct handlebars_value * program;
     size_t i, j;
-    struct handlebars_value * placeholder;
+    struct handlebars_value * params[ctx->param_size];
 
     ctx->options = options;
 
@@ -117,18 +117,13 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
     }
 
     i = ctx->param_size;
-    placeholder = handlebars_value_ctor(CONTEXT);
-    for( j = 0; j < i; j++ ) {
-        handlebars_stack_set(ctx->params, j, placeholder);
-    }
-
     while( i-- ) {
-        struct handlebars_value * param = POP(vm->stack);
-        handlebars_stack_set(ctx->params, i, param);
-        handlebars_value_delref(param);
+        params[i] = POP(vm->stack);
     }
-
-    handlebars_value_delref(placeholder);
+    for( i = 0; i < ctx->param_size; i++ ) {
+        handlebars_stack_set(ctx->params, i, params[i]);
+        handlebars_value_delref(params[i]);
+    }
 
     // Params
     options->params = talloc_steal(options, ctx->params);
