@@ -545,8 +545,8 @@ ACCEPT_FUNCTION(lookup_block_param)
     assert(opcode->op1.type == handlebars_operand_type_array);
     assert(opcode->op2.type == handlebars_operand_type_array);
 
-    sscanf(*(opcode->op1.data.arrayval), "%ld", &blockParam1);
-    sscanf(*(opcode->op1.data.arrayval + 1), "%ld", &blockParam2);
+    sscanf(opcode->op1.data.array[0]->val, "%ld", &blockParam1);
+    sscanf(opcode->op1.data.array[1]->val, "%ld", &blockParam2);
 
     if( blockParam1 >= LEN(vm->blockParamStack) ) goto done;
 
@@ -556,13 +556,13 @@ ACCEPT_FUNCTION(lookup_block_param)
     struct handlebars_value * v2 = handlebars_value_array_find(v1, blockParam2);
     if( !v2 ) goto done;
 
-    char ** arr = opcode->op2.data.arrayval;
+    struct handlebars_string ** arr = opcode->op2.data.array;
     arr++;
     if( *arr ) {
         struct handlebars_value * tmp = v2;
         struct handlebars_value * tmp2;
         for(  ; *arr != NULL; arr++ ) {
-            tmp2 = handlebars_value_map_find(tmp, *arr);
+            tmp2 = handlebars_value_map_find(tmp, (*arr)->val);
             if( !tmp2 ) {
                 break;
             } else {
@@ -593,8 +593,8 @@ ACCEPT_FUNCTION(lookup_data)
     assert(opcode->op3.type == handlebars_operand_type_boolean || opcode->op3.type == handlebars_operand_type_null);
 
     size_t depth = opcode->op1.data.longval;
-    char **arr = opcode->op2.data.arrayval;
-    char * first = *arr++;
+    struct handlebars_string ** arr = opcode->op2.data.array;
+    struct handlebars_string * first = *arr++;
 
     if( depth && data ) {
         handlebars_value_addref(data);
@@ -605,19 +605,19 @@ ACCEPT_FUNCTION(lookup_data)
         }
     }
 
-    if( data && (tmp = handlebars_value_map_find(data, first)) ) {
+    if( data && (tmp = handlebars_value_map_find(data, first->val)) ) {
         val = tmp;
-    } else if( 0 == strcmp(first, "root") ) {
+    } else if( 0 == strcmp(first->val, "root") ) {
         val = BOTTOM(vm->contextStack);
     }
 
     if( val ) {
         for (; *arr != NULL; arr++) {
-            char *part = *arr;
+            struct handlebars_string * part = *arr;
             if (val == NULL || handlebars_value_get_type(val) != HANDLEBARS_VALUE_TYPE_MAP) {
                 break;
             }
-            tmp = handlebars_value_map_find(val, part);
+            tmp = handlebars_value_map_find(val, part->val);
             handlebars_value_delref(val);
             val = tmp;
         }
@@ -637,11 +637,11 @@ ACCEPT_FUNCTION(lookup_on_context)
     assert(opcode->op3.type == handlebars_operand_type_boolean || opcode->op3.type == handlebars_operand_type_null);
     assert(opcode->op4.type == handlebars_operand_type_boolean || opcode->op4.type == handlebars_operand_type_null);
 
-    char **arr = opcode->op1.data.arrayval;
+    struct handlebars_string ** arr = opcode->op1.data.array;
     long index = -1;
 
     if( !opcode->op4.data.boolval && (vm->flags & handlebars_compiler_flag_compat) ) {
-        depthed_lookup(vm, *arr);
+        depthed_lookup(vm, (*arr)->val);
     } else {
         ACCEPT_FN(push_context)(vm, opcode);
     }
@@ -652,11 +652,11 @@ ACCEPT_FUNCTION(lookup_on_context)
     if( value ) {
         do {
             if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-                tmp = handlebars_value_map_find(value, *arr);
+                tmp = handlebars_value_map_find(value, (*arr)->val);
                 handlebars_value_try_delref(value);
                 value = tmp;
             } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-                if( sscanf(*arr, "%ld", &index) ) {
+                if( sscanf((*arr)->val, "%ld", &index) ) {
                     tmp = handlebars_value_array_find(value, index);
                 } else {
                     tmp = NULL;

@@ -99,8 +99,7 @@ static int loadTestOpcodeOperand(
                 *arrptr++ = handlebars_talloc_strdup(opcode, json_object_get_string(array_item));
             }
             *arrptr++ = NULL;
-            operand->type = handlebars_operand_type_array;
-            operand->data.arrayval = arr;
+            handlebars_operand_set_arrayval(compiler, operand, arr);
             break;
         }
         case json_type_double: {

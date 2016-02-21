@@ -87,7 +87,7 @@ union handlebars_operand_internals {
     bool boolval;
     long longval;
     struct handlebars_string * string;
-    char ** arrayval;
+    struct handlebars_string ** array;
 };
 
 struct handlebars_operand {

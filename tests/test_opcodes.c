@@ -344,18 +344,17 @@ START_TEST(test_operand_set_arrayval)
     };
     int ret;
     const char ** ptr1;
-    char ** ptr2;
+    struct handlebars_string ** ptr2;
     
     ret = handlebars_operand_set_arrayval(compiler, &op, strs);
     
     ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
     ck_assert_int_eq(handlebars_operand_type_array, op.type);
-    ck_assert_ptr_ne(NULL, op.data.arrayval);
+    ck_assert_ptr_ne(NULL, op.data.array);
     
     // Compare arrays
-    for( ptr1 = strs, ptr2 = op.data.arrayval; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
-        ck_assert_ptr_ne(*ptr1, *ptr2);
-        ck_assert_str_eq(*ptr1, *ptr2);
+    for( ptr1 = strs, ptr2 = op.data.array; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
+        ck_assert_str_eq(*ptr1, (*ptr2)->val);
     }
 }
 END_TEST

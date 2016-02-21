@@ -1053,8 +1053,6 @@ static inline void handlebars_compiler_accept_path(
         handlebars_operand_set_arrayval(compiler, &opcode->op1, block_param_arr);
         parts_arr = MC(handlebars_ast_node_get_id_parts(compiler, path));
         handlebars_operand_set_arrayval(compiler, &opcode->op2, (const char **) parts_arr);
-        //opcode->op2.type = handlebars_operand_type_array;
-        //opcode->op2.data.arrayval = talloc_steal(opcode, parts_arr);
         __PUSH(opcode);
     } else if( name == NULL ) {
         __OPN(push_context);

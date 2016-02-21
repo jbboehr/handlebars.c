@@ -118,8 +118,8 @@ int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, stru
 
 int handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char ** arg)
 {
-    char ** arr;
-    char ** arrptr;
+    struct handlebars_string ** arr;
+    struct handlebars_string ** arrptr;
     const char ** ptr;
     size_t num = 0;
 
@@ -129,19 +129,19 @@ int handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struc
     for( ptr = arg; *ptr; ++ptr, ++num );
     
     // Allocate array
-    arrptr = arr = MC(handlebars_talloc_array(compiler, char *, num + 1));
+    arrptr = arr = MC(handlebars_talloc_array(compiler, struct handlebars_string *, num + 1));
     
     // Copy each item
     for( ptr = arg; *ptr; ++ptr ) {
-        *arrptr = MC(handlebars_talloc_strdup(arr, *ptr));
+        *arrptr = handlebars_string_ctor(HBSCTX(compiler), *ptr, strlen(*ptr));// MC(handlebars_talloc_strdup(arr, *ptr));
         ++arrptr;
     }
     *arrptr++ = NULL;
     
     // Assign to operand
     operand->type = handlebars_operand_type_array;
-    operand->data.arrayval = arr;
-    
+    operand->data.array = arr;
+
     return HANDLEBARS_SUCCESS;
 }
 
