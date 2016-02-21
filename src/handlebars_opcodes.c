@@ -11,6 +11,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_private.h"
+#include "handlebars_string.h"
 
 
 
@@ -111,7 +112,7 @@ int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, stru
     assert(operand != NULL);
 
     operand->type = handlebars_operand_type_string;
-    operand->data.stringval = MC(handlebars_talloc_strdup(compiler, arg));
+    operand->data.string = MC(handlebars_string_ctor(HBSCTX(compiler), arg, strlen(arg)));
     return HANDLEBARS_SUCCESS;
 }
 

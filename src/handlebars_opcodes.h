@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 struct handlebars_compiler;
+struct handlebars_string;
 
 /**
  * @brief Opcode types
@@ -85,7 +86,7 @@ enum handlebars_operand_type {
 union handlebars_operand_internals {
     bool boolval;
     long longval;
-    char * stringval;
+    struct handlebars_string * string;
     char ** arrayval;
 };
 

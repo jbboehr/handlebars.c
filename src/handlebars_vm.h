@@ -37,7 +37,7 @@ struct handlebars_vm {
     struct handlebars_value * helpers;
     struct handlebars_value * partials;
 
-    const char * last_helper;
+	struct handlebars_string * last_helper;
     struct handlebars_value * last_context;
 
     struct handlebars_vm_stack stack;

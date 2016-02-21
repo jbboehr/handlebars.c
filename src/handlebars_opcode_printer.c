@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <handlebars_string.h>
 
 #include "handlebars.h"
 #include "handlebars_compiler.h"
@@ -49,7 +50,7 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
             str = handlebars_talloc_asprintf_append(str, "[LONG:%ld]", operand->data.longval);
             break;
         case handlebars_operand_type_string: {
-            char * tmp = handlebars_addcslashes(operand->data.stringval, "\r\n\t");
+            char * tmp = handlebars_addcslashes(operand->data.string->val, "\r\n\t");
             if( likely(tmp != NULL) ) {
                 str = handlebars_talloc_asprintf_append(str, "[STRING:%s]", tmp);
                 handlebars_talloc_free(tmp);

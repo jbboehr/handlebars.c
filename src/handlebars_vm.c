@@ -44,7 +44,8 @@
 
 
 struct setup_ctx {
-    const char * name;
+    //const char * name;
+    struct handlebars_string * name;
     size_t param_size;
     struct handlebars_stack * params;
     struct handlebars_options * options;
@@ -98,7 +99,7 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
 
     ctx->options = options;
 
-    options->name = ctx->name ? MC(handlebars_talloc_strdup(options, ctx->name)) : NULL;
+    options->name = ctx->name ? MC(handlebars_talloc_strndup(options, ctx->name->val, ctx->name->len)) : NULL;
     options->hash = POP(vm->stack);
     options->scope = TOPCONTEXT;
     options->vm = vm;
@@ -239,7 +240,7 @@ ACCEPT_FUNCTION(append_content)
     assert(opcode->type == handlebars_opcode_type_append_content);
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    vm->buffer = MC(handlebars_talloc_strdup_append_buffer(vm->buffer, opcode->op1.data.stringval));
+    vm->buffer = MC(handlebars_talloc_strndup_append_buffer(vm->buffer, opcode->op1.data.string->val, opcode->op1.data.string->len));
 }
 
 ACCEPT_FUNCTION(assign_to_hash)
@@ -250,7 +251,7 @@ ACCEPT_FUNCTION(assign_to_hash)
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(hash->type == HANDLEBARS_VALUE_TYPE_MAP);
 
-    handlebars_map_str_update(hash->v.map, opcode->op1.data.stringval, strlen(opcode->op1.data.stringval), value);
+    handlebars_map_update(hash->v.map, opcode->op1.data.string, value);
 
     handlebars_value_delref(hash);
     handlebars_value_delref(value);
@@ -266,7 +267,7 @@ ACCEPT_FUNCTION(block_value)
 
     ctx.params = handlebars_stack_ctor(CONTEXT);
     //handlebars_stack_push(ctx.params, TOPCONTEXT);
-    ctx.name = opcode->op1.data.stringval;
+    ctx.name = opcode->op1.data.string;
     setup_options(vm, &ctx);
 
     current = POP(vm->stack);
@@ -317,12 +318,12 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(opcode->op2.type == handlebars_operand_type_boolean);
 
-    ctx.name = opcode->op1.data.stringval;
+    ctx.name = opcode->op1.data.string;
     //ctx.is_block_helper = opcode->op2.data.boolval;
     setup_options(vm, &ctx);
     vm->last_helper = NULL;
 
-    if( NULL != (result = call_helper(ctx.options, ctx.name, strlen(ctx.name))) ) {
+    if( NULL != (result = call_helper(ctx.options, ctx.name->val, ctx.name->len)) ) {
         append_to_buffer(vm, result, 0);
         vm->last_helper = ctx.name;
     } else if( value && handlebars_value_is_callable(value) ) {
@@ -348,12 +349,12 @@ ACCEPT_FUNCTION(invoke_helper)
     assert(opcode->op2.type == handlebars_operand_type_string);
     assert(opcode->op3.type == handlebars_operand_type_boolean);
 
-    ctx.name = opcode->op2.data.stringval;
+    ctx.name = opcode->op2.data.string;
     ctx.param_size = opcode->op1.data.longval;
     setup_options(vm, &ctx);
 
     if( opcode->op3.data.boolval ) { // isSimple
-        if( NULL != (result = call_helper(ctx.options, ctx.name, strlen(ctx.name))) ) {
+        if( NULL != (result = call_helper(ctx.options, ctx.name->val, ctx.name->len)) ) {
             goto done;
         }
     }
@@ -384,13 +385,13 @@ ACCEPT_FUNCTION(invoke_known_helper)
     assert(opcode->op2.type == handlebars_operand_type_string);
 
     ctx.param_size = opcode->op1.data.longval;
-    ctx.name = opcode->op2.data.stringval;
+    ctx.name = opcode->op2.data.string;
     setup_options(vm, &ctx);
 
-    result = call_helper(ctx.options, ctx.name, strlen(ctx.name));
+    result = call_helper(ctx.options, ctx.name->val, ctx.name->len);
 
     if( result == NULL ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid known helper: %s", ctx.name);
+        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid known helper: %s", ctx.name->val);
     }
 
     PUSH(vm->stack, result);
@@ -415,7 +416,7 @@ ACCEPT_FUNCTION(invoke_partial)
     if( opcode->op2.type == handlebars_operand_type_long ) {
         name = MC(handlebars_talloc_asprintf(vm, "%ld", opcode->op2.data.longval));
     } else if( opcode->op2.type == handlebars_operand_type_string ) {
-        name = opcode->op2.data.stringval;
+        name = opcode->op2.data.string->val;
     }
     if( opcode->op1.data.boolval ) {
         tmp = POP(vm->stack);
@@ -519,7 +520,7 @@ ACCEPT_FUNCTION(invoke_partial)
     handlebars_vm_execute(vm2, compiler, context2);
 
     if( vm2->buffer ) {
-        char *tmp2 = handlebars_indent(vm2, vm2->buffer, opcode->op3.data.stringval);
+        char *tmp2 = handlebars_indent(vm2, vm2->buffer, opcode->op3.data.string->val);
         vm->buffer = MC(handlebars_talloc_strdup_append_buffer(vm->buffer, tmp2));
         handlebars_talloc_free(tmp2);
     }
@@ -728,12 +729,12 @@ ACCEPT_FUNCTION(push_literal)
     switch( opcode->op1.type ) {
         case handlebars_operand_type_string:
             // @todo we should move this to the parser
-            if( 0 == strcmp(opcode->op1.data.stringval, "undefined") ) {
+            if( 0 == strcmp(opcode->op1.data.string->val, "undefined") ) {
                 break;
-            } else if( 0 == strcmp(opcode->op1.data.stringval, "null") ) {
+            } else if( 0 == strcmp(opcode->op1.data.string->val, "null") ) {
                 break;
             }
-            handlebars_value_string(value, opcode->op1.data.stringval);
+            handlebars_value_str(value, opcode->op1.data.string);
             break;
         case handlebars_operand_type_boolean:
             handlebars_value_boolean(value, opcode->op1.data.boolval);
@@ -759,7 +760,7 @@ ACCEPT_FUNCTION(push_string)
 
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    handlebars_value_string(value, opcode->op1.data.stringval);
+    handlebars_value_str(value, opcode->op1.data.string);
     PUSH(vm->stack, value);
 }
 

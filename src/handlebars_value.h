@@ -251,11 +251,19 @@ static inline void handlebars_value_float(struct handlebars_value * value, doubl
     value->v.dval = dval;
 }
 
+static inline void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.string = handlebars_string_copy_ctor(value->ctx, string);
+}
+
 static inline void handlebars_value_string(struct handlebars_value * value, const char * strval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = talloc_steal(value, handlebars_string_ctor(value->ctx, strval, strlen(strval)));
 }
+
 
 static inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval) {
     handlebars_value_null(value);

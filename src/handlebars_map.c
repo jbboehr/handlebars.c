@@ -223,6 +223,20 @@ struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, c
     return value;
 }
 
+bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value)
+{
+    struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, string->hash);
+    if( entry ) {
+        handlebars_value_delref(entry->value);
+        entry->value = value;
+        handlebars_value_addref(entry->value);
+        return true;
+    } else {
+        _entry_add(map, string->val, string->len, string->hash, value);
+        return true;
+    }
+}
+
 bool handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     struct handlebars_string * string = talloc_steal(map, handlebars_string_ctor(CONTEXT, key, len));

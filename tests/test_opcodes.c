@@ -11,6 +11,7 @@
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
+#include "handlebars_string.h"
 #include "utils.h"
 
 
@@ -82,8 +83,8 @@ START_TEST(test_opcode_ctor_long_string)
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
     ck_assert_int_eq(1, opcode->op1.data.longval);
-    ck_assert_ptr_ne(NULL, opcode->op2.data.stringval);
-    ck_assert_str_eq(str, opcode->op2.data.stringval);
+    ck_assert_ptr_ne(NULL, opcode->op2.data.string);
+    ck_assert_str_eq(str, opcode->op2.data.string->val);
     
     handlebars_talloc_free(opcode);
 }
@@ -116,8 +117,8 @@ START_TEST(test_opcode_ctor_string)
     opcode = handlebars_opcode_ctor_string(compiler, handlebars_opcode_type_append_content, str);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
-    ck_assert_str_eq(str, opcode->op1.data.stringval);
-    ck_assert_ptr_ne(str, opcode->op1.data.stringval);
+    ck_assert_str_eq(str, opcode->op1.data.string->val);
+    //ck_assert_ptr_ne(str, opcode->op1.data.stringval);
     
     handlebars_talloc_free(opcode);
 }
@@ -151,10 +152,10 @@ START_TEST(test_opcode_ctor_string2)
     opcode = handlebars_opcode_ctor_string2(compiler, handlebars_opcode_type_append_content, str1, str2);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
-    ck_assert_str_eq(str1, opcode->op1.data.stringval);
-    ck_assert_ptr_ne(str1, opcode->op1.data.stringval);
-    ck_assert_str_eq(str2, opcode->op2.data.stringval);
-    ck_assert_ptr_ne(str2, opcode->op2.data.stringval);
+    ck_assert_str_eq(str1, opcode->op1.data.string->val);
+    //ck_assert_ptr_ne(str1, opcode->op1.data.stringval);
+    ck_assert_str_eq(str2, opcode->op2.data.string->val);
+    //ck_assert_ptr_ne(str2, opcode->op2.data.stringval);
     
     handlebars_talloc_free(opcode);
 }
@@ -187,8 +188,8 @@ START_TEST(test_opcode_ctor_string_long)
     opcode = handlebars_opcode_ctor_string_long(compiler, handlebars_opcode_type_append_content, str, 3);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
-    ck_assert_str_eq(str, opcode->op1.data.stringval);
-    ck_assert_ptr_ne(str, opcode->op1.data.stringval);
+    ck_assert_str_eq(str, opcode->op1.data.string->val);
+    //ck_assert_ptr_ne(str, opcode->op1.data.stringval);
     ck_assert_int_eq(3, opcode->op2.data.longval);
     
     handlebars_talloc_free(opcode);
@@ -272,7 +273,7 @@ START_TEST(test_operand_set_null)
     ck_assert_int_eq(handlebars_operand_type_null, op.type);
     ck_assert_int_eq(0, op.data.boolval);
     ck_assert_int_eq(0, op.data.longval);
-    ck_assert_ptr_eq(NULL, op.data.stringval);
+    ck_assert_ptr_eq(NULL, op.data.string);
 }
 END_TEST
 
@@ -310,9 +311,9 @@ START_TEST(test_operand_set_stringval)
     
     ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
     ck_assert_int_eq(handlebars_operand_type_string, op.type);
-    ck_assert_ptr_ne(NULL, op.data.stringval);
-    ck_assert_str_eq(str, op.data.stringval);
-    ck_assert_ptr_ne(str, op.data.stringval);
+    ck_assert_ptr_ne(NULL, op.data.string);
+    ck_assert_str_eq(str, op.data.string->val);
+    //ck_assert_ptr_ne(str, op.data.stringval);
 }
 END_TEST
 
