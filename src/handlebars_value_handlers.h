@@ -8,13 +8,14 @@
 extern "C" {
 #endif
 
+struct handlebars_string;
 struct handlebars_value_iterator;
 
 typedef struct handlebars_value * (*handlebars_copy_func)(struct handlebars_value * value);
 typedef void (*handlebars_value_dtor_func)(struct handlebars_value * value);
 typedef void (*handlebars_value_convert_func)(struct handlebars_value * value, bool recurse);
 typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
-typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, const char * key);
+typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, struct handlebars_string * key);
 typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index);
 typedef struct handlebars_value_iterator * (*handlebars_iterator_ctor_func)(struct handlebars_value * value);
 typedef bool (*handlebars_iterator_next_func)(struct handlebars_value_iterator * it);

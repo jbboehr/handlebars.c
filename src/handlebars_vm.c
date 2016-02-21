@@ -74,7 +74,22 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
     handlebars_talloc_free(vm);
 }
 
-static inline struct handlebars_value * call_helper(struct handlebars_options * options, const char * name, unsigned int len)
+static inline struct handlebars_value * call_helper(struct handlebars_options * options, struct handlebars_string * string)
+{
+    struct handlebars_value * helper;
+    struct handlebars_value * result;
+    handlebars_helper_func fn;
+    if( NULL != (helper = handlebars_value_map_find(options->vm->helpers, string)) ) {
+        result = handlebars_value_call(helper, options);
+        handlebars_value_delref(helper);
+        return result;
+    } else if( NULL != (fn = handlebars_builtins_find(string->val, string->len)) ) {
+        return fn(options);
+    }
+    return NULL;
+}
+
+static inline struct handlebars_value * call_helper_str(struct handlebars_options * options, const char * name, unsigned int len)
 {
     struct handlebars_value * helper;
     struct handlebars_value * result;
@@ -215,7 +230,7 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     handlebars_stack_set(ctx.params, 0, current);
 
     if( vm->last_helper == NULL ) {
-        result = call_helper(ctx.options, "blockHelperMissing", sizeof("blockHelperMissing") - 1);
+        result = call_helper_str(ctx.options, "blockHelperMissing", sizeof("blockHelperMissing") - 1);
         append_to_buffer(vm, result, 0);
     }
 
@@ -274,7 +289,7 @@ ACCEPT_FUNCTION(block_value)
     assert(current != NULL);
     handlebars_stack_set(ctx.params, 0, current);
 
-    result = call_helper(ctx.options, "blockHelperMissing", sizeof("blockHelperMissing") - 1);
+    result = call_helper_str(ctx.options, "blockHelperMissing", sizeof("blockHelperMissing") - 1);
     append_to_buffer(vm, result, 0);
 
     handlebars_value_delref(current);
@@ -323,7 +338,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     setup_options(vm, &ctx);
     vm->last_helper = NULL;
 
-    if( NULL != (result = call_helper(ctx.options, ctx.name->val, ctx.name->len)) ) {
+    if( NULL != (result = call_helper(ctx.options, ctx.name)) ) {
         append_to_buffer(vm, result, 0);
         vm->last_helper = ctx.name;
     } else if( value && handlebars_value_is_callable(value) ) {
@@ -331,7 +346,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         assert(result != NULL);
         PUSH(vm->stack, result);
     } else {
-        result = call_helper(ctx.options, "helperMissing", sizeof("helperMissing") - 1);
+        result = call_helper_str(ctx.options, "helperMissing", sizeof("helperMissing") - 1);
         append_to_buffer(vm, result, 0);
         PUSH(vm->stack, value);
     }
@@ -354,7 +369,7 @@ ACCEPT_FUNCTION(invoke_helper)
     setup_options(vm, &ctx);
 
     if( opcode->op3.data.boolval ) { // isSimple
-        if( NULL != (result = call_helper(ctx.options, ctx.name->val, ctx.name->len)) ) {
+        if( NULL != (result = call_helper(ctx.options, ctx.name)) ) {
             goto done;
         }
     }
@@ -362,7 +377,7 @@ ACCEPT_FUNCTION(invoke_helper)
     if( value && handlebars_value_is_callable(value) ) {
         result = handlebars_value_call(value, ctx.options);
     } else {
-        result = call_helper(ctx.options, "helperMissing", sizeof("helperMissing") - 1);
+        result = call_helper_str(ctx.options, "helperMissing", sizeof("helperMissing") - 1);
     }
 
 done:
@@ -388,7 +403,7 @@ ACCEPT_FUNCTION(invoke_known_helper)
     ctx.name = opcode->op2.data.string;
     setup_options(vm, &ctx);
 
-    result = call_helper(ctx.options, ctx.name->val, ctx.name->len);
+    result = call_helper(ctx.options, ctx.name);
 
     if( result == NULL ) {
         handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid known helper: %s", ctx.name->val);

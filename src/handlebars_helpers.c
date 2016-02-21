@@ -22,7 +22,7 @@
 #undef CONTEXT
 #define CONTEXT HBSCTX(vm)
 
-static inline struct handlebars_value * call_helper(struct handlebars_options * options, const char * name, unsigned int len)
+static inline struct handlebars_value * call_helper_str(struct handlebars_options * options, const char * name, unsigned int len)
 {
     struct handlebars_value * helper;
     struct handlebars_value * result;
@@ -66,7 +66,7 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(struct handleb
     } else if( handlebars_value_is_empty(context) && !is_zero ) {
         result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        ret = call_helper(options, "each", sizeof("each") - 1);
+        ret = call_helper_str(options, HBS_STRL("each"));
     } else {
         // For object, etc
         result = handlebars_vm_execute_program(options->vm, options->program, context);
@@ -306,7 +306,7 @@ struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * 
     }
     handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
-    result = call_helper(options, "if", sizeof("if") - 1);
+    result = call_helper_str(options, HBS_STRL("if"));
     handlebars_value_delref(conditional);
     SAFE_RETURN(result);
 }

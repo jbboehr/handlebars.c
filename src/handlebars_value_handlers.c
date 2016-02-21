@@ -102,10 +102,10 @@ static enum handlebars_value_type std_json_type(struct handlebars_value * value)
     }
 }
 
-static struct handlebars_value * std_json_map_find(struct handlebars_value * value, const char * key)
+static struct handlebars_value * std_json_map_find(struct handlebars_value * value, struct handlebars_string * key)
 {
     struct json_object * intern = (struct json_object *) value->v.usr;
-    struct json_object * item = json_object_object_get(intern, key);
+    struct json_object * item = json_object_object_get(intern, key->val);
     if( item == NULL ) {
         return NULL;
     }

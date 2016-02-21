@@ -67,15 +67,19 @@ struct handlebars_value * handlebars_value_map_find(struct handlebars_value * va
 
 struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len)
 {
+    struct handlebars_value * ret = NULL;
+    struct handlebars_string * str = handlebars_string_ctor(value->ctx, key, len);
+
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-			return value->handlers->map_find(value, key);
+			ret = value->handlers->map_find(value, str);
 		}
 	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        return handlebars_map_str_find(value->v.map, key, len);
+        ret = handlebars_map_find(value->v.map, str);
     }
 
-	return NULL;
+    handlebars_talloc_free(str);
+	return ret;
 }
 
 struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index)
