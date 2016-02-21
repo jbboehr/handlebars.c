@@ -198,17 +198,17 @@ START_TEST(test_map_iterator)
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
-    handlebars_map_add(value->v.map, "a", tmp);
+    handlebars_map_str_add(value->v.map, HBS_STRL("a"), tmp);
     handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
-    handlebars_map_add(value->v.map, "c", tmp);
+    handlebars_map_str_add(value->v.map, HBS_STRL("c"), tmp);
     handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
-    handlebars_map_add(value->v.map, "b", tmp);
+    handlebars_map_str_add(value->v.map, HBS_STRL("b"), tmp);
     handlebars_value_delref(tmp);
 
     it = handlebars_value_iterator_ctor(value);

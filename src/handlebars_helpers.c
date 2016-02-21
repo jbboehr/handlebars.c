@@ -129,7 +129,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
         if( handlebars_value_get_type(options->data) == HANDLEBARS_VALUE_TYPE_MAP ) {
             struct handlebars_value_iterator *it2 = handlebars_value_iterator_ctor(options->data);
             for (; it2->current != NULL; handlebars_value_iterator_next(it2)) {
-                handlebars_map_add(data->v.map, it2->key, it2->current);
+                handlebars_map_str_add(data->v.map, it2->key, strlen(it2->key), it2->current);
             }
             handlebars_talloc_free(it2);
         }
@@ -169,10 +169,10 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
             handlebars_value_boolean(first, i == 0);
             handlebars_value_boolean(last, i == len);
 
-            handlebars_map_update(data->v.map, "index", index);
-            handlebars_map_update(data->v.map, "key", key);
-            handlebars_map_update(data->v.map, "first", first);
-            handlebars_map_update(data->v.map, "last", last);
+            handlebars_map_str_update(data->v.map, HBS_STRL("index"), index);
+            handlebars_map_str_update(data->v.map, HBS_STRL("key"), key);
+            handlebars_map_str_update(data->v.map, HBS_STRL("first"), first);
+            handlebars_map_str_update(data->v.map, HBS_STRL("last"), last);
             handlebars_value_delref(index);
             handlebars_value_delref(first);
             handlebars_value_delref(last);

@@ -2,8 +2,9 @@
 #ifndef HANDLEBARS_STRING_H
 #define HANDLEBARS_STRING_H
 
-#include "handlebars.h"
 #include <stddef.h>
+#include "handlebars.h"
+#include "handlebars_memory.h"
 
 #define HBS_STRVAL(str) str->val
 #define HBS_STRLEN(str) str->len

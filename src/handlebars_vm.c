@@ -250,7 +250,7 @@ ACCEPT_FUNCTION(assign_to_hash)
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(hash->type == HANDLEBARS_VALUE_TYPE_MAP);
 
-    handlebars_map_update(hash->v.map, opcode->op1.data.stringval, value);
+    handlebars_map_str_update(hash->v.map, opcode->op1.data.stringval, strlen(opcode->op1.data.stringval), value);
 
     handlebars_value_delref(hash);
     handlebars_value_delref(value);
@@ -486,13 +486,13 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_value_map_init(context2);
         it = handlebars_value_iterator_ctor(context1);
         for( ; it->current ; handlebars_value_iterator_next(it) ) {
-            handlebars_map_update(context2->v.map, it->key, it->current);
+            handlebars_map_str_update(context2->v.map, it->key, strlen(it->key), it->current);
         }
         handlebars_talloc_free(it);
         if( ctx.options->hash && ctx.options->hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
             it = handlebars_value_iterator_ctor(ctx.options->hash);
             for( ; it->current ; handlebars_value_iterator_next(it) ) {
-                handlebars_map_update(context2->v.map, it->key, it->current);
+                handlebars_map_str_update(context2->v.map, it->key, strlen(it->key), it->current);
             }
             handlebars_talloc_free(it);
         }

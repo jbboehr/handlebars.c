@@ -5,7 +5,11 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <string.h>
 
+#include "handlebars.h"
+#include "handlebars_map.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 
@@ -151,9 +155,9 @@ FIXTURE_FN(585442881)
     handlebars_value_map_init(context);
     struct handlebars_value * greeting = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(greeting, "Goodbye");
-    handlebars_map_add(context->v.map, "greeting", greeting);
-    handlebars_map_add(context->v.map, "adj", cruel);
-    handlebars_map_add(context->v.map, "noun", world);
+    handlebars_map_str_add(context->v.map, HBS_STRL("greeting"), greeting);
+    handlebars_map_str_add(context->v.map, HBS_STRL("adj"), cruel);
+    handlebars_map_str_add(context->v.map, HBS_STRL("noun"), world);
     char * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -381,13 +385,13 @@ FIXTURE_FN(931412676)
         if( 0 == strcmp(it->key, "depth") ) {
             struct handlebars_value * tmp = handlebars_value_ctor(CONTEXT);
             handlebars_value_integer(tmp, handlebars_value_get_intval(it->current) + 1);
-            handlebars_map_add(frame->v.map, it->key, tmp);
+            handlebars_map_str_add(frame->v.map, it->key, strlen(it->key), tmp);
             handlebars_value_delref(tmp);
         } else {
-            handlebars_map_add(frame->v.map, it->key, it->current);
+            handlebars_map_str_add(frame->v.map, it->key, strlen(it->key), it->current);
         }
     }
-    handlebars_map_update(frame->v.map, "_parent", options->data);
+    handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
     char * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, frame, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, res);
@@ -962,13 +966,13 @@ FIXTURE_FN(2919388099)
     handlebars_value_map_init(frame);
     struct handlebars_value_iterator *it = handlebars_value_iterator_ctor(options->data);
     for (; it->current; handlebars_value_iterator_next(it)) {
-        handlebars_map_add(frame->v.map, it->key, it->current);
+        handlebars_map_str_add(frame->v.map, it->key, strlen(it->key), it->current);
     }
     struct handlebars_value_iterator *it2 = handlebars_value_iterator_ctor(options->hash);
     for (; it2->current; handlebars_value_iterator_next(it2)) {
-        handlebars_map_update(frame->v.map, it2->key, it2->current);
+        handlebars_map_str_update(frame->v.map, it2->key, strlen(it2->key), it2->current);
     }
-    handlebars_map_update(frame->v.map, "_parent", options->data);
+    handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
     char * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, frame, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, res);

@@ -251,7 +251,7 @@ START_TEST(test_mustache_spec)
     if( test->partials ) {
         it = handlebars_value_iterator_ctor(test->partials);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            handlebars_map_update(vm->partials->v.map, it->key, it->current);
+            handlebars_map_str_update(vm->partials->v.map, it->key, strlen(it->key), it->current);
         }
     }
 

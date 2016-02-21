@@ -41,11 +41,11 @@ void handlebars_map_dtor(struct handlebars_map * map)
     handlebars_talloc_free(map);
 }
 
-bool handlebars_map_add(struct handlebars_map * map, const char * key, struct handlebars_value * value)
+bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     struct handlebars_map_entry * entry = MC(handlebars_talloc_zero(map, struct handlebars_map_entry));
 
-    entry->key = talloc_steal(entry, handlebars_string_ctor(CONTEXT, key, strlen(key)));
+    entry->key = talloc_steal(entry, handlebars_string_ctor(CONTEXT, key, len));
     entry->value = value;
     handlebars_value_addref(value);
 
@@ -62,7 +62,7 @@ bool handlebars_map_add(struct handlebars_map * map, const char * key, struct ha
     return 1;
 }
 
-bool handlebars_map_remove(struct handlebars_map * map, const char * key)
+bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
 {
     struct handlebars_map_entry * entry;
     struct handlebars_map_entry * tmp;
@@ -97,7 +97,7 @@ bool handlebars_map_remove(struct handlebars_map * map, const char * key)
     return (bool) removed;
 }
 
-struct handlebars_value * handlebars_map_find(struct handlebars_map * map, const char * key)
+struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len)
 {
     struct handlebars_map_entry * entry;
     struct handlebars_map_entry * tmp;
