@@ -146,20 +146,10 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
 
 static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, bool escape)
 {
-    char * tmp;
-    if( !result ) {
-        return;
+    if( result ) {
+        vm->buffer = handlebars_value_expression_append_buffer(vm->buffer, result, escape);
+        handlebars_value_delref(result);
     }
-    if( NULL != (tmp = handlebars_value_expression(result, escape)) ) {
-#ifndef NDEBUG
-        if( getenv("DEBUG") ) {
-            fprintf(stderr, "APPEND TO BUFFER: %s\n", tmp);
-        }
-#endif
-        vm->buffer = MC(handlebars_talloc_strdup_append_buffer(vm->buffer, tmp));
-        handlebars_talloc_free(tmp);
-    }
-    handlebars_value_delref(result);
 }
 
 static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
@@ -254,7 +244,7 @@ ACCEPT_FUNCTION(append_content)
     assert(opcode->type == handlebars_opcode_type_append_content);
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    vm->buffer = MC(handlebars_talloc_strdup_append(vm->buffer, opcode->op1.data.stringval));
+    vm->buffer = MC(handlebars_talloc_strdup_append_buffer(vm->buffer, opcode->op1.data.stringval));
 }
 
 ACCEPT_FUNCTION(assign_to_hash)

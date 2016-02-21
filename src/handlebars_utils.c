@@ -82,16 +82,22 @@ char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char
     return new_str;
 }
 
-char * handlebars_htmlspecialchars(const char * str)
+char * handlebars_htmlspecialchars_append_buffer(char * buf, const char * str, size_t len)
 {
-    const char * flags[256];
-    size_t newsize = 0;
-    const char * p;
-    char * newstr;
-    char * r;
+    size_t orig_size;
+    size_t new_len = len;
     size_t tmp;
+    char * r;
+    const char * p;
+    const char * s;
+    unsigned char c;
+    const char * flags[256];
 
-    // Build map
+    if( len <= 0 ) {
+        return buf;
+    }
+
+    // Setup flags
     memset(flags, 0, sizeof(flags));
     flags['&'] = "&amp;";
     flags['"'] = "&quot;";
@@ -100,39 +106,48 @@ char * handlebars_htmlspecialchars(const char * str)
     flags['>'] = "&gt;";
     flags['`'] = "&#x60;";
 
-    // Estimate new size
-    for( p = str; *p; p++ ) {
-        unsigned char c = (unsigned char) *p;
-        if( flags[c] != NULL ) {
-            newsize += strlen(flags[c]);
-        } else {
-            newsize++;
+    // Calculate new size
+    for( p = str + len - 1; p >= str; p-- ) {
+        c = (unsigned char) *p;
+        s = flags[c];
+        if( s != NULL ) {
+            new_len += strlen(s) - 1; // @todo check if sizeof works
         }
     }
 
-    // Alloc new string
-    r = newstr = handlebars_talloc_array(NULL, char, newsize + 1);
-    if( unlikely(!newstr) ) {
-        return NULL;
+    // If new size is equal to len, nothing to escape, just append
+    if( new_len == len ) {
+        return handlebars_talloc_strndup_append_buffer(buf, str, len);
     }
-    memset(newstr, 0, newsize + 1);
+
+    // Realloc original buffer
+    orig_size = talloc_array_length(buf);
+    buf = talloc_realloc_size(NULL, buf, orig_size + new_len);
 
     // Copy
+    r = buf + orig_size - 1;
     for( p = str; *p; p++ ) {
-        unsigned char c = (unsigned char) *p;
-        if( flags[c] ) {
-            tmp = strlen(flags[c]);
-            memcpy(r, flags[c], tmp);
+        c = (unsigned char) *p;
+        s = flags[c];
+        if( s != NULL ) {
+            tmp = strlen(s);
+            memcpy(r, s, tmp);
             r += tmp;
         } else {
-            *r = *p;
+            *r = c;
             r++;
         }
     }
 
-    r = '\0';
+    *r = '\0';
 
-    return newstr;
+    return buf;
+}
+
+char * handlebars_htmlspecialchars(const char * str)
+{
+    char * buf = handlebars_talloc_strdup(NULL, "");
+    return handlebars_htmlspecialchars_append_buffer(buf, str, strlen(str));
 }
 
 char * handlebars_implode(const char * sep, const char ** arr)

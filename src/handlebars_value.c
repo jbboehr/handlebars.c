@@ -319,64 +319,66 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
 
 char * handlebars_value_expression(struct handlebars_value * value, bool escape)
 {
-    char * ret = NULL;
+    char * buf = MC(handlebars_talloc_strdup(CONTEXT, ""));
+    return handlebars_value_expression_append_buffer(buf, value, escape);
+}
+
+char * handlebars_value_expression_append_buffer(char * buf, struct handlebars_value * value, bool escape)
+{
     struct handlebars_value_iterator * it;
 
-    switch( handlebars_value_get_type(value) ) {
+    switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            if( handlebars_value_get_boolval(value) ) {
-                ret = handlebars_talloc_strdup(CONTEXT, "true");
+            if( value->v.bval ) {
+                buf = handlebars_talloc_strdup_append_buffer(buf, "true");
             } else {
-                ret = handlebars_talloc_strdup(CONTEXT, "false");
+                buf = handlebars_talloc_strdup_append_buffer(buf, "false");
             }
             break;
 
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            ret = handlebars_talloc_asprintf(CONTEXT, "%g", handlebars_value_get_floatval(value));
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "%g", value->v.dval);
             break;
 
         case HANDLEBARS_VALUE_TYPE_INTEGER:
-            ret = handlebars_talloc_asprintf(CONTEXT, "%ld", handlebars_value_get_intval(value));
-            break;
-
-        case HANDLEBARS_VALUE_TYPE_NULL:
-            ret = handlebars_talloc_strdup(CONTEXT, "");
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "%ld", value->v.lval);
             break;
 
         case HANDLEBARS_VALUE_TYPE_STRING:
-            ret = handlebars_talloc_strdup(CONTEXT, handlebars_value_get_strval(value));
+            if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
+                buf = handlebars_htmlspecialchars_append_buffer(buf, value->v.strval, strlen(value->v.strval));
+            } else {
+                buf = handlebars_talloc_strdup_append_buffer(buf, value->v.strval);
+            }
             break;
 
+        case HANDLEBARS_VALUE_TYPE_USER:
+            if( handlebars_value_get_type(value) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
+                break;
+            }
+            // fall-through to array
+
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            // Convert to string >.>
-            ret = handlebars_talloc_strdup(CONTEXT, "");
             it = handlebars_value_iterator_ctor(value);
             bool first = true;
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
-                char * tmp = handlebars_value_expression(it->current, escape);
-                ret = handlebars_talloc_asprintf_append_buffer(ret, "%s%s", first ? "" : ",", tmp);
-                handlebars_talloc_free(tmp);
+                if( !first ) {
+                    buf = MC(handlebars_talloc_strndup_append_buffer(buf, ",", 1));
+                }
+                buf = handlebars_value_expression_append_buffer(buf, it->current, escape);
                 first = false;
             }
             handlebars_talloc_free(it);
             break;
 
-        case HANDLEBARS_VALUE_TYPE_MAP:
-        case HANDLEBARS_VALUE_TYPE_USER:
         default:
-            ret = handlebars_talloc_strdup(CONTEXT, "");
+            // nothing
             break;
     }
 
-    MEMCHK(ret);
+    MEMCHK(buf);
 
-    if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
-        char * esc = MC(handlebars_htmlspecialchars(ret));
-        handlebars_talloc_free(ret);
-        ret = esc;
-    }
-
-    return MC(ret);
+    return buf;
 }
 
 struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)

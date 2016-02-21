@@ -33,8 +33,7 @@ enum handlebars_value_type {
     HANDLEBARS_VALUE_TYPE_MAP = 6,
     HANDLEBARS_VALUE_TYPE_USER = 7,
     HANDLEBARS_VALUE_TYPE_PTR = 8,
-    HANDLEBARS_VALUE_TYPE_HELPER = 9,
-    HANDLEBARS_VALUE_TYPE_OPTIONS = 10
+    HANDLEBARS_VALUE_TYPE_HELPER = 9
 };
 
 enum handlebars_value_flags {
@@ -82,6 +81,7 @@ long handlebars_value_get_intval(struct handlebars_value * value);
 double handlebars_value_get_floatval(struct handlebars_value * value);
 
 char * handlebars_value_expression(struct handlebars_value * value, bool escape) HBSARN;
+char * handlebars_value_expression_append_buffer(char * buf, struct handlebars_value * value, bool escape) HBSARN;
 char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBSARN;
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx) HBSARN;
