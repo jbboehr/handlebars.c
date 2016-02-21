@@ -53,6 +53,7 @@ include_HEADERS = \
 	handlebars_private.h \
 	handlebars_scanners.h \
 	handlebars_stack.h \
+	handlebars_string.h \
 	handlebars_token.h \
 	handlebars_token_list.h \
 	handlebars_token_printer.h \
@@ -98,6 +99,7 @@ libhandlebars_la_SOURCES = \
 	handlebars_scanners.c \
 	handlebars_stack.h \
 	handlebars_stack.c \
+	handlebars_string.h \
 	handlebars_token.h \
 	handlebars_token.c \
 	handlebars_token_list.h \

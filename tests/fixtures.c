@@ -333,7 +333,7 @@ FIXTURE_FN(788468697)
 {
     assert(options->scope != NULL);
     assert(options->scope->type == HANDLEBARS_VALUE_TYPE_STRING);
-    FIXTURE_INTEGER(strlen(options->scope->v.strval));
+    FIXTURE_INTEGER(handlebars_value_get_strlen(options->scope));
 }
 
 FIXTURE_FN(902433745)
@@ -1422,7 +1422,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
     }
     assert(jsvalue != NULL);
     assert(jsvalue->type == HANDLEBARS_VALUE_TYPE_STRING);
-    uint32_t hash = adler32(jsvalue->v.strval, strlen(jsvalue->v.strval));
+    uint32_t hash = adler32(handlebars_value_get_strval(jsvalue), handlebars_value_get_strlen(jsvalue));
 
     switch( hash ) {
         FIXTURE_CASE(20974934);
@@ -1537,7 +1537,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE_ALIAS(3584035731, 3697740723);
 
         default:
-            fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, jsvalue->v.strval);
+            fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, handlebars_value_get_strval(jsvalue));
             return;
     }
 

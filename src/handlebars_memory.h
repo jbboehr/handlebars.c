@@ -37,6 +37,9 @@ extern "C" {
 #define handlebars_talloc_realloc(ctx, p, type, count) \
     (type *) _handlebars_talloc_realloc_array(ctx, p, sizeof(type), count, #type)
 
+#define handlebars_talloc_realloc_array(ctx, p, s, count) \
+    _handlebars_talloc_realloc_array(ctx, p, s, count, __location__)
+
 #define handlebars_talloc_size(ctx, size) \
     handlebars_talloc_named_const(ctx, size, __location__)
 

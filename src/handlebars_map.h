@@ -12,7 +12,8 @@ struct handlebars_context;
 struct handlebars_value;
 
 struct handlebars_map_entry {
-    char * key;
+    //char * key;
+    struct handlebars_string * key;
     struct handlebars_value * value;
     struct handlebars_map_entry * next;
     struct handlebars_map_entry * prev;

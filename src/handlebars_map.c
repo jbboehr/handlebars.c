@@ -9,6 +9,7 @@
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 
 
@@ -44,7 +45,7 @@ bool handlebars_map_add(struct handlebars_map * map, const char * key, struct ha
 {
     struct handlebars_map_entry * entry = MC(handlebars_talloc_zero(map, struct handlebars_map_entry));
 
-    entry->key = MC(handlebars_talloc_strdup(entry, key));
+    entry->key = talloc_steal(entry, handlebars_string_ctor(CONTEXT, key, strlen(key)));
     entry->value = value;
     handlebars_value_addref(value);
 
@@ -69,7 +70,7 @@ bool handlebars_map_remove(struct handlebars_map * map, const char * key)
     short removed = 0;
 
     handlebars_map_foreach(map, entry, tmp) {
-        if( 0 != strcmp(entry->key, key) ) {
+        if( 0 != strcmp(HBS_STRVAL(entry->key), key) ) {
             continue;
         }
 
@@ -103,7 +104,7 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, const
     struct handlebars_value * value = NULL;
 
     handlebars_map_foreach(map, entry, tmp) {
-        if( 0 == strcmp(entry->key, key) ) {
+        if( 0 == strcmp(HBS_STRVAL(entry->key), key) ) {
             value = entry->value;
             break;
         }

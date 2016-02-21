@@ -7,6 +7,7 @@
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_stack.h"
+#include "handlebars_string.h"
 #include "handlebars_value_handlers.h"
 
 #ifdef	__cplusplus
@@ -59,7 +60,8 @@ struct handlebars_value {
 		long lval;
         bool bval;
 		double dval;
-        char * strval;
+        //char * strval;
+        struct handlebars_string * string;
         struct handlebars_map * map;
         struct handlebars_stack * stack;
 		void * usr;
@@ -252,19 +254,20 @@ static inline void handlebars_value_float(struct handlebars_value * value, doubl
 static inline void handlebars_value_string(struct handlebars_value * value, const char * strval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.strval = handlebars_talloc_strdup(value, strval);
+    value->v.string = talloc_steal(value, handlebars_string_ctor(value->ctx, strval, strlen(strval)));
 }
 
 static inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.strval = talloc_steal(value, strval);
+    value->v.string = talloc_steal(value, handlebars_string_ctor(value->ctx, strval, strlen(strval)));
+    talloc_free(strval); // meh
 }
 
 static inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.strval = handlebars_talloc_strndup(value, strval, strlen);
+    value->v.string = talloc_steal(value, handlebars_string_ctor(value->ctx, strval, strlen));
 }
 
 static inline void handlebars_value_map_init(struct handlebars_value * value) {

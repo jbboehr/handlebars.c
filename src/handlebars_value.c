@@ -85,7 +85,7 @@ char * handlebars_value_get_strval(struct handlebars_value * value)
 
     switch( type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
-            ret = handlebars_talloc_strdup(value, value->v.strval);
+            ret = handlebars_talloc_strdup(value, value->v.string->val);
             break;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             ret = handlebars_talloc_asprintf(value, "%ld", value->v.lval);
@@ -109,7 +109,7 @@ char * handlebars_value_get_strval(struct handlebars_value * value)
 size_t handlebars_value_get_strlen(struct handlebars_value * value)
 {
 	if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
-		return strlen(value->v.strval);
+		return value->v.string->len;
 	}
 
 	return 0;
@@ -182,7 +182,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             if( entry ) {
                 it->value = value;
                 it->usr = (void *) entry;
-                it->key = entry->key;
+                it->key = HBS_STRVAL(entry->key);
                 it->current = entry->value;
                 it->length = value->v.map->i;
                 handlebars_value_addref(it->current);
@@ -228,7 +228,7 @@ bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
             if( entry && entry->next ) {
                 ret = true;
                 it->usr = (void *) (entry = entry->next);
-                it->key = entry->key;
+                it->key = HBS_STRVAL(entry->key);
                 it->current = entry->value;
                 handlebars_value_addref(it->current);
             }
@@ -287,7 +287,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             buf = handlebars_talloc_asprintf_append_buffer(buf, "NULL");
             break;
         case HANDLEBARS_VALUE_TYPE_STRING:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%s)", value->v.strval);
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%s)", value->v.string->val);
             break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "[");
@@ -346,9 +346,9 @@ char * handlebars_value_expression_append_buffer(char * buf, struct handlebars_v
 
         case HANDLEBARS_VALUE_TYPE_STRING:
             if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
-                buf = handlebars_htmlspecialchars_append_buffer(buf, value->v.strval, strlen(value->v.strval));
+                buf = handlebars_htmlspecialchars_append_buffer(buf, value->v.string->val, strlen(value->v.string->val));
             } else {
-                buf = handlebars_talloc_strdup_append_buffer(buf, value->v.strval);
+                buf = handlebars_talloc_strndup_append_buffer(buf, value->v.string->val, value->v.string->len);
             }
             break;
 
@@ -429,7 +429,7 @@ void handlebars_value_dtor(struct handlebars_value * value)
             handlebars_map_dtor(value->v.map);
             break;
         case HANDLEBARS_VALUE_TYPE_STRING:
-            handlebars_talloc_free(value->v.strval);
+            handlebars_talloc_free(value->v.string);
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
             assert(value->handlers != NULL);
@@ -478,7 +478,7 @@ struct handlebars_value * handlebars_value_from_json_object(struct handlebars_co
             break;
         case json_type_string:
             value->type = HANDLEBARS_VALUE_TYPE_STRING;
-            value->v.strval = MC(handlebars_talloc_strdup(value, json_object_get_string(json)));
+            handlebars_value_string(value, json_object_get_string(json));
             break;
 
         case json_type_object:
@@ -576,8 +576,7 @@ struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_cont
                     goto done;
                 }
                 // String
-                value->type = HANDLEBARS_VALUE_TYPE_STRING;
-                value->v.strval = MC(handlebars_talloc_strndup(value, node->data.scalar.value, node->data.scalar.length));
+                handlebars_value_stringl(value, node->data.scalar.value, node->data.scalar.length);
             }
             break;
         default:

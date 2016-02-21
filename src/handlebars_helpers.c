@@ -4,6 +4,7 @@
 #endif
 
 #include <assert.h>
+#include <string.h>
 
 #include "handlebars.h"
 #include "handlebars_helpers_ht.h"
@@ -184,7 +185,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
 
         tmp = handlebars_vm_execute_program_ex(options->vm, options->program, it->current, data, block_params);
         if( tmp ) {
-            result->v.strval = handlebars_talloc_strdup_append(result->v.strval, tmp);
+            result->v.string = handlebars_string_append(HBSCTX(options->vm), result->v.string, tmp, strlen(tmp));
         }
 
         handlebars_value_delref(key);
@@ -198,7 +199,7 @@ whoopsie:
     if( i == 0 ) {
         tmp = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
         if( tmp ) {
-            result->v.strval = handlebars_talloc_strdup_append(result->v.strval, tmp);
+            result->v.string = handlebars_string_append(HBSCTX(options->vm), result->v.string, tmp, strlen(tmp));
         }
     }
 
