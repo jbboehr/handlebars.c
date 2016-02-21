@@ -148,7 +148,7 @@ static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars
     }
 }
 
-static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
+static inline void depthed_lookup(struct handlebars_vm * vm, struct handlebars_string * key)
 {
     size_t i;
     size_t l;
@@ -159,7 +159,7 @@ static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
         value = GET(vm->contextStack, i);
         if( !value ) continue;
         if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            tmp = handlebars_value_map_str_find(value, key, strlen(key));
+            tmp = handlebars_value_map_find(value, key);
             if( tmp != NULL ) {
                 handlebars_value_delref(tmp);
                 break;
@@ -562,7 +562,7 @@ ACCEPT_FUNCTION(lookup_block_param)
         struct handlebars_value * tmp = v2;
         struct handlebars_value * tmp2;
         for(  ; *arr != NULL; arr++ ) {
-            tmp2 = handlebars_value_map_str_find(tmp, (*arr)->val, (*arr)->len);
+            tmp2 = handlebars_value_map_find(tmp, *arr);
             if( !tmp2 ) {
                 break;
             } else {
@@ -605,7 +605,7 @@ ACCEPT_FUNCTION(lookup_data)
         }
     }
 
-    if( data && (tmp = handlebars_value_map_str_find(data, first->val, first->len)) ) {
+    if( data && (tmp = handlebars_value_map_find(data, first)) ) {
         val = tmp;
     } else if( 0 == strcmp(first->val, "root") ) {
         val = BOTTOM(vm->contextStack);
@@ -617,7 +617,7 @@ ACCEPT_FUNCTION(lookup_data)
             if (val == NULL || handlebars_value_get_type(val) != HANDLEBARS_VALUE_TYPE_MAP) {
                 break;
             }
-            tmp = handlebars_value_map_str_find(val, part->val, part->len);
+            tmp = handlebars_value_map_find(val, part);
             handlebars_value_delref(val);
             val = tmp;
         }
@@ -641,7 +641,7 @@ ACCEPT_FUNCTION(lookup_on_context)
     long index = -1;
 
     if( !opcode->op4.data.boolval && (vm->flags & handlebars_compiler_flag_compat) ) {
-        depthed_lookup(vm, (*arr)->val);
+        depthed_lookup(vm, *arr);
     } else {
         ACCEPT_FN(push_context)(vm, opcode);
     }
@@ -652,7 +652,7 @@ ACCEPT_FUNCTION(lookup_on_context)
     if( value ) {
         do {
             if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-                tmp = handlebars_value_map_str_find(value, (*arr)->val, (*arr)->len);
+                tmp = handlebars_value_map_find(value, (*arr));
                 handlebars_value_try_delref(value);
                 value = tmp;
             } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {

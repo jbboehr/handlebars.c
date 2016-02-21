@@ -236,8 +236,8 @@ struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * 
     enum handlebars_value_type type = handlebars_value_get_type(context);
 
     if( type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        const char * tmp = handlebars_value_get_strval(field);
-        result = handlebars_value_map_str_find(context, tmp, handlebars_value_get_strlen(field));
+        struct handlebars_string * key = field->v.string;
+        result = handlebars_value_map_find(context, key);
     } else if( type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
         // @todo sscanf?
         if( field->type == HANDLEBARS_VALUE_TYPE_INTEGER ) {

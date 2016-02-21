@@ -82,6 +82,7 @@ double handlebars_value_get_floatval(struct handlebars_value * value);
 
 struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
 
+struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key);
 struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len);
 
 char * handlebars_value_expression(struct handlebars_value * value, bool escape) HBSARN;

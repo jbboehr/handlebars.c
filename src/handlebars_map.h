@@ -37,12 +37,13 @@ struct handlebars_map {
 struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx) HBSARN;
 void handlebars_map_dtor(struct handlebars_map * map);
 
-bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value);
-
+struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key);
 struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len);
-//bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len);
+
 bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value);
+
 bool handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value);
+bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value);
 
 #ifdef	__cplusplus
 }
