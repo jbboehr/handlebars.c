@@ -84,7 +84,7 @@ FIXTURE_FN(459219799)
 {
     // "function (prefix, options) {\n        return '<a href=\"' + prefix + '\/' + this.url + '\">' + options.fn(this) + '<\/a>';\n    }"
     struct handlebars_value * prefix = handlebars_stack_get(options->params, 0);
-    struct handlebars_value * url = handlebars_value_map_find(options->scope, "url");
+    struct handlebars_value * url = handlebars_value_map_str_find(options->scope, HBS_STRL("url"));
     char * res = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
@@ -231,8 +231,8 @@ FIXTURE_FN(690821881)
     // this one is actually a partial
     // "function partial(context) {\n      return context.name + ' (' + context.url + ') ';\n    }"
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
-    struct handlebars_value * name = handlebars_value_map_find(context, "name");
-    struct handlebars_value * url = handlebars_value_map_find(context, "url");
+    struct handlebars_value * name = handlebars_value_map_str_find(context, HBS_STRL("name"));
+    struct handlebars_value * url = handlebars_value_map_str_find(context, HBS_STRL("url"));
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s (%s) ",
@@ -248,11 +248,11 @@ FIXTURE_FN(690821881)
 FIXTURE_FN(666457330)
 {
     // "function (options) {\n          if (options.hash.print === true) {\n            return 'GOODBYE ' + options.hash.cruel + ' ' + options.fn(this);\n          } else if (options.hash.print === false) {\n            return 'NOT PRINTING';\n          } else {\n            return 'THIS SHOULD NOT HAPPEN';\n          }\n        }"
-    struct handlebars_value * print = handlebars_value_map_find(options->hash, "print");
+    struct handlebars_value * print = handlebars_value_map_str_find(options->hash, HBS_STRL("print"));
     if( print->type != HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
         FIXTURE_STRING("THIS SHOULD NOT HAPPEND");
     } else if( handlebars_value_get_boolval(print) ) {
-        struct handlebars_value * cruel = handlebars_value_map_find(options->hash, "cruel");
+        struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
         char * res = handlebars_vm_execute_program(options->vm, options->program, options->scope);
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
@@ -273,8 +273,8 @@ FIXTURE_FN(666457330)
 FIXTURE_FN(730081660)
 {
     // "function (options) {\n          return 'GOODBYE ' + options.hash.cruel + ' ' + options.fn(this) + ' ' + options.hash.times + ' TIMES';\n        }"
-    struct handlebars_value * cruel = handlebars_value_map_find(options->hash, "cruel");
-    struct handlebars_value * times = handlebars_value_map_find(options->hash, "times");
+    struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
+    struct handlebars_value * times = handlebars_value_map_str_find(options->hash, HBS_STRL("times"));
     char * res = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
@@ -318,7 +318,7 @@ FIXTURE_FN(739773491)
 FIXTURE_FN(748362646)
 {
     // "function (options) { return '<a href=\"' + this.name + '\">' + options.fn(this) + '<\/a>'; }"
-    struct handlebars_value * name = handlebars_value_map_find(options->scope, "name");
+    struct handlebars_value * name = handlebars_value_map_str_find(options->scope, HBS_STRL("name"));
     char * res = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
@@ -361,8 +361,8 @@ FIXTURE_FN(922226146)
 FIXTURE_FN(929767352)
 {
     // "function (options) {\n        return options.data.adjective + ' world' + (this.exclaim ? '!' : '');\n      }"
-    struct handlebars_value * adjective = handlebars_value_map_find(options->data, "adjective");
-    struct handlebars_value * exclaim = handlebars_value_map_find(options->scope, "exclaim");
+    struct handlebars_value * adjective = handlebars_value_map_str_find(options->data, HBS_STRL("adjective"));
+    struct handlebars_value * exclaim = handlebars_value_map_str_find(options->scope, HBS_STRL("exclaim"));
     char * ret = handlebars_talloc_asprintf(
             options->vm,
             "%s world%s",
@@ -401,7 +401,7 @@ FIXTURE_FN(931412676)
 
 FIXTURE_FN(958795451)
 {
-    struct handlebars_value * truthiness = handlebars_value_map_find(options->scope, "truthiness");
+    struct handlebars_value * truthiness = handlebars_value_map_str_find(options->scope, HBS_STRL("truthiness"));
     if( truthiness->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
         return truthiness->v.helper(options);
     }
@@ -460,12 +460,12 @@ FIXTURE_FN(1041501180)
 
 FIXTURE_FN(1102272015)
 {
-    struct handlebars_value * print = handlebars_value_map_find(options->hash, "print");
+    struct handlebars_value * print = handlebars_value_map_str_find(options->hash, HBS_STRL("print"));
     if( print->type != HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
         FIXTURE_STRING("THIS SHOULD NOT HAPPEND");
     } else if( handlebars_value_get_boolval(print) ) {
-        struct handlebars_value * cruel = handlebars_value_map_find(options->hash, "cruel");
-        struct handlebars_value * world = handlebars_value_map_find(options->hash, "world");
+        struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
+        struct handlebars_value * world = handlebars_value_map_str_find(options->hash, HBS_STRL("world"));
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "GOODBYE %s %s",
@@ -484,9 +484,9 @@ FIXTURE_FN(1102272015)
 FIXTURE_FN(1198465479)
 {
     // "function (noun, options) {\n        return options.data.adjective + ' ' + noun + (this.exclaim ? '!' : '');\n      }"
-    struct handlebars_value * adjective = handlebars_value_map_find(options->data, "adjective");
+    struct handlebars_value * adjective = handlebars_value_map_str_find(options->data, HBS_STRL("adjective"));
     struct handlebars_value * noun = handlebars_stack_get(options->params, 0);
-    struct handlebars_value * exclaim = handlebars_value_map_find(options->scope, "exclaim");
+    struct handlebars_value * exclaim = handlebars_value_map_str_find(options->scope, HBS_STRL("exclaim"));
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     char * tmp = handlebars_talloc_asprintf(
             options,
@@ -519,7 +519,7 @@ FIXTURE_FN(1341397520)
 {
     // "function (options) {\n        return options.data && options.data.exclaim;\n      }"
     if( options->data ) {
-        return handlebars_value_map_find(options->data, "exclaim");
+        return handlebars_value_map_str_find(options->data, HBS_STRL("exclaim"));
     } else {
         return handlebars_value_ctor(CONTEXT);
     }
@@ -527,7 +527,7 @@ FIXTURE_FN(1341397520)
 
 FIXTURE_FN(1582700088)
 {
-    struct handlebars_value * fun = handlebars_value_map_find(options->hash, "fun");
+    struct handlebars_value * fun = handlebars_value_map_str_find(options->hash, HBS_STRL("fun"));
     char * tmp = handlebars_value_get_strval(fun);
     char * res = handlebars_talloc_asprintf(
             options->vm,
@@ -542,7 +542,7 @@ FIXTURE_FN(1582700088)
 
 FIXTURE_FN(1623791204)
 {
-    struct handlebars_value * noun = handlebars_value_map_find(options->hash, "noun");
+    struct handlebars_value * noun = handlebars_value_map_str_find(options->hash, HBS_STRL("noun"));
     char * tmp = handlebars_value_get_strval(noun);
     char * res = handlebars_talloc_asprintf(
             options->vm,
@@ -655,7 +655,7 @@ FIXTURE_FN(2084318034)
 FIXTURE_FN(2089689191)
 {
     // "function link(options) {\n      return '<a href=\"\/people\/' + this.id + '\">' + options.fn(this) + '<\/a>';\n    }"
-    struct handlebars_value * id = handlebars_value_map_find(options->scope, "id");
+    struct handlebars_value * id = handlebars_value_map_str_find(options->scope, HBS_STRL("id"));
     char * res = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
@@ -680,8 +680,8 @@ FIXTURE_FN(2107645267)
 {
     // "function (prefix) {\n      return '<a href=\"' + prefix + '\/' + this.url + '\">' + this.text + '<\/a>';\n    }"
     struct handlebars_value * prefix = handlebars_stack_get(options->params, 0);
-    struct handlebars_value * url = handlebars_value_map_find(options->scope, "url");
-    struct handlebars_value * text = handlebars_value_map_find(options->scope, "text");
+    struct handlebars_value * url = handlebars_value_map_str_find(options->scope, HBS_STRL("url"));
+    struct handlebars_value * text = handlebars_value_map_str_find(options->scope, HBS_STRL("text"));
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "<a href=\"%s/%s\">%s</a>",
@@ -877,9 +877,9 @@ FIXTURE_FN(2632597106)
 FIXTURE_FN(2659134105)
 {
     // "function (options) {\n          return 'GOODBYE ' + options.hash.cruel + ' ' + options.hash.world + ' ' + options.hash.times + ' TIMES';\n        }"
-    struct handlebars_value * cruel = handlebars_value_map_find(options->hash, "cruel");
-    struct handlebars_value * world = handlebars_value_map_find(options->hash, "world");
-    struct handlebars_value * times = handlebars_value_map_find(options->hash, "times");
+    struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
+    struct handlebars_value * world = handlebars_value_map_str_find(options->hash, HBS_STRL("world"));
+    struct handlebars_value * times = handlebars_value_map_str_find(options->hash, HBS_STRL("times"));
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "GOODBYE %s %s %s TIMES",
@@ -995,8 +995,8 @@ FIXTURE_FN(2940930721)
 FIXTURE_FN(2961119846)
 {
     // "function (options) {\n        return options.data.adjective + ' ' + this.noun;\n      }"
-    struct handlebars_value * adjective = handlebars_value_map_find(options->data, "adjective");
-    struct handlebars_value * noun = handlebars_value_map_find(options->scope, "noun");
+    struct handlebars_value * adjective = handlebars_value_map_str_find(options->data, HBS_STRL("adjective"));
+    struct handlebars_value * noun = handlebars_value_map_str_find(options->scope, HBS_STRL("noun"));
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     char * tmp = handlebars_talloc_asprintf(
             options,
@@ -1026,7 +1026,7 @@ FIXTURE_FN(3011980185)
 FIXTURE_FN(3058305845)
 {
     // "function () {return this.foo; }"
-    struct handlebars_value * value = handlebars_value_map_find(options->scope, "foo");
+    struct handlebars_value * value = handlebars_value_map_str_find(options->scope, HBS_STRL("foo"));
     if( !value ) {
         value = handlebars_value_ctor(CONTEXT);
     }
@@ -1036,7 +1036,7 @@ FIXTURE_FN(3058305845)
 FIXTURE_FN(3065257350)
 {
     // "function (options) {\n          return this.goodbye.toUpperCase() + options.fn(this);\n        }"
-    struct handlebars_value * goodbye = handlebars_value_map_find(options->scope, "goodbye");
+    struct handlebars_value * goodbye = handlebars_value_map_str_find(options->scope, HBS_STRL("goodbye"));
     char * tmp = handlebars_talloc_strdup(options->vm, handlebars_value_get_strval(goodbye));
     size_t i  = 0;
     while( tmp[i] ) {
@@ -1065,7 +1065,7 @@ FIXTURE_FN(3123251961)
 FIXTURE_FN(3167423302)
 {
     // "function () { return this.bar; }"
-    return handlebars_value_map_find(options->scope, "bar");
+    return handlebars_value_map_str_find(options->scope, HBS_STRL("bar"));
 }
 
 FIXTURE_FN(3168412868)
@@ -1167,7 +1167,7 @@ FIXTURE_FN(3325763044)
 FIXTURE_FN(3327136760)
 {
     // "function () {\n          return this.goodbye.toUpperCase();\n        }"
-    struct handlebars_value * goodbye = handlebars_value_map_find(options->scope, "goodbye");
+    struct handlebars_value * goodbye = handlebars_value_map_str_find(options->scope, HBS_STRL("goodbye"));
     char * tmp = handlebars_talloc_strdup(options->vm, handlebars_value_get_strval(goodbye));
     size_t i  = 0;
     while( tmp[i] ) {
@@ -1189,7 +1189,7 @@ FIXTURE_FN(3328314220)
 FIXTURE_FN(3379432388)
 {
     // "function () { return this.more; }"
-    struct handlebars_value * value = handlebars_value_map_find(options->scope, "more");
+    struct handlebars_value * value = handlebars_value_map_str_find(options->scope, HBS_STRL("more"));
     if( !value ) {
         value = handlebars_value_ctor(CONTEXT);
     }
@@ -1261,7 +1261,7 @@ FIXTURE_FN(3707047013)
 FIXTURE_FN(3728875550)
 {
     // "function (options) {\n        return options.data.accessData + ' ' + options.fn({exclaim: '?'});\n      }"
-    struct handlebars_value * access_data = handlebars_value_map_find(options->data, "accessData");
+    struct handlebars_value * access_data = handlebars_value_map_str_find(options->data, HBS_STRL("accessData"));
     struct handlebars_value * context = handlebars_value_from_json_string(CONTEXT, "{\"exclaim\": \"?\"}");
     char * ret = handlebars_vm_execute_program(options->vm, options->program, context);
     ret = handlebars_talloc_asprintf(
@@ -1331,8 +1331,8 @@ FIXTURE_FN(3878511480)
 FIXTURE_FN(4005129518)
 {
     // "function (options) {\n        var hash = options.hash;\n        var ariaLabel = Handlebars.Utils.escapeExpression(hash['aria-label']);\n        var placeholder = Handlebars.Utils.escapeExpression(hash.placeholder);\n        return new Handlebars.SafeString('<input aria-label=\"' + ariaLabel + '\" placeholder=\"' + placeholder + '\" \/>');\n      }"
-    struct handlebars_value * label = handlebars_value_map_find(options->hash, "aria-label");
-    struct handlebars_value * placeholder = handlebars_value_map_find(options->hash, "placeholder");
+    struct handlebars_value * label = handlebars_value_map_str_find(options->hash, HBS_STRL("aria-label"));
+    struct handlebars_value * placeholder = handlebars_value_map_str_find(options->hash, HBS_STRL("placeholder"));
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "<input aria-label=\"%s\" placeholder=\"%s\" />",
@@ -1349,9 +1349,9 @@ FIXTURE_FN(4005129518)
 FIXTURE_FN(4112130635)
 {
     // "function (thing, options) {\n        return options.data.adjective + ' ' + thing + (this.exclaim || '');\n      }"
-    struct handlebars_value * adjective = handlebars_value_map_find(options->data, "adjective");
+    struct handlebars_value * adjective = handlebars_value_map_str_find(options->data, HBS_STRL("adjective"));
     struct handlebars_value * thing = handlebars_stack_get(options->params, 0);
-    struct handlebars_value * exclaim = handlebars_value_map_find(options->scope, "exclaim");
+    struct handlebars_value * exclaim = handlebars_value_map_str_find(options->scope, HBS_STRL("exclaim"));
     char * res = handlebars_talloc_asprintf(
             options->vm,
             "%s %s%s",
@@ -1420,9 +1420,9 @@ static void convert_value_to_fixture(struct handlebars_value * value)
 
     assert(value->type == HANDLEBARS_VALUE_TYPE_MAP);
 
-    struct handlebars_value * jsvalue = handlebars_value_map_find(value, "javascript");
+    struct handlebars_value * jsvalue = handlebars_value_map_str_find(value, HBS_STRL("javascript"));
     if( !jsvalue ) {
-        jsvalue = handlebars_value_map_find(value, "php");
+        jsvalue = handlebars_value_map_str_find(value, HBS_STRL("php"));
     }
     assert(jsvalue != NULL);
     assert(jsvalue->type == HANDLEBARS_VALUE_TYPE_STRING);
@@ -1565,7 +1565,7 @@ void load_fixtures(struct handlebars_value * value)
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_MAP:
             // Check if it contains a "!code" key
-            child = handlebars_value_map_find(value, "!code");
+            child = handlebars_value_map_str_find(value, HBS_STRL("!code"));
             if( child ) {
                 // Convert to helper
                 convert_value_to_fixture(value);

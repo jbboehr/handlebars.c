@@ -321,20 +321,20 @@ START_TEST(test_map_find)
 	ck_assert_ptr_ne(value, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_MAP);
 
-	value2 = handlebars_value_map_find(value, "a");
+	value2 = handlebars_value_map_str_find(value, HBS_STRL("a"));
 	ck_assert_ptr_ne(value2, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value2), HANDLEBARS_VALUE_TYPE_INTEGER);
 	ck_assert_int_eq(handlebars_value_get_intval(value2), 2358);
     handlebars_value_delref(value2);
 
-	value2 = handlebars_value_map_find(value, "b");
+	value2 = handlebars_value_map_str_find(value, HBS_STRL("b"));
 	ck_assert_ptr_ne(value2, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value2), HANDLEBARS_VALUE_TYPE_STRING);
 	ck_assert_str_eq(handlebars_value_get_strval(value2), "test");
 	ck_assert_int_eq(handlebars_value_get_strlen(value2), 4);
     handlebars_value_delref(value2);
 
-	value2 = handlebars_value_map_find(value, "c");
+	value2 = handlebars_value_map_str_find(value, HBS_STRL("c"));
 	ck_assert_ptr_eq(value2, NULL);
 
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -352,13 +352,13 @@ START_TEST(test_complex)
 	ck_assert_ptr_ne(value, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_MAP);
 
-	value2 = handlebars_value_map_find(value, "a");
+	value2 = handlebars_value_map_str_find(value, HBS_STRL("a"));
 	ck_assert_ptr_ne(value2, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value2), HANDLEBARS_VALUE_TYPE_INTEGER);
 	ck_assert_int_eq(handlebars_value_get_intval(value2), 2358);
     handlebars_value_delref(value2);
 
-	value2 = handlebars_value_map_find(value, "b");
+	value2 = handlebars_value_map_str_find(value, HBS_STRL("b"));
 	ck_assert_ptr_ne(value2, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value2), HANDLEBARS_VALUE_TYPE_ARRAY);
 
@@ -375,12 +375,12 @@ START_TEST(test_complex)
     } while(0);
     handlebars_value_delref(value2);
 
-	value2 = handlebars_value_map_find(value, "c");
+	value2 = handlebars_value_map_str_find(value, HBS_STRL("c"));
 	ck_assert_ptr_ne(value2, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value2), HANDLEBARS_VALUE_TYPE_MAP);
 
     do {
-        value3 = handlebars_value_map_find(value2, "d");
+        value3 = handlebars_value_map_str_find(value2, HBS_STRL("d"));
         ck_assert_int_eq(handlebars_value_get_type(value3), HANDLEBARS_VALUE_TYPE_STRING);
         ck_assert_str_eq(handlebars_value_get_strval(value3), "test");
         ck_assert_int_eq(handlebars_value_get_strlen(value3), 4);
@@ -403,7 +403,7 @@ START_TEST(test_convert)
 
     ck_assert_int_eq(value->type, HANDLEBARS_VALUE_TYPE_MAP);
 
-    value2 = handlebars_value_map_find(value, "b");
+    value2 = handlebars_value_map_str_find(value, HBS_STRL("b"));
     ck_assert_ptr_ne(value2, NULL);
     ck_assert_int_eq(value2->type, HANDLEBARS_VALUE_TYPE_ARRAY);
     handlebars_value_delref(value2);

@@ -52,14 +52,14 @@ enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * v
 	}
 }
 
-struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key)
+struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len)
 {
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
 			return value->handlers->map_find(value, key);
 		}
 	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        return handlebars_map_str_find(value->v.map, key, strlen(key));
+        return handlebars_map_str_find(value->v.map, key, len);
     }
 
 	return NULL;

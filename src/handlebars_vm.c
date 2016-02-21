@@ -79,7 +79,7 @@ static inline struct handlebars_value * call_helper(struct handlebars_options * 
     struct handlebars_value * helper;
     struct handlebars_value * result;
     handlebars_helper_func fn;
-    if( NULL != (helper = handlebars_value_map_find(options->vm->helpers, name)) ) {
+    if( NULL != (helper = handlebars_value_map_str_find(options->vm->helpers, name, len)) ) {
         result = handlebars_value_call(helper, options);
         handlebars_value_delref(helper);
         return result;
@@ -159,7 +159,7 @@ static inline void depthed_lookup(struct handlebars_vm * vm, const char * key)
         value = GET(vm->contextStack, i);
         if( !value ) continue;
         if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            tmp = handlebars_value_map_find(value, key);
+            tmp = handlebars_value_map_str_find(value, key, strlen(key));
             if( tmp != NULL ) {
                 handlebars_value_delref(tmp);
                 break;
@@ -331,7 +331,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         assert(result != NULL);
         PUSH(vm->stack, result);
     } else {
-        result = call_helper(ctx.options, "helperMissing", sizeof("helperMissing"));
+        result = call_helper(ctx.options, "helperMissing", sizeof("helperMissing") - 1);
         append_to_buffer(vm, result, 0);
         PUSH(vm->stack, value);
     }
@@ -429,7 +429,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
     struct handlebars_value * partial = NULL;
     if( /*!opcode->op1.data.boolval*/ name ) {
-        partial = handlebars_value_map_find(vm->partials, name);
+        partial = handlebars_value_map_str_find(vm->partials, name, strlen(name));
     } /* else {
         partial = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(partial, name);
@@ -562,7 +562,7 @@ ACCEPT_FUNCTION(lookup_block_param)
         struct handlebars_value * tmp = v2;
         struct handlebars_value * tmp2;
         for(  ; *arr != NULL; arr++ ) {
-            tmp2 = handlebars_value_map_find(tmp, (*arr)->val);
+            tmp2 = handlebars_value_map_str_find(tmp, (*arr)->val, (*arr)->len);
             if( !tmp2 ) {
                 break;
             } else {
@@ -599,13 +599,13 @@ ACCEPT_FUNCTION(lookup_data)
     if( depth && data ) {
         handlebars_value_addref(data);
         while( data && depth-- ) {
-            tmp = handlebars_value_map_find(data, "_parent");
+            tmp = handlebars_value_map_str_find(data, HBS_STRL("_parent"));
             handlebars_value_delref(data);
             data = tmp;
         }
     }
 
-    if( data && (tmp = handlebars_value_map_find(data, first->val)) ) {
+    if( data && (tmp = handlebars_value_map_str_find(data, first->val, first->len)) ) {
         val = tmp;
     } else if( 0 == strcmp(first->val, "root") ) {
         val = BOTTOM(vm->contextStack);
@@ -617,7 +617,7 @@ ACCEPT_FUNCTION(lookup_data)
             if (val == NULL || handlebars_value_get_type(val) != HANDLEBARS_VALUE_TYPE_MAP) {
                 break;
             }
-            tmp = handlebars_value_map_find(val, part->val);
+            tmp = handlebars_value_map_str_find(val, part->val, part->len);
             handlebars_value_delref(val);
             val = tmp;
         }
@@ -652,7 +652,7 @@ ACCEPT_FUNCTION(lookup_on_context)
     if( value ) {
         do {
             if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-                tmp = handlebars_value_map_find(value, (*arr)->val);
+                tmp = handlebars_value_map_str_find(value, (*arr)->val, (*arr)->len);
                 handlebars_value_try_delref(value);
                 value = tmp;
             } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {

@@ -27,7 +27,7 @@ static inline struct handlebars_value * call_helper(struct handlebars_options * 
     struct handlebars_value * helper;
     struct handlebars_value * result;
     handlebars_helper_func fn;
-    if( NULL != (helper = handlebars_value_map_find(options->vm->helpers, name)) ) {
+    if( NULL != (helper = handlebars_value_map_str_find(options->vm->helpers, name, len)) ) {
         result = handlebars_value_call(helper, options);
         handlebars_value_delref(helper);
         return result;
@@ -237,7 +237,7 @@ struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * 
 
     if( type == HANDLEBARS_VALUE_TYPE_MAP ) {
         const char * tmp = handlebars_value_get_strval(field);
-        result = handlebars_value_map_find(context, tmp);
+        result = handlebars_value_map_str_find(context, tmp, handlebars_value_get_strlen(field));
     } else if( type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
         // @todo sscanf?
         if( field->type == HANDLEBARS_VALUE_TYPE_INTEGER ) {
@@ -279,7 +279,7 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
         program = options->program;
     } else if( conditional->type == HANDLEBARS_VALUE_TYPE_INTEGER &&
             handlebars_value_get_intval(conditional) == 0 &&
-            NULL != (tmp = handlebars_value_map_find(options->hash, "includeZero")) ) {
+            NULL != (tmp = handlebars_value_map_str_find(options->hash, HBS_STRL("includeZero"))) ) {
         program = options->program;
         handlebars_value_delref(tmp);
     } else {

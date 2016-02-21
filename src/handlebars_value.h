@@ -74,13 +74,15 @@ struct handlebars_value {
 };
 
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
-struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, const char * key);
-struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
 char * handlebars_value_get_strval(struct handlebars_value * value) HBSARN;
 size_t handlebars_value_get_strlen(struct handlebars_value * value);
 bool handlebars_value_get_boolval(struct handlebars_value * value);
 long handlebars_value_get_intval(struct handlebars_value * value);
 double handlebars_value_get_floatval(struct handlebars_value * value);
+
+struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
+
+struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len);
 
 char * handlebars_value_expression(struct handlebars_value * value, bool escape) HBSARN;
 char * handlebars_value_expression_append_buffer(char * buf, struct handlebars_value * value, bool escape) HBSARN;
