@@ -15,6 +15,8 @@
 #include <json/json.h>
 #include <json/json_object.h>
 #include <json/json_tokener.h>
+#include <src/handlebars_value.h>
+
 #endif
 
 #include "handlebars.h"
@@ -60,7 +62,6 @@ static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cach
 START_TEST(test_cache_gc_entries)
 {
     struct handlebars_cache * cache = handlebars_cache_ctor(context);
-    struct handlebars_cache_entry * entry;
     struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
     size_t compiler_size = talloc_total_size(compiler);
 
@@ -88,13 +89,51 @@ START_TEST(test_cache_gc_entries)
 }
 END_TEST
 
+START_TEST(test_cache_execution)
+{
+    //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
+    handlebars_value_convert(value);
+
+    struct handlebars_value * partial = handlebars_value_ctor(context);
+    handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
+
+    struct handlebars_value * partials = handlebars_value_ctor(context);
+    handlebars_value_map_init(partials);
+    handlebars_map_str_add(partials->v.map, HBS_STRL("foo"), partial);
+
+    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{>foo}}"));
+    handlebars_parse(parser);
+    handlebars_compiler_compile(compiler, parser->program);
+
+    vm->helpers = handlebars_value_ctor(context);
+    handlebars_value_map_init(vm->helpers);
+    vm->partials = partials;
+
+    vm->cache = handlebars_cache_ctor(context);
+
+    handlebars_vm_execute(vm, compiler, value);
+    ck_assert_str_eq(vm->buffer, "baz");
+
+    int i;
+    for( i = 0; i < 10; i++ ) {
+        handlebars_vm_execute(vm, compiler, value);
+        ck_assert_str_eq(vm->buffer, "baz");
+    }
+
+    ck_assert_int_eq(10, vm->cache->hits);
+    ck_assert_int_eq(1, vm->cache->misses);
+}
+END_TEST
+
 Suite * parser_suite(void)
 {
     const char * title = "Handlebars Spec";
     TCase * tc_handlebars_spec = tcase_create(title);
     Suite * s = suite_create(title);
 
-    REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Cache GC");
+    REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
+    REGISTER_TEST_FIXTURE(s, test_cache_execution, "Execution");
 
     return s;
 }

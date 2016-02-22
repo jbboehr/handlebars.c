@@ -25,6 +25,7 @@ struct handlebars_vm_stack {
 
 struct handlebars_vm {
     struct handlebars_context ctx;
+	struct handlebars_cache * cache;
 
     struct handlebars_compiler ** programs;
     size_t guid_index;

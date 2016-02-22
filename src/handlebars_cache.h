@@ -20,6 +20,8 @@ struct handlebars_cache {
     size_t max_entries;
     size_t current_size;
     size_t max_size;
+    size_t hits;
+    size_t misses;
 };
 
 struct handlebars_cache_entry {

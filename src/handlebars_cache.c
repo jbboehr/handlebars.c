@@ -17,8 +17,8 @@
 static inline bool should_gc(struct handlebars_cache * cache)
 {
     return (
-        (cache->max_size && cache->current_size > cache->max_size) ||
-        (cache->max_entries && cache->current_entries > cache->max_entries)
+        (cache->max_size > 0 && cache->current_size > cache->max_size) ||
+        (cache->max_entries > 0 && cache->current_entries > cache->max_entries)
     );
 }
 
@@ -97,6 +97,9 @@ struct handlebars_cache_entry * handlebars_cache_find(struct handlebars_cache * 
         assert(value->type == HANDLEBARS_VALUE_TYPE_PTR);
         assert(talloc_get_type(entry, struct handlebars_cache_entry) != NULL);
         time(&entry->last_used);
+        cache->hits++;
+    } else {
+        cache->misses++;
     }
     return entry;
 }

@@ -8,11 +8,13 @@
 #include <string.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_private.h"
+
+#include "handlebars_cache.h"
 #include "handlebars_compiler.h"
 #include "handlebars_value.h"
 #include "handlebars_map.h"
-#include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_stack.h"
@@ -474,23 +476,42 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_context_throw_ex(CONTEXT, context->num, &context->loc, context->msg);
     }
 
-    // Construct parser
-    struct handlebars_parser * parser = handlebars_parser_ctor(context);
-    if( !handlebars_value_get_strlen(partial) ) {
+    // Get template
+    struct handlebars_string * tmpl = partial->v.string;
+    if( !tmpl || !tmpl->len ) {
         goto done;
     }
-    parser->tmpl = partial->v.string;
 
-    // Construct intermediate compiler and VM
-    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
+    // Check for cached template, if available
+    struct handlebars_compiler * compiler = NULL;
+    struct handlebars_cache_entry * cache_entry;
+    if( vm->cache && (cache_entry = handlebars_cache_find(vm->cache, tmpl)) ) {
+        // Use cached
+        compiler = cache_entry->compiler;
+    } else {
+        // Recompile
+
+        // Parse
+        struct handlebars_parser * parser = handlebars_parser_ctor(context);
+        parser->tmpl = tmpl;
+        handlebars_parse(parser); // @todo fix setjmp
+
+        // Compile
+        compiler = handlebars_compiler_ctor(context);
+        handlebars_compiler_set_flags(compiler, vm->flags);
+        handlebars_compiler_compile(compiler, parser->program);
+
+        // Save cache entry
+        if( vm->cache ) {
+            handlebars_cache_add(vm->cache, tmpl, compiler);
+        }
+
+        // Cleanup parser
+        handlebars_parser_dtor(parser);
+    }
+
+    // Construct VM
     struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
-
-    // Parse
-    handlebars_parse(parser);
-
-    // Compile
-    handlebars_compiler_set_flags(compiler, vm->flags);
-    handlebars_compiler_compile(compiler, parser->program);
 
     // Get context
     // @todo change parent to new vm?
@@ -543,7 +564,6 @@ ACCEPT_FUNCTION(invoke_partial)
     handlebars_value_try_delref(context1);
     handlebars_value_try_delref(context2);
     handlebars_vm_dtor(vm2);
-    handlebars_compiler_dtor(compiler);
 
 done:
     handlebars_context_dtor(context);
@@ -855,7 +875,6 @@ char * handlebars_vm_execute_program_ex(
         struct handlebars_value * data, struct handlebars_value * block_params)
 {
     bool pushed_context = false;
-    bool pushed_depths = false;
     bool pushed_block_param = false;
 
     if( program < 0 ) {
@@ -976,8 +995,9 @@ void handlebars_vm_execute(
         vm->programs = compiler->programs;
         vm->guid_index = compiler->programs_index;
     } else {
-        vm->programs = MC(handlebars_talloc_array(vm, struct handlebars_compiler *, 32));
+        vm->programs = compiler->programs = MC(handlebars_talloc_array(compiler, struct handlebars_compiler *, 32));
         preprocess_program(vm, compiler);
+        compiler->programs_index = vm->guid_index;
         compiler->programs = talloc_steal(compiler, vm->programs);
         compiler->programs_index = vm->guid_index;
     }
