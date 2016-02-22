@@ -19,6 +19,7 @@ extern "C" {
 
 // Declarations
 struct handlebars_ast_node;
+struct handlebars_string;
 struct handlebars_token_list;
 
 // Attributes
@@ -157,7 +158,7 @@ struct handlebars_parser
 {
     struct handlebars_context ctx;
 
-    const char * tmpl;
+    struct handlebars_string * tmpl;
     int tmplReadOffset;
     void * scanner;
     struct handlebars_ast_node * program;

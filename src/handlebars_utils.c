@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <talloc.h>
+#include <handlebars_string.h>
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -368,14 +369,17 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
 
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser)
 {
+    struct handlebars_string * tmpl = parser->tmpl;
+    const char * val = (const char *) tmpl->val;
+
     int numBytesToRead = maxBytesToRead;
-    int bytesRemaining = strlen(parser->tmpl) - parser->tmplReadOffset;
+    int bytesRemaining = tmpl->len - parser->tmplReadOffset;
     int i;
     if( numBytesToRead > bytesRemaining ) {
         numBytesToRead = bytesRemaining;
     }
     for( i = 0; i < numBytesToRead; i++ ) {
-        buffer[i] = parser->tmpl[parser->tmplReadOffset+i];
+        buffer[i] = val[parser->tmplReadOffset+i];
     }
     *numBytesRead = numBytesToRead;
     parser->tmplReadOffset += numBytesToRead;

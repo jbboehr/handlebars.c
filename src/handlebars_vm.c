@@ -476,10 +476,10 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Construct parser
     struct handlebars_parser * parser = handlebars_parser_ctor(context);
-    parser->tmpl = handlebars_value_get_strval(partial);
-    if( !*parser->tmpl ) {
+    if( !handlebars_value_get_strlen(partial) ) {
         goto done;
     }
+    parser->tmpl = partial->v.string;
 
     // Construct intermediate compiler and VM
     struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);

@@ -23,6 +23,7 @@
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_memory.h"
+#include "handlebars_string.h"
 #include "handlebars_token_list.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
@@ -166,7 +167,7 @@ START_TEST(handlebars_spec_parser)
     char errlinestr[32];
 
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = test->tmpl;
+    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
     handlebars_parse(parser);
     
     if( parser->ctx.num ) {

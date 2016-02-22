@@ -32,7 +32,7 @@ START_TEST(test_random_alloc_fail_tokenizer)
     for( i = 1; i < 300; i++ ) {
         struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
         struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
-        parser->tmpl = tmpl;
+        parser->tmpl = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
@@ -54,7 +54,7 @@ START_TEST(test_random_alloc_fail_parser)
     for( i = 1; i < 300; i++ ) {
         struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
         struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
-        parser->tmpl = tmpl;
+        parser->tmpl = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
@@ -77,7 +77,7 @@ START_TEST(test_random_alloc_fail_compiler)
             struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
             struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
             struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
-            parser->tmpl = tmpl;
+            parser->tmpl = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
             handlebars_parse(parser);
 
             // For now, don't do yy alloc
@@ -104,7 +104,7 @@ START_TEST(test_random_alloc_fail_vm)
             struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"foo\": {\"bar\": 2}}");
             handlebars_value_convert(value);
 
-            parser->tmpl = tmpl;
+            parser->tmpl = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
             handlebars_parse(parser);
             handlebars_compiler_compile(compiler, parser->program);
 

@@ -8,6 +8,7 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
+#include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
 #include "handlebars_token_printer.h"
@@ -53,7 +54,7 @@ START_TEST(test_lex)
 {
     struct handlebars_token_list * list;
     
-    parser->tmpl = "{{foo}}";
+    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{foo}}"));
     
     list = handlebars_lex(parser);
     

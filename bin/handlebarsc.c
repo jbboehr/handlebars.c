@@ -13,6 +13,7 @@
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcode_printer.h"
+#include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
 #include "handlebars_token_printer.h"
@@ -216,7 +217,7 @@ static int do_lex(void)
     readInput();
     ctx = handlebars_context_ctor();
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = input_buf;
+    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
     
     // Run
     do {
@@ -255,7 +256,7 @@ static int do_parse(void)
     readInput();
     ctx = handlebars_context_ctor();
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = input_buf;
+    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
     
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
         parser->ignore_standalone = 1;
@@ -299,7 +300,7 @@ static int do_compile(void)
     
     // Read
     readInput();
-    parser->tmpl = input_buf;
+    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
     
     // Parse
     handlebars_parse(parser);

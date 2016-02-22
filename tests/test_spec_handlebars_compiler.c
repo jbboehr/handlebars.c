@@ -24,6 +24,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
+#include "handlebars_string.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 #include "utils.h"
@@ -635,15 +636,11 @@ START_TEST(handlebars_spec_compiler)
     parser->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
     printer = handlebars_opcode_printer_ctor(ctx);
-    
-    //printf("TEMPLATE: %s\n", test->tmpl);
-    
+
     // Parse
-    parser->tmpl = test->tmpl;
+    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
     handlebars_parse(parser);
 
-    //ck_assert_int_eq(retval <= 0, test->exception > 0);
-    
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
     if( test->known_helpers ) {

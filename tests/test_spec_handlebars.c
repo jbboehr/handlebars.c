@@ -21,6 +21,7 @@
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_memory.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 #include "handlebars.tab.h"
@@ -306,7 +307,7 @@ static inline void run_test(struct generic_test * test, int _i)
     compiler = handlebars_compiler_ctor(ctx);
 
     // Parse
-    parser->tmpl = test->tmpl;
+    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
     handlebars_parse(parser);
 
     // Check error
