@@ -264,7 +264,8 @@ struct handlebars_context * _HBSCTX(void * ctx, const char * loc)
             talloc_get_type(ctx, struct handlebars_context) ?:
             talloc_get_type(ctx, struct handlebars_parser) ?:
             talloc_get_type(ctx, struct handlebars_compiler) ?:
-            talloc_get_type(ctx, struct handlebars_vm)
+            talloc_get_type(ctx, struct handlebars_vm) ?:
+            talloc_get_type(ctx, struct handlebars_cache)
     );
     if( !r ) {
         fprintf(stderr, "Not a context at %s\n", loc);

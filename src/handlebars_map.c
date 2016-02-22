@@ -152,7 +152,10 @@ static inline void _entry_add(struct handlebars_map * map, const char * key, siz
 
 static inline void _entry_remove(struct handlebars_map * map, struct handlebars_map_entry * entry)
 {
+    unsigned long hash = entry->key->hash;
     struct handlebars_value * value = entry->value;
+
+    // Remove from linked list
     if( map->first == entry ) {
         map->first = entry->next;
     }
@@ -171,8 +174,22 @@ static inline void _entry_remove(struct handlebars_map * map, struct handlebars_
     if( entry->child ) {
         entry->child->parent = entry->parent;
     }
+
+    // Remove from hash table
+    if( entry->child ) {
+        entry->child->parent = entry->parent;
+    }
+    if( entry->parent ) {
+        entry->parent->child = entry->child;
+    } else {
+        // It's the head
+        map->table[hash % map->table_size] = entry->child; // possibly null
+    }
+
+    // Free
     handlebars_value_delref(value);
     handlebars_talloc_free(entry);
+    map->i--;
 }
 
 
@@ -199,6 +216,16 @@ bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_
     return true;
 }
 
+bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
+{
+
+    struct handlebars_map_entry * entry = _entry_find(map, key->val, key->len, key->hash);
+    if( entry ) {
+        _entry_remove(map, entry);
+        return 1;
+    }
+    return 0;
+}
 
 bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
 {

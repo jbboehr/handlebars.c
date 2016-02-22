@@ -52,6 +52,13 @@ START_TEST(test_map)
         ck_assert_uint_eq(pos++, handlebars_value_get_intval(entry->value));
     }
 
+    while( map->first ) {
+        struct handlebars_map_entry * entry = handlebars_map_find(map, map->first->key);
+        ck_assert_ptr_ne(NULL, entry);
+        handlebars_map_remove(map, map->first->key);
+        ck_assert_uint_eq(--pos, map->i);
+    }
+
 
     handlebars_map_dtor(map);
 }

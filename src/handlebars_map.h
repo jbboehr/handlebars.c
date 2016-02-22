@@ -40,10 +40,14 @@ void handlebars_map_dtor(struct handlebars_map * map);
 struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key);
 struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len);
 
+bool handlebars_map_add(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value);
 bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value);
 
 bool handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value);
 bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value);
+
+bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key);
+bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len);
 
 #ifdef	__cplusplus
 }
