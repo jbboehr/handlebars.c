@@ -26,7 +26,7 @@
 #define OPCODE_NAME(name) handlebars_opcode_type_ ## name
 #define ACCEPT(name) case OPCODE_NAME(name) : ACCEPT_FN(name)(vm, opcode); break;
 #define ACCEPT_FN(name) accept_ ## name
-#define ACCEPT_NAMED_FUNCTION(name) static void name (struct handlebars_vm * vm, struct handlebars_opcode * opcode)
+#define ACCEPT_NAMED_FUNCTION(name) static inline void name (struct handlebars_vm * vm, struct handlebars_opcode * opcode)
 #define ACCEPT_FUNCTION(name) ACCEPT_NAMED_FUNCTION(ACCEPT_FN(name))
 
 #define LEN(stack) stack.i
@@ -46,12 +46,10 @@
 
 
 struct setup_ctx {
-    //const char * name;
     struct handlebars_string * name;
     size_t param_size;
     struct handlebars_stack * params;
     struct handlebars_options * options;
-    //bool is_block_helper;
 };
 
 ACCEPT_FUNCTION(push_context);
@@ -822,7 +820,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     handlebars_value_delref(top);
 }
 
-void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler * compiler)
+static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler * compiler)
 {
 	size_t i = compiler->opcodes_length;
     struct handlebars_opcodes ** opcodes = compiler->opcodes;
