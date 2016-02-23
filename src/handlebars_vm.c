@@ -522,13 +522,13 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_value_map_init(context2);
         it = handlebars_value_iterator_ctor(context1);
         for( ; it->current ; handlebars_value_iterator_next(it) ) {
-            handlebars_map_str_update(context2->v.map, it->key, strlen(it->key), it->current);
+            handlebars_map_update(context2->v.map, it->key, it->current);
         }
         handlebars_talloc_free(it);
         if( ctx.options->hash && ctx.options->hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
             it = handlebars_value_iterator_ctor(ctx.options->hash);
             for( ; it->current ; handlebars_value_iterator_next(it) ) {
-                handlebars_map_str_update(context2->v.map, it->key, strlen(it->key), it->current);
+                handlebars_map_update(context2->v.map, it->key, it->current);
             }
             handlebars_talloc_free(it);
         }

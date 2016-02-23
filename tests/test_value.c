@@ -221,9 +221,9 @@ START_TEST(test_map_iterator)
         ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
         ck_assert_ptr_ne(it->key, NULL);
         switch( i ) {
-            case 1: ck_assert_str_eq(it->key, "a"); break;
-            case 2: ck_assert_str_eq(it->key, "c"); break;
-            case 3: ck_assert_str_eq(it->key, "b"); break;
+            case 1: ck_assert_str_eq(it->key->val, "a"); break;
+            case 2: ck_assert_str_eq(it->key->val, "c"); break;
+            case 3: ck_assert_str_eq(it->key->val, "b"); break;
         }
         ck_assert_int_eq(it->current->v.lval, i);
     }
@@ -269,10 +269,11 @@ START_TEST(test_map_iterator_json)
         ck_assert_ptr_ne(it->current, NULL);
         ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
         ck_assert_ptr_ne(it->key, NULL);
+        fprintf(stderr, "ARRRRERERER %p %s %d\n", it->key, it->key->val, i);
         switch( i ) {
-            case 1: ck_assert_str_eq(it->key, "a"); break;
-            case 2: ck_assert_str_eq(it->key, "c"); break;
-            case 3: ck_assert_str_eq(it->key, "b"); break;
+            case 1: ck_assert_str_eq(it->key->val, "a"); break;
+            case 2: ck_assert_str_eq(it->key->val, "c"); break;
+            case 3: ck_assert_str_eq(it->key->val, "b"); break;
         }
         ck_assert_int_eq(it->current->v.lval, i);
     }

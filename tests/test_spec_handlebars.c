@@ -343,7 +343,7 @@ static inline void run_test(struct generic_test * test, int _i)
         it = handlebars_value_iterator_ctor(helpers);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
             //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-                handlebars_map_str_update(vm->helpers->v.map, it->key, strlen(it->key), it->current);
+                handlebars_map_update(vm->helpers->v.map, it->key, it->current);
             //}
         }
         handlebars_talloc_free(it);
@@ -355,7 +355,7 @@ static inline void run_test(struct generic_test * test, int _i)
         it = handlebars_value_iterator_ctor(helpers);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
             //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-            handlebars_map_str_update(vm->helpers->v.map, it->key, strlen(it->key), it->current);
+            handlebars_map_update(vm->helpers->v.map, it->key, it->current);
             //}
         }
         handlebars_talloc_free(it);
@@ -370,7 +370,7 @@ static inline void run_test(struct generic_test * test, int _i)
         load_fixtures(partials);
         it = handlebars_value_iterator_ctor(partials);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            handlebars_map_str_update(vm->partials->v.map, it->key, strlen(it->key), it->current);
+            handlebars_map_update(vm->partials->v.map, it->key, it->current);
         }
         handlebars_value_delref(partials);
     }
@@ -379,7 +379,7 @@ static inline void run_test(struct generic_test * test, int _i)
         load_fixtures(partials);
         it = handlebars_value_iterator_ctor(partials);
         for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            handlebars_map_str_update(vm->partials->v.map, it->key, strlen(it->key), it->current);
+            handlebars_map_update(vm->partials->v.map, it->key, it->current);
         }
         handlebars_talloc_free(it);
         handlebars_value_delref(partials);

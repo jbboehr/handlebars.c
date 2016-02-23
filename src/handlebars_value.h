@@ -46,7 +46,7 @@ enum handlebars_value_flags {
 struct handlebars_value_iterator {
     size_t length;
     size_t index;
-    const char * key;
+    struct handlebars_string * key;
     struct handlebars_value * value;
     struct handlebars_value * current;
     void * usr;

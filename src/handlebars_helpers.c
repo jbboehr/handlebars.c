@@ -129,7 +129,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
         if( handlebars_value_get_type(options->data) == HANDLEBARS_VALUE_TYPE_MAP ) {
             struct handlebars_value_iterator *it2 = handlebars_value_iterator_ctor(options->data);
             for (; it2->current != NULL; handlebars_value_iterator_next(it2)) {
-                handlebars_map_str_update(data->v.map, it2->key, strlen(it2->key), it2->current);
+                handlebars_map_update(data->v.map, it2->key, it2->current);
             }
             handlebars_talloc_free(it2);
         }
@@ -152,7 +152,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
 
         key = handlebars_value_ctor(CONTEXT);
         if( it->key /*it->value->type == HANDLEBARS_VALUE_TYPE_MAP*/ ) {
-            handlebars_value_string(key, it->key);
+            handlebars_value_str(key, it->key);
         } else {
             handlebars_value_integer(key, it->index);
         }

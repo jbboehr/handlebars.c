@@ -199,7 +199,7 @@ struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handleb
             if( entry ) {
                 it->value = value;
                 it->usr = (void *) entry;
-                it->key = HBS_STRVAL(entry->key);
+                it->key = entry->key;
                 it->current = entry->value;
                 it->length = value->v.map->i;
                 handlebars_value_addref(it->current);
@@ -245,7 +245,7 @@ bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
             if( entry && entry->next ) {
                 ret = true;
                 it->usr = (void *) (entry = entry->next);
-                it->key = HBS_STRVAL(entry->key);
+                it->key = entry->key;
                 it->current = entry->value;
                 handlebars_value_addref(it->current);
             }
@@ -321,7 +321,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             it = handlebars_value_iterator_ctor(value);
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
                 char * tmp = handlebars_value_dump(it->current, depth + 1);
-                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s => %s\n", indent2, it->key, tmp);
+                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s => %s\n", indent2, it->key->val, tmp);
                 handlebars_talloc_free(tmp);
             }
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "}");
@@ -419,7 +419,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             handlebars_value_map_init(new_value);
             it = handlebars_value_iterator_ctor(value);
             for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
-                handlebars_map_str_update(new_value->v.map, it->key, strlen(it->key), it->current);
+                handlebars_map_update(new_value->v.map, it->key, it->current);
             }
             break;
         case HANDLEBARS_VALUE_TYPE_USER:

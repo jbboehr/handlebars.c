@@ -4,6 +4,7 @@
 #endif
 
 #include <assert.h>
+#include <string.h>
 #include <talloc.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
@@ -134,8 +135,9 @@ struct handlebars_value_iterator * std_json_iterator_ctor(struct handlebars_valu
         case json_type_object:
             entry = json_object_get_object(intern)->head;
             if( entry ) {
+                char * tmp = (char *) entry->k;
                 it->usr = (void *) entry;
-                it->key = (char *) entry->k;
+                it->key = talloc_steal(it, handlebars_string_ctor(value->ctx, tmp, strlen(tmp)));
                 it->current = handlebars_value_from_json_object(CONTEXT, (json_object *) entry->v);
                 it->length = json_object_object_length(intern);
             }
@@ -165,9 +167,11 @@ bool std_json_iterator_next(struct handlebars_value_iterator * it)
         case json_type_object:
             entry = (struct lh_entry *) it->usr;
             if( entry && entry->next ) {
+                char * tmp;
                 ret = true;
                 it->usr = (void *) (entry = entry->next);
-                it->key = (char *) entry->k;
+                tmp = (char *) entry->k;
+                it->key = talloc_steal(it, handlebars_string_ctor(value->ctx, tmp, strlen(tmp)));
                 it->current = handlebars_value_from_json_object(CONTEXT, entry->v);
             }
             break;

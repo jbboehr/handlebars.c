@@ -382,13 +382,13 @@ FIXTURE_FN(931412676)
     handlebars_value_map_init(frame);
     struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(options->data);
     for( ; it->current; handlebars_value_iterator_next(it) ) {
-        if( 0 == strcmp(it->key, "depth") ) {
+        if( 0 == strcmp(it->key->val, "depth") ) {
             struct handlebars_value * tmp = handlebars_value_ctor(CONTEXT);
             handlebars_value_integer(tmp, handlebars_value_get_intval(it->current) + 1);
-            handlebars_map_str_update(frame->v.map, it->key, strlen(it->key), tmp);
+            handlebars_map_update(frame->v.map, it->key, tmp);
             handlebars_value_delref(tmp);
         } else {
-            handlebars_map_str_update(frame->v.map, it->key, strlen(it->key), it->current);
+            handlebars_map_update(frame->v.map, it->key, it->current);
         }
     }
     handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
@@ -966,11 +966,11 @@ FIXTURE_FN(2919388099)
     handlebars_value_map_init(frame);
     struct handlebars_value_iterator *it = handlebars_value_iterator_ctor(options->data);
     for (; it->current; handlebars_value_iterator_next(it)) {
-        handlebars_map_str_update(frame->v.map, it->key, strlen(it->key), it->current);
+        handlebars_map_update(frame->v.map, it->key, it->current);
     }
     struct handlebars_value_iterator *it2 = handlebars_value_iterator_ctor(options->hash);
     for (; it2->current; handlebars_value_iterator_next(it2)) {
-        handlebars_map_str_update(frame->v.map, it2->key, strlen(it2->key), it2->current);
+        handlebars_map_update(frame->v.map, it2->key, it2->current);
     }
     handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
     char * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, frame, NULL);
