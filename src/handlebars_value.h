@@ -162,6 +162,17 @@ static inline int handlebars_value_try_delref(struct handlebars_value * value) {
 #endif
 
 #if !defined(HANDLEBARS_NO_REFCOUNT)
+static inline int handlebars_value_try_addref(struct handlebars_value * value) {
+    if( value ) {
+        return handlebars_value_addref(value);
+    }
+    return -1;
+}
+#else
+#define handlebars_value_try_addref
+#endif
+
+#if !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_refcount(struct handlebars_value * value) {
     return value->refcount;
 }
