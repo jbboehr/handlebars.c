@@ -516,7 +516,8 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_value * context1 = handlebars_stack_get(ctx.options->params, 0);
     struct handlebars_value * context2 = NULL;
     struct handlebars_value_iterator * it;
-    if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP ) {
+    if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
+            ctx.options->hash && ctx.options->hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
         context2 = handlebars_value_ctor(&vm2->ctx);
         handlebars_value_map_init(context2);
         it = handlebars_value_iterator_ctor(context1);
