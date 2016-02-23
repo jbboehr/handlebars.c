@@ -55,6 +55,7 @@ static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cach
     ctx->tmpl = handlebars_string_ctor(context, tmpls[i], strlen(tmpls[i]));
     ctx->compiler = handlebars_compiler_ctor(context);
     ctx->cache_entry = handlebars_cache_add(cache, ctx->tmpl, ctx->compiler);
+    return ctx;
 }
 
 
