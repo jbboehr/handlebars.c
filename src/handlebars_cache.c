@@ -22,8 +22,17 @@ static inline bool should_gc(struct handlebars_cache * cache)
     );
 }
 
+static inline bool should_gc_entry(struct handlebars_cache * cache, struct handlebars_cache_entry * cache_entry, time_t now)
+{
+    if( cache->max_age > 0 && difftime(now, cache_entry->last_used) > cache->max_age ) {
+        return true;
+    }
+    return should_gc(cache);
+}
+
 static int cache_entry_compare(const void * ptr1, const void * ptr2)
 {
+    double delta;
     struct handlebars_map_entry * map_entry1 = talloc_get_type(*(struct handlebars_map_entry **) ptr1, struct handlebars_map_entry);
     struct handlebars_map_entry * map_entry2 = talloc_get_type(*(struct handlebars_map_entry **) ptr2, struct handlebars_map_entry);
     assert(map_entry1 != NULL);
@@ -34,7 +43,8 @@ static int cache_entry_compare(const void * ptr1, const void * ptr2)
     assert(entry1 != NULL);
     assert(entry2 != NULL);
 
-    return (int) (entry1->last_used - entry2->last_used);
+    delta = difftime(entry1->last_used, entry2->last_used);
+    return (delta > 0) - (delta < 0);
 }
 
 
@@ -58,6 +68,8 @@ int handlebars_cache_gc(struct handlebars_cache * cache)
     struct handlebars_map_entry * item;
     struct handlebars_map_entry * tmp;
     size_t i = 0;
+    time_t now;
+    time(&now);
 
     handlebars_map_foreach(cache->map, item, tmp) {
         arr[i++] = item;
@@ -69,7 +81,7 @@ int handlebars_cache_gc(struct handlebars_cache * cache)
     for( i = 0; i < cache->map->i; i++ ) {
         struct handlebars_map_entry * map_entry = arr[i];
         struct handlebars_cache_entry * entry = talloc_get_type(map_entry->value->v.ptr, struct handlebars_cache_entry);
-        if( should_gc(cache) ) {
+        if( should_gc_entry(cache, entry, now) ) {
             size_t oldsize = entry->size;
             // Remove
             handlebars_map_remove(cache->map, map_entry->key);

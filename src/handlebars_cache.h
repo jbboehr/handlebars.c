@@ -16,6 +16,7 @@ struct handlebars_map;
 struct handlebars_cache {
     struct handlebars_context ctx;
     struct handlebars_map * map;
+    double max_age;
     size_t current_entries;
     size_t max_entries;
     size_t current_size;
