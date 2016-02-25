@@ -53,20 +53,23 @@ struct handlebars_value_iterator {
     void * usr;
 };
 
+struct handlebars_value_user {
+    void * ptr;
+    struct handlebars_value_handlers * handlers;
+};
+
 struct handlebars_value {
 	enum handlebars_value_type type;
     unsigned long flags;
-	struct handlebars_value_handlers * handlers;
 	union {
-		long lval;
+        long lval;
         bool bval;
-		double dval;
-        //char * strval;
+        double dval;
         struct handlebars_string * string;
         struct handlebars_map * map;
         struct handlebars_stack * stack;
-		void * usr;
-		void * ptr;
+        struct handlebars_value_user usr;
+        void * ptr;
         handlebars_helper_func helper;
         struct handlebars_options * options;
 	} v;
@@ -185,6 +188,15 @@ static inline int handlebars_value_refcount(struct handlebars_value * value) {
 #define handlebars_value_refcount(v) 999
 #endif
 
+static inline struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value) {
+    return value->v.usr.handlers;
+}
+
+static inline void handlebars_value_init(struct handlebars_context * ctx, struct handlebars_value * value)
+{
+    value->ctx = ctx;
+}
+
 static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
@@ -219,7 +231,7 @@ static inline long handlebars_value_count(struct handlebars_value * value) {
         case HANDLEBARS_VALUE_TYPE_MAP:
             return value->v.map->i;
         case HANDLEBARS_VALUE_TYPE_USER:
-            return value->handlers->count(value);
+            return handlebars_value_get_handlers(value)->count(value);
         default:
             return -1;
     }

@@ -47,7 +47,7 @@ struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value)
 {
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		return value->handlers->type(value);
+		return handlebars_value_get_handlers(value)->type(value);
 	} else {
 		return value->type;
 	}
@@ -57,7 +57,7 @@ struct handlebars_value * handlebars_value_map_find(struct handlebars_value * va
 {
     if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
         if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            return value->handlers->map_find(value, key);
+            return handlebars_value_get_handlers(value)->map_find(value, key);
         }
     } else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
         return handlebars_map_find(value->v.map, key);
@@ -73,7 +73,7 @@ struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value 
 
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-			ret = value->handlers->map_find(value, str);
+			ret = handlebars_value_get_handlers(value)->map_find(value, str);
 		}
 	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
         ret = handlebars_map_find(value->v.map, str);
@@ -87,7 +87,7 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 {
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-			return value->handlers->array_find(value, index);
+			return handlebars_value_get_handlers(value)->array_find(value, index);
 		}
 	} else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
         return handlebars_stack_get(value->v.stack, index);
@@ -166,7 +166,7 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_USER:
-            value->handlers->convert(value, recurse);
+            handlebars_value_get_handlers(value)->convert(value, recurse);
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
         case HANDLEBARS_VALUE_TYPE_ARRAY:
@@ -208,7 +208,7 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
             break;
 
         case HANDLEBARS_VALUE_TYPE_USER:
-            return value->handlers->iterator(it, value);
+            return handlebars_value_get_handlers(value)->iterator(it, value);
 
         default:
             //handlebars_context_throw(value->ctx, HANDLEBARS_ERROR, "Cannot iterator over type %d", value->type);
@@ -289,7 +289,7 @@ bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
             }
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
-            ret = value->handlers->next(it);
+            ret = handlebars_value_get_handlers(value)->next(it);
             break;
         default:
             // do nothing
@@ -304,8 +304,8 @@ struct handlebars_value * handlebars_value_call(struct handlebars_value * value,
     struct handlebars_value * result = NULL;
     if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
         result = value->v.helper(options);
-    } else if( value->type == HANDLEBARS_VALUE_TYPE_USER && value->handlers->call ) {
-        result = value->handlers->call(value, options);
+    } else if( value->type == HANDLEBARS_VALUE_TYPE_USER && handlebars_value_get_handlers(value)->call ) {
+        result = handlebars_value_get_handlers(value)->call(value, options);
     }
     return result;
 }
@@ -460,7 +460,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             }
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
-            new_value = value->handlers->copy(value);
+            new_value = handlebars_value_get_handlers(value)->copy(value);
             break;
 
         default:
@@ -486,8 +486,7 @@ void handlebars_value_dtor(struct handlebars_value * value)
             handlebars_talloc_free(value->v.string);
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
-            assert(value->handlers != NULL);
-            value->handlers->dtor(value);
+            handlebars_value_get_handlers(value)->dtor(value);
             break;
         case HANDLEBARS_VALUE_TYPE_PTR:
             handlebars_talloc_free(value->v.ptr);
@@ -503,7 +502,6 @@ void handlebars_value_dtor(struct handlebars_value * value)
 
     // Initialize to null
     value->type = HANDLEBARS_VALUE_TYPE_NULL;
-    value->handlers = NULL;
     memset(&value->v, 0, sizeof(value->v));
 }
 
@@ -537,16 +535,17 @@ struct handlebars_value * handlebars_value_from_json_object(struct handlebars_co
             break;
         case json_type_string:
             value->type = HANDLEBARS_VALUE_TYPE_STRING;
-            handlebars_value_string(value, json_object_get_string(json));
+            handlebars_value_stringl(value, json_object_get_string(json), json_object_get_string_len(json));
             break;
 
         case json_type_object:
         case json_type_array:
             value->type = HANDLEBARS_VALUE_TYPE_USER;
-            value->handlers = handlebars_value_get_std_json_handlers();
-            value->v.usr = (void *) json;
+            value->v.usr.handlers = handlebars_value_get_std_json_handlers();
+            value->v.usr.ptr = (void *) json;
             // Increment refcount?
             json_object_get(json);
+            talloc_set_destructor(value, handlebars_value_dtor);
             break;
         default:
             // ruh roh
@@ -565,7 +564,6 @@ struct handlebars_value * handlebars_value_from_json_string(struct handlebars_co
     // @todo test parse error
     if( parse_err == json_tokener_success ) {
         ret = handlebars_value_from_json_object(ctx, result);
-        talloc_set_destructor(ret, handlebars_value_dtor);
         ret->flags |= HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
     } else {
         handlebars_context_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));

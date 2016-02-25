@@ -28,26 +28,27 @@
 
 static struct handlebars_value * std_json_copy(struct handlebars_value * value)
 {
-    const char * str = json_object_to_json_string(value->v.usr);
+    const char * str = json_object_to_json_string(value->v.usr.ptr);
     return handlebars_value_from_json_string(CONTEXT, str);
 }
 
 static void std_json_dtor(struct handlebars_value * value)
 {
-    struct json_object * result = (struct json_object *) value->v.usr;
+    struct json_object * result = (struct json_object *) value->v.usr.ptr;
 
     assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
     assert(result != NULL);
 
     if( result != NULL ) {
         json_object_put(result);
-        value->v.usr = NULL;
+        value->v.usr.ptr = NULL;
+        value->v.usr.handlers = NULL;
     }
 }
 
 static void std_json_convert(struct handlebars_value * value, bool recurse)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr;
+    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
     char * key;
     struct handlebars_value * new_value;
 
@@ -87,7 +88,7 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
 
 static enum handlebars_value_type std_json_type(struct handlebars_value * value)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr;
+    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
     switch( json_object_get_type(intern) ) {
         case json_type_object: return HANDLEBARS_VALUE_TYPE_MAP;
         case json_type_array: return HANDLEBARS_VALUE_TYPE_ARRAY;
@@ -105,7 +106,7 @@ static enum handlebars_value_type std_json_type(struct handlebars_value * value)
 
 static struct handlebars_value * std_json_map_find(struct handlebars_value * value, struct handlebars_string * key)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr;
+    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
     struct json_object * item = json_object_object_get(intern, key->val);
     if( item == NULL ) {
         return NULL;
@@ -115,7 +116,7 @@ static struct handlebars_value * std_json_map_find(struct handlebars_value * val
 
 static struct handlebars_value * std_json_array_find(struct handlebars_value * value, size_t index)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr;
+    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
     struct json_object * item = json_object_array_get_idx(intern, (int) index);
     if( item == NULL ) {
         return NULL;
@@ -125,7 +126,7 @@ static struct handlebars_value * std_json_array_find(struct handlebars_value * v
 
 bool std_json_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr;
+    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
     struct lh_entry * entry;
 
     it->value = value;
@@ -158,7 +159,7 @@ bool std_json_iterator_init(struct handlebars_value_iterator * it, struct handle
 bool std_json_iterator_next(struct handlebars_value_iterator * it)
 {
     struct handlebars_value * value = it->value;
-    struct json_object * intern = (struct json_object *) value->v.usr;
+    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
     struct lh_entry * entry;
     bool ret = false;
 
@@ -196,7 +197,7 @@ bool std_json_iterator_next(struct handlebars_value_iterator * it)
 
 long std_json_count(struct handlebars_value * value)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr;
+    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
     switch( json_object_get_type(intern) ) {
         case json_type_object:
             return json_object_object_length(intern);
