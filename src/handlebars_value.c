@@ -474,6 +474,8 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
 
 void handlebars_value_dtor(struct handlebars_value * value)
 {
+    long restore_flags = 0;
+
     // Release old value
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
@@ -498,11 +500,13 @@ void handlebars_value_dtor(struct handlebars_value * value)
 
     if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
         talloc_free_children(value);
+        restore_flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
     }
 
     // Initialize to null
     value->type = HANDLEBARS_VALUE_TYPE_NULL;
     memset(&value->v, 0, sizeof(value->v));
+    value->flags = restore_flags;
 }
 
 #undef CONTEXT
@@ -546,6 +550,7 @@ struct handlebars_value * handlebars_value_from_json_object(struct handlebars_co
             // Increment refcount?
             json_object_get(json);
             talloc_set_destructor(value, handlebars_value_dtor);
+            value->flags |= HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
             break;
         default:
             // ruh roh
@@ -564,7 +569,6 @@ struct handlebars_value * handlebars_value_from_json_string(struct handlebars_co
     // @todo test parse error
     if( parse_err == json_tokener_success ) {
         ret = handlebars_value_from_json_object(ctx, result);
-        ret->flags |= HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
     } else {
         handlebars_context_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
     }
