@@ -198,7 +198,7 @@ START_TEST(test_mustache_spec)
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
-    struct handlebars_value_iterator * it;
+    struct handlebars_value_iterator it;
     TALLOC_CTX * memctx = talloc_new(rootctx);
 
 #ifndef NDEBUG
@@ -250,9 +250,9 @@ START_TEST(test_mustache_spec)
     vm->partials = handlebars_value_ctor(ctx);
     handlebars_value_map_init(vm->partials);
     if( test->partials ) {
-        it = handlebars_value_iterator_ctor(test->partials);
-        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            handlebars_map_update(vm->partials->v.map, it->key, it->current);
+        handlebars_value_iterator_init(&it, test->partials);
+        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+            handlebars_map_update(vm->partials->v.map, it.key, it.current);
         }
     }
 

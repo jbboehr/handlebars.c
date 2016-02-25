@@ -17,7 +17,7 @@ typedef void (*handlebars_value_convert_func)(struct handlebars_value * value, b
 typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
 typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, struct handlebars_string * key);
 typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index);
-typedef struct handlebars_value_iterator * (*handlebars_iterator_ctor_func)(struct handlebars_value * value);
+typedef bool (*handlebars_iterator_init_func)(struct handlebars_value_iterator * it, struct handlebars_value * value);
 typedef bool (*handlebars_iterator_next_func)(struct handlebars_value_iterator * it);
 typedef struct handlebars_value * (*handlebars_call_func)(struct handlebars_value * value, struct handlebars_options * options);
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
@@ -29,7 +29,7 @@ struct handlebars_value_handlers {
     handlebars_value_type_func type;
     handlebars_map_find_func map_find;
     handlebars_array_find_func array_find;
-    handlebars_iterator_ctor_func iterator;
+    handlebars_iterator_init_func iterator;
     handlebars_iterator_next_func next;
     handlebars_call_func call;
     handlebars_count_func count;

@@ -284,7 +284,7 @@ static inline void run_test(struct generic_test * test, int _i)
     struct handlebars_vm * vm;
     struct handlebars_value * context;
     struct handlebars_value * helpers;
-    struct handlebars_value_iterator * it;
+    struct handlebars_value_iterator it;
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
@@ -340,25 +340,23 @@ static inline void run_test(struct generic_test * test, int _i)
     if( test->globalHelpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->globalHelpers);
         load_fixtures(helpers);
-        it = handlebars_value_iterator_ctor(helpers);
-        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
+        handlebars_value_iterator_init(&it, helpers);
+        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
             //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-                handlebars_map_update(vm->helpers->v.map, it->key, it->current);
+                handlebars_map_update(vm->helpers->v.map, it.key, it.current);
             //}
         }
-        handlebars_talloc_free(it);
         handlebars_value_delref(helpers);
     }
     if( test->helpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->helpers);
         load_fixtures(helpers);
-        it = handlebars_value_iterator_ctor(helpers);
-        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
+        handlebars_value_iterator_init(&it, helpers);
+        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
             //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-            handlebars_map_update(vm->helpers->v.map, it->key, it->current);
+            handlebars_map_update(vm->helpers->v.map, it.key, it.current);
             //}
         }
-        handlebars_talloc_free(it);
         handlebars_value_delref(helpers);
     }
 
@@ -368,20 +366,19 @@ static inline void run_test(struct generic_test * test, int _i)
     if( test->globalPartials ) {
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->globalPartials);
         load_fixtures(partials);
-        it = handlebars_value_iterator_ctor(partials);
-        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            handlebars_map_update(vm->partials->v.map, it->key, it->current);
+        handlebars_value_iterator_init(&it, partials);
+        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+            handlebars_map_update(vm->partials->v.map, it.key, it.current);
         }
         handlebars_value_delref(partials);
     }
     if( test->partials ) {
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->partials);
         load_fixtures(partials);
-        it = handlebars_value_iterator_ctor(partials);
-        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            handlebars_map_update(vm->partials->v.map, it->key, it->current);
+        handlebars_value_iterator_init(&it, partials);
+        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+            handlebars_map_update(vm->partials->v.map, it.key, it.current);
         }
-        handlebars_talloc_free(it);
         handlebars_value_delref(partials);
     }
 

@@ -380,15 +380,16 @@ FIXTURE_FN(931412676)
     // "function (options) {\n            var frame = Handlebars.createFrame(options.data);\n            frame.depth = options.data.depth + 1;\n            return options.fn(this, {data: frame});\n          }"
     struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
     handlebars_value_map_init(frame);
-    struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(options->data);
-    for( ; it->current; handlebars_value_iterator_next(it) ) {
-        if( 0 == strcmp(it->key->val, "depth") ) {
+    struct handlebars_value_iterator it;
+    handlebars_value_iterator_init(&it, options->data);
+    for( ; it.current; handlebars_value_iterator_next(&it) ) {
+        if( 0 == strcmp(it.key->val, "depth") ) {
             struct handlebars_value * tmp = handlebars_value_ctor(CONTEXT);
-            handlebars_value_integer(tmp, handlebars_value_get_intval(it->current) + 1);
-            handlebars_map_update(frame->v.map, it->key, tmp);
+            handlebars_value_integer(tmp, handlebars_value_get_intval(it.current) + 1);
+            handlebars_map_update(frame->v.map, it.key, tmp);
             handlebars_value_delref(tmp);
         } else {
-            handlebars_map_update(frame->v.map, it->key, it->current);
+            handlebars_map_update(frame->v.map, it.key, it.current);
         }
     }
     handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
@@ -964,13 +965,14 @@ FIXTURE_FN(2919388099)
     // "function (options) {\n        var frame = Handlebars.createFrame(options.data);\n        for (var prop in options.hash) {\n          if (prop in options.hash) {\n            frame[prop] = options.hash[prop];\n          }\n        }\n        return options.fn(this, {data: frame});\n      }"
     struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
     handlebars_value_map_init(frame);
-    struct handlebars_value_iterator *it = handlebars_value_iterator_ctor(options->data);
-    for (; it->current; handlebars_value_iterator_next(it)) {
-        handlebars_map_update(frame->v.map, it->key, it->current);
+    struct handlebars_value_iterator it;
+    handlebars_value_iterator_init(&it, options->data);
+    for (; it.current; handlebars_value_iterator_next(&it)) {
+        handlebars_map_update(frame->v.map, it.key, it.current);
     }
-    struct handlebars_value_iterator *it2 = handlebars_value_iterator_ctor(options->hash);
-    for (; it2->current; handlebars_value_iterator_next(it2)) {
-        handlebars_map_update(frame->v.map, it2->key, it2->current);
+    handlebars_value_iterator_init(&it, options->hash);
+    for (; it.current; handlebars_value_iterator_next(&it)) {
+        handlebars_map_update(frame->v.map, it.key, it.current);
     }
     handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
     char * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, frame, NULL);
@@ -1299,12 +1301,13 @@ FIXTURE_FN(3878511480)
 {
     // "function list(context, options) {\n      if (context.length > 0) {\n        var out = '<ul>';\n        for (var i = 0, j = context.length; i < j; i++) {\n          out += '<li>';\n          out += options.fn(context[i]);\n          out += '<\/li>';\n        }\n        out += '<\/ul>';\n        return out;\n      } else {\n        return '<p>' + options.inverse(this) + '<\/p>';\n      }\n    }"
     struct handlebars_value * context = handlebars_stack_get(options->params, 0);
+    struct handlebars_value_iterator it;
     char *tmp;
     if( !handlebars_value_is_empty(context) ) {
-        struct handlebars_value_iterator *it = handlebars_value_iterator_ctor(context);
+        handlebars_value_iterator_init(&it, context);
         tmp = handlebars_talloc_strdup(options->vm, "<ul>");
-        for (; it->current != NULL; handlebars_value_iterator_next(it)) {
-            char *tmp2 = handlebars_vm_execute_program(options->vm, options->program, it->current);
+        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+            char *tmp2 = handlebars_vm_execute_program(options->vm, options->program, it.current);
             tmp = handlebars_talloc_asprintf_append(
                     tmp,
                     "<li>%s</li>",
@@ -1554,7 +1557,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
 
 void load_fixtures(struct handlebars_value * value)
 {
-    struct handlebars_value_iterator * it;
+    struct handlebars_value_iterator it;
     struct handlebars_value * child;
 
     // This shouldn't happen ...
@@ -1572,19 +1575,17 @@ void load_fixtures(struct handlebars_value * value)
                 handlebars_value_delref(child);
             } else {
                 // Recurse
-                it = handlebars_value_iterator_ctor(value);
-                for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
-                    load_fixtures(it->current);
+                handlebars_value_iterator_init(&it, value);
+                for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+                    load_fixtures(it.current);
                 }
-                handlebars_talloc_free(it);
             }
             break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            it = handlebars_value_iterator_ctor(value);
-            for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
-                load_fixtures(it->current);
+            handlebars_value_iterator_init(&it, value);
+            for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+                load_fixtures(it.current);
             }
-            handlebars_talloc_free(it);
             break;
     }
 }

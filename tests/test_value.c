@@ -146,7 +146,7 @@ START_TEST(test_array_iterator)
 {
     struct handlebars_value * value;
     struct handlebars_value * tmp;
-    struct handlebars_value_iterator * it;
+    struct handlebars_value_iterator it;
     int i = 0;
 
     value = handlebars_value_ctor(context);
@@ -167,17 +167,15 @@ START_TEST(test_array_iterator)
     handlebars_stack_push(value->v.stack, tmp);
     handlebars_value_delref(tmp);
 
-    it = handlebars_value_iterator_ctor(value);
+    handlebars_value_iterator_init(&it, value);
 
-    ck_assert_ptr_ne(it->current, NULL);
+    ck_assert_ptr_ne(it.current, NULL);
 
-    for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
-        ck_assert_ptr_ne(it->current, NULL);
-        ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_int_eq(it->current->v.lval, ++i);
+    for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+        ck_assert_ptr_ne(it.current, NULL);
+        ck_assert_int_eq(it.current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(it.current->v.lval, ++i);
     }
-
-    handlebars_talloc_free(it);
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
@@ -190,7 +188,7 @@ START_TEST(test_map_iterator)
 {
     struct handlebars_value * value;
     struct handlebars_value * tmp;
-    struct handlebars_value_iterator * it;
+    struct handlebars_value_iterator it;
     int i = 0;
 
     value = handlebars_value_ctor(context);
@@ -211,21 +209,21 @@ START_TEST(test_map_iterator)
     handlebars_map_str_update(value->v.map, HBS_STRL("b"), tmp);
     handlebars_value_delref(tmp);
 
-    it = handlebars_value_iterator_ctor(value);
+    handlebars_value_iterator_init(&it, value);
 
-    ck_assert_ptr_ne(it->current, NULL);
+    ck_assert_ptr_ne(it.current, NULL);
 
-    for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
+    for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
         ++i;
-        ck_assert_ptr_ne(it->current, NULL);
-        ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_ptr_ne(it->key, NULL);
+        ck_assert_ptr_ne(it.current, NULL);
+        ck_assert_int_eq(it.current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_ptr_ne(it.key, NULL);
         switch( i ) {
-            case 1: ck_assert_str_eq(it->key->val, "a"); break;
-            case 2: ck_assert_str_eq(it->key->val, "c"); break;
-            case 3: ck_assert_str_eq(it->key->val, "b"); break;
+            case 1: ck_assert_str_eq(it.key->val, "a"); break;
+            case 2: ck_assert_str_eq(it.key->val, "c"); break;
+            case 3: ck_assert_str_eq(it.key->val, "b"); break;
         }
-        ck_assert_int_eq(it->current->v.lval, i);
+        ck_assert_int_eq(it.current->v.lval, i);
     }
 
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -238,15 +236,16 @@ END_TEST
 START_TEST(test_array_iterator_json)
 {
     struct handlebars_value * value = handlebars_value_from_json_string(context, "[1, 2, 3]");
-    struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(value);
+    struct handlebars_value_iterator it;
     int i = 0;
 
-    ck_assert_ptr_ne(it->current, NULL);
+    handlebars_value_iterator_init(&it, value);
+    ck_assert_ptr_ne(it.current, NULL);
 
-    for( ; it->current != NULL; handlebars_value_iterator_next(it) ) {
-        ck_assert_ptr_ne(it->current, NULL);
-        ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_int_eq(it->current->v.lval, ++i);
+    for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+        ck_assert_ptr_ne(it.current, NULL);
+        ck_assert_int_eq(it.current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(it.current->v.lval, ++i);
     }
 
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -259,23 +258,24 @@ END_TEST
 START_TEST(test_map_iterator_json)
 {
     struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"a\": 1, \"c\": 2, \"b\": 3}");
-    struct handlebars_value_iterator * it = handlebars_value_iterator_ctor(value);
+    struct handlebars_value_iterator it;
     int i = 0;
 
-    ck_assert_ptr_ne(it->current, NULL);
+    handlebars_value_iterator_init(&it, value);
+    ck_assert_ptr_ne(it.current, NULL);
 
-    for( ; it && it->current != NULL; handlebars_value_iterator_next(it) ) {
+    for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
         ++i;
-        ck_assert_ptr_ne(it->current, NULL);
-        ck_assert_int_eq(it->current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_ptr_ne(it->key, NULL);
-        fprintf(stderr, "ARRRRERERER %p %s %d\n", it->key, it->key->val, i);
+        ck_assert_ptr_ne(it.current, NULL);
+        ck_assert_int_eq(it.current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_ptr_ne(it.key, NULL);
+        fprintf(stderr, "ARRRRERERER %p %s %d\n", it.key, it.key->val, i);
         switch( i ) {
-            case 1: ck_assert_str_eq(it->key->val, "a"); break;
-            case 2: ck_assert_str_eq(it->key->val, "c"); break;
-            case 3: ck_assert_str_eq(it->key->val, "b"); break;
+            case 1: ck_assert_str_eq(it.key->val, "a"); break;
+            case 2: ck_assert_str_eq(it.key->val, "c"); break;
+            case 3: ck_assert_str_eq(it.key->val, "b"); break;
         }
-        ck_assert_int_eq(it->current->v.lval, i);
+        ck_assert_int_eq(it.current->v.lval, i);
     }
 
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -420,8 +420,8 @@ Suite * parser_suite(void)
 {
     Suite * s = suite_create("Value");
 
-	REGISTER_TEST_FIXTURE(s, test_boolean_json_true, "Boolean - true (JSON)");
-	REGISTER_TEST_FIXTURE(s, test_boolean_json_false, "Boolean - false (JSON)");
+    REGISTER_TEST_FIXTURE(s, test_boolean_json_true, "Boolean - true (JSON)");
+    REGISTER_TEST_FIXTURE(s, test_boolean_json_false, "Boolean - false (JSON)");
     REGISTER_TEST_FIXTURE(s, test_boolean_yaml_true, "Boolean - true (YAML)");
     REGISTER_TEST_FIXTURE(s, test_int, "Integer");
     REGISTER_TEST_FIXTURE(s, test_int_yaml, "Integer (YAML)");

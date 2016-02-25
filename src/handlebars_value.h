@@ -99,7 +99,7 @@ struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_co
 
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);
-struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value) HBSARN;
+bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value);
 bool handlebars_value_iterator_next(struct handlebars_value_iterator * it);
 struct handlebars_value * handlebars_value_call(struct handlebars_value * value, struct handlebars_options * options);
 
