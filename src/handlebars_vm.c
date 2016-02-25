@@ -44,14 +44,6 @@
 
 #define TOPCONTEXT TOP(vm->contextStack)
 
-
-struct setup_ctx {
-    struct handlebars_string * name;
-    size_t param_size;
-    struct handlebars_stack * params;
-    struct handlebars_options * options;
-};
-
 ACCEPT_FUNCTION(push_context);
 
 
@@ -104,17 +96,14 @@ static inline struct handlebars_value * call_helper_str(struct handlebars_option
     return NULL;
 }
 
-static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * ctx)
+static inline void setup_options(struct handlebars_vm * vm, struct handlebars_options * options, size_t param_size)
 {
-    struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
     struct handlebars_value * inverse;
     struct handlebars_value * program;
     size_t i, j;
-    struct handlebars_value * params[ctx->param_size];
+    struct handlebars_value * params[param_size];
 
-    ctx->options = options;
-
-    options->name = ctx->name ? MC(handlebars_talloc_strndup(options, ctx->name->val, ctx->name->len)) : NULL;
+    //options->name = ctx->name ? MC(handlebars_talloc_strndup(options, ctx->name->val, ctx->name->len)) : NULL;
     options->hash = POP(vm->stack);
     options->scope = TOPCONTEXT;
     options->vm = vm;
@@ -128,21 +117,18 @@ static inline void setup_options(struct handlebars_vm * vm, struct setup_ctx * c
     handlebars_value_try_delref(program);
 
     // params
-    if( !ctx->params ) {
-        ctx->params = handlebars_stack_ctor(CONTEXT);
+    if( !options->params ) {
+        options->params = handlebars_stack_ctor(CONTEXT);
     }
 
-    i = ctx->param_size;
+    i = param_size;
     while( i-- ) {
         params[i] = POP(vm->stack);
     }
-    for( i = 0; i < ctx->param_size; i++ ) {
-        handlebars_stack_set(ctx->params, i, params[i]);
+    for( i = 0; i < param_size; i++ ) {
+        handlebars_stack_set(options->params, i, params[i]);
         handlebars_value_delref(params[i]);
     }
-
-    // Params
-    options->params = talloc_steal(options, ctx->params);
 
     // Data
     // @todo check useData
@@ -216,25 +202,25 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     struct handlebars_value * current;
     struct handlebars_value * result;
     struct handlebars_value * helper;
-    struct setup_ctx ctx = {0};
+    struct handlebars_options options = {0};
 
-    ctx.name = vm->last_helper;
-    ctx.params = handlebars_stack_ctor(CONTEXT);
-    handlebars_stack_push(ctx.params, TOPCONTEXT);
-    setup_options(vm, &ctx);
+    options.name = vm->last_helper; // @todo dupe?
+    options.params = handlebars_stack_ctor(CONTEXT);
+    handlebars_stack_push(options.params, TOPCONTEXT);
+    setup_options(vm, &options, 0);
 
     current = POP(vm->stack);
     if( !current ) { // @todo I don't think this should happen
         current = handlebars_value_ctor(CONTEXT);
     }
-    handlebars_stack_set(ctx.params, 0, current);
+    handlebars_stack_set(options.params, 0, current);
 
     if( vm->last_helper == NULL ) {
-        result = call_helper_str(ctx.options, "blockHelperMissing", sizeof("blockHelperMissing") - 1);
+        result = call_helper_str(&options, "blockHelperMissing", sizeof("blockHelperMissing") - 1);
         append_to_buffer(vm, result, 0);
     }
 
-    handlebars_options_dtor(ctx.options);
+    handlebars_options_deinit(&options);
     handlebars_value_delref(current);
 }
 
@@ -276,24 +262,23 @@ ACCEPT_FUNCTION(block_value)
 {
     struct handlebars_value * current;
     struct handlebars_value * result;
-    struct setup_ctx ctx = {0};
+    struct handlebars_options options = {0};
 
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    ctx.params = handlebars_stack_ctor(CONTEXT);
-    //handlebars_stack_push(ctx.params, TOPCONTEXT);
-    ctx.name = opcode->op1.data.string;
-    setup_options(vm, &ctx);
+    options.params = handlebars_stack_ctor(CONTEXT);
+    options.name = opcode->op1.data.string;
+    setup_options(vm, &options, 0);
 
     current = POP(vm->stack);
     assert(current != NULL);
-    handlebars_stack_set(ctx.params, 0, current);
+    handlebars_stack_set(options.params, 0, current);
 
-    result = call_helper_str(ctx.options, "blockHelperMissing", sizeof("blockHelperMissing") - 1);
+    result = call_helper_str(&options, "blockHelperMissing", sizeof("blockHelperMissing") - 1);
     append_to_buffer(vm, result, 0);
 
     handlebars_value_delref(current);
-    handlebars_options_dtor(ctx.options);
+    handlebars_options_deinit(&options);
 }
 
 ACCEPT_FUNCTION(empty_hash)
@@ -324,60 +309,57 @@ ACCEPT_FUNCTION(get_context)
 ACCEPT_FUNCTION(invoke_ambiguous)
 {
     struct handlebars_value * value = POP(vm->stack);
-    struct setup_ctx ctx = {0};
     struct handlebars_value * result;
-    struct handlebars_value * fn;
+    struct handlebars_options options = {0};
 
     ACCEPT_FN(empty_hash)(vm, opcode);
 
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(opcode->op2.type == handlebars_operand_type_boolean);
 
-    ctx.name = opcode->op1.data.string;
-    //ctx.is_block_helper = opcode->op2.data.boolval;
-    setup_options(vm, &ctx);
+    options.name = opcode->op1.data.string;
+    setup_options(vm, &options, 0);
     vm->last_helper = NULL;
 
-    if( NULL != (result = call_helper(ctx.options, ctx.name)) ) {
+    if( NULL != (result = call_helper(&options, options.name)) ) {
         append_to_buffer(vm, result, 0);
-        vm->last_helper = ctx.name;
+        vm->last_helper = options.name;
     } else if( value && handlebars_value_is_callable(value) ) {
-        result = handlebars_value_call(value, ctx.options);
+        result = handlebars_value_call(value, &options);
         assert(result != NULL);
         PUSH(vm->stack, result);
     } else {
-        result = call_helper_str(ctx.options, "helperMissing", sizeof("helperMissing") - 1);
+        result = call_helper_str(&options, "helperMissing", sizeof("helperMissing") - 1);
         append_to_buffer(vm, result, 0);
         PUSH(vm->stack, value);
     }
 
-    handlebars_options_dtor(ctx.options);
+    handlebars_options_deinit(&options);
 }
 
 ACCEPT_FUNCTION(invoke_helper)
 {
     struct handlebars_value * value = POP(vm->stack);
     struct handlebars_value * result = NULL;
-    struct setup_ctx ctx = {0};
+    struct handlebars_options options = {0};
 
     assert(opcode->op1.type == handlebars_operand_type_long);
     assert(opcode->op2.type == handlebars_operand_type_string);
     assert(opcode->op3.type == handlebars_operand_type_boolean);
 
-    ctx.name = opcode->op2.data.string;
-    ctx.param_size = opcode->op1.data.longval;
-    setup_options(vm, &ctx);
+    options.name = opcode->op2.data.string;
+    setup_options(vm, &options, opcode->op1.data.longval);
 
     if( opcode->op3.data.boolval ) { // isSimple
-        if( NULL != (result = call_helper(ctx.options, ctx.name)) ) {
+        if( NULL != (result = call_helper(&options, options.name)) ) {
             goto done;
         }
     }
 
     if( value && handlebars_value_is_callable(value) ) {
-        result = handlebars_value_call(value, ctx.options);
+        result = handlebars_value_call(value, &options);
     } else {
-        result = call_helper_str(ctx.options, "helperMissing", sizeof("helperMissing") - 1);
+        result = call_helper_str(&options, "helperMissing", sizeof("helperMissing") - 1);
     }
 
 done:
@@ -387,35 +369,34 @@ done:
 
     PUSH(vm->stack, result);
 
-    handlebars_options_dtor(ctx.options);
+    handlebars_options_deinit(&options);
     handlebars_value_delref(value);
 }
 
 ACCEPT_FUNCTION(invoke_known_helper)
 {
-    struct setup_ctx ctx = {0};
+    struct handlebars_options options = {0};
     struct handlebars_value * result;
 
     assert(opcode->op1.type == handlebars_operand_type_long);
     assert(opcode->op2.type == handlebars_operand_type_string);
 
-    ctx.param_size = opcode->op1.data.longval;
-    ctx.name = opcode->op2.data.string;
-    setup_options(vm, &ctx);
+    options.name = opcode->op2.data.string;
+    setup_options(vm, &options, opcode->op1.data.longval);
 
-    result = call_helper(ctx.options, ctx.name);
+    result = call_helper(&options, options.name);
 
     if( result == NULL ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid known helper: %s", ctx.name->val);
+        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid known helper: %s", options.name->val);
     }
 
     PUSH(vm->stack, result);
-    handlebars_options_dtor(ctx.options);
+    handlebars_options_deinit(&options);
 }
 
 ACCEPT_FUNCTION(invoke_partial)
 {
-    struct setup_ctx ctx = {0};
+    struct handlebars_options options = {0};
     struct handlebars_value * tmp = NULL;
     struct handlebars_string * name = NULL;
     struct handlebars_value * partial = NULL;
@@ -425,9 +406,7 @@ ACCEPT_FUNCTION(invoke_partial)
     assert(opcode->op2.type == handlebars_operand_type_string || opcode->op2.type == handlebars_operand_type_null || opcode->op2.type == handlebars_operand_type_long);
     assert(opcode->op3.type == handlebars_operand_type_string);
 
-    ctx.params = handlebars_stack_ctor(CONTEXT);
-    ctx.param_size = 1;
-    setup_options(vm, &ctx);
+    setup_options(vm, &options, 1);
 
     if( opcode->op1.data.boolval ) {
         // Dynamic partial
@@ -435,7 +414,7 @@ ACCEPT_FUNCTION(invoke_partial)
         if( tmp ) {
             name = tmp->v.string;
         }
-        ctx.options->name = NULL; // fear
+        options.name = NULL; // fear
     } else {
         if( opcode->op2.type == handlebars_operand_type_long ) {
             char tmp_str[32];
@@ -461,7 +440,7 @@ ACCEPT_FUNCTION(invoke_partial)
     // If partial is a function?
     if( handlebars_value_is_callable(partial) ) {
         struct handlebars_value * tmp = partial;
-        partial = handlebars_value_call(tmp, ctx.options);
+        partial = handlebars_value_call(tmp, &options);
         handlebars_value_delref(tmp);
     }
 
@@ -518,25 +497,25 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Get context
     // @todo change parent to new vm?
-    struct handlebars_value * context1 = handlebars_stack_get(ctx.options->params, 0);
+    struct handlebars_value * context1 = handlebars_stack_get(options.params, 0);
     struct handlebars_value * context2 = NULL;
     struct handlebars_value_iterator it;
     if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
-            ctx.options->hash && ctx.options->hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+            options.hash && options.hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
         context2 = handlebars_value_ctor(&vm2->ctx);
         handlebars_value_map_init(context2);
         handlebars_value_iterator_init(&it, context1);
         for( ; it.current ; handlebars_value_iterator_next(&it) ) {
             handlebars_map_update(context2->v.map, it.key, it.current);
         }
-        if( ctx.options->hash && ctx.options->hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-            handlebars_value_iterator_init(&it, ctx.options->hash);
+        if( options.hash && options.hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+            handlebars_value_iterator_init(&it, options.hash);
             for( ; it.current ; handlebars_value_iterator_next(&it) ) {
                 handlebars_map_update(context2->v.map, it.key, it.current);
             }
         }
     } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {
-        context2 = ctx.options->hash;
+        context2 = options.hash;
         if( context2 ) {
             handlebars_value_addref(context2);
         }
@@ -571,7 +550,7 @@ ACCEPT_FUNCTION(invoke_partial)
 done:
     handlebars_context_dtor(context);
     handlebars_value_try_delref(partial);
-    handlebars_options_dtor(ctx.options);
+    handlebars_options_deinit(&options);
 }
 
 ACCEPT_FUNCTION(lookup_block_param)
@@ -809,18 +788,18 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
 
     assert(top != NULL);
     if( handlebars_value_is_callable(top) ) {
-        struct handlebars_options * options = MC(handlebars_talloc_zero(vm, struct handlebars_options));
-        options->params = handlebars_stack_ctor(CONTEXT);
-        handlebars_stack_set(options->params, 0, TOPCONTEXT);
-        options->vm = vm;
-        options->scope = TOPCONTEXT;
-        result = handlebars_value_call(top, options);
+        struct handlebars_options options = {0};
+        options.params = handlebars_stack_ctor(CONTEXT);
+        handlebars_stack_set(options.params, 0, TOPCONTEXT);
+        options.vm = vm;
+        options.scope = TOPCONTEXT;
+        result = handlebars_value_call(top, &options);
         if( !result ) {
             result = handlebars_value_ctor(CONTEXT);
         }
         handlebars_value_delref(POP(vm->stack));
         PUSH(vm->stack, result);
-        handlebars_options_dtor(options);
+        handlebars_options_deinit(&options);
     }
     handlebars_value_delref(top);
 }

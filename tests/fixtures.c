@@ -292,7 +292,7 @@ FIXTURE_FN(730081660)
 
 FIXTURE_FN(730672213)
 {
-    if( 0 == strcmp(options->name, "link_to") ) {
+    if( 0 == strcmp(options->name->val, "link_to") ) {
         struct handlebars_value * mesg = handlebars_stack_get(options->params, 0);
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
@@ -415,7 +415,7 @@ FIXTURE_FN(1211570580)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "ran: %s",
-            options->name
+            options->name->val
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -426,7 +426,7 @@ FIXTURE_FN(1211570580)
 FIXTURE_FN(1091971719)
 {
     // "function (options) {\n          if (options.name === 'link_to') {\n            return new Handlebars.SafeString('<a>winning<\/a>');\n          }\n        }"
-    if( 0 == strcmp(options->name, "link_to") ) {
+    if( 0 == strcmp(options->name->val, "link_to") ) {
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "<a>%s</a>",
@@ -490,7 +490,7 @@ FIXTURE_FN(1198465479)
     struct handlebars_value * exclaim = handlebars_value_map_str_find(options->scope, HBS_STRL("exclaim"));
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     char * tmp = handlebars_talloc_asprintf(
-            options,
+            options->vm,
             "%s %s%s",
             handlebars_value_get_strval(adjective),
             handlebars_value_get_strval(noun),
@@ -941,7 +941,7 @@ FIXTURE_FN(2842041837)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "helper missing: %s",
-            options->name
+            options->name->val
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1001,7 +1001,7 @@ FIXTURE_FN(2961119846)
     struct handlebars_value * noun = handlebars_value_map_str_find(options->scope, HBS_STRL("noun"));
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     char * tmp = handlebars_talloc_asprintf(
-            options,
+            options->vm,
             "%s %s",
             handlebars_value_get_strval(adjective),
             handlebars_value_get_strval(noun)
@@ -1204,7 +1204,7 @@ FIXTURE_FN(3407223629)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "missing: %s",
-            options->name
+            options->name->val
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);

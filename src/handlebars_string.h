@@ -74,7 +74,7 @@ static inline bool handlebars_string_eq_ex(char * s1, size_t l1, unsigned long h
 
 static inline bool handlebars_string_eq(struct handlebars_string * string1, struct handlebars_string * string2)
 {
-    return handlebars_string_eq_ex(string1->val, string1->len, string2->hash, string1->val, string2->len, string2->hash);
+    return handlebars_string_eq_ex(string1->val, string1->len, string1->hash, string2->val, string2->len, string2->hash);
 }
 
 #endif

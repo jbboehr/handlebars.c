@@ -40,13 +40,13 @@ static inline struct handlebars_value * call_helper_str(struct handlebars_option
 #undef CONTEXT
 #define CONTEXT HBSCTX(options->vm)
 
-void handlebars_options_dtor(struct handlebars_options * options)
+void handlebars_options_deinit(struct handlebars_options * options)
 {
     //handlebars_value_try_delref(options->scope);
     handlebars_value_try_delref(options->data);
     handlebars_value_try_delref(options->hash);
     handlebars_stack_dtor(options->params);
-    handlebars_talloc_free(options);
+    //handlebars_talloc_free(options->name);
 }
 
 struct handlebars_value * handlebars_builtin_block_helper_missing(struct handlebars_options * options)
@@ -92,7 +92,7 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     struct handlebars_value * block_params = NULL;
     char * tmp;
     size_t i = 0;
-    size_t len;
+    long len;
     struct handlebars_options * options2;
     struct handlebars_value * ret = NULL;
 
@@ -106,19 +106,19 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
     result = handlebars_value_ctor(CONTEXT);
 
     if( handlebars_value_is_callable(context) ) {
-        options2 = MC(handlebars_talloc_zero(options->vm, struct handlebars_options));
-        options2->params = talloc_steal(options2, handlebars_stack_ctor(CONTEXT));
-        options2->vm = options->vm;
-        options2->scope = options->scope;
-        handlebars_stack_push(options2->params, options->scope);
-        ret = handlebars_value_call(context, options2);
+        struct handlebars_options options2 = {0};
+        options2.params = handlebars_stack_ctor(CONTEXT);
+        options2.vm = options->vm;
+        options2.scope = options->scope;
+        handlebars_stack_push(options2.params, options->scope);
+        ret = handlebars_value_call(context, &options2);
         if( !ret ) {
-            handlebars_options_dtor(options2);
+            handlebars_options_deinit(&options2);
             goto whoopsie;
         }
         handlebars_value_delref(context);
         context = ret;
-        handlebars_options_dtor(options2);
+        handlebars_options_deinit(&options2);
     }
 
     handlebars_value_string(result, "");
@@ -210,7 +210,7 @@ whoopsie:
 struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_options * options)
 {
     if( handlebars_stack_length(options->params) != 0 ) {
-        char * msg = handlebars_talloc_asprintf(options->vm, "Missing helper: \"%s\"", options->name);
+        char * msg = handlebars_talloc_asprintf(options->vm, "Missing helper: \"%s\"", options->name->val);
         handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, msg);
     }
     SAFE_RETURN(NULL);
@@ -258,19 +258,19 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
     char * result;
 
     if( handlebars_value_is_callable(conditional) ) {
-        struct handlebars_options * options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
-        options2->params = talloc_steal(options2, handlebars_stack_ctor(CONTEXT));
-        options2->vm = options->vm;
-        options2->scope = options->scope;
-        handlebars_stack_push(options2->params, options->scope);
-        ret = handlebars_value_call(conditional, options2);
+        struct handlebars_options options2 = {0};
+        options2.params = handlebars_stack_ctor(CONTEXT);
+        options2.vm = options->vm;
+        options2.scope = options->scope;
+        handlebars_stack_push(options2.params, options->scope);
+        ret = handlebars_value_call(conditional, &options2);
         handlebars_value_delref(conditional);
         conditional = ret;
         if( !conditional ) {
             conditional = handlebars_value_ctor(CONTEXT);
         }
         ret = NULL;
-        handlebars_options_dtor(options2);
+        handlebars_options_deinit(&options2);
     }
 
     if( !handlebars_value_is_empty(conditional) ) {
@@ -317,9 +317,9 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
     struct handlebars_value * ret = NULL;
 
     if( handlebars_value_is_callable(context) ) {
-        struct handlebars_options * options2 = handlebars_talloc_zero(options->vm, struct handlebars_options);
-        options2->params = talloc_steal(options2, handlebars_stack_ctor(CONTEXT));
-        handlebars_stack_push(options2->params, options->scope);
+        struct handlebars_options options2 = {0};
+        options2.params = handlebars_stack_ctor(CONTEXT);
+        handlebars_stack_push(options2.params, options->scope);
         ret = handlebars_value_call(context, options);
         if( !ret ) {
             ret = handlebars_value_ctor(CONTEXT);
@@ -327,7 +327,7 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
         handlebars_value_delref(context);
         context = ret;
         ret = NULL;
-        handlebars_options_dtor(options2);
+        handlebars_options_deinit(&options2);
     }
 
     if( context == NULL ) {

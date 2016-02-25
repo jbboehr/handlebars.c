@@ -16,7 +16,7 @@ struct handlebars_options {
     struct handlebars_vm * vm;
     long inverse;
     long program;
-    char * name;
+    struct handlebars_string * name;
     struct handlebars_stack * params;
     struct handlebars_value * scope;
     struct handlebars_value * data;
@@ -25,7 +25,7 @@ struct handlebars_options {
 
 typedef struct handlebars_value * (*handlebars_helper_func)(struct handlebars_options * options);
 
-void handlebars_options_dtor(struct handlebars_options * options);
+void handlebars_options_deinit(struct handlebars_options * options);
 const char ** handlebars_builtins_names(void) HBSARN;
 handlebars_helper_func * handlebars_builtins();
 handlebars_helper_func handlebars_builtins_find(const char * str, unsigned int len);
