@@ -134,7 +134,7 @@ struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * c
 
     value = handlebars_value_ctor(HBSCTX(cache));
     value->type = HANDLEBARS_VALUE_TYPE_PTR;
-    value->v.ptr = talloc_steal(value, entry);
+    value->v.ptr = /*talloc_steal(value, */entry/*)*/;
 
     handlebars_map_add(cache->map, tmpl, value);
 

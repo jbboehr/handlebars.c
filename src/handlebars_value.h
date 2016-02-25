@@ -40,7 +40,8 @@ enum handlebars_value_type {
 enum handlebars_value_flags {
     HANDLEBARS_VALUE_FLAG_NONE = 0,
     HANDLEBARS_VALUE_FLAG_TALLOC_DTOR = 1,
-    HANDLEBARS_VALUE_FLAG_SAFE_STRING = 2
+    HANDLEBARS_VALUE_FLAG_SAFE_STRING = 2,
+    HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED = 4
 };
 
 struct handlebars_value_iterator {
@@ -129,7 +130,9 @@ static inline int _handlebars_value_delref(struct handlebars_value * value, cons
         if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
             handlebars_value_dtor(value);
         }
-        handlebars_talloc_free(value);
+        if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
+            handlebars_talloc_free(value);
+        }
         return 0;
     }
     return --value->refcount;
@@ -141,7 +144,9 @@ static inline int handlebars_value_delref(struct handlebars_value * value) {
         if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
             handlebars_value_dtor(value);
         }
-        handlebars_talloc_free(value);
+        if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
+            handlebars_talloc_free(value);
+        }
         return 0;
     }
     return --value->refcount;
@@ -275,33 +280,33 @@ static inline void handlebars_value_str(struct handlebars_value * value, struct 
 static inline void handlebars_value_string(struct handlebars_value * value, const char * strval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = talloc_steal(value, handlebars_string_ctor(value->ctx, strval, strlen(strval)));
+    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
 }
 
 
 static inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = talloc_steal(value, handlebars_string_ctor(value->ctx, strval, strlen(strval)));
+    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
     talloc_free(strval); // meh
 }
 
 static inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = talloc_steal(value, handlebars_string_ctor(value->ctx, strval, strlen));
+    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen)/*)*/;
 }
 
 static inline void handlebars_value_map_init(struct handlebars_value * value) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_MAP;
-    value->v.map = talloc_steal(value, handlebars_map_ctor(value->ctx));
+    value->v.map = /*talloc_steal(value,*/ handlebars_map_ctor(value->ctx)/*)*/;
 }
 
 static inline void handlebars_value_array_init(struct handlebars_value * value) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
-    value->v.stack = talloc_steal(value, handlebars_stack_ctor(value->ctx));
+    value->v.stack = /*talloc_steal(value,*/ handlebars_stack_ctor(value->ctx)/*)*/;
 }
 
 #ifdef	__cplusplus

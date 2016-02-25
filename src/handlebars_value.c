@@ -37,6 +37,7 @@ struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
     struct handlebars_value * value = MC(handlebars_talloc_zero(ctx, struct handlebars_value));
     value->ctx = CONTEXT;
     value->refcount = 1;
+    value->flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
     return value;
 }
 
@@ -102,19 +103,19 @@ char * handlebars_value_get_strval(struct handlebars_value * value)
 
     switch( type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
-            ret = handlebars_talloc_strdup(value, value->v.string->val);
+            ret = handlebars_talloc_strdup(value->ctx, value->v.string->val);
             break;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
-            ret = handlebars_talloc_asprintf(value, "%ld", value->v.lval);
+            ret = handlebars_talloc_asprintf(value->ctx, "%ld", value->v.lval);
             break;
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            ret = handlebars_talloc_asprintf(value, "%g", value->v.dval);
+            ret = handlebars_talloc_asprintf(value->ctx, "%g", value->v.dval);
             break;
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            ret = handlebars_talloc_strdup(value, value->v.bval ? "true" : "false");
+            ret = handlebars_talloc_strdup(value->ctx, value->v.bval ? "true" : "false");
             break;
         default:
-            ret = handlebars_talloc_strdup(value, "");
+            ret = handlebars_talloc_strdup(value->ctx, "");
             break;
     }
 
@@ -400,7 +401,7 @@ char * handlebars_value_expression_append_buffer(char * buf, struct handlebars_v
 
         case HANDLEBARS_VALUE_TYPE_STRING:
             if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
-                buf = handlebars_htmlspecialchars_append_buffer(buf, value->v.string->val, strlen(value->v.string->val));
+                buf = handlebars_htmlspecialchars_append_buffer(buf, value->v.string->val, value->v.string->len);
             } else {
                 buf = handlebars_talloc_strndup_append_buffer(buf, value->v.string->val, value->v.string->len);
             }
@@ -488,12 +489,17 @@ void handlebars_value_dtor(struct handlebars_value * value)
             assert(value->handlers != NULL);
             value->handlers->dtor(value);
             break;
+        case HANDLEBARS_VALUE_TYPE_PTR:
+            handlebars_talloc_free(value->v.ptr);
+            break;
         default:
             // do nothing
             break;
     }
 
-    talloc_free_children(value);
+    if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
+        talloc_free_children(value);
+    }
 
     // Initialize to null
     value->type = HANDLEBARS_VALUE_TYPE_NULL;
