@@ -465,6 +465,11 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_value_delref(tmp);
     }
 
+    if( !partial || partial->type != HANDLEBARS_VALUE_TYPE_STRING ) {
+        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s was not a string, was %d", name, partial ? partial->type : -1);
+    }
+
+
     // Construct new context
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
 
@@ -1012,5 +1017,8 @@ done:
     // Release context
     handlebars_value_delref(context);
 
+    // Reset
+    vm->programs = NULL;
+    vm->guid_index = 0;
     HBSCTX(vm)->jmp = prev;
 }
