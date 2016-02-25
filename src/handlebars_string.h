@@ -66,4 +66,15 @@ static inline struct handlebars_string * handlebars_string_append(struct handleb
     return st2;
 }
 
+static inline bool handlebars_string_eq_ex(char * s1, size_t l1, unsigned long h1, char * s2, size_t l2, unsigned long h2)
+{
+    // Only compare via length and hash for now
+    return (l1 == l2 && h1 == h2/* && 0 == strncmp(s1, s2, l1)*/);
+}
+
+static inline bool handlebars_string_eq(struct handlebars_string * string1, struct handlebars_string * string2)
+{
+    return handlebars_string_eq_ex(string1->val, string1->len, string2->hash, string1->val, string2->len, string2->hash);
+}
+
 #endif

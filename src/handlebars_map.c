@@ -47,11 +47,7 @@ void handlebars_map_dtor(struct handlebars_map * map)
 
 static inline bool handlebars_map_entry_eq(struct handlebars_map_entry * entry1, struct handlebars_map_entry * entry2)
 {
-    return (
-            entry1->key->hash == entry2->key->hash &&
-            entry1->key->len == entry2->key->len &&
-            0 == strncmp(entry1->key->val, entry2->key->val, entry1->key->len)
-    );
+    return handlebars_string_eq(entry1->key, entry2->key);
 }
 
 static inline int _ht_add(struct handlebars_map_entry ** table, size_t table_size, struct handlebars_map_entry * entry)
@@ -113,7 +109,7 @@ static inline struct handlebars_map_entry * _entry_find(struct handlebars_map * 
 {
     struct handlebars_map_entry * found = map->table[hash  % map->table_size];
     while( found ) {
-        if( found->key->len == length && 0 == strncmp(HBS_STRVAL(found->key), key, length) ) {
+        if( handlebars_string_eq_ex(found->key->val, found->key->len, found->key->hash, key, length, hash) ) {
             return found;
         } else {
             found = found->child;
