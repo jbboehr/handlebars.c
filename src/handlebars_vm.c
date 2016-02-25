@@ -416,8 +416,9 @@ ACCEPT_FUNCTION(invoke_known_helper)
 ACCEPT_FUNCTION(invoke_partial)
 {
     struct setup_ctx ctx = {0};
-    struct handlebars_value * tmp;
-    char * name = NULL;
+    struct handlebars_value * tmp = NULL;
+    struct handlebars_string * name = NULL;
+    struct handlebars_value * partial = NULL;
     jmp_buf buf;
 
     assert(opcode->op1.type == handlebars_operand_type_boolean);
@@ -428,33 +429,32 @@ ACCEPT_FUNCTION(invoke_partial)
     ctx.param_size = 1;
     setup_options(vm, &ctx);
 
-    if( opcode->op2.type == handlebars_operand_type_long ) {
-        name = MC(handlebars_talloc_asprintf(vm, "%ld", opcode->op2.data.longval));
-    } else if( opcode->op2.type == handlebars_operand_type_string ) {
-        name = opcode->op2.data.string->val;
-    }
     if( opcode->op1.data.boolval ) {
+        // Dynamic partial
         tmp = POP(vm->stack);
-        if( tmp ) { // @todo why is this null?
-            name = handlebars_value_get_strval(tmp);
-            handlebars_value_delref(tmp);
+        if( tmp ) {
+            name = tmp->v.string;
         }
         ctx.options->name = NULL; // fear
+    } else {
+        if( opcode->op2.type == handlebars_operand_type_long ) {
+            char tmp_str[32];
+            size_t tmp_str_len = snprintf(tmp_str, 32, "%ld", opcode->op2.data.longval);
+            name = handlebars_string_ctor(HBSCTX(vm), tmp_str, tmp_str_len);
+            //name = MC(handlebars_talloc_asprintf(vm, "%ld", opcode->op2.data.longval));
+        } else if( opcode->op2.type == handlebars_operand_type_string ) {
+            name = opcode->op2.data.string;
+        }
     }
 
-    struct handlebars_value * partial = NULL;
-    if( /*!opcode->op1.data.boolval*/ name ) {
-        partial = handlebars_value_map_str_find(vm->partials, name, strlen(name));
-    } /* else {
-        partial = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string(partial, name);
-    } */
-
+    if( name ) {
+        partial = handlebars_value_map_find(vm->partials, name);
+    }
     if( !partial ) {
         if( vm->flags & handlebars_compiler_flag_compat ) {
             return;
         } else {
-            handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s could not be found", name);
+            handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s could not be found", name ? name->val : "(NULL)");
         }
     }
 
@@ -466,7 +466,7 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     if( !partial || partial->type != HANDLEBARS_VALUE_TYPE_STRING ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s was not a string, was %d", name, partial ? partial->type : -1);
+        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s was not a string, was %d", name ? name->val : "(NULL)", partial ? partial->type : -1);
     }
 
 
@@ -567,6 +567,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
     handlebars_value_try_delref(context1);
     handlebars_value_try_delref(context2);
+    handlebars_value_try_delref(tmp);
     handlebars_vm_dtor(vm2);
 
 done:
