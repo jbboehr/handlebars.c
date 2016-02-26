@@ -22,17 +22,17 @@
 #undef CONTEXT
 #define CONTEXT HBSCTX(vm)
 
-static inline struct handlebars_value * call_helper_str(struct handlebars_options * options, const char * name, unsigned int len)
+static inline struct handlebars_value * call_helper_str(const char * name, unsigned int len, int argc, struct handlebars_value * argv[], struct handlebars_options * options)
 {
     struct handlebars_value * helper;
     struct handlebars_value * result;
     handlebars_helper_func fn;
     if( NULL != (helper = handlebars_value_map_str_find(options->vm->helpers, name, len)) ) {
-        result = handlebars_value_call(helper, options);
+        result = handlebars_value_call(helper, argc, argv, options);
         handlebars_value_delref(helper);
         return result;
     } else if( NULL != (fn = handlebars_builtins_find(name, len)) ) {
-        return fn(options);
+        return fn(argc, argv, options);
     }
     return NULL;
 }
@@ -45,44 +45,11 @@ void handlebars_options_deinit(struct handlebars_options * options)
     //handlebars_value_try_delref(options->scope);
     handlebars_value_try_delref(options->data);
     handlebars_value_try_delref(options->hash);
-    handlebars_stack_dtor(options->params);
+    //handlebars_stack_dtor(options->params);
     //handlebars_talloc_free(options->name);
 }
 
-struct handlebars_value * handlebars_builtin_block_helper_missing(struct handlebars_options * options)
-{
-    struct handlebars_value * context;
-    char * result = NULL;
-    bool is_zero;
-    struct handlebars_value * ret = NULL;
-
-    assert(handlebars_stack_length(options->params) >= 1);
-
-    context = handlebars_stack_get(options->params, 0);
-    is_zero = handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_INTEGER && handlebars_value_get_intval(context) == 0;
-
-    if( handlebars_value_get_boolval(context) ) {
-        result = handlebars_vm_execute_program(options->vm, options->program, options->scope);
-    } else if( handlebars_value_is_empty(context) && !is_zero ) {
-        result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
-    } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        ret = call_helper_str(options, HBS_STRL("each"));
-    } else {
-        // For object, etc
-        result = handlebars_vm_execute_program(options->vm, options->program, context);
-    }
-
-    if( result ) {
-        ret = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string_steal(ret, result);
-    }
-
-    handlebars_value_try_delref(context);
-
-    SAFE_RETURN(ret);
-}
-
-struct handlebars_value * handlebars_builtin_each(struct handlebars_options * options)
+struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_value * context;
     struct handlebars_value_iterator it;
@@ -98,25 +65,26 @@ struct handlebars_value * handlebars_builtin_each(struct handlebars_options * op
 
     use_data = (options->data != NULL);
 
-    if( handlebars_stack_length(options->params) < 1 ) {
+    if( argc < 1 ) {
         handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Must pass iterator to #each");
     }
 
-    context = handlebars_stack_get(options->params, 0);
+    context = argv[0];
     result = handlebars_value_ctor(CONTEXT);
 
     if( handlebars_value_is_callable(context) ) {
         struct handlebars_options options2 = {0};
-        options2.params = handlebars_stack_ctor(CONTEXT);
+        int argc2 = 1;
+        struct handlebars_value * argv2[argc2];
         options2.vm = options->vm;
         options2.scope = options->scope;
-        handlebars_stack_push(options2.params, options->scope);
-        ret = handlebars_value_call(context, &options2);
+        argv2[0] = options->scope;
+        ret = handlebars_value_call(context, argc2, argv2, &options2);
         if( !ret ) {
             handlebars_options_deinit(&options2);
             goto whoopsie;
         }
-        handlebars_value_delref(context);
+        //handlebars_value_delref(context); // @todo double-check
         context = ret;
         handlebars_options_deinit(&options2);
     }
@@ -201,35 +169,71 @@ whoopsie:
         }
     }
 
-    handlebars_value_try_delref(context);
+    //handlebars_value_try_delref(context);  // @todo double-check
     handlebars_value_try_delref(data);
 
     SAFE_RETURN(result);
 }
 
-struct handlebars_value * handlebars_builtin_helper_missing(struct handlebars_options * options)
+struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HELPER_ARGS)
 {
-    if( handlebars_stack_length(options->params) != 0 ) {
+    struct handlebars_value * context;
+    char * result = NULL;
+    bool is_zero;
+    struct handlebars_value * ret = NULL;
+
+    if( argc < 1 ) {
+        goto inverse;
+    }
+
+    context = argv[0];
+    is_zero = handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_INTEGER && handlebars_value_get_intval(context) == 0;
+
+    if( handlebars_value_get_boolval(context) ) {
+        result = handlebars_vm_execute_program(options->vm, options->program, options->scope);
+    } else if( handlebars_value_is_empty(context) && !is_zero ) {
+inverse:
+        result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
+    } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        ret = call_helper_str(HBS_STRL("each"), argc, argv, options);
+    } else {
+        // For object, etc
+        result = handlebars_vm_execute_program(options->vm, options->program, context);
+    }
+
+    if( result ) {
+        ret = handlebars_value_ctor(CONTEXT);
+        handlebars_value_string_steal(ret, result);
+    }
+
+    //handlebars_value_try_delref(context); // @todo double-check
+
+    SAFE_RETURN(ret);
+}
+
+struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_ARGS)
+{
+    if( argc != 0 ) {
         char * msg = handlebars_talloc_asprintf(options->vm, "Missing helper: \"%s\"", options->name->val);
         handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, msg);
     }
     SAFE_RETURN(NULL);
 }
 
-struct handlebars_value * handlebars_builtin_log(struct handlebars_options * options)
+struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
 {
     handlebars_context_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "log is not implemented");
     return NULL;
 }
 
-struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * options)
+struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
 {
-    if( handlebars_stack_length(options->params) < 2 ) {
+    if( argc < 2 ) {
         handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "lookup requires two parameters");
     }
 
-    struct handlebars_value * context = handlebars_stack_get(options->params, 0);
-    struct handlebars_value * field = handlebars_stack_get(options->params, 1);
+    struct handlebars_value * context = argv[0];
+    struct handlebars_value * field = argv[1];
     struct handlebars_value * result = NULL;
     enum handlebars_value_type type = handlebars_value_get_type(context);
 
@@ -243,28 +247,33 @@ struct handlebars_value * handlebars_builtin_lookup(struct handlebars_options * 
         }
     }
 
-    handlebars_value_try_delref(context);
-    handlebars_value_try_delref(field);
+    //handlebars_value_try_delref(context); // @todo double-check
+    //handlebars_value_try_delref(field); // @todo double-check
 
     SAFE_RETURN(result);
 }
 
-struct handlebars_value * handlebars_builtin_if(struct handlebars_options * options)
+struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
 {
-    struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
-    int program;
+    if( argc < 1 ) {
+        goto inverse;
+    }
+
+    struct handlebars_value * conditional = argv[0];
+    long program;
     struct handlebars_value * tmp = NULL;
     struct handlebars_value * ret = NULL;
     char * result;
 
     if( handlebars_value_is_callable(conditional) ) {
         struct handlebars_options options2 = {0};
-        options2.params = handlebars_stack_ctor(CONTEXT);
+        int argc2 = 1;
+        struct handlebars_value * argv2[argc];
         options2.vm = options->vm;
         options2.scope = options->scope;
-        handlebars_stack_push(options2.params, options->scope);
-        ret = handlebars_value_call(conditional, &options2);
-        handlebars_value_delref(conditional);
+        argv2[0] = options->scope;
+        ret = handlebars_value_call(conditional, argc2, argv2, &options2);
+        //handlebars_value_delref(conditional); // @todo double-check
         conditional = ret;
         if( !conditional ) {
             conditional = handlebars_value_ctor(CONTEXT);
@@ -281,6 +290,7 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
         program = options->program;
         handlebars_value_delref(tmp);
     } else {
+inverse:
         program = options->inverse;
     }
 
@@ -294,43 +304,50 @@ struct handlebars_value * handlebars_builtin_if(struct handlebars_options * opti
     SAFE_RETURN(ret);
 }
 
-struct handlebars_value * handlebars_builtin_unless(struct handlebars_options * options)
+struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 {
-    struct handlebars_value * conditional = handlebars_stack_get(options->params, 0);
+    struct handlebars_value * conditional = NULL;
     struct handlebars_value * result = NULL;
 
-    if( !conditional ) {
-        conditional = handlebars_value_ctor(CONTEXT);
+    if( argc >= 1  ) {
+        conditional = argv[0];
     }
-    handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
-    result = call_helper_str(options, HBS_STRL("if"));
-    handlebars_value_delref(conditional);
+    handlebars_value_boolean(conditional, conditional ? handlebars_value_is_empty(conditional) : true);
+
+    result = call_helper_str(HBS_STRL("if"), argc, argv, options);
+    //handlebars_value_delref(conditional); // @todo double-check
     SAFE_RETURN(result);
 }
 
-struct handlebars_value * handlebars_builtin_with(struct handlebars_options * options)
+struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
 {
+    if( argc < 1 ) {
+        goto inverse;
+    }
+
     char * result = NULL;
-    struct handlebars_value * context = handlebars_stack_get(options->params, 0);
+    struct handlebars_value * context = argv[0];
     struct handlebars_value * block_params = NULL;
     struct handlebars_value * ret = NULL;
 
     if( handlebars_value_is_callable(context) ) {
         struct handlebars_options options2 = {0};
-        options2.params = handlebars_stack_ctor(CONTEXT);
-        handlebars_stack_push(options2.params, options->scope);
-        ret = handlebars_value_call(context, options);
+        int argc2 = 1;
+        struct handlebars_value * argv2[argc];
+        argv2[0] = options->scope;
+        ret = handlebars_value_call(context, argc2, argv2, options);
         if( !ret ) {
             ret = handlebars_value_ctor(CONTEXT);
         }
-        handlebars_value_delref(context);
+        //handlebars_value_delref(context); // @todo double-check
         context = ret;
         ret = NULL;
         handlebars_options_deinit(&options2);
     }
 
     if( context == NULL ) {
+inverse:
         context = handlebars_value_ctor(CONTEXT);
         result = handlebars_vm_execute_program(options->vm, options->inverse, context);
     } else if( context->type == HANDLEBARS_VALUE_TYPE_NULL ) {
@@ -348,7 +365,7 @@ struct handlebars_value * handlebars_builtin_with(struct handlebars_options * op
         handlebars_value_string_steal(ret, result);
     }
 
-    handlebars_value_delref(context);
+    //handlebars_value_delref(context); // @todo double-check
     handlebars_value_try_delref(block_params);
 
     SAFE_RETURN(ret);

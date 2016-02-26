@@ -100,7 +100,13 @@ void handlebars_value_dtor(struct handlebars_value * value);
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);
 bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value);
 bool handlebars_value_iterator_next(struct handlebars_value_iterator * it);
-struct handlebars_value * handlebars_value_call(struct handlebars_value * value, struct handlebars_options * options);
+
+struct handlebars_value * handlebars_value_call(
+        struct handlebars_value * value,
+        int argc,
+        struct handlebars_value * argv[],
+        struct handlebars_options * options
+);
 
 #if 0
 static inline int _handlebars_value_addref(struct handlebars_value * value, const char * loc) {

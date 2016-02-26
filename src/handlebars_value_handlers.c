@@ -58,7 +58,6 @@ static struct handlebars_value * std_json_copy(struct handlebars_value * value)
 static void std_json_dtor(struct handlebars_value * value)
 {
     assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
-    assert(result != NULL);
 
     handlebars_talloc_free(value->v.usr.ptr);
     //

@@ -55,10 +55,10 @@ void handlebars_vm_execute(
 		struct handlebars_value * context);
 
 char * handlebars_vm_execute_program(
-        struct handlebars_vm * vm, int program, struct handlebars_value * context);
+        struct handlebars_vm * vm, long program, struct handlebars_value * context);
 
 char * handlebars_vm_execute_program_ex(
-        struct handlebars_vm * vm, int program, struct handlebars_value * context,
+        struct handlebars_vm * vm, long program, struct handlebars_value * context,
         struct handlebars_value * data, struct handlebars_value * block_params);
 
 #ifdef	__cplusplus

@@ -299,13 +299,13 @@ bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
     return ret;
 }
 
-struct handlebars_value * handlebars_value_call(struct handlebars_value * value, struct handlebars_options * options)
+struct handlebars_value * handlebars_value_call(struct handlebars_value * value, HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_value * result = NULL;
     if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        result = value->v.helper(options);
+        result = value->v.helper(argc, argv, options);
     } else if( value->type == HANDLEBARS_VALUE_TYPE_USER && handlebars_value_get_handlers(value)->call ) {
-        result = handlebars_value_get_handlers(value)->call(value, options);
+        result = handlebars_value_get_handlers(value)->call(value, argc, argv, options);
     }
     return result;
 }
