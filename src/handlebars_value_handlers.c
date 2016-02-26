@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include <talloc.h>
+#include <yaml.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
 #include <json-c/json.h>
@@ -17,9 +18,30 @@
 #include <json/json_tokener.h>
 #endif
 
+#include "handlebars_private.h"
 #include "handlebars_memory.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
+
+
+#define HANDLEBARS_JSON_OBJ(value) ((struct handlebars_json *) talloc_get_type(value->v.usr.ptr, struct handlebars_json))->object
+
+struct handlebars_json {
+    struct json_object * object;
+};
+
+struct _yaml_ctx {
+    yaml_parser_t parser;
+    yaml_document_t document;
+};
+
+
+static void handlebars_json_dtor(struct handlebars_json * obj)
+{
+    if( obj ) {
+        json_object_put(obj->object);
+    }
+}
 
 
 
@@ -28,28 +50,25 @@
 
 static struct handlebars_value * std_json_copy(struct handlebars_value * value)
 {
-    const char * str = json_object_to_json_string(value->v.usr.ptr);
+    struct json_object * object = HANDLEBARS_JSON_OBJ(value);
+    const char * str = json_object_to_json_string(object);
     return handlebars_value_from_json_string(CONTEXT, str);
 }
 
 static void std_json_dtor(struct handlebars_value * value)
 {
-    struct json_object * result = (struct json_object *) value->v.usr.ptr;
-
     assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
     assert(result != NULL);
 
-    if( result != NULL ) {
-        json_object_put(result);
-        value->v.usr.ptr = NULL;
-        value->v.usr.handlers = NULL;
-    }
+    handlebars_talloc_free(value->v.usr.ptr);
+    //
+    value->v.usr.ptr = NULL;
+    value->v.usr.handlers = NULL;
 }
 
 static void std_json_convert(struct handlebars_value * value, bool recurse)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
-    char * key;
+    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
     struct handlebars_value * new_value;
 
     switch( json_object_get_type(intern) ) {
@@ -80,15 +99,12 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
             break;
         }
     }
-
-    // Remove talloc destructor?
-    talloc_set_destructor(value, NULL);
-    value->flags &= ~HANDLEBARS_VALUE_FLAG_TALLOC_DTOR;
 }
 
 static enum handlebars_value_type std_json_type(struct handlebars_value * value)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
+    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
+
     switch( json_object_get_type(intern) ) {
         case json_type_object: return HANDLEBARS_VALUE_TYPE_MAP;
         case json_type_array: return HANDLEBARS_VALUE_TYPE_ARRAY;
@@ -106,7 +122,7 @@ static enum handlebars_value_type std_json_type(struct handlebars_value * value)
 
 static struct handlebars_value * std_json_map_find(struct handlebars_value * value, struct handlebars_string * key)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
+    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
     struct json_object * item = json_object_object_get(intern, key->val);
     if( item == NULL ) {
         return NULL;
@@ -116,7 +132,7 @@ static struct handlebars_value * std_json_map_find(struct handlebars_value * val
 
 static struct handlebars_value * std_json_array_find(struct handlebars_value * value, size_t index)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
+    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
     struct json_object * item = json_object_array_get_idx(intern, (int) index);
     if( item == NULL ) {
         return NULL;
@@ -126,7 +142,7 @@ static struct handlebars_value * std_json_array_find(struct handlebars_value * v
 
 bool std_json_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
+    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
     struct lh_entry * entry;
 
     it->value = value;
@@ -159,7 +175,7 @@ bool std_json_iterator_init(struct handlebars_value_iterator * it, struct handle
 bool std_json_iterator_next(struct handlebars_value_iterator * it)
 {
     struct handlebars_value * value = it->value;
-    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
+    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
     struct lh_entry * entry;
     bool ret = false;
 
@@ -197,7 +213,7 @@ bool std_json_iterator_next(struct handlebars_value_iterator * it)
 
 long std_json_count(struct handlebars_value * value)
 {
-    struct json_object * intern = (struct json_object *) value->v.usr.ptr;
+    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
     switch( json_object_get_type(intern) ) {
         case json_type_object:
             return json_object_object_length(intern);
@@ -208,7 +224,6 @@ long std_json_count(struct handlebars_value * value)
     }
 
 }
-
 
 static struct handlebars_value_handlers handlebars_value_std_json_handlers = {
         &std_json_copy,
@@ -226,4 +241,156 @@ static struct handlebars_value_handlers handlebars_value_std_json_handlers = {
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers()
 {
     return &handlebars_value_std_json_handlers;
+}
+
+#undef CONTEXT
+#define CONTEXT ctx
+
+struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json)
+{
+    struct handlebars_value * value = handlebars_value_ctor(ctx);
+    struct handlebars_json * obj;
+
+    switch( json_object_get_type(json) ) {
+        case json_type_null:
+            // do nothing
+            break;
+        case json_type_boolean:
+            value->type = HANDLEBARS_VALUE_TYPE_BOOLEAN;
+            value->v.bval = json_object_get_boolean(json);
+            break;
+        case json_type_double:
+            value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
+            value->v.dval = json_object_get_double(json);
+            break;
+        case json_type_int:
+            value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
+            // @todo make sure sizing is correct
+            value->v.lval = json_object_get_int64(json);
+            break;
+        case json_type_string:
+            value->type = HANDLEBARS_VALUE_TYPE_STRING;
+            handlebars_value_stringl(value, json_object_get_string(json), json_object_get_string_len(json));
+            break;
+
+        case json_type_object:
+        case json_type_array:
+            // Increment refcount
+            json_object_get(json);
+
+            obj = MC(handlebars_talloc(ctx, struct handlebars_json));
+            obj->object = json;
+            talloc_set_destructor(obj, handlebars_json_dtor);
+
+            value->type = HANDLEBARS_VALUE_TYPE_USER;
+            value->v.usr.handlers = handlebars_value_get_std_json_handlers();
+            value->v.usr.ptr = (void *) obj;
+            break;
+        default:
+            // ruh roh
+            assert(0);
+            break;
+    }
+
+    return value;
+}
+
+struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json)
+{
+    struct handlebars_value * ret = NULL;
+    enum json_tokener_error parse_err = json_tokener_success;
+    struct json_object * result = json_tokener_parse_verbose(json, &parse_err);
+    // @todo test parse error
+    if( parse_err == json_tokener_success ) {
+        ret = handlebars_value_from_json_object(ctx, result);
+    } else {
+        handlebars_context_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
+    }
+    return ret;
+}
+
+static void _yaml_ctx_dtor(struct _yaml_ctx * holder)
+{
+    yaml_document_delete(&holder->document);
+    yaml_parser_delete(&holder->parser);
+}
+
+struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node)
+{
+    struct handlebars_value * value = handlebars_value_ctor(ctx);
+    struct handlebars_value * tmp;
+    yaml_node_pair_t * pair;
+    yaml_node_item_t * item;
+    char * end = NULL;
+
+    switch( node->type ) {
+        case YAML_MAPPING_NODE:
+            handlebars_value_map_init(value);
+            for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
+                yaml_node_t * keyNode = yaml_document_get_node(document, pair->key);
+                yaml_node_t * valueNode = yaml_document_get_node(document, pair->value);
+                assert(keyNode->type == YAML_SCALAR_NODE);
+                tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
+                handlebars_map_str_update(value->v.map, (const char *) keyNode->data.scalar.value, keyNode->data.scalar.length, tmp);
+            }
+            break;
+        case YAML_SEQUENCE_NODE:
+            handlebars_value_array_init(value);
+            for( item = node->data.sequence.items.start; item < node->data.sequence.items.top; item ++) {
+                yaml_node_t * valueNode = yaml_document_get_node(document, *item);
+                tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
+                handlebars_stack_push(value->v.stack, tmp);
+            }
+            break;
+        case YAML_SCALAR_NODE:
+            if( 0 == strcmp(node->data.scalar.value, "true") ) {
+                handlebars_value_boolean(value, 1);
+            } else if( 0 == strcmp(node->data.scalar.value, "false") ) {
+                handlebars_value_boolean(value, 0);
+            } else {
+                long lval;
+                double dval;
+                // Long
+                lval = strtol(node->data.scalar.value, &end, 10);
+                if( !*end ) {
+                    handlebars_value_integer(value, lval);
+                    goto done;
+                }
+                // Double
+                dval = strtod(node->data.scalar.value, &end);
+                if( !*end ) {
+                    handlebars_value_float(value, dval);
+                    goto done;
+                }
+                // String
+                handlebars_value_stringl(value, node->data.scalar.value, node->data.scalar.length);
+            }
+            break;
+        default:
+            // ruh roh
+            assert(0);
+            break;
+    }
+
+    done:
+    return value;
+}
+
+struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml)
+{
+    struct handlebars_value * value = NULL;
+    struct _yaml_ctx * yctx = MC(handlebars_talloc_zero(ctx, struct _yaml_ctx));
+    talloc_set_destructor(yctx, _yaml_ctx_dtor);
+    yaml_parser_initialize(&yctx->parser);
+    yaml_parser_set_input_string(&yctx->parser, (unsigned char *) yaml, strlen(yaml));
+    yaml_parser_load(&yctx->parser, &yctx->document);
+    yaml_node_t * node = yaml_document_get_root_node(&yctx->document);
+    // @todo test parse error
+    if( node ) {
+        value = handlebars_value_from_yaml_node(ctx, &yctx->document, node);
+    } else {
+        handlebars_context_throw(ctx, HANDLEBARS_ERROR, "YAML Parse Error: [%d] %s", yctx->parser.error, yctx->parser.problem);
+    }
+    handlebars_talloc_free(yctx);
+    return value;
 }

@@ -39,9 +39,8 @@ enum handlebars_value_type {
 
 enum handlebars_value_flags {
     HANDLEBARS_VALUE_FLAG_NONE = 0,
-    HANDLEBARS_VALUE_FLAG_TALLOC_DTOR = 1,
-    HANDLEBARS_VALUE_FLAG_SAFE_STRING = 2,
-    HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED = 4
+    HANDLEBARS_VALUE_FLAG_SAFE_STRING = 1,
+    HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED = 2
 };
 
 struct handlebars_value_iterator {
@@ -54,8 +53,8 @@ struct handlebars_value_iterator {
 };
 
 struct handlebars_value_user {
-    void * ptr;
     struct handlebars_value_handlers * handlers;
+    void * ptr;
 };
 
 struct handlebars_value {
@@ -96,10 +95,6 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBSA
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx) HBSARN;
 struct handlebars_value * handlebars_value_copy(struct handlebars_value * value) HBSARN;
 void handlebars_value_dtor(struct handlebars_value * value);
-struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json) HBSARN;
-struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json) HBSARN;
-struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node) HBSARN;
-struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml) HBSARN;
 
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);
@@ -130,9 +125,7 @@ static inline struct handlebars_value * handlebars_value_addref2(struct handleba
 static inline int _handlebars_value_delref(struct handlebars_value * value, const char * loc) {
     fprintf(stderr, "DELREF [%p] [%d] %s\n", value, value->refcount, loc);
     if( value->refcount <= 1 ) {
-        if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
-            handlebars_value_dtor(value);
-        }
+        handlebars_value_dtor(value);
         if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
             handlebars_talloc_free(value);
         }
@@ -144,9 +137,7 @@ static inline int _handlebars_value_delref(struct handlebars_value * value, cons
 #elif !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_delref(struct handlebars_value * value) {
     if( value->refcount <= 1 ) {
-        if( !(value->flags & HANDLEBARS_VALUE_FLAG_TALLOC_DTOR) ) {
-            handlebars_value_dtor(value);
-        }
+        handlebars_value_dtor(value);
         if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
             handlebars_talloc_free(value);
         }
