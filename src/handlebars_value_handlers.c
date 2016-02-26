@@ -246,9 +246,8 @@ struct handlebars_value_handlers * handlebars_value_get_std_json_handlers()
 #undef CONTEXT
 #define CONTEXT ctx
 
-struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json)
+void handlebars_value_init_json_object(struct handlebars_context * ctx, struct handlebars_value * value, struct json_object *json)
 {
-    struct handlebars_value * value = handlebars_value_ctor(ctx);
     struct handlebars_json * obj;
 
     switch( json_object_get_type(json) ) {
@@ -291,23 +290,36 @@ struct handlebars_value * handlebars_value_from_json_object(struct handlebars_co
             assert(0);
             break;
     }
+}
 
+void handlebars_value_init_json_string(struct handlebars_context *ctx, struct handlebars_value * value, const char * json)
+{
+    enum json_tokener_error parse_err = json_tokener_success;
+    struct json_object * result = json_tokener_parse_verbose(json, &parse_err);
+    // @todo test parse error
+    if( parse_err == json_tokener_success ) {
+        handlebars_value_init_json_object(ctx, value, result);
+    } else {
+        handlebars_context_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
+    }
+}
+
+struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json)
+{
+    struct handlebars_value * value = handlebars_value_ctor(ctx);
+    handlebars_value_init_json_object(ctx, value, json);
     return value;
 }
 
 struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json)
 {
-    struct handlebars_value * ret = NULL;
-    enum json_tokener_error parse_err = json_tokener_success;
-    struct json_object * result = json_tokener_parse_verbose(json, &parse_err);
-    // @todo test parse error
-    if( parse_err == json_tokener_success ) {
-        ret = handlebars_value_from_json_object(ctx, result);
-    } else {
-        handlebars_context_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
-    }
-    return ret;
+    struct handlebars_value * value = handlebars_value_ctor(ctx);
+    handlebars_value_init_json_string(ctx, value, json);
+    return value;
 }
+
+
+
 
 static void _yaml_ctx_dtor(struct _yaml_ctx * holder)
 {
@@ -315,9 +327,8 @@ static void _yaml_ctx_dtor(struct _yaml_ctx * holder)
     yaml_parser_delete(&holder->parser);
 }
 
-struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node)
+void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct handlebars_value * value, struct yaml_document_s * document, struct yaml_node_s * node)
 {
-    struct handlebars_value * value = handlebars_value_ctor(ctx);
     struct handlebars_value * tmp;
     yaml_node_pair_t * pair;
     yaml_node_item_t * item;
@@ -354,13 +365,13 @@ struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_cont
                 lval = strtol(node->data.scalar.value, &end, 10);
                 if( !*end ) {
                     handlebars_value_integer(value, lval);
-                    goto done;
+                    return;
                 }
                 // Double
                 dval = strtod(node->data.scalar.value, &end);
                 if( !*end ) {
                     handlebars_value_float(value, dval);
-                    goto done;
+                    return;
                 }
                 // String
                 handlebars_value_stringl(value, node->data.scalar.value, node->data.scalar.length);
@@ -371,14 +382,10 @@ struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_cont
             assert(0);
             break;
     }
-
-    done:
-    return value;
 }
 
-struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml)
+void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct handlebars_value * value, const char * yaml)
 {
-    struct handlebars_value * value = NULL;
     struct _yaml_ctx * yctx = MC(handlebars_talloc_zero(ctx, struct _yaml_ctx));
     talloc_set_destructor(yctx, _yaml_ctx_dtor);
     yaml_parser_initialize(&yctx->parser);
@@ -387,10 +394,23 @@ struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_co
     yaml_node_t * node = yaml_document_get_root_node(&yctx->document);
     // @todo test parse error
     if( node ) {
-        value = handlebars_value_from_yaml_node(ctx, &yctx->document, node);
+        handlebars_value_init_yaml_node(ctx, value, &yctx->document, node);
     } else {
         handlebars_context_throw(ctx, HANDLEBARS_ERROR, "YAML Parse Error: [%d] %s", yctx->parser.error, yctx->parser.problem);
     }
     handlebars_talloc_free(yctx);
+}
+
+struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node)
+{
+    struct handlebars_value * value = handlebars_value_ctor(ctx);
+    handlebars_value_init_yaml_node(ctx, value, document, node);
+    return value;
+}
+
+struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml)
+{
+    struct handlebars_value * value = handlebars_value_ctor(ctx);
+    handlebars_value_init_yaml_string(ctx, value, yaml);
     return value;
 }
