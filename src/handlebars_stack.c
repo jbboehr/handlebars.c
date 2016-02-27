@@ -127,6 +127,11 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
         handlebars_context_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds");
     }
 
+    // As a special case, ignore
+    if( value == stack->v[offset] ) {
+        return value;
+    }
+
     old = stack->v[offset];
     stack->v[offset] = value;
 

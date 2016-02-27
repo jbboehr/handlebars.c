@@ -62,6 +62,10 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     long len;
     struct handlebars_options * options2;
     struct handlebars_value * ret = NULL;
+    struct handlebars_value * key = NULL;
+    struct handlebars_value * index = NULL;
+    struct handlebars_value * first = NULL;
+    struct handlebars_value * last = NULL;
 
     use_data = (options->data != NULL);
 
@@ -91,6 +95,14 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 
     handlebars_value_string(result, "");
 
+    if( handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_MAP && handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        goto whoopsie;
+    }
+
+    key = handlebars_value_ctor(CONTEXT);
+    block_params = handlebars_value_ctor(CONTEXT);
+    handlebars_value_array_init(block_params);
+
     if( use_data ) {
         data = handlebars_value_ctor(CONTEXT);
         handlebars_value_map_init(data);
@@ -100,34 +112,31 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
                 handlebars_map_update(data->v.map, it.key, it.current);
             }
         }
-    }
-
-    if( handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_MAP && handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        goto whoopsie;
+        index = handlebars_value_ctor(CONTEXT);
+        first = handlebars_value_ctor(CONTEXT);
+        last = handlebars_value_ctor(CONTEXT);
+        handlebars_map_str_update(data->v.map, HBS_STRL("index"), index);
+        handlebars_map_str_update(data->v.map, HBS_STRL("key"), key);
+        handlebars_map_str_update(data->v.map, HBS_STRL("first"), first);
+        handlebars_map_str_update(data->v.map, HBS_STRL("last"), last);
     }
 
     handlebars_value_iterator_init(&it, context);
     len = handlebars_value_count(context) - 1;
 
     for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
-        struct handlebars_value * key;
-
         if( it.current->type == HANDLEBARS_VALUE_TYPE_NULL ) {
             i++;
             continue;
         }
 
-        key = handlebars_value_ctor(CONTEXT);
         if( it.key /*it->value->type == HANDLEBARS_VALUE_TYPE_MAP*/ ) {
             handlebars_value_str(key, it.key);
         } else {
             handlebars_value_integer(key, it.index);
         }
 
-        if( data ) {
-            struct handlebars_value * index = handlebars_value_ctor(CONTEXT);
-            struct handlebars_value * first = handlebars_value_ctor(CONTEXT);
-            struct handlebars_value * last = handlebars_value_ctor(CONTEXT);
+        if( use_data ) {
             if( it.index ) { // @todo zero?
                 handlebars_value_integer(index, it.index);
             } else {
@@ -135,18 +144,8 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
             }
             handlebars_value_boolean(first, i == 0);
             handlebars_value_boolean(last, i == len);
-
-            handlebars_map_str_update(data->v.map, HBS_STRL("index"), index);
-            handlebars_map_str_update(data->v.map, HBS_STRL("key"), key);
-            handlebars_map_str_update(data->v.map, HBS_STRL("first"), first);
-            handlebars_map_str_update(data->v.map, HBS_STRL("last"), last);
-            handlebars_value_delref(index);
-            handlebars_value_delref(first);
-            handlebars_value_delref(last);
         }
 
-        block_params = handlebars_value_ctor(CONTEXT);
-        handlebars_value_array_init(block_params);
         handlebars_stack_set(block_params->v.stack, 0, it.current);
         handlebars_stack_set(block_params->v.stack, 1, key);
 
@@ -154,9 +153,6 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         if( tmp ) {
             result->v.string = handlebars_string_append(HBSCTX(options->vm), result->v.string, tmp, strlen(tmp));
         }
-
-        handlebars_value_delref(key);
-        handlebars_value_delref(block_params);
 
         i++;
     }
@@ -171,6 +167,13 @@ whoopsie:
 
     //handlebars_value_try_delref(context);  // @todo double-check
     handlebars_value_try_delref(data);
+    if( data ) {
+        handlebars_value_try_delref(key);
+        handlebars_value_try_delref(index);
+        handlebars_value_try_delref(first);
+        handlebars_value_try_delref(last);
+        handlebars_value_try_delref(block_params);
+    }
 
     SAFE_RETURN(result);
 }
