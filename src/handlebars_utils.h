@@ -42,7 +42,7 @@ char * handlebars_htmlspecialchars_append_buffer(char * buf, const char * str, s
 
 char * handlebars_implode(const char * sep, const char ** arr);
 
-char * handlebars_indent(void * ctx, char * str, const char * indent);
+char * handlebars_indent(void * ctx, const char * str, const char * indent);
 
 /**
  * @brief Trims a set of characters off the left end of string. Trims in

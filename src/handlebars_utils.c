@@ -163,20 +163,23 @@ char * handlebars_implode(const char * sep, const char ** arr)
     return val;
 }
 
-char * handlebars_indent(void * ctx, char * str, const char * indent)
+char * handlebars_indent(void * ctx, const char * str, const char * indent)
 {
     size_t len, i;
     char * out = handlebars_talloc_strdup(ctx, "");
     bool endsInLine;
+    size_t indent_len = strlen(indent);
 
     if( !str ) {
         return out;
     }
 
-    out = handlebars_talloc_strdup_append(out, indent);
+    out = handlebars_talloc_strndup_append_buffer(out, indent, indent_len);
     len = strlen(str);
     endsInLine = (str[len - 1] == '\n');
-    str = handlebars_rtrim(str, "\r\n"); // @todo fixme
+    if( endsInLine ) {
+        len--;
+    }
 
     if( !len ) {
         return out;
@@ -184,18 +187,18 @@ char * handlebars_indent(void * ctx, char * str, const char * indent)
 
     for( i = 0; i < len; i++ ) {
         if( str[i] == '\n' ) {
-            out = handlebars_talloc_strdup_append/*_buffer*/(out, "\n");
-            out = handlebars_talloc_strdup_append/*_buffer*/(out, indent);
+            out = handlebars_talloc_strndup_append_buffer(out, HBS_STRL("\n"));
+            out = handlebars_talloc_strndup_append_buffer(out, indent, indent_len);
         } else {
             char tmp[2];
             tmp[0] = str[i];
             tmp[1] = 0;
-            out = handlebars_talloc_strdup_append/*_buffer*/(out, tmp);
+            out = handlebars_talloc_strndup_append_buffer(out, tmp, 1);
         }
     }
 
     if( endsInLine ) {
-        out = handlebars_talloc_strdup_append/*_buffer*/(out, "\n");
+        out = handlebars_talloc_strndup_append_buffer(out, HBS_STRL("\n"));
     }
 
     return out;
