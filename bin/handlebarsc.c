@@ -25,7 +25,9 @@
 
 #define __BUFF_SIZE 1024
 
+TALLOC_CTX * root;
 char * input_name = NULL;
+char * input_data_name = NULL;
 char * input_buf = NULL;
 size_t input_buf_length = 0;
 int compiler_flags = 0;
@@ -63,6 +65,7 @@ static void readOpts(int argc, char * argv[])
         {"debug",     no_argument,              0,  'd' },
         // input
         {"template",  required_argument,        0,  't' },
+        {"data",      required_argument,        0,  'D' },
         // compiler flags
         {"compat",    no_argument,              0,  'C' },
         {"known-helpers-only", no_argument,     0,  'K' },
@@ -131,63 +134,69 @@ start:
         case 't':
             input_name = optarg;
             break;
+        case 'D':
+            input_data_name = optarg;
     }
     
     goto start;
 }
 
-static void readInput(void)
+static char * read_stdin()
 {
     char buffer[__BUFF_SIZE];
-    char * tmp;
-    FILE * in;
-    int close = 1;
-    
-    // No input file?
-    if( !input_name ) {
-        fprintf(stderr, "No input file!\n");
-        exit(1);
-    }
-    
-    // Read from stdin
-    if( strcmp(input_name, "-") == 0 ) {
-        in = stdin;
-        close = 0;
-    } else {
-        in = fopen(input_name, "r");
-    }
-    
-    // Initialize buffer
-    input_buf = talloc_strdup(NULL, "");
-    if( input_buf == NULL ) {
-        exit(1);
-    }
-    
+    FILE * in = stdin;
+    char * buf = talloc_strdup(root, "");
+
     // Read
     while( fgets(buffer, __BUFF_SIZE, in) != NULL ) {
-        input_buf = talloc_strdup_append_buffer(input_buf, buffer);
+        buf = talloc_strdup_append_buffer(buf, buffer);
     }
-    input_buf_length = strlen(input_buf);
-    
-    // Trim the newline off the end >.>
-    tmp = input_buf + input_buf_length - 1;
-    while( input_buf_length > 0 && (*tmp == '\n' || *tmp == '\r') ) {
-        *tmp = 0;
-        input_buf_length--;
+
+    return buf;
+}
+
+static char * file_get_contents(char * filename)
+{
+    FILE * f;
+    long size;
+    char * buf;
+
+    // No input file?
+    if( !filename ) {
+        fprintf(stderr, "No input file!\n");
+        exit(1);
+    } else if( strcmp(filename, "-") == 0 ) {
+        return read_stdin();
     }
-    
-    if( close ) {
-        fclose(in);
-    }
-    
-    if( input_buf_length <= 0 ) {
+
+    f = fopen(filename, "rb");
+    if( !f ) {
+        fprintf(stderr, "Failed to open file: %s\n", filename);
         exit(1);
     }
+
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    buf = talloc_array(root, char, size + 1);
+    fread(buf, size, 1, f);
+    fclose(f);
+
+    buf[size] = 0;
+
+    return buf;
+}
+
+static void readInput(void)
+{
+    input_buf = file_get_contents(input_name);
+    input_buf_length = talloc_array_length(input_buf) - 1;
 }
 
 static int do_usage(void)
 {
-    fprintf(stderr, "Usage: handlebarsc [--lex|--parse|--compile] [TEMPLATE]\n");
+    fprintf(stderr, "Usage: handlebarsc [--lex|--parse|--compile|--execute] [--data JSON_FILE] [TEMPLATE]\n");
     return 0;
 }
 
@@ -330,11 +339,67 @@ error:
 
 static int do_execute(void)
 {
-    return 1;
+    struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
+    struct handlebars_compiler * compiler;
+    struct handlebars_vm * vm;
+    int error = 0;
+
+    ctx = handlebars_context_ctor();
+    parser = handlebars_parser_ctor(ctx);
+    compiler = handlebars_compiler_ctor(ctx);
+    vm = handlebars_vm_ctor(ctx);
+    vm->helpers = handlebars_value_ctor(ctx);
+    vm->partials = handlebars_value_ctor(ctx);
+
+    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
+        parser->ignore_standalone = 1;
+    }
+
+    handlebars_compiler_set_flags(compiler, compiler_flags);
+
+    // Read
+    readInput();
+    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
+
+    // Read context
+    char * context_str = file_get_contents(input_data_name);
+    struct handlebars_value * context;
+    if( context_str && strlen(context_str) ) {
+        context = handlebars_value_from_json_string(ctx, context_str);
+    } else {
+        context = handlebars_value_ctor(ctx);
+    }
+
+    // Parse
+    handlebars_parse(parser);
+
+    if( parser->ctx.num ) {
+        fprintf(stderr, "ERROR: %s\n", parser->ctx.msg);
+        goto error;
+    }
+
+    // Compile
+    handlebars_compiler_compile(compiler, parser->program);
+
+    if( compiler->ctx.num ) {
+        fprintf(stderr, "ERROR: %s\n", compiler->ctx.msg);
+        goto error;
+    }
+
+    handlebars_vm_execute(vm, compiler, context);
+
+    fprintf(stdout, vm->buffer);
+
+error:
+    handlebars_context_dtor(ctx);
+    return error;
 }
 
 int main(int argc, char * argv[])
 {
+    root = talloc_new(NULL);
+
     if( argc <= 1 ) {
         return do_usage();
     }

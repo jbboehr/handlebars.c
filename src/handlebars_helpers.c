@@ -225,8 +225,16 @@ struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_AR
 
 struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
 {
-    handlebars_context_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "log is not implemented");
-    return NULL;
+    int i;
+    fprintf(stderr, "[INFO] ");
+    for( i = 0; i < argc; i++ ) {
+        char * tmp = handlebars_value_dump(argv[i], 0);
+        fprintf(stderr, "%s ", tmp);
+        handlebars_talloc_free(tmp);
+    }
+    fprintf(stderr, "\n");
+    //fflush(stderr);
+    SAFE_RETURN(NULL);
 }
 
 struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
