@@ -225,15 +225,19 @@ struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_AR
 
 struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
 {
-    int i;
-    fprintf(stderr, "[INFO] ");
-    for( i = 0; i < argc; i++ ) {
-        char * tmp = handlebars_value_dump(argv[i], 0);
-        fprintf(stderr, "%s ", tmp);
-        handlebars_talloc_free(tmp);
+    if( options->vm->log_func ) {
+        options->vm->log_func(argc, argv, options);
+    } else {
+        int i;
+        fprintf(stderr, "[INFO] ");
+        for (i = 0; i < argc; i++) {
+            char *tmp = handlebars_value_dump(argv[i], 0);
+            fprintf(stderr, "%s ", tmp);
+            handlebars_talloc_free(tmp);
+        }
+        fprintf(stderr, "\n");
+        //fflush(stderr);
     }
-    fprintf(stderr, "\n");
-    //fflush(stderr);
     SAFE_RETURN(NULL);
 }
 

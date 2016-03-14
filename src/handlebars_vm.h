@@ -18,6 +18,12 @@ struct handlebars_options;
 #define HANDLEBARS_VM_STACK_SIZE 96
 #endif
 
+typedef void (*handlebars_log_func)(
+    int argc,
+    struct handlebars_value * argv[],
+    struct handlebars_options * options
+);
+
 struct handlebars_vm_stack {
     size_t i;
     struct handlebars_value * v[HANDLEBARS_VM_STACK_SIZE];
@@ -31,6 +37,7 @@ struct handlebars_vm {
     size_t guid_index;
     long depth;
     long flags;
+	handlebars_log_func log_func;
 
     char * buffer;
     struct handlebars_value * context;
