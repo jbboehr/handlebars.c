@@ -432,20 +432,24 @@ ACCEPT_FUNCTION(invoke_partial)
         }
     }
 
+    // Construct new context
+    struct handlebars_context * context = handlebars_context_ctor_ex(vm);
+
     // If partial is a function?
     if( handlebars_value_is_callable(partial) ) {
-        struct handlebars_value * tmp = partial;
-        partial = handlebars_value_call(tmp, argc, argv, &options);
-        handlebars_value_delref(tmp);
+        struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
+        char *tmp2 = handlebars_value_expression(ret, 0);
+        char *tmp3 = handlebars_indent(tmp2, tmp2, opcode->op3.data.string->val);
+        vm->buffer = MC(handlebars_talloc_strdup_append_buffer(vm->buffer, tmp2));
+        handlebars_talloc_free(tmp3);
+        handlebars_talloc_free(tmp2);
+        handlebars_value_try_delref(ret);
+        goto done;
     }
 
     if( !partial || partial->type != HANDLEBARS_VALUE_TYPE_STRING ) {
         handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s was not a string, was %d", name ? name->val : "(NULL)", partial ? partial->type : -1);
     }
-
-
-    // Construct new context
-    struct handlebars_context * context = handlebars_context_ctor_ex(vm);
 
     // Save jump buffer
     context->jmp = &buf;
