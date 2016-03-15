@@ -31,13 +31,14 @@ struct handlebars_vm_stack {
 
 struct handlebars_vm {
     struct handlebars_context ctx;
-	struct handlebars_cache * cache;
+    struct handlebars_cache * cache;
 
     struct handlebars_compiler ** programs;
     size_t guid_index;
     long depth;
     long flags;
-	handlebars_log_func log_func;
+    handlebars_log_func log_func;
+    void * log_ctx;
 
     char * buffer;
     struct handlebars_value * context;
@@ -45,7 +46,7 @@ struct handlebars_vm {
     struct handlebars_value * helpers;
     struct handlebars_value * partials;
 
-	struct handlebars_string * last_helper;
+    struct handlebars_string * last_helper;
     struct handlebars_value * last_context;
 
     struct handlebars_vm_stack stack;
