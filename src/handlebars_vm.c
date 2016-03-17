@@ -387,6 +387,34 @@ ACCEPT_FUNCTION(invoke_known_helper)
     handlebars_options_deinit(&options);
 }
 
+static inline struct handlebars_value * merge_hash(struct handlebars_context * context, struct handlebars_value * hash, struct handlebars_value * context1)
+{
+    struct handlebars_value * context2 = NULL;
+    struct handlebars_value_iterator it;
+    if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
+        hash && hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        context2 = handlebars_value_ctor(context);
+        handlebars_value_map_init(context2);
+        handlebars_value_iterator_init(&it, context1);
+        for( ; it.current ; handlebars_value_iterator_next(&it) ) {
+            handlebars_map_update(context2->v.map, it.key, it.current);
+        }
+        handlebars_value_iterator_init(&it, hash);
+        for( ; it.current ; handlebars_value_iterator_next(&it) ) {
+            handlebars_map_update(context2->v.map, it.key, it.current);
+        }
+    } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+        context2 = hash;
+        if( context2 ) {
+            handlebars_value_addref(context2);
+        }
+    } else {
+        context2 = context1;
+        handlebars_value_addref(context1);
+    }
+    return context2;
+}
+
 ACCEPT_FUNCTION(invoke_partial)
 {
     struct handlebars_options options = {0};
@@ -437,6 +465,10 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // If partial is a function?
     if( handlebars_value_is_callable(partial) ) {
+        struct handlebars_value * context1 = argv[0];
+        struct handlebars_value * context2 = merge_hash(HBSCTX(vm), options.hash, context1);
+        argv[0] = context2;
+
         struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
         char *tmp2 = handlebars_value_expression(ret, 0);
         char *tmp3 = handlebars_indent(tmp2, tmp2, opcode->op3.data.string->val);
@@ -495,33 +527,8 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
     // Get context
-    // @todo change parent to new vm?
     struct handlebars_value * context1 = argv[0];
-    struct handlebars_value * context2 = NULL;
-    struct handlebars_value_iterator it;
-    if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
-            options.hash && options.hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        context2 = handlebars_value_ctor(&vm2->ctx);
-        handlebars_value_map_init(context2);
-        handlebars_value_iterator_init(&it, context1);
-        for( ; it.current ; handlebars_value_iterator_next(&it) ) {
-            handlebars_map_update(context2->v.map, it.key, it.current);
-        }
-        if( options.hash && options.hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-            handlebars_value_iterator_init(&it, options.hash);
-            for( ; it.current ; handlebars_value_iterator_next(&it) ) {
-                handlebars_map_update(context2->v.map, it.key, it.current);
-            }
-        }
-    } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {
-        context2 = options.hash;
-        if( context2 ) {
-            handlebars_value_addref(context2);
-        }
-    } else {
-        context2 = context1;
-        context1 = NULL;
-    }
+    struct handlebars_value * context2 = merge_hash(HBSCTX(vm2), options.hash, context1);
 
     // Setup new VM
     vm2->depth = vm->depth + 1;
