@@ -1,8 +1,8 @@
 
 # Define the package version numbers
 m4_define([HANDLEBARS_MAJOR], 0)
-m4_define([HANDLEBARS_MINOR], 4)
-m4_define([HANDLEBARS_PATCH], 4)
+m4_define([HANDLEBARS_MINOR], 5)
+m4_define([HANDLEBARS_PATCH], 0)
 
 # Define the libtool version numbers; check the Autobook, Section 11.4.
 # m4_define([HANDLEBARS_RELEASE], 0)
@@ -16,7 +16,7 @@ m4_define([MUSTACHE_SPEC_VERSION], [1.1.3])
 
 # Initialize autoconf & automake.
 AC_PREREQ(2.61)
-AC_INIT([handlebars-c], [HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH], 
+AC_INIT([handlebars-c], [HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH-dev], 
         [jbboehr@gmail.com], [handlebars-c], 
         [https://github.com/jbboehr/handlebars.c])
 
