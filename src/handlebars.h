@@ -128,7 +128,12 @@ enum handlebars_error_type
     /**
      * @brief A stack was overflown
      */
-    HANDLEBARS_STACK_OVERFLOW = 7
+    HANDLEBARS_STACK_OVERFLOW = 7,
+
+    /**
+     * @brief A helper caused an error or exception
+     */
+    HANDELBARS_EXTERNAL_ERROR = 8
 };
 
 /**
