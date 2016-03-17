@@ -135,11 +135,26 @@ size_t handlebars_value_get_strlen(struct handlebars_value * value)
 
 bool handlebars_value_get_boolval(struct handlebars_value * value)
 {
-	if( value->type == HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
-        return value->v.bval;
-	}
-
-	return 0;
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_NULL:
+            return false;
+        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+            return value->v.bval;
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            return value->v.dval != 0;
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            return value->v.lval != 0;
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            return value->v.string->len != 0 && strcmp(value->v.string->val, "0") != 0;
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            return handlebars_stack_length(value->v.stack) != 0;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            return value->v.map->first != NULL;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            return handlebars_value_count(value) != 0;
+        default:
+            return false;
+    }
 }
 
 long handlebars_value_get_intval(struct handlebars_value * value)

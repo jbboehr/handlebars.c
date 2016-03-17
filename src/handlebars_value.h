@@ -209,16 +209,6 @@ static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
 
 static inline bool handlebars_value_is_callable(struct handlebars_value * value ) {
     return handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_HELPER;
-    /*
-    // @todo make this correct
-    if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        return true;
-    } else if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-
-    }
-    return false;
-    //return value->type == HANDLEBARS_VALUE_TYPE_HELPER || ;
-     */
 }
 
 static inline long handlebars_value_count(struct handlebars_value * value) {
@@ -235,26 +225,7 @@ static inline long handlebars_value_count(struct handlebars_value * value) {
 }
 
 static inline bool handlebars_value_is_empty(struct handlebars_value * value) {
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_NULL:
-            return 1;
-        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            return 0 == handlebars_value_get_boolval(value);
-        case HANDLEBARS_VALUE_TYPE_FLOAT:
-            return 0 == handlebars_value_get_floatval(value);
-        case HANDLEBARS_VALUE_TYPE_INTEGER:
-            return 0 == handlebars_value_get_intval(value);
-        case HANDLEBARS_VALUE_TYPE_STRING:
-            return 0 == handlebars_value_get_strlen(value);
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            return 0 == handlebars_stack_length(value->v.stack);
-        case HANDLEBARS_VALUE_TYPE_MAP:
-            return NULL == value->v.map->first;
-        case HANDLEBARS_VALUE_TYPE_USER:
-            return handlebars_value_count(value) == 0; // Doesn't include -1
-        default:
-            return 0;
-    }
+    return !handlebars_value_get_boolval(value);
 }
 
 static inline void handlebars_value_null(struct handlebars_value * value) {
