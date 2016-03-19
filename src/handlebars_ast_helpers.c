@@ -46,7 +46,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         open_str = handlebars_ast_node_get_string_mode_value(open_block_path);
         close_str = handlebars_ast_node_get_string_mode_value(close_block_path);
         if( close_block_path && 0 != strcmp(open_str, close_str) ) {
-            handlebars_context_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo,  "%s doesn't match %s", open_str, close_str);
+            handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo,  "%s doesn't match %s", open_str, close_str);
         }
     }
 
@@ -65,7 +65,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         assert(inverse_and_program->type == HANDLEBARS_AST_NODE_INVERSE);
 
         if( is_decorator ) {
-            handlebars_context_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "Unexpected inverse block on decorator");
+            handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "Unexpected inverse block on decorator");
         }
 
         if( inverse_and_program->node.inverse.chained ) {
@@ -182,7 +182,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
         open_str = handlebars_ast_node_get_string_mode_value(open_block_path);
         close_str = handlebars_ast_node_get_string_mode_value(close_block_path);
         if( close_block_path && 0 != strcmp(open_str, close_str) ) {
-            handlebars_context_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "%s doesn't match %s", open_str, close_str);
+            handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "%s doesn't match %s", open_str, close_str);
         }
     }
 
@@ -223,7 +223,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         // Handle paths
         if( !is_literal && (strcmp(part, "..") == 0 || strcmp(part, ".") == 0 || strcmp(part, "this") == 0) ) {
             if( count > 0 ) {
-                handlebars_context_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "Invalid path: %s", original);
+                handlebars_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "Invalid path: %s", original);
             } else if( strcmp(part, "..") == 0 ) {
                 depth++;
             }
@@ -250,7 +250,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     
     open_block_path = open_raw_block->node.intermediate.path;
     if( 0 != strcmp(open_block_path->node.path.original, close) ) {
-        handlebars_context_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "%s doesn't match %s", open_block_path->node.path.original, close);
+        handlebars_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "%s doesn't match %s", open_block_path->node.path.original, close);
     }
     
     // Create the content node

@@ -197,10 +197,10 @@ void handlebars_compiler_compile(
 /**
  * @brief Construct a compiler context object.
  * 
- * @param[in] ctx The memory context
+ * @param[in] context The handlebars context
  * @return the compiler context pointer
  */
-struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * context) HBSARN;
+struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * context) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Free a compiler context and it's resources.
@@ -231,7 +231,7 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, int fl
 /**
  * @brief Get an array of parts of an ID AST node.
  *
- * @param[in] ctx The talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] ast_node The AST node
  * @return The string array
  */

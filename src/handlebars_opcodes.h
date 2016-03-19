@@ -119,81 +119,81 @@ struct handlebars_opcode_get_context {
 /**
  * @brief Construct an opcode
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] type The opcode type
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type) HBSARN;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with a boolean operand
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] type The opcode type
  * @param[in] arg The boolean value
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_boolean(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, bool arg) HBSARN;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, bool arg) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with a long operand
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] type The opcode type
  * @param[in] arg The long value
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_long(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, long arg) HBSARN;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, long arg) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with a long and a string operand
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] type The opcode type
  * @param[in] arg1 The long value
  * @param[in] arg2 The string value
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_long_string(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, long arg1, const char * arg2) HBSARN;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, long arg1, const char * arg2) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with a string operand
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] type The opcode type
  * @param[in] arg The string value
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg) HBSARN;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with two string operands
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] type The opcode type
  * @param[in] arg1 The first string value
  * @param[in] arg2 The second string value
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string2(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg1, const char * arg2) HBSARN;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg1, const char * arg2) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with a string and a long operand
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] type The opcode type
  * @param[in] arg1 The string value
  * @param[in] arg2 The long value
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string_long(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg1, long arg2) HBSARN;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg1, long arg2) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Set the value of an operand to null
@@ -224,7 +224,7 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
 /**
  * @brief Set the value of an operand to a string
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] operand The operand of which to change the value
  * @param[in] arg The string value
  * @return void
@@ -234,7 +234,7 @@ int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, stru
 /**
  * @brief Set the value of an operand to an array
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] compiler The handlebars compiler
  * @param[in] operand The operand of which to change the value
  * @param[in] arg The array value
  * @return void

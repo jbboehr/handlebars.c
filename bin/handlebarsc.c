@@ -274,7 +274,7 @@ static int do_parse(void)
     handlebars_parse(parser);
     
     if( ctx->num != NULL ) {
-        output = handlebars_context_get_errmsg(ctx);
+        output = handlebars_error_message(ctx);
         fprintf(stderr, "%s\n", output);
         error = ctx->num;
         goto error;

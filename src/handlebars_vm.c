@@ -38,7 +38,7 @@
         if( stack.i < HANDLEBARS_VM_STACK_SIZE ) { \
             stack.v[stack.i++] = value; \
         } else { \
-            handlebars_context_throw(vm, HANDLEBARS_STACK_OVERFLOW, "Stack overflow in %s", #stack); \
+            handlebars_throw(vm, HANDLEBARS_STACK_OVERFLOW, "Stack overflow in %s", #stack); \
         } \
     } while(0)
 
@@ -380,7 +380,7 @@ ACCEPT_FUNCTION(invoke_known_helper)
     result = call_helper(options.name, argc, argv, &options);
 
     if( result == NULL ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid known helper: %s", options.name->val);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid known helper: %s", options.name->val);
     }
 
     PUSH(vm->stack, result);
@@ -456,7 +456,7 @@ ACCEPT_FUNCTION(invoke_partial)
         if( vm->flags & handlebars_compiler_flag_compat ) {
             return;
         } else {
-            handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s could not be found", name ? name->val : "(NULL)");
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s could not be found", name ? name->val : "(NULL)");
         }
     }
 
@@ -480,13 +480,13 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     if( !partial || partial->type != HANDLEBARS_VALUE_TYPE_STRING ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s was not a string, was %d", name ? name->val : "(NULL)", partial ? partial->type : -1);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s was not a string, was %d", name ? name->val : "(NULL)", partial ? partial->type : -1);
     }
 
     // Save jump buffer
     context->jmp = &buf;
     if( setjmp(buf) ) {
-        handlebars_context_throw_ex(CONTEXT, context->num, &context->loc, context->msg);
+        handlebars_throw_ex(CONTEXT, context->num, &context->loc, context->msg);
     }
 
     // Get template
@@ -853,7 +853,7 @@ static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handle
             //ACCEPT(push_string_param);
             ACCEPT(resolve_possible_lambda);
             default:
-                handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
+                handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
                 break;
         }
 	}

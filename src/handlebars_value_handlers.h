@@ -40,17 +40,17 @@ struct handlebars_value_handlers {
     handlebars_count_func count;
 };
 
-struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void) HBSARN;
+struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void) HBS_ATTR_RETURNS_NONNULL;
 
 void handlebars_value_init_json_object(struct handlebars_context * ctx, struct handlebars_value * value, struct json_object *json);
 void handlebars_value_init_json_string(struct handlebars_context *ctx, struct handlebars_value * value, const char * json);
-struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json) HBSARN;
-struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json) HBSARN;
+struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json) HBS_ATTR_RETURNS_NONNULL;
 
 void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct handlebars_value * value, struct yaml_document_s * document, struct yaml_node_s * node);
 void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct handlebars_value * value, const char * yaml);
-struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node) HBSARN;
-struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml) HBSARN;
+struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml) HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }

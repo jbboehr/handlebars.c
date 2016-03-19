@@ -583,7 +583,7 @@ static inline void handlebars_compiler_accept_program(
     assert(compiler != NULL);
     
     if( compiler->bps->i > HANDLEBARS_COMPILER_STACK_SIZE ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Block param stack blown");
+        handlebars_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Block param stack blown");
     }
     compiler->bps->s[compiler->bps->i].block_param1 = block_param1;
     compiler->bps->s[compiler->bps->i].block_param2 = block_param2;
@@ -721,7 +721,7 @@ static inline void _handlebars_compiler_accept_partial(
     count = (params ? handlebars_ast_list_count(params) : 0);
     
     if( count > 1 ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_UNSUPPORTED_PARTIAL_ARGS, "Unsupported number of partial arguments");
+        handlebars_throw(CONTEXT, HANDLEBARS_UNSUPPORTED_PARTIAL_ARGS, "Unsupported number of partial arguments");
     } else if( !params || !handlebars_ast_list_count(params) ) {
     	if( compiler->flags & handlebars_compiler_flag_explicit_partial_context ) {
     		__OPS(push_literal, "undefined");
@@ -975,7 +975,7 @@ static inline void handlebars_compiler_accept_sexpr_helper(
     if( handlebars_compiler_is_known_helper(compiler, path) ) {
         __OPLS(invoke_known_helper, handlebars_ast_list_count(params), name);
     } else if( compiler->known_helpers_only ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_UNKNOWN_HELPER, "You specified knownHelpersOnly, but used the unknown helper %s", name);
+        handlebars_throw(CONTEXT, HANDLEBARS_UNKNOWN_HELPER, "You specified knownHelpersOnly, but used the unknown helper %s", name);
     } else {
         bool is_simple = handlebars_ast_helper_simple_id(path);
         
@@ -1213,7 +1213,7 @@ static void handlebars_compiler_accept(
     
     // Add node to source node stack
     if( compiler->sns.i > HANDLEBARS_COMPILER_STACK_SIZE ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Source node stack blown");
+        handlebars_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Source node stack blown");
     }
     compiler->sns.s[compiler->sns.i] = node;
     compiler->sns.i++;

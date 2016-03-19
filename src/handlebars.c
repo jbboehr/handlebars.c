@@ -131,7 +131,7 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     // @todo set a destructor on the context object to deinit the lexer?
     lexerr = handlebars_yy_lex_init(&parser->scanner);
     if( unlikely(lexerr != 0) ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_NOMEM, "Lexer initialization failed");
+        handlebars_throw(CONTEXT, HANDLEBARS_NOMEM, "Lexer initialization failed");
     }
 
     // Set the extra on the lexer
@@ -230,7 +230,7 @@ static inline void _set_err(struct handlebars_context * context, enum handlebars
     }
 }
 
-void handlebars_context_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...)
+void handlebars_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...)
 {
     va_list ap;
     va_start(ap, msg);
@@ -244,7 +244,7 @@ void handlebars_context_throw(struct handlebars_context * context, enum handleba
     }
 }
 
-void handlebars_context_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...)
+void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...)
 {
     va_list ap;
     va_start(ap, msg);

@@ -55,7 +55,7 @@ struct handlebars_vm {
     struct handlebars_vm_stack blockParamStack;
 };
 
-struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBSARN;
+struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBS_ATTR_RETURNS_NONNULL;
 void handlebars_vm_dtor(struct handlebars_vm * vm);
 
 void handlebars_vm_execute(

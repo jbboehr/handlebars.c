@@ -70,7 +70,7 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     use_data = (options->data != NULL);
 
     if( argc < 1 ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "Must pass iterator to #each");
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Must pass iterator to #each");
     }
 
     context = argv[0];
@@ -218,7 +218,7 @@ struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_AR
 {
     if( argc != 0 ) {
         char * msg = handlebars_talloc_asprintf(options->vm, "Missing helper: \"%s\"", options->name->val);
-        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, msg);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, msg);
     }
     SAFE_RETURN(NULL);
 }
@@ -244,7 +244,7 @@ struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
 struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
 {
     if( argc < 2 ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_ERROR, "lookup requires two parameters");
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "lookup requires two parameters");
     }
 
     struct handlebars_value * context = argv[0];

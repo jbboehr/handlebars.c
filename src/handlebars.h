@@ -41,7 +41,6 @@ struct handlebars_token_list;
 #else
 #define HBS_ATTR_RETURNS_NONNULL
 #endif
-#define HBSARN HBS_ATTR_RETURNS_NONNULL
 
 // typeof
 #if (__GNUC__ >= 3)
@@ -72,11 +71,14 @@ struct handlebars_token_list;
 #define HBS_S2(x) HBS_S1(x)
 #define HBS_LOC HBS_S2(__FILE__) ":" HBS_S2(__LINE__)
 
+//! Message macro for out-of-memory errors
 #define HANDLEBARS_MEMCHECK_MSG "Out of memory  [" HBS_LOC "]"
+
+//! Check if an allocation failed
 #define HANDLEBARS_MEMCHECK(cond, ctx) \
     do { \
         if( handlebars_unlikely(!cond) ) { \
-            handlebars_context_throw(ctx, HANDLEBARS_NOMEM, HANDLEBARS_MEMCHECK_MSG); \
+            handlebars_throw(ctx, HANDLEBARS_NOMEM, HANDLEBARS_MEMCHECK_MSG); \
         } \
     } while(0)
 #define HBS_MEMCHK(cond) MEMCHKEX(cond, CONTEXT)
@@ -90,54 +92,36 @@ struct handlebars_token_list;
  */
 enum handlebars_error_type
 {
-    /**
-     * @brief Indicates that no error has occurred
-     */
+    //! Indicates that no error has occurred
     HANDLEBARS_SUCCESS = 0,
-    
-    /**
-     * @brief Indicates that a generic error has occurred 
-     */
+
+    //! Indicates that a generic error has occurred
     HANDLEBARS_ERROR = 1,
-    
-    /**
-     * @brief Indicates that failure was due to an allocation failure
-     */
+
+    //! Indicates that failure was due to an allocation failure
     HANDLEBARS_NOMEM = 2,
-    
-    /**
-     * @brief Indicates that failure was due to a null pointer argument
-     */
+
+    //! Indicates that failure was due to a null pointer argument
     HANDLEBARS_NULLARG = 3,
-    
-    /**
-     * @brief Indicates that failure was due to a parse error
-     */
+
+    //! Indicates that failure was due to a parse error
     HANDLEBARS_PARSEERR = 4,
 
-    /**
-     * @brief The compiler encountered an unknown helper in known helpers only mode
-     */
+    //! The compiler encountered an unknown helper in known helpers only mode
     HANDLEBARS_UNKNOWN_HELPER = 5,
 
-    /**
-     * @brief An unsupported number of partial arguments were given
-     */
+    //! An unsupported number of partial arguments were given
     HANDLEBARS_UNSUPPORTED_PARTIAL_ARGS = 6,
 
-    /**
-     * @brief A stack was overflown
-     */
+    //! A stack was overflown
     HANDLEBARS_STACK_OVERFLOW = 7,
 
-    /**
-     * @brief A helper caused an error or exception
-     */
+    //! A helper caused an error or exception
     HANDELBARS_EXTERNAL_ERROR = 8
 };
 
 /**
- * @brief Location type
+ * @brief Location type. Stores information about the location of an error
  */
 struct handlebars_locinfo
 {
@@ -149,21 +133,35 @@ struct handlebars_locinfo
 #define YYLTYPE handlebars_locinfo
 
 /**
- * @brief
+ * @brief Common structure header, used to store error info and a `jmp_buf`
  */
 struct handlebars_context
 {
-    long num;
+    //! The type of error that has occurred
+    enum handlebars_error_type num;
+
+    //! The message of the error that has occurred
     char * msg;
+
+    //! The location of the error that has occurred
     struct handlebars_locinfo loc;
+
+    //! On an unrecoverable error, if `jmp` is non-null, `longjmp` will be called with it as an argument,
+    //! otherwise `abort`
     jmp_buf * jmp;
 };
 
+/**
+ * @brief Structure for parsing or lexing a template
+ */
 struct handlebars_parser
 {
+    //! The internal context
     struct handlebars_context ctx;
 
+    //! The template to parse
     struct handlebars_string * tmpl;
+
     int tmplReadOffset;
     void * scanner;
     struct handlebars_ast_node * program;
@@ -181,55 +179,96 @@ int handlebars_version(void);
  * @brief Get the library version as a string
  * @return The version of handlebars as a string
  */
-const char * handlebars_version_string(void) HBSARN;
+const char * handlebars_version_string(void) HBS_ATTR_RETURNS_NONNULL;
 
-const char * handlebars_spec_version_string(void) HBSARN;
+/**
+ * @brief Get the compatible handlebars spec version as a string
+ * @return The version of the handlebars spec as a string
+ */
+const char * handlebars_spec_version_string(void) HBS_ATTR_RETURNS_NONNULL;
 
-const char * handlebars_mustache_spec_version_string(void) HBSARN;
+/**
+ * @brief Get the compatible mustache spec version as a string
+ * @return The version of the mustache spec as a string
+ */
+const char * handlebars_mustache_spec_version_string(void) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct a context object. Used as the root talloc pointer.
- *
+ * @param[in] ctx The talloc memory context
  * @return the context pointer
  */
 struct handlebars_context * handlebars_context_ctor_ex(void * ctx);
-#define handlebars_context_ctor() handlebars_context_ctor_ex(NULL)
+
+/**
+ * @brief Construct a root context object. Used as the root talloc pointer.
+ * @return the context pointer
+ */
+static inline struct handlebars_context * handlebars_context_ctor() {
+    return handlebars_context_ctor_ex(NULL);
+}
 
 /**
  * @brief Free a context and it's resources.
- *
- * @param[in] context
+ * @param[in] context The parent handlebars and talloc context
  * @return void
  */
 void handlebars_context_dtor(struct handlebars_context * context);
 
+/**
+ * @brief Construct a parser
+ * @param[in] ctx The parent handlebars and talloc context
+ * @return the parser pointer
+ */
 struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ctx);
 
+/**
+ * @brief Free a parser and it's resources.
+ * @param[in] parser The parser to free
+ * @return void
+ */
 void handlebars_parser_dtor(struct handlebars_parser * parser);
 
 /**
  * @brief Convenience function for lexing to a token list
- * 
- * @param[in] ctx
+ * @param[in] parser The parser
  * @return the token list
  */
-struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser) HBSARN;
+struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Parser a template. The template is stored in handlebars_parser#tmpl and the resultant
+ *        AST is stored in handlebars_parser#program
+ * @param[in] parser The parser
+ * @return true on success
+ */
 bool handlebars_parse(struct handlebars_parser * parser);
 
+/**
+ * @brief Throw an error. If the context has a `jmp_buf`, `longjmp(context->jmp, num)` will be called, otherwise
+ *        `abort()` will be called. This function does not return.
+ * @param[in] context The handlebars context
+ * @param[in] num The error code from the `handlebars_error_type`
+ * @param[in] msg The error message
+ */
 void handlebars_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...) HBS_ATTR_NORETURN HBS_ATTR_PRINTF(3, 4);
+
+/**
+ * @brief Throw an error. If the context has a `jmp_buf`, `longjmp(context->jmp, num)` will be called, otherwise
+ *        `abort()` will be called. This function does not return. Includes a location in the executing template.
+ * @param[in] context The handlebars context
+ * @param[in] num The error code from the `handlebars_error_type`
+ * @param[in] loc The location of the error
+ * @param[in] msg The error message
+ */
 void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...) HBS_ATTR_NORETURN  HBS_ATTR_PRINTF(4, 5);
-#define handlebars_context_throw handlebars_throw
-#define handlebars_context_throw_ex handlebars_throw_ex
 
 /**
  * @brief Get the error message from a context, or NULL.
- *
- * @param[in] context
- * @return the error message
+ * @param[in] context The handlebars context
+ * @return The error message
  */
 char * handlebars_error_message(struct handlebars_context * context);
-#define handlebars_context_get_errmsg handlebars_error_message
 
 /**
  * @brief Get the error message from a context, or NULL (compatibility for handlebars specification)
@@ -238,17 +277,19 @@ char * handlebars_error_message(struct handlebars_context * context);
  * @return the error message
  */
 char * handlebars_error_message_js(struct handlebars_context * context);
-#define handlebars_context_get_errmsg_js handlebars_error_message_js
 
-// Flex/Bison prototypes
-int handlebars_yy_get_column(void * yyscanner);
-void handlebars_yy_set_column(int column_no, void * yyscanner);
-int handlebars_yy_parse(struct handlebars_parser * parser);
-
+/**
+ * @brief Used to check for memory allocation failure. If `ptr` is `NULL`, handlebars_throw() will be called.
+ *        This function does not return if `ptr` is `NULL`.
+ * @param[in] context The handlebars context
+ * @param[in] ptr The pointer to check
+ * @param[in] msg The error message (file location)
+ * @return The value of `ptr`
+ */
 static inline void * handlebars_check(struct handlebars_context * context, void * ptr, const char * msg)
 {
     if( handlebars_unlikely(ptr == NULL) ) {
-        handlebars_context_throw(context, HANDLEBARS_NOMEM, "%s", msg);
+        handlebars_throw(context, HANDLEBARS_NOMEM, "%s", msg);
     }
     return ptr;
 }
@@ -259,6 +300,11 @@ struct handlebars_context * _HBSCTX(void * ctx, const char * loc);
 #else
 #define HBSCTX(ctx) ((struct handlebars_context *)ctx)
 #endif
+
+// Flex/Bison prototypes
+int handlebars_yy_get_column(void * yyscanner);
+void handlebars_yy_set_column(int column_no, void * yyscanner);
+int handlebars_yy_parse(struct handlebars_parser * parser);
 
 #ifdef	__cplusplus
 }

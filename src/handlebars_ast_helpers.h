@@ -21,18 +21,6 @@ struct handlebars_locinfo;
 struct handlebars_yy_intermediate5;
 struct handlebars_yy_inverse_and_program;
 
-/**
- * @brief Prepare a block node.
- * 
- * @param[in] context The handlebars context
- * @param[in] mustache A mustache AST node
- * @param[in] program A program AST node
- * @param[in] inverse A program AST node
- * @param[in] close A mustache AST node
- * @param[in] inverted If it's an inverse block
- * @param[in] locinfo The parser location
- * @return A newly constructed raw block AST node
- */
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_parser * parser,
     struct handlebars_ast_node * open_block,
@@ -41,7 +29,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_ast_node * close,
     int inverted,
     struct handlebars_locinfo * locinfo
-) HBSARN;
+) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
     struct handlebars_parser * parser,
@@ -49,7 +37,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
     struct handlebars_ast_node * program,
     struct handlebars_ast_node * inverse_chain,
     struct handlebars_locinfo * locinfo
-) HBSARN;
+) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     struct handlebars_parser * parser,
@@ -57,7 +45,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     char * open,
     unsigned strip,
     struct handlebars_locinfo * locinfo
-) HBSARN;
+) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
     struct handlebars_parser * parser,
@@ -65,36 +53,26 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
     struct handlebars_ast_node * program,
     struct handlebars_ast_node * close,
     struct handlebars_locinfo * locinfo
-) HBSARN;
+) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     struct handlebars_parser * parser,
     struct handlebars_ast_list * list,
     bool data,
     struct handlebars_locinfo * locinfo
-) HBSARN;
+) HBS_ATTR_RETURNS_NONNULL;
 
-/**
- * @brief Prepare a block node.
- * 
- * @param[in] context The handlebars context
- * @param[in] mustache A mustache AST node
- * @param[in] content The content of the raw block node
- * @param[in] close The text of the closing tag
- * @param[in] locinfo The parser location
- * @return A newly constructed block AST node
- */
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
-        struct handlebars_parser * parser,
-        struct handlebars_ast_node * open_raw_block,
-        const char * content,
-        const char * close,
-        struct handlebars_locinfo * locinfo
-) HBSARN;
+    struct handlebars_parser * parser,
+    struct handlebars_ast_node * open_raw_block,
+    const char * content,
+    const char * close,
+    struct handlebars_locinfo * locinfo
+) HBS_ATTR_RETURNS_NONNULL;
 
-char * handlebars_ast_helper_strip_comment(char * comment) HBSARN;
+char * handlebars_ast_helper_strip_comment(char * comment) HBS_ATTR_RETURNS_NONNULL;
 
-char * handlebars_ast_helper_strip_id_literal(char * comment) HBSARN;
+char * handlebars_ast_helper_strip_id_literal(char * comment) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Set the strip flags of a node

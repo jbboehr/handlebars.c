@@ -25,13 +25,18 @@ struct handlebars_token {
 /**
  * @brief Construct a token. Returns NULL on failure.
  *
- * @param[in] ctx The handlebars context
+ * @param[in] parser The handlebars parser
  * @param[in] token_int Token type
  * @param[in] text Token text
  * @param[in] length Length of the text
  * @return the new token object
  */
-struct handlebars_token * handlebars_token_ctor(struct handlebars_parser * parser, int token_int, const char * text, size_t length) HBSARN;
+struct handlebars_token * handlebars_token_ctor(
+    struct handlebars_parser * parser,
+    int token_int,
+    const char * text,
+    size_t length
+) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct a token
@@ -73,7 +78,7 @@ void handlebars_token_get_text_ex(struct handlebars_token * token, const char **
  * @param[in] type The integral token type
  * @return The string name of the type
  */
-const char * handlebars_token_readable_type(int type) HBSARN;
+const char * handlebars_token_readable_type(int type) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Get an integral type for the token name

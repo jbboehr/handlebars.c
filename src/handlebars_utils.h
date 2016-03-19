@@ -92,7 +92,7 @@ char * handlebars_str_reduce(char * string, const char * substr, const char * re
  * @brief Handle an error in the parser. Prints message to stderr
  * 
  * @param[in] lloc The parser location info
- * @param[in] context The context object
+ * @param[in] parser The handlebars parser
  * @param[in] err The error message
  * @return void
  */
@@ -113,7 +113,7 @@ void handlebars_yy_fatal_error(const char * msg, void * yyscanner) HBS_ATTR_NORE
  * @param[out] buffer The buffer to store input into
  * @param[out] numBytesRead The number of bytes read
  * @param[in] maxBytesToRead The maximum number of bytes to read
- * @param[in] context The handlebars context
+ * @param[in] parser The handlebars parser
  * @return void
  */
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser);

@@ -299,7 +299,7 @@ void handlebars_value_init_json_string(struct handlebars_context *ctx, struct ha
     if( parse_err == json_tokener_success ) {
         handlebars_value_init_json_object(ctx, value, result);
     } else {
-        handlebars_context_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
     }
 }
 
@@ -395,7 +395,7 @@ void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct h
     if( node ) {
         handlebars_value_init_yaml_node(ctx, value, &yctx->document, node);
     } else {
-        handlebars_context_throw(ctx, HANDLEBARS_ERROR, "YAML Parse Error: [%d] %s", yctx->parser.error, yctx->parser.problem);
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "YAML Parse Error: [%d] %s", yctx->parser.error, yctx->parser.problem);
     }
     handlebars_talloc_free(yctx);
 }

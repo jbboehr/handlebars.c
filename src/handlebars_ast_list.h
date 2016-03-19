@@ -66,10 +66,10 @@ int handlebars_ast_list_count(struct handlebars_ast_list * list);
 /**
  * @brief Contruct a new AST node list
  * 
- * @param[in] ctx The talloc memory context
+ * @param[in] context The handlebars context
  * @return The newly constructed list
  */
-struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_context * context) HBSARN;
+struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_context * context) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct an AST node list

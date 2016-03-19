@@ -171,8 +171,8 @@ START_TEST(handlebars_spec_parser)
     handlebars_parse(parser);
     
     if( parser->ctx.num ) {
-        char * errmsg = handlebars_context_get_errmsg((struct handlebars_context *) parser);
-        char * errmsgjs = handlebars_context_get_errmsg_js((struct handlebars_context *) parser);
+        char * errmsg = handlebars_error_message((struct handlebars_context *) parser);
+        char * errmsgjs = handlebars_error_message_js((struct handlebars_context *) parser);
         
         if( test->exception ) {
             if( test->message == NULL ) {

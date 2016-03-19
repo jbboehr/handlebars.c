@@ -31,18 +31,18 @@ typedef struct handlebars_value * (*handlebars_helper_func)(
 #define HANDLEBARS_HELPER_ARGS int argc, struct handlebars_value * argv[], struct handlebars_options * options
 
 void handlebars_options_deinit(struct handlebars_options * options);
-const char ** handlebars_builtins_names(void) HBSARN;
+const char ** handlebars_builtins_names(void) HBS_ATTR_RETURNS_NONNULL;
 handlebars_helper_func * handlebars_builtins();
 handlebars_helper_func handlebars_builtins_find(const char * str, unsigned int len);
 
-struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HELPER_ARGS) HBSARN;
-struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS) HBSARN;
-struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_ARGS) HBSARN;
-struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS) HBSARN;
-struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS) HBSARN;
-struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS) HBSARN;
-struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS) HBSARN;
-struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS) HBSARN;
+struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }

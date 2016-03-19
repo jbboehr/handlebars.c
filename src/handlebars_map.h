@@ -34,7 +34,7 @@ struct handlebars_map {
 #define handlebars_map_foreach(list, el, tmp) \
     for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
 
-struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx) HBSARN;
+struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx) HBS_ATTR_RETURNS_NONNULL;
 void handlebars_map_dtor(struct handlebars_map * map);
 
 struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key);

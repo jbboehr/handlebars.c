@@ -124,7 +124,7 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
 
     // Out-of-bounds
     if( offset >= stack->i ) {
-        handlebars_context_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds");
+        handlebars_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds");
     }
 
     // As a special case, ignore

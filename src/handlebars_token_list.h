@@ -56,10 +56,10 @@ int handlebars_token_list_append(struct handlebars_token_list * list, struct han
 /**
  * @brief Contruct a new token list
  * 
- * @param[in] ctx The talloc memory context
+ * @param[in] parser The handlebars parser
  * @return The newly constructed list
  */
-struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_parser * parser) HBSARN;
+struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_parser * parser) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct a token list

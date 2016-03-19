@@ -101,7 +101,7 @@ START_TEST(test_context_get_errmsg)
 
     context->msg = "test";
     context->loc = loc;
-    actual = handlebars_context_get_errmsg(context);
+    actual = handlebars_error_message(context);
 
     ck_assert_ptr_ne(NULL, actual);
     ck_assert_ptr_ne(NULL, strstr(actual, "test"));
@@ -109,7 +109,7 @@ START_TEST(test_context_get_errmsg)
     ck_assert_ptr_ne(NULL, strstr(actual, "column 2"));
 }
 {
-    ck_assert_ptr_eq(NULL, handlebars_context_get_errmsg(NULL));
+    ck_assert_ptr_eq(NULL, handlebars_error_message(NULL));
 }
 END_TEST
 
@@ -124,7 +124,7 @@ START_TEST(test_context_get_errmsg_failed_alloc)
     context->loc = loc;
 
     handlebars_memory_fail_enable();
-    actual = handlebars_context_get_errmsg(context);
+    actual = handlebars_error_message(context);
     handlebars_memory_fail_disable();
 
     //ck_assert_ptr_eq(NULL, actual);
@@ -141,7 +141,7 @@ START_TEST(test_context_get_errmsg_js)
 
     context->msg = "test";
     context->loc = loc;
-    actual = handlebars_context_get_errmsg_js(context);
+    actual = handlebars_error_message_js(context);
 
     ck_assert_ptr_ne(NULL, actual);
     ck_assert_ptr_ne(NULL, strstr(actual, "test"));
@@ -150,7 +150,7 @@ START_TEST(test_context_get_errmsg_js)
     ck_assert_ptr_ne(NULL, strstr(actual, "Parse error"));
 }
 {
-    ck_assert_ptr_eq(NULL, handlebars_context_get_errmsg_js(NULL));
+    ck_assert_ptr_eq(NULL, handlebars_error_message_js(NULL));
 }
 END_TEST
 
@@ -165,7 +165,7 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
     context->loc = loc;
 
     handlebars_memory_fail_enable();
-    actual = handlebars_context_get_errmsg_js(context);
+    actual = handlebars_error_message_js(context);
     handlebars_memory_fail_disable();
 
     //ck_assert_ptr_eq(NULL, actual);
