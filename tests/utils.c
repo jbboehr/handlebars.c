@@ -46,7 +46,9 @@ int init_blocks;
 
 void default_setup(void)
 {
+#ifdef HANDLEBARS_MEMORY
     handlebars_memory_fail_disable();
+#endif
     context = handlebars_context_ctor_ex(root);
     parser = handlebars_parser_ctor(context);
     compiler = handlebars_compiler_ctor(context);
@@ -56,7 +58,9 @@ void default_setup(void)
 
 void default_teardown(void)
 {
+#ifdef HANDLEBARS_MEMORY
     handlebars_memory_fail_disable();
+#endif
     handlebars_vm_dtor(vm);
     handlebars_compiler_dtor(compiler);
     handlebars_parser_dtor(parser);

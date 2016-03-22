@@ -27,6 +27,7 @@ END_TEST
 
 START_TEST(test_ast_node_ctor_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     jmp_buf buf;
 
     parser->ctx.jmp = &buf;
@@ -41,6 +42,9 @@ START_TEST(test_ast_node_ctor_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -53,6 +57,7 @@ END_TEST
 
 START_TEST(test_ast_node_dtor_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct handlebars_ast_node * node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
     int call_count;
     
@@ -64,6 +69,9 @@ START_TEST(test_ast_node_dtor_failed_alloc)
     ck_assert_int_eq(1, call_count);
     
     handlebars_talloc_free(node);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
     

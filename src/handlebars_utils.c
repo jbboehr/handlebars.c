@@ -414,18 +414,24 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
     // Note: it looks like the yyscanner is allocated before we can pass in
     // a handlebars context...
     struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_parser_init_current);
-    return (void *) _handlebars_yy_alloc(parser, bytes, "handlebars_yy_alloc");
+#ifdef HANDLEBARS_MEMORY
+    handlebars_memory_fail_counter_incr();
+#endif
+    return _handlebars_yy_alloc(parser, bytes);
 }
 
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
     // Going to skip wrappers for now
     struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_parser_init_current);
-    return (void *) _handlebars_yy_realloc(parser, ptr, sizeof(char), bytes, "handlebars_yy_realloc");
+#ifdef HANDLEBARS_MEMORY
+    handlebars_memory_fail_counter_incr();
+#endif
+    return _handlebars_yy_realloc(parser, ptr, sizeof(char) * bytes);
 }
 
 void handlebars_yy_free(void * ptr, HANDLEBARS_ATTR_UNUSED void * yyscanner)
 {
     // Going to skip wrappers for now
-    _handlebars_yy_free(ptr, "handlebars_yy_free");
+    _handlebars_yy_free(ptr);
 }

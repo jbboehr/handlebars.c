@@ -74,7 +74,6 @@ libhandlebars_la_SOURCES = \
 	$(GENSOURCE) \
 	handlebars_config.h \
 	handlebars_memory.h \
-	handlebars_memory.c \
 	handlebars.h \
 	handlebars.c \
 	handlebars_ast.h \
@@ -119,6 +118,10 @@ libhandlebars_la_SOURCES = \
 	handlebars_vm.c \
 	handlebars_whitespace.h \
 	handlebars_whitespace.c
+
+if HANDLEBARS_MEMORY
+libhandlebars_la_SOURCES += handlebars_memory.c
+endif
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libhandlebars_la_LDFLAGS = \

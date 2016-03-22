@@ -33,6 +33,7 @@ END_TEST
 
 START_TEST(test_compiler_ctor_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     jmp_buf buf;
 
     context->jmp = &buf;
@@ -46,6 +47,9 @@ START_TEST(test_compiler_ctor_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 

@@ -275,6 +275,7 @@ END_TEST
 
 START_TEST(test_yy_fatal_error)
 {
+#if HANDLEBARS_MEMORY
     const char * err = "sample error message";
     int exit_code;
     
@@ -284,11 +285,15 @@ START_TEST(test_yy_fatal_error)
     handlebars_memory_fail_disable();
     
     ck_assert_int_eq(exit_code, 2);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
 START_TEST(test_yy_free)
 {
+#if HANDLEBARS_MEMORY
     char * tmp = handlebars_talloc_strdup(root, "");
     int count;
     
@@ -300,6 +305,9 @@ START_TEST(test_yy_free)
     ck_assert_int_eq(1, count);
     
     handlebars_talloc_free(tmp);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -327,6 +335,7 @@ END_TEST
 
 START_TEST(test_yy_realloc_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     char * tmp = handlebars_talloc_strdup(root, "");
     char * tmp2;
     
@@ -338,6 +347,9 @@ START_TEST(test_yy_realloc_failed_alloc)
     
     // (it's not actually getting freed in the realloc)
     handlebars_talloc_free(tmp);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 

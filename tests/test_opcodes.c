@@ -29,6 +29,7 @@ END_TEST
 
 START_TEST(test_opcode_ctor_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     jmp_buf buf;
 
     if( handlebars_setjmp_ex(compiler, &buf) ) {
@@ -41,6 +42,9 @@ START_TEST(test_opcode_ctor_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -59,6 +63,7 @@ END_TEST
 
 START_TEST(test_opcode_ctor_long_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     jmp_buf buf;
 
     if( handlebars_setjmp_ex(compiler, &buf) ) {
@@ -71,6 +76,9 @@ START_TEST(test_opcode_ctor_long_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+        fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -92,6 +100,7 @@ END_TEST
 
 START_TEST(test_opcode_ctor_long_string_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("blah"));
     jmp_buf buf;
 
@@ -105,6 +114,9 @@ START_TEST(test_opcode_ctor_long_string_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -125,6 +137,7 @@ END_TEST
 
 START_TEST(test_opcode_ctor_string_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct handlebars_opcode * opcode;
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("foo"));
     jmp_buf buf;
@@ -139,6 +152,9 @@ START_TEST(test_opcode_ctor_string_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -162,6 +178,7 @@ END_TEST
 
 START_TEST(test_opcode_ctor_string2_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct handlebars_string * string1 = handlebars_string_ctor(context, HBS_STRL("foo"));
     struct handlebars_string * string2 = handlebars_string_ctor(context, HBS_STRL("bar"));
     jmp_buf buf;
@@ -176,6 +193,9 @@ START_TEST(test_opcode_ctor_string2_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -197,6 +217,7 @@ END_TEST
 
 START_TEST(test_opcode_ctor_string_long_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct handlebars_string * string1 = handlebars_string_ctor(context, HBS_STRL("foo"));
     jmp_buf buf;
 
@@ -210,6 +231,9 @@ START_TEST(test_opcode_ctor_string_long_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 

@@ -82,6 +82,7 @@ END_TEST
 
 START_TEST(test_context_ctor_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct handlebars_context * context;
 
     handlebars_memory_fail_enable();
@@ -89,6 +90,9 @@ START_TEST(test_context_ctor_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert_ptr_eq(NULL, context);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -115,6 +119,7 @@ END_TEST
 
 START_TEST(test_context_get_errmsg_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct YYLTYPE loc;
     char * actual;
     loc.last_line = 1;
@@ -129,6 +134,9 @@ START_TEST(test_context_get_errmsg_failed_alloc)
 
     //ck_assert_ptr_eq(NULL, actual);
     ck_assert_ptr_eq(context->msg, actual);
+#else
+        fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -156,6 +164,7 @@ END_TEST
 
 START_TEST(test_context_get_errmsg_js_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct YYLTYPE loc;
     char * actual;
     loc.last_line = 1;
@@ -170,6 +179,9 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
 
     //ck_assert_ptr_eq(NULL, actual);
     ck_assert_ptr_eq(context->msg, actual);
+#else
+        fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 

@@ -48,7 +48,7 @@ before_install:
 install:
   - ./.travis.sh
   - ./bootstrap
-  - ./configure --prefix="$PREFIX"  CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
+  - ./configure --prefix="$PREFIX" --enable-handlebars-memory CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
   - make clean all
 
 before_script:

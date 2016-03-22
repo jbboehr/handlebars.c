@@ -60,6 +60,7 @@ END_TEST
 
 START_TEST(test_token_print_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("tok1"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
 	char * expected;
@@ -71,6 +72,9 @@ START_TEST(test_token_print_failed_alloc)
     ck_assert_ptr_eq(NULL, expected);
     
 	handlebars_token_dtor(tok);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 

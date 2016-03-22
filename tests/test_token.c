@@ -33,6 +33,7 @@ END_TEST
 
 START_TEST(test_token_ctor_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
 	struct handlebars_string * string;
 	jmp_buf buf;
 
@@ -48,6 +49,9 @@ START_TEST(test_token_ctor_failed_alloc)
     handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+	fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 

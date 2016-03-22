@@ -200,6 +200,15 @@ AS_IF([test "x$enable_refcounting" == "xno"], [
     AC_DEFINE([HANDLEBARS_NO_REFCOUNT], [1], [Disable refcounting of handlebars values])
 ])
 
+# memory
+AC_ARG_ENABLE([handlebars-memory],
+	[AS_HELP_STRING([--enable-handlebars-memory], [enable handlebars memory testing functions])], [])
+
+AS_IF([test "x$enable_handlebars_memory" == "xyes"], [
+    AC_DEFINE([HANDLEBARS_MEMORY], [1], [Enable handlebars memory testing functions])
+])
+AM_CONDITIONAL([HANDLEBARS_MEMORY], [test x$enable_handlebars_memory = xyes])
+
 # talloc
 AC_CHECK_LIB([talloc], [talloc_version_major], , [
   AC_MSG_FAILURE([talloc test failed, talloc is required])

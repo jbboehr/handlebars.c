@@ -21,8 +21,7 @@ check_PROGRAMS = \
 	test_spec_handlebars_tokenizer \
 	test_spec_handlebars_compiler \
 	test_spec_handlebars \
-	test_spec_mustache \
-	test_random_alloc_fail
+	test_spec_mustache
 
 test_main_SOURCES = utils.h utils.c fixtures.c test_main.c
 test_ast_SOURCES = utils.h utils.c fixtures.c test_ast.c
@@ -44,7 +43,6 @@ test_spec_handlebars_tokenizer_SOURCES = utils.h utils.c fixtures.c test_spec_ha
 test_spec_handlebars_compiler_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_compiler.c
 test_spec_handlebars_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars.c
 test_spec_mustache_SOURCES = utils.h utils.c fixtures.c test_spec_mustache.c
-test_random_alloc_fail_SOURCES = utils.h utils.c fixtures.c test_random_alloc_fail.c
 
 TESTS = \
 	test_main \
@@ -66,8 +64,13 @@ TESTS = \
 	test_spec_handlebars_tokenizer \
 	test_spec_handlebars_compiler \
 	test_spec_handlebars \
-	test_spec_mustache \
-	test_random_alloc_fail
+	test_spec_mustache
+
+if HANDLEBARS_MEMORY
+check_PROGRAMS += test_random_alloc_fail
+test_random_alloc_fail_SOURCES = utils.h utils.c fixtures.c test_random_alloc_fail.c
+TESTS += test_random_alloc_fail
+endif
 
 TESTS_ENVIRONMENT = \
 	top_srcdir=$(top_srcdir) \

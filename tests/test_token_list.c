@@ -33,6 +33,7 @@ END_TEST
 
 START_TEST(test_token_list_append_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
 	struct handlebars_token_list * list = handlebars_token_list_ctor(parser);
 	struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
 	jmp_buf buf;
@@ -48,6 +49,9 @@ START_TEST(test_token_list_append_failed_alloc)
 	handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+	fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -69,6 +73,7 @@ END_TEST
 
 START_TEST(test_token_list_ctor_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
 	jmp_buf buf;
 
     if( handlebars_setjmp_ex(parser, &buf) ) {
@@ -81,6 +86,9 @@ START_TEST(test_token_list_ctor_failed_alloc)
 	handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+		fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -102,6 +110,7 @@ END_TEST
 
 START_TEST(test_token_list_prepend_failed_alloc)
 {
+#if HANDLEBARS_MEMORY
 	struct handlebars_token_list * list = handlebars_token_list_ctor(parser);
 	struct handlebars_token * node1 = handlebars_talloc(list, struct handlebars_token);
 	jmp_buf buf;
@@ -117,6 +126,9 @@ START_TEST(test_token_list_prepend_failed_alloc)
 	handlebars_memory_fail_disable();
 
     ck_assert(0);
+#else
+	fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
