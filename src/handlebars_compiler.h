@@ -99,8 +99,8 @@ struct handlebars_block_param_stack {
      * @brief Block param stack
      */
     struct {
-        char * block_param1;
-        char * block_param2;
+        struct handlebars_string * block_param1;
+        struct handlebars_string * block_param2;
     } s[HANDLEBARS_COMPILER_STACK_SIZE];
     
     /**
@@ -157,7 +157,7 @@ struct handlebars_compiler {
     /**
      * @brief Compiler flags
      */
-    int flags;
+    unsigned long flags;
     
     // Option flags
     bool string_params;
@@ -216,7 +216,7 @@ void handlebars_compiler_dtor(struct handlebars_compiler * compiler);
  * @param[in] compiler
  * @return the compiler flags
  */
-int handlebars_compiler_get_flags(struct handlebars_compiler * compiler);
+unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compiler);
 
 /**
  * @brief Set the compiler flags, with handlebars_compiler_flag_all as a 
@@ -226,7 +226,7 @@ int handlebars_compiler_get_flags(struct handlebars_compiler * compiler);
  * @param[in] flags
  * @return void
  */
-void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, int flags);
+void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsigned long flags);
 
 /**
  * @brief Get an array of parts of an ID AST node.

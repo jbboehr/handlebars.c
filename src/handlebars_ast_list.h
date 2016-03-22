@@ -7,6 +7,8 @@
 #ifndef HANDLEBARS_AST_LIST_H
 #define HANDLEBARS_AST_LIST_H
 
+#include <stddef.h>
+
 #include "handlebars.h"
 
 #ifdef	__cplusplus
@@ -51,9 +53,8 @@ struct handlebars_ast_list {
  * 
  * @param[in] list The list to which to append
  * @param[in] ast_node The AST node to append
- * @return A return code from the handlebars_error_type enum. Success is zero.
  */
-int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+void handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
 
 /**
  * @brief Count the number of items in an AST list
@@ -61,7 +62,7 @@ int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handleb
  * @param[in] list The list to count
  * @return The number of items in the list
  */
-int handlebars_ast_list_count(struct handlebars_ast_list * list);
+size_t handlebars_ast_list_count(struct handlebars_ast_list * list);
 
 /**
  * @brief Contruct a new AST node list
@@ -118,9 +119,9 @@ void handlebars_ast_list_insert_before(struct handlebars_ast_list * list,
  * 
  * @param[in] list The list from which to remove
  * @param[in] ast_node The node to remove
- * @return The number of items removed (zero or one)
+ * @return If the item was removed from the list
  */
-int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+bool handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
 
 /**
  * @brief Prepend an AST node to a list
@@ -129,7 +130,7 @@ int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handleb
  * @param[in] ast_node The node to prepend
  * @return A return code from the handlebars_error_type enum. Success is zero.
  */
-int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+void handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
 
 #ifdef	__cplusplus
 }

@@ -15,7 +15,7 @@
 #include "handlebars_token_list.h"
 #include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
-
+#include "handlebars_string.h"
 
 
 char * handlebars_token_print(struct handlebars_token * token, int flags)
@@ -43,8 +43,8 @@ char * handlebars_token_print(struct handlebars_token * token, int flags)
     }
     
     // Prepare token text
-    if( likely(token->text != NULL) ) {
-        tmp = handlebars_addcslashes_ex(token->text, token->length, ws, strlen(ws));
+    if( likely(token->string != NULL) ) {
+        tmp = handlebars_addcslashes_ex(token->string->val, token->string->len, ws, strlen(ws));
         if( unlikely(tmp == NULL) ) {
             return NULL;
         }
@@ -67,18 +67,15 @@ done:
     return str;
 }
 
-char * handlebars_token_list_print(struct handlebars_token_list * list, int flags)
+struct handlebars_string * handlebars_token_list_print(struct handlebars_context * context, struct handlebars_token_list * list, int flags)
 {
     struct handlebars_token_list_item * el = NULL;
     struct handlebars_token_list_item * tmp = NULL;
-    char * output = NULL;
+    struct handlebars_string * output = NULL;
     
     assert(list != NULL);
 
-    output = handlebars_talloc_strdup(list, "");
-    if( unlikely(output == NULL) ) {
-        return NULL;
-    }
+    output = handlebars_string_ctor(context, "", 0);
 
     handlebars_token_list_foreach(list, el, tmp) {
         struct handlebars_token * token = el->data;
@@ -88,12 +85,12 @@ char * handlebars_token_list_print(struct handlebars_token_list * list, int flag
 
         token_str = handlebars_token_print(token, flags);
         if( likely(token_str != NULL) ) {
-            output = handlebars_talloc_strdup_append(output, token_str);
+            output = handlebars_string_append(context, output, token_str, strlen(token_str));
         }
     }
     
     // Trim whitespace off right end of output
-    handlebars_rtrim(output, " \t\r\n");
+    output = handlebars_rtrim(output, HBS_STRL(" \t\r\n"));
     
     return output;
 }

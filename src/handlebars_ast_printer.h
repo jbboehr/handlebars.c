@@ -37,25 +37,25 @@ enum handlebars_ast_printer_flags
  * @brief AST printer context object
  */
 struct handlebars_ast_printer_context {
-    struct handlebars_parser * parser;
-    int flags;
+    struct handlebars_context * ctx;
     int padding;
     int error;
-    char * output;
-    size_t length;
-    long counter;
-    int in_partial;
+    struct handlebars_string * output;
+    bool in_partial;
 };
 
 /**
  * @brief Print an AST into a human-readable string.
  *
- * @param[in] parser The handlebars parser
+ * @param[in] context The handlebars context
  * @param[in] ast_node The AST to print
  * @param[in] flags The printer flags
  * @return The printed string
  */
-char * handlebars_ast_print(struct handlebars_parser * parser, struct handlebars_ast_node * ast_node, int flags) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_ast_print(
+    struct handlebars_context * context,
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }

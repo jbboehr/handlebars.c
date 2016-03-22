@@ -21,8 +21,6 @@ struct handlebars_locinfo;
 union YYSTYPE;
 
 #define handlebars_addcslashes(str, what) handlebars_addcslashes_ex(str, strlen(str), what, strlen(what))
-#define handlebars_ltrim(str, what) handlebars_ltrim_ex(str, NULL, what, strlen(what))
-#define handlebars_rtrim(str, what) handlebars_rtrim_ex(str, NULL, what, strlen(what))
 #define handlebars_stripcslashes(str) handlebars_stripcslashes_ex(str, NULL)
 
 /**
@@ -54,7 +52,7 @@ char * handlebars_indent(void * ctx, const char * str, const char * indent);
  * @param[in] what_length The length of the character list
  * @return the original pointer, with trimmed input characters
  */
-char * handlebars_ltrim_ex(char * str, size_t * str_length, const char * what, size_t what_length);
+struct handlebars_string * handlebars_ltrim(struct handlebars_string * string, const char * what, size_t what_length);
 
 /**
  * @brief Trims a set of characters off the right end of string. Trims in
@@ -66,7 +64,7 @@ char * handlebars_ltrim_ex(char * str, size_t * str_length, const char * what, s
  * @param[in] what_length The length of the character list
  * @return the original pointer, with null moved to trim input characters
  */
-char * handlebars_rtrim_ex(char * str, size_t * str_length, const char * what, size_t what_length);
+struct handlebars_string * handlebars_rtrim(struct handlebars_string * string, const char * what, size_t what_length);
 
 /**
  * @brief Strips slashes from a string. Changes are done in-place. length accepts

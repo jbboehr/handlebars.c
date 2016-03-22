@@ -30,7 +30,7 @@ char * input_name = NULL;
 char * input_data_name = NULL;
 char * input_buf = NULL;
 size_t input_buf_length = 0;
-int compiler_flags = 0;
+unsigned long compiler_flags = 0;
 
 enum handlebarsc_mode {
     handlebarsc_mode_usage = 0,
@@ -243,8 +243,7 @@ static int do_lex(void)
         lval = handlebars_yy_get_lval(parser->scanner);
         
         // Make token object
-        text = (lval->text == NULL ? "" : lval->text);
-        token = handlebars_token_ctor(ctx, token_int, text, strlen(text));
+        token = handlebars_token_ctor(ctx, token_int, lval->string);
         
         // Print token
         output = handlebars_token_print(token, 0);
@@ -259,7 +258,6 @@ static int do_parse(void)
 {
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
-    char * output;
     int error = 0;
     
     readInput();
@@ -274,14 +272,14 @@ static int do_parse(void)
     handlebars_parse(parser);
     
     if( ctx->num != NULL ) {
-        output = handlebars_error_message(ctx);
+        char * output = handlebars_error_message(ctx);
         fprintf(stderr, "%s\n", output);
         error = ctx->num;
         goto error;
+    } else {
+        struct handlebars_string * output = handlebars_ast_print(parser, parser->program);
+        fprintf(stdout, "%s\n", output->val);
     }
-
-    output =  handlebars_ast_print(parser, parser->program, 0);
-    fprintf(stdout, "%s\n", output);
 
 error:
     handlebars_context_dtor(ctx);
@@ -363,11 +361,14 @@ static int do_execute(void)
     parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
 
     // Read context
-    char * context_str = file_get_contents(input_data_name);
-    struct handlebars_value * context;
-    if( context_str && strlen(context_str) ) {
-        context = handlebars_value_from_json_string(ctx, context_str);
-    } else {
+    struct handlebars_value * context = NULL;
+    if( input_data_name ) {
+        char * context_str = file_get_contents(input_data_name);
+        if( context_str && strlen(context_str) ) {
+            context = handlebars_value_from_json_string(ctx, context_str);
+        }
+    }
+    if( !context ) {
         context = handlebars_value_ctor(ctx);
     }
 

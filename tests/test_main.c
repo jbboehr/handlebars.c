@@ -60,15 +60,15 @@ START_TEST(test_lex)
     
     ck_assert_ptr_ne(NULL, list->first);
     ck_assert_int_eq(OPEN, list->first->data->token);
-    ck_assert_str_eq("{{", list->first->data->text);
+    ck_assert_str_eq("{{", list->first->data->string->val);
     
     ck_assert_ptr_ne(NULL, list->first->next);
     ck_assert_int_eq(ID, list->first->next->data->token);
-    ck_assert_str_eq("foo", list->first->next->data->text);
+    ck_assert_str_eq("foo", list->first->next->data->string->val);
     
     ck_assert_ptr_ne(NULL, list->first->next->next);
     ck_assert_int_eq(CLOSE, list->first->next->next->data->token);
-    ck_assert_str_eq("}}", list->first->next->next->data->text);
+    ck_assert_str_eq("}}", list->first->next->next->data->string->val);
 }
 END_TEST
 

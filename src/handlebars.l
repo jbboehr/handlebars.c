@@ -8,9 +8,10 @@
 #include <stdint.h>
 
 #include "handlebars.h"
-#include "handlebars_ast.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_ast.h"
+#include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
@@ -49,7 +50,7 @@
 #define handlebars_yy_unput_n(n) \
 	do { \
 		int i; \
- 		char * yycopy = MC(handlebars_talloc_strdup(yyextra, yytext)); \
+ 		char * yycopy = MC(handlebars_talloc_strndup(yyextra, yytext, yyleng)); \
 		for ( i = yyleng - 1; i >= yyleng - n && i >= 0; --i ) { \
 			unput( yycopy[i] ); \
 		} \
@@ -57,8 +58,7 @@
     } while(0)
 
 #define handlebars_yy_copy_lval() \
-	yylval->text = MC(handlebars_talloc_strndup(yyextra, yytext, yyleng)); \
-	yylval->length = yyleng
+    yylval->string = handlebars_string_ctor(HBSCTX(yyextra), yytext, yyleng);
 
 #define YY_USER_ACTION \
     yylloc->first_line = yylloc->last_line = yylineno; \
@@ -362,7 +362,7 @@ BLOCKPARAM [\x7C]
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes_ex(yylval->text, &yylval->length);
+										handlebars_stripcslashes_ex(yylval->string->val, &yylval->string->len);
                                    		return STRING;
                                  	}
 
@@ -371,7 +371,7 @@ BLOCKPARAM [\x7C]
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes_ex(yylval->text, &yylval->length);
+										handlebars_stripcslashes_ex(yylval->string->val, &yylval->string->len);
 										return STRING;
                                 	}
                                  
@@ -436,7 +436,8 @@ BLOCKPARAM [\x7C]
 										//yytext[--yyleng] = 0;
 										//yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_str_reduce(yylval->text, "\\]", "]");
+										handlebars_str_reduce(yylval->string->val, "\\]", "]");
+										yylval->string->len = strlen(yylval->string->val);
 										return ID;
 									}
 

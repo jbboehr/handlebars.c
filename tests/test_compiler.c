@@ -88,10 +88,6 @@ START_TEST(test_compiler_is_known_helper)
     struct handlebars_ast_node * id;
     struct handlebars_ast_list * parts;
     struct handlebars_ast_node * path_segment;
-    const char * helper1 = "if";
-    const char * helper2 = "unless";
-    const char * helper3 = "foobar";
-    const char * helper4 = "";
 
     //ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, NULL));
     
@@ -105,16 +101,16 @@ START_TEST(test_compiler_is_known_helper)
     handlebars_ast_list_append(parts, path_segment);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper1);
+    path_segment->node.path_segment.part = handlebars_string_ctor(HBSCTX(compiler), HBS_STRL("if"));
     ck_assert_int_eq(1, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper2);
+    path_segment->node.path_segment.part = handlebars_string_ctor(HBSCTX(compiler), HBS_STRL("unless"));
     ck_assert_int_eq(1, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper3);
+    path_segment->node.path_segment.part = handlebars_string_ctor(HBSCTX(compiler), HBS_STRL("foobar"));
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment->node.path_segment.part = handlebars_talloc_strdup(compiler, helper4);
+    path_segment->node.path_segment.part = handlebars_string_ctor(HBSCTX(compiler), HBS_STRL(""));
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
 }
 END_TEST

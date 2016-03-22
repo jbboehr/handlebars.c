@@ -31,10 +31,11 @@
 #include "utils.h"
 
 struct parser_test {
+    struct handlebars_context * ctx;
     char * description;
     char * it;
     char * tmpl;
-    char * expected;
+    struct handlebars_string * expected;
     int exception;
     char * message;
 };
@@ -52,6 +53,7 @@ static void loadSpecTest(json_object * object)
     
     // Get test
     struct parser_test * test = &(tests[tests_len++]);
+    test->ctx = handlebars_context_ctor_ex(root);
     
     // Get description
     cur = json_object_object_get(object, "description");
@@ -74,8 +76,10 @@ static void loadSpecTest(json_object * object)
     // Get expected
     cur = json_object_object_get(object, "expected");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->expected = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
-        handlebars_rtrim(test->expected, " \t\r\n");
+        test->expected = handlebars_string_ctor(test->ctx, json_object_get_string(cur), json_object_get_string_len(cur));
+        test->expected = handlebars_rtrim(test->expected, HBS_STRL(" \t\r\n"));
+        //test->expected = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        //handlebars_rtrim(test->expected, " \t\r\n");
         nreq++;
     }
     
@@ -194,7 +198,7 @@ START_TEST(handlebars_spec_parser)
             }
         } else {
             char * lesigh = handlebars_talloc_strdup(ctx, "\nExpected: \n");
-            lesigh = handlebars_talloc_strdup_append(lesigh, test->expected);
+            lesigh = handlebars_talloc_strdup_append(lesigh, test->expected->val);
             lesigh = handlebars_talloc_strdup_append(lesigh, "\nActual (error): \n");
             lesigh = handlebars_talloc_strdup_append(lesigh, errmsg);
             lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
@@ -202,17 +206,17 @@ START_TEST(handlebars_spec_parser)
             ck_assert_msg(0, lesigh);
         }
     } else {
-        char * output = handlebars_ast_print(parser, parser->program, 0);
+        struct handlebars_string * output = handlebars_ast_print(parser, parser->program);
         
         if( !test->exception ) {
             ck_assert_ptr_ne(NULL, output);
-            if( strcmp(test->expected, output) == 0 ) {
-                ck_assert_str_eq(test->expected, output);
+            if( handlebars_string_eq(test->expected, output) ) {
+                ck_assert_str_eq(test->expected->val, output->val);
             } else {
                 char * lesigh = handlebars_talloc_strdup(ctx, "\nExpected: \n");
-                lesigh = handlebars_talloc_strdup_append(lesigh, test->expected);
+                lesigh = handlebars_talloc_strdup_append(lesigh, test->expected->val);
                 lesigh = handlebars_talloc_strdup_append(lesigh, "\nActual: \n");
-                lesigh = handlebars_talloc_strdup_append(lesigh, output);
+                lesigh = handlebars_talloc_strdup_append(lesigh, output->val);
                 lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
                 lesigh = handlebars_talloc_strdup_append(lesigh, test->tmpl);
                 ck_assert_msg(0, lesigh);

@@ -8,6 +8,8 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
+
+#include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
 #include "utils.h"
@@ -16,14 +18,14 @@
 
 START_TEST(test_token_ctor)
 {
-    const char * text = "{{";
-    struct handlebars_token * token = handlebars_token_ctor(parser, OPEN, text, sizeof(text));
+	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
+    struct handlebars_token * token = handlebars_token_ctor(parser, OPEN, string);
     
     ck_assert_ptr_ne(NULL, token);
-    ck_assert_ptr_ne(NULL, token->text);
+    ck_assert_ptr_ne(NULL, token->string);
     ck_assert_int_eq(OPEN, token->token);
-    ck_assert_str_eq(token->text, text);
-    ck_assert_uint_eq(sizeof(text), token->length);
+    ck_assert_str_eq(token->string->val, "{{");
+    ck_assert_uint_eq(sizeof("{{") - 1, token->string->len);
     
     handlebars_token_dtor(token);
 }
@@ -31,34 +33,18 @@ END_TEST
 
 START_TEST(test_token_ctor_failed_alloc)
 {
-    struct handlebars_token * token;
+	struct handlebars_string * string;
 	jmp_buf buf;
 
-    if( handlebars_setjmp_ex(parser, &buf) ) {
+    if( handlebars_setjmp_ex(context, &buf) ) {
 		ck_assert(1);
 		return;
 	}
+
+	string = handlebars_string_ctor(context, HBS_STRL("{{"));
 
     handlebars_memory_fail_enable();
-    token = handlebars_token_ctor(parser, OPEN, "{{", strlen("{{"));
-    handlebars_memory_fail_disable();
-
-    ck_assert(0);
-}
-END_TEST
-
-START_TEST(test_token_ctor_failed_alloc2)
-{
-    struct handlebars_token * token;
-	jmp_buf buf;
-
-    if( handlebars_setjmp_ex(parser, &buf) ) {
-		ck_assert(1);
-		return;
-	}
-
-    handlebars_memory_fail_counter(2);
-    token = handlebars_token_ctor(parser, OPEN, "{{", strlen("{{"));
+    handlebars_token_ctor(context, OPEN, string);
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -67,16 +53,16 @@ END_TEST
 
 START_TEST(test_token_dtor)
 {
-    const char * text = "{{";
-    struct handlebars_token * token = handlebars_token_ctor(parser, OPEN, text, strlen(text));
+	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
+    struct handlebars_token * token = handlebars_token_ctor(context, OPEN, string);
     handlebars_token_dtor(token);
 }
 END_TEST
 
 START_TEST(test_token_get_type)
 {
-    const char * text = "{{";
-    struct handlebars_token * token = handlebars_token_ctor(parser, OPEN, text, strlen(text));
+	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
+    struct handlebars_token * token = handlebars_token_ctor(context, OPEN, string);
     
     ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
     ck_assert_int_eq(-1, handlebars_token_get_type(NULL));
@@ -87,31 +73,12 @@ END_TEST
 
 START_TEST(test_token_get_text)
 {
-    const char * text = "{{";
-    struct handlebars_token * token = handlebars_token_ctor(parser, OPEN, text, strlen(text));
-    
-    ck_assert_str_eq(text, handlebars_token_get_text(token));
-    ck_assert_ptr_eq(NULL, handlebars_token_get_text(NULL));
-    
-    handlebars_token_dtor(token);
-}
-END_TEST
+	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
+    struct handlebars_token * token = handlebars_token_ctor(context, OPEN, string);
 
-START_TEST(test_token_get_text_ex)
-{
-    const char * text = "{{";
-    struct handlebars_token * token = handlebars_token_ctor(parser, OPEN, text, strlen(text));
-    const char * actual;
-    size_t actual_length;
-    
-    handlebars_token_get_text_ex(token, &actual, &actual_length);
-    
-    ck_assert_uint_eq(actual_length, strlen(text));
-    ck_assert_str_eq(text, actual);
-    
-    handlebars_token_get_text_ex(NULL, &actual, &actual_length);
-    ck_assert_uint_eq(0, actual_length);
-    ck_assert_ptr_eq(NULL, actual);
+    ck_assert_str_eq("{{", handlebars_token_get_text(token)->val);
+    ck_assert_uint_eq(sizeof("{{") - 1, handlebars_token_get_text(token)->len);
+    ck_assert_ptr_eq(NULL, handlebars_token_get_text(NULL));
     
     handlebars_token_dtor(token);
 }
@@ -222,11 +189,9 @@ Suite * parser_suite(void)
 	
 	REGISTER_TEST_FIXTURE(s, test_token_ctor, "Constructor");
 	REGISTER_TEST_FIXTURE(s, test_token_ctor_failed_alloc, "Constructor (failed alloc)");
-	REGISTER_TEST_FIXTURE(s, test_token_ctor_failed_alloc2, "Constructor (failed alloc 2)");
 	REGISTER_TEST_FIXTURE(s, test_token_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_token_get_type, "Get type");
 	REGISTER_TEST_FIXTURE(s, test_token_get_text, "Get text");
-	REGISTER_TEST_FIXTURE(s, test_token_get_text_ex, "Get text ex");
 	REGISTER_TEST_FIXTURE(s, test_token_readable_type, "Readable Type");
 	REGISTER_TEST_FIXTURE(s, test_token_reverse_readable_type, "Reverse Readable Type");
 	

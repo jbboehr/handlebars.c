@@ -14,10 +14,11 @@ extern "C" {
 #endif
 
 // Declarations
-struct handlebars_parser;
 struct handlebars_ast_list;
 struct handlebars_ast_node;
 struct handlebars_locinfo;
+struct handlebars_parser;
+struct handlebars_string;
 struct handlebars_yy_intermediate5;
 struct handlebars_yy_inverse_and_program;
 
@@ -42,7 +43,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
 struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     struct handlebars_parser * parser,
     struct handlebars_ast_node * intermediate,
-    char * open,
+    struct handlebars_string * open,
     unsigned strip,
     struct handlebars_locinfo * locinfo
 ) HBS_ATTR_RETURNS_NONNULL;
@@ -65,14 +66,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     struct handlebars_parser * parser,
     struct handlebars_ast_node * open_raw_block,
-    const char * content,
-    const char * close,
+    struct handlebars_string * content,
+    struct handlebars_string * close,
     struct handlebars_locinfo * locinfo
 ) HBS_ATTR_RETURNS_NONNULL;
 
-char * handlebars_ast_helper_strip_comment(char * comment) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_ast_helper_strip_comment(struct handlebars_string * comment) HBS_ATTR_RETURNS_NONNULL;
 
-char * handlebars_ast_helper_strip_id_literal(char * comment) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_ast_helper_strip_id_literal(struct handlebars_string * comment) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Set the strip flags of a node
@@ -83,7 +84,10 @@ char * handlebars_ast_helper_strip_id_literal(char * comment) HBS_ATTR_RETURNS_N
  * @return void
  */
 void handlebars_ast_helper_set_strip_flags(
-        struct handlebars_ast_node * ast_node, const char * open, const char * close);
+    struct handlebars_ast_node * ast_node,
+    struct handlebars_string * open,
+    struct handlebars_string * close
+);
 
 /**
  * @brief Calculate the strip flags of a node
@@ -92,7 +96,7 @@ void handlebars_ast_helper_set_strip_flags(
  * @param[in] close The close tag
  * @return unsigned
  */
-unsigned handlebars_ast_helper_strip_flags(const char * open, const char * close);
+unsigned handlebars_ast_helper_strip_flags(struct handlebars_string * open, struct handlebars_string * close);
 
 bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path);
 

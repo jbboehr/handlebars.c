@@ -13,13 +13,14 @@
 extern "C" {
 #endif
 
+struct handlebars_string;
+
 /**
  * @brief Token structure 
  */
 struct handlebars_token {
     int token;
-    size_t length;
-    char * text;
+    struct handlebars_string * string;
 };
 
 /**
@@ -32,10 +33,9 @@ struct handlebars_token {
  * @return the new token object
  */
 struct handlebars_token * handlebars_token_ctor(
-    struct handlebars_parser * parser,
+    struct handlebars_context * context,
     int token_int,
-    const char * text,
-    size_t length
+    struct handlebars_string * string
 ) HBS_ATTR_RETURNS_NONNULL;
 
 /**
@@ -60,17 +60,7 @@ int handlebars_token_get_type(struct handlebars_token * token);
  * @param[in] token Token
  * @return The token text
  */
-const char * handlebars_token_get_text(struct handlebars_token * token);
-
-/**
- * @brief Get the token text
- * 
- * @param[in] token Token
- * @param[out] text The token text
- * @param[out] length The text length
- * @return void
- */
-void handlebars_token_get_text_ex(struct handlebars_token * token, const char ** text, size_t * length);
+struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token);
 
 /**
  * @brief Get a string for the integral token type

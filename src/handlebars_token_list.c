@@ -14,22 +14,18 @@
 
 
 
-#undef CONTEXT
-#define CONTEXT HBSCTX(parser)
-
-struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_parser * parser)
+struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_context * context)
 {
-    struct handlebars_token_list * list = MC(handlebars_talloc_zero(parser, struct handlebars_token_list));
-    list->parser = parser;
+    struct handlebars_token_list * list = MC(handlebars_talloc_zero(context, struct handlebars_token_list));
+    list->ctx= context;
     return list;
 }
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(list->parser)
+#define CONTEXT HBSCTX(list->ctx)
 
-int handlebars_token_list_append(struct handlebars_token_list * list, struct handlebars_token * token)
+void handlebars_token_list_append(struct handlebars_token_list * list, struct handlebars_token * token)
 {
-    int error = HANDLEBARS_SUCCESS;
     struct handlebars_token_list_item * item = NULL;
 
     // Check args
@@ -50,8 +46,6 @@ int handlebars_token_list_append(struct handlebars_token_list * list, struct han
         list->last->next = item;
         list->last = item;
     }
-
-    return error;
 }
 
 void handlebars_token_list_dtor(struct handlebars_token_list * list)
@@ -61,9 +55,8 @@ void handlebars_token_list_dtor(struct handlebars_token_list * list)
     handlebars_talloc_free(list);
 }
 
-int handlebars_token_list_prepend(struct handlebars_token_list * list, struct handlebars_token * token)
+void handlebars_token_list_prepend(struct handlebars_token_list * list, struct handlebars_token * token)
 {
-    int error = HANDLEBARS_SUCCESS;
     struct handlebars_token_list_item * item = NULL;
 
     // Check args
@@ -84,6 +77,4 @@ int handlebars_token_list_prepend(struct handlebars_token_list * list, struct ha
         item->next = list->first;
         list->first = item;
     }
-
-    return error;
 }

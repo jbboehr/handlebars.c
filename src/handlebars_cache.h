@@ -29,7 +29,7 @@ struct handlebars_cache_entry {
     size_t size;
     struct handlebars_context * context;
     struct handlebars_compiler * compiler;
-    size_t last_used;
+    time_t last_used;
 };
 
 struct handlebars_cache * handlebars_cache_ctor(struct handlebars_context * context);

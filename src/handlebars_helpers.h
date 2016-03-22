@@ -23,16 +23,16 @@ struct handlebars_options {
 };
 
 typedef struct handlebars_value * (*handlebars_helper_func)(
-        int argc,
-        struct handlebars_value * argv[],
-        struct handlebars_options * options
+    int argc,
+    struct handlebars_value * argv[],
+    struct handlebars_options * options
 );
 
 #define HANDLEBARS_HELPER_ARGS int argc, struct handlebars_value * argv[], struct handlebars_options * options
 
 void handlebars_options_deinit(struct handlebars_options * options);
 const char ** handlebars_builtins_names(void) HBS_ATTR_RETURNS_NONNULL;
-handlebars_helper_func * handlebars_builtins();
+handlebars_helper_func * handlebars_builtins(void);
 handlebars_helper_func handlebars_builtins_find(const char * str, unsigned int len);
 
 struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HELPER_ARGS) HBS_ATTR_RETURNS_NONNULL;

@@ -10,19 +10,19 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
 
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(parser)
+#define CONTEXT context
 
-struct handlebars_token * handlebars_token_ctor(struct handlebars_parser * parser, int token_int, const char * text, size_t length)
+struct handlebars_token * handlebars_token_ctor(struct handlebars_context * context, int token_int, struct handlebars_string * string)
 {
-    struct handlebars_token * token = MC(handlebars_talloc_zero(parser, struct handlebars_token));
+    struct handlebars_token * token = MC(handlebars_talloc_zero(context, struct handlebars_token));
     token->token = token_int;
-    token->text = MC(handlebars_talloc_strndup(token, text, length));
-    token->length = length;
+    token->string = talloc_steal(token, string); // probably safe
     return token;
 }
 
@@ -42,23 +42,12 @@ int handlebars_token_get_type(struct handlebars_token * token)
     }
 }
 
-const char * handlebars_token_get_text(struct handlebars_token * token)
+struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token)
 {
     if( likely(token != NULL) ) {
-        return (const char *) token->text;
+        return token->string;
     } else {
         return NULL;
-    }
-}
-
-void handlebars_token_get_text_ex(struct handlebars_token * token, const char ** text, size_t * length)
-{
-    if( likely(token != NULL) ) {
-        *text = (const char *) token->text;
-        *length = (const size_t) token->length;
-    } else {
-        *text = NULL;
-        *length = 0;
     }
 }
 

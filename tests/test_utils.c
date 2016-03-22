@@ -7,8 +7,10 @@
 #include <talloc.h>
 
 #include "handlebars.h"
-#include "handlebars_ast.h"
 #include "handlebars_memory.h"
+
+#include "handlebars_ast.h"
+#include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "utils.h"
@@ -109,23 +111,23 @@ END_TEST
 
 START_TEST(test_ltrim)
 {
-    char * in = handlebars_talloc_strdup(root, " \n \r test ");
-    char * ret = handlebars_ltrim(in, " \t\r\n");
-    ck_assert_str_eq(in, "test ");
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(" \n \r test "));
+    struct handlebars_string * ret = handlebars_ltrim(in, HBS_STRL(" \t\r\n"));
+    ck_assert_str_eq(ret->val, "test ");
     ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(root, "\n  ");
-    char * ret = handlebars_ltrim(in, " \t");
-    ck_assert_str_eq(in, "\n  ");
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("\n  "));
+    struct handlebars_string * ret = handlebars_ltrim(in, HBS_STRL(" \t"));
+    ck_assert_str_eq(ret->val, "\n  ");
     ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(root, "");
-    char * ret = handlebars_ltrim(in, "");
-    ck_assert_str_eq(in, "");
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(""));
+    struct handlebars_string * ret = handlebars_ltrim(in, HBS_STRL(""));
+    ck_assert_str_eq(ret->val, "");
     ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
 }
@@ -133,21 +135,24 @@ END_TEST
 
 START_TEST(test_rtrim)
 {
-    char * in = handlebars_talloc_strdup(root, "test \n \r ");
-    handlebars_rtrim(in, " \t\r\n");
-    ck_assert_str_eq(in, "test");
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("test \n \r "));
+    struct handlebars_string * ret = handlebars_rtrim(in, HBS_STRL(" \t\r\n"));
+    ck_assert_str_eq(ret->val, "test");
+    ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(root, "\n");
-    handlebars_rtrim(in, " \v\t\r\n");
-    ck_assert_str_eq(in, "");
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("\n"));
+    struct handlebars_string * ret = handlebars_rtrim(in, HBS_STRL(" \v\t\r\n"));
+    ck_assert_str_eq(ret->val, "");
+    ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
 }
 {
-    char * in = handlebars_talloc_strdup(root, "");
-    handlebars_rtrim(in, "");
-    ck_assert_str_eq(in, "");
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(""));
+    struct handlebars_string * ret = handlebars_rtrim(in, HBS_STRL(""));
+    ck_assert_str_eq(ret->val, "");
+    ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
 }
 END_TEST

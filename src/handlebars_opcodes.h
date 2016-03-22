@@ -158,7 +158,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_long(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_long_string(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, long arg1, const char * arg2) HBS_ATTR_RETURNS_NONNULL;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, long arg1, struct handlebars_string * arg2) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with a string operand
@@ -169,7 +169,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_long_string(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg) HBS_ATTR_RETURNS_NONNULL;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, struct handlebars_string * arg) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with two string operands
@@ -181,7 +181,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_string(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string2(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg1, const char * arg2) HBS_ATTR_RETURNS_NONNULL;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, struct handlebars_string * arg1, struct handlebars_string * arg2) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct an opcode with a string and a long operand
@@ -193,7 +193,7 @@ struct handlebars_opcode * handlebars_opcode_ctor_string2(
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor_string_long(
-        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, const char * arg1, long arg2) HBS_ATTR_RETURNS_NONNULL;
+        struct handlebars_compiler * compiler, enum handlebars_opcode_type type, struct handlebars_string * arg1, long arg2) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Set the value of an operand to null
@@ -229,7 +229,10 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
  * @param[in] arg The string value
  * @return void
  */
-int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char * arg);
+int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, struct handlebars_string * string);
+
+int handlebars_operand_set_strval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char * arg);
+
 
 /**
  * @brief Set the value of an operand to an array

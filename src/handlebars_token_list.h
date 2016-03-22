@@ -29,7 +29,7 @@ struct handlebars_token_list_item {
  * @brief Token linked list root
  */
 struct handlebars_token_list {
-    struct handlebars_parser * parser;
+    struct handlebars_parser * ctx;
     struct handlebars_token_list_item * first;
     struct handlebars_token_list_item * last;
 };
@@ -49,9 +49,8 @@ struct handlebars_token_list {
  * 
  * @param[in] list The list to which to append
  * @param[in] token The token to append
- * @return A return code from the handlebars_error_type enum. Success is zero.
  */
-int handlebars_token_list_append(struct handlebars_token_list * list, struct handlebars_token * token);
+void handlebars_token_list_append(struct handlebars_token_list * list, struct handlebars_token * token);
 
 /**
  * @brief Contruct a new token list
@@ -59,7 +58,7 @@ int handlebars_token_list_append(struct handlebars_token_list * list, struct han
  * @param[in] parser The handlebars parser
  * @return The newly constructed list
  */
-struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_parser * parser) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_token_list * handlebars_token_list_ctor(struct handlebars_context * context) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct a token list
@@ -76,7 +75,7 @@ void handlebars_token_list_dtor(struct handlebars_token_list * list);
  * @param[in] token The token to prepend
  * @return A return code from the handlebars_error_type enum. Success is zero.
  */
-int handlebars_token_list_prepend(struct handlebars_token_list * list, struct handlebars_token * token);
+void handlebars_token_list_prepend(struct handlebars_token_list * list, struct handlebars_token * token);
 
 #ifdef	__cplusplus
 }

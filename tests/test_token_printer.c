@@ -8,6 +8,8 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
+
+#include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars_token_list.h"
 #include "handlebars_token_printer.h"
@@ -19,11 +21,8 @@
 
 START_TEST(test_token_print)
 {
-	struct handlebars_token * tok = handlebars_talloc(context, struct handlebars_token);
-	
-	tok->token = OPEN;
-	tok->text = "{{";
-	tok->length = strlen(tok->text);
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
+	struct handlebars_token * tok = handlebars_token_ctor(context, OPEN, string);
 
 	char * actual = handlebars_token_print(tok, 0);
 	char * expected = "OPEN [{{] ";
@@ -35,10 +34,8 @@ END_TEST
 
 START_TEST(test_token_print2)
 {
-	struct handlebars_token * tok = handlebars_talloc(context, struct handlebars_token);
-	tok->token = CONTENT;
-	tok->text = "this\nis\ra\ttest";
-	tok->length = strlen(tok->text);
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
+    struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
 
 	char * actual = handlebars_token_print(tok, 0);
 	char * expected = "CONTENT [this\\nis\\ra\\ttest] ";
@@ -50,10 +47,8 @@ END_TEST
 
 START_TEST(test_token_print3)
 {
-	struct handlebars_token * tok = handlebars_talloc(context, struct handlebars_token);
-	tok->token = CONTENT;
-	tok->text = "this\nis\ra\ttest";
-	tok->length = strlen(tok->text);
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
+    struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
 
 	char * actual = handlebars_token_print(tok, handlebars_token_printer_flag_newlines);
 	char * expected = "CONTENT [this\\nis\\ra\\ttest]\n";
@@ -65,7 +60,8 @@ END_TEST
 
 START_TEST(test_token_print_failed_alloc)
 {
-    struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, "tok1", strlen("tok1"));
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("tok1"));
+    struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
 	char * expected;
     
     handlebars_memory_fail_enable();
@@ -86,16 +82,20 @@ END_TEST
 
 START_TEST(test_token_list_print)
 {
+    struct handlebars_string * string1 = handlebars_string_ctor(context, HBS_STRL("tok1"));
+    struct handlebars_token * token1 = handlebars_token_ctor(context, CONTENT, string1);
+
+    struct handlebars_string * string2 = handlebars_string_ctor(context, HBS_STRL("tok2"));
+    struct handlebars_token * token2 = handlebars_token_ctor(context, CONTENT, string2);
+
     struct handlebars_token_list * list = handlebars_token_list_ctor(context);
-    struct handlebars_token * token1 = handlebars_token_ctor(context, CONTENT, "tok1", strlen("tok1"));
-    struct handlebars_token * token2 = handlebars_token_ctor(context, CONTENT, "tok2", strlen("tok1"));
     
     handlebars_token_list_append(list, token1);
     handlebars_token_list_append(list, token2);
     
-	char * actual = handlebars_token_list_print(list, 0);
+	struct handlebars_string * actual = handlebars_token_list_print(parser, list, 0);
 	char * expected = "CONTENT [tok1] CONTENT [tok2]";
-	ck_assert_str_eq(expected, actual);
+	ck_assert_str_eq(expected, actual->val);
 	
 	handlebars_token_list_dtor(list);
 }
@@ -103,17 +103,21 @@ END_TEST
 
 START_TEST(test_token_list_print_null_item)
 {
-    struct handlebars_token_list * list = handlebars_token_list_ctor(context);
-    struct handlebars_token * token1 = handlebars_token_ctor(context, CONTENT, "tok1", strlen("tok1"));
-    struct handlebars_token * token2 = handlebars_token_ctor(context, CONTENT, "tok2", strlen("tok1"));
+    struct handlebars_string * string1 = handlebars_string_ctor(context, HBS_STRL("tok1"));
+    struct handlebars_token * token1 = handlebars_token_ctor(context, CONTENT, string1);
+
+    struct handlebars_string * string2 = handlebars_string_ctor(context, HBS_STRL("tok2"));
+    struct handlebars_token * token2 = handlebars_token_ctor(context, CONTENT, string2);
+
+    struct handlebars_token_list * list = handlebars_token_list_ctor(parser);
     
     handlebars_token_list_append(list, token1);
     handlebars_token_list_append(list, token2);
     list->last->data = NULL;
     
-    char * actual = handlebars_token_list_print(list, 0);
+    struct handlebars_string * actual = handlebars_token_list_print(context, list, 0);
     char * expected = "CONTENT [tok1]";
-    ck_assert_str_eq(expected, actual);
+    ck_assert_str_eq(expected, actual->val);
 
     handlebars_token_list_dtor(list);
 }

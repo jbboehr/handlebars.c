@@ -338,10 +338,10 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
     }
 
     memset(indent, 0, sizeof(indent));
-    memset(indent, ' ', depth * 4);
+    memset(indent, ' ', depth * 4); // @todo fix
 
     memset(indent2, 0, sizeof(indent2));
-    memset(indent2, ' ', (depth + 1) * 4);
+    memset(indent2, ' ', (depth + 1) * 4); // @todo fix
 
     switch( handlebars_value_get_type(value) ) {
         case HANDLEBARS_VALUE_TYPE_BOOLEAN:

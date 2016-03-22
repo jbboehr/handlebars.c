@@ -162,6 +162,7 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
     struct handlebars_token_list * list;
     jmp_buf * prev = HBSCTX(parser)->jmp;
     jmp_buf buf;
+    YYSTYPE * lval;
 
     // Save jump buffer
     if( !prev ) {
@@ -176,8 +177,6 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
     
     // Run
     do {
-        YYSTYPE * lval;
-        char * text;
         struct handlebars_token * token;
         int token_int;
         
@@ -188,8 +187,7 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
         lval = handlebars_yy_get_lval(parser->scanner);
         
         // Make token object
-        text = (lval->text == NULL ? "" : lval->text);
-        token = talloc_steal(list, handlebars_token_ctor(parser, token_int, text, strlen(text)));
+        token = talloc_steal(list, handlebars_token_ctor(parser, token_int, lval->string));
         
         // Append
         handlebars_token_list_append(list, token);

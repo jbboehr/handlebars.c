@@ -49,9 +49,10 @@ enum handlebars_opcode_printer_flag {
  * @brief Opcode printer context
  */
 struct handlebars_opcode_printer {
+    struct handlebars_context * ctx;
     struct handlebars_opcode ** opcodes;
     size_t opcodes_length;
-    int indent;
+    size_t indent;
     int flags;
     char * output;
 };
@@ -62,7 +63,7 @@ struct handlebars_opcode_printer {
  * @param[in] compiler The handlebars compiler
  * @return The printer
  */
-struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_compiler * compiler) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_context * context) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct an opcode printer context
@@ -98,7 +99,7 @@ char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opc
  * @return The printed opcode
  */
 char * handlebars_opcode_print(
-    struct handlebars_compiler * compiler,
+    struct handlebars_context * context,
     struct handlebars_opcode * opcode
 ) HBS_ATTR_RETURNS_NONNULL;
 

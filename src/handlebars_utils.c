@@ -9,12 +9,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <talloc.h>
-#include <handlebars_string.h>
 
 #include "handlebars.h"
-#include "handlebars_ast.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+
+#include "handlebars_ast.h"
+#include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
@@ -204,48 +205,46 @@ char * handlebars_indent(void * ctx, const char * str, const char * indent)
     return out;
 }
 
-char * handlebars_ltrim_ex(char * string, size_t * length, const char * what, size_t what_length)
+struct handlebars_string * handlebars_ltrim(struct handlebars_string * string, const char * what, size_t what_length)
 {
     size_t i;
     char flags[256];
     char * ptr;
-    size_t len = length ? *length : strlen(string);
 
     assert(string != NULL);
-    
+
+    if( unlikely(string == NULL || string->len <= 0) ) {
+        return string;
+    }
+
     // Make char mask
     memset(flags, 0, sizeof(flags));
     for( i = 0; i < what_length; i++ ) {
         flags[(unsigned char) what[i]] = 1;
     }
 
-    ptr = string;
+    ptr = string->val;
     while( *ptr && flags[(unsigned char) *ptr] ) {
         ++ptr;
-        --len;
+        --string->len;
     }
 
-    if( ptr > string ) {
-        memmove(string, ptr, len + 1);
-    }
-    
-    if( length ) {
-        *length = len;
+    if( ptr > string->val ) {
+        memmove(string->val, ptr, string->len + 1);
     }
 
     return string;
 }
 
-char * handlebars_rtrim_ex(char * string, size_t * length, const char * what, size_t what_length)
+struct handlebars_string * handlebars_rtrim(struct handlebars_string * string, const char * what, size_t what_length)
 {
     size_t i;
     char flags[256];
     char * original;
-    size_t len = length ? *length : strlen(string);
     
     assert(string != NULL);
     
-    if( unlikely(len <= 0) ) {
+    if( unlikely(string == NULL || string->len <= 0) ) {
         return string;
     }
     
@@ -255,16 +254,12 @@ char * handlebars_rtrim_ex(char * string, size_t * length, const char * what, si
         flags[(unsigned char) what[i]] = 1;
     }
     
-    original = string + len;
-    while(original > string && flags[(unsigned char) *--original]) {
-        --len;
+    original = string->val + string->len;
+    while( original > string->val && flags[(unsigned char) *--original] ) {
+        --string->len;
         *original = '\0';
     }
-    
-    if( length ) {
-        *length = len;
-    }
-    
+
     return string;
 }
 

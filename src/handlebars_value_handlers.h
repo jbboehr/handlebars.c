@@ -10,6 +10,9 @@ extern "C" {
 
 struct handlebars_string;
 struct handlebars_value_iterator;
+struct json_object;
+struct yaml_document_s;
+struct yaml_node_s;
 
 typedef struct handlebars_value * (*handlebars_copy_func)(struct handlebars_value * value);
 typedef void (*handlebars_value_dtor_func)(struct handlebars_value * value);

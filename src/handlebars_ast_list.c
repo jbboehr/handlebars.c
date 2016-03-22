@@ -28,9 +28,8 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_context 
 #undef CONTEXT
 #define CONTEXT HBSCTX(list->ctx)
 
-int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
+void handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {
-    int error = HANDLEBARS_SUCCESS;
     struct handlebars_ast_list_item * item = NULL;
 
     assert(list != NULL);
@@ -50,11 +49,9 @@ int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handleb
         handlebars_ast_list_insert_after(list, list->last, item);
     }
     list->count++;
-
-    return error;
 }
 
-int handlebars_ast_list_count(struct handlebars_ast_list * list)
+size_t handlebars_ast_list_count(struct handlebars_ast_list * list)
 {
     if( unlikely(list == NULL) ) {
         return 0;
@@ -111,14 +108,14 @@ void handlebars_ast_list_insert_before(struct handlebars_ast_list * list,
     item->prev = new_item;
 }
 
-int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
+bool handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {
     struct handlebars_ast_list_item * it;
     struct handlebars_ast_list_item * tmp;
     struct handlebars_ast_list_item * found = NULL;
     
     if( !list->first || !list->last ) {
-        return 0;
+        return false;
     }
     
     handlebars_ast_list_foreach(list, it, tmp) {
@@ -129,7 +126,7 @@ int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handleb
     }
     
     if( !found ) {
-        return 0;
+        return false;
     }
     
     if( found->prev == NULL ) {
@@ -146,10 +143,10 @@ int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handleb
     
     handlebars_talloc_free(found);
     
-    return 1;
+    return true;
 }
 
-int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
+void handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {
     int error = HANDLEBARS_SUCCESS;
     struct handlebars_ast_list_item * item = NULL;
@@ -170,6 +167,4 @@ int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handle
         handlebars_ast_list_insert_before(list, list->first, item);
     }
     list->count++;
-
-    return error;
 }

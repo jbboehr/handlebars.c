@@ -313,7 +313,7 @@ static inline void run_test(struct generic_test * test, int _i)
     // Check error
     if( parser->ctx.num ) {
         // @todo maybe check message
-        ck_assert(test->exception);
+        ck_assert_msg(test->exception, parser->ctx.msg);
         goto done;
     }
 

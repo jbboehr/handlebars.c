@@ -204,7 +204,7 @@ struct handlebars_context * handlebars_context_ctor_ex(void * ctx);
  * @brief Construct a root context object. Used as the root talloc pointer.
  * @return the context pointer
  */
-static inline struct handlebars_context * handlebars_context_ctor() {
+static inline struct handlebars_context * handlebars_context_ctor(void) {
     return handlebars_context_ctor_ex(NULL);
 }
 

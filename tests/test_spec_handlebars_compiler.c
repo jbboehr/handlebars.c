@@ -39,14 +39,14 @@ struct compiler_test {
     char * message;
     char ** known_helpers;
     
-    short opt_compat;
-    short opt_data;
-    short opt_known_helpers_only;
-    short opt_string_params;
-    short opt_track_ids;
-    short opt_prevent_indent;
-    short opt_explicit_partial_context;
-    short opt_ignore_standalone;
+    bool opt_compat;
+    bool opt_data;
+    bool opt_known_helpers_only;
+    bool opt_string_params;
+    bool opt_track_ids;
+    bool opt_prevent_indent;
+    bool opt_explicit_partial_context;
+    bool opt_ignore_standalone;
     long flags;
 
     struct handlebars_context * ctx;
@@ -80,10 +80,10 @@ static int loadTestOpcodeOperand(
             handlebars_operand_set_null(operand);
             break;
         case json_type_boolean:
-            handlebars_operand_set_boolval(operand, json_object_get_boolean(object) ? 1 : 0);
+            handlebars_operand_set_boolval(operand, json_object_get_boolean(object) ? true : false);
             break;
         case json_type_string:
-            handlebars_operand_set_stringval(compiler, operand, json_object_get_string(object));
+            handlebars_operand_set_strval(compiler, operand, json_object_get_string(object));
             break;
         case json_type_int:
             handlebars_operand_set_longval(operand, json_object_get_int(object));
@@ -106,7 +106,7 @@ static int loadTestOpcodeOperand(
         case json_type_double: {
             char tmp[64];
             snprintf(tmp, 63, "%g", json_object_get_double(object));
-            handlebars_operand_set_stringval(compiler, operand, tmp);
+            handlebars_operand_set_strval(compiler, operand, tmp);
             //handlebars_operand_set_stringval(opcode, operand, json_object_get_string(object));
             break;
         }
@@ -333,7 +333,7 @@ error:
 static char * loadTestOpcodesPrint(json_object * object)
 {
     struct handlebars_context * context;
-    struct handlebars_compiler * parser;
+    struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_opcode_printer * printer;
     char * output;

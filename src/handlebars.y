@@ -5,29 +5,29 @@
 %error-verbose
 
 %lex-param {
-  void * scanner
+    void * scanner
 }
 %parse-param {
-  struct handlebars_parser * parser
+    struct handlebars_parser * parser
 }
 %locations
 
 %code requires {
-  struct handlebars_parser; /* needed for bison 2.7 */
-  #define YY_END_OF_BUFFER_CHAR 0
-  #define YY_EXTRA_TYPE struct handlebars_parser *
-  typedef struct handlebars_locinfo YYLTYPE;
-  #define YYLTYPE_IS_DECLARED 1
-  #define YYLTYPE_IS_TRIVIAL 1
-  
-  struct handlebars_yy_block_params {
-    char * block_param1;
-    char * block_param2;
-  };
-  struct handlebars_yy_block_intermediate {
-      struct handlebars_ast_node * program;
-      struct handlebars_ast_node * inverse_chain;
-  };
+    struct handlebars_parser; /* needed for bison 2.7 */
+    #define YY_END_OF_BUFFER_CHAR 0
+    #define YY_EXTRA_TYPE struct handlebars_parser *
+    typedef struct handlebars_locinfo YYLTYPE;
+    #define YYLTYPE_IS_DECLARED 1
+    #define YYLTYPE_IS_TRIVIAL 1
+
+    struct handlebars_yy_block_params {
+        struct handlebars_string * block_param1;
+        struct handlebars_string * block_param2;
+    };
+    struct handlebars_yy_block_intermediate {
+        struct handlebars_ast_node * program;
+        struct handlebars_ast_node * inverse_chain;
+    };
 }
 
 %start  start
@@ -45,11 +45,13 @@
 #include <string.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
+
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
 #include "handlebars_ast_list.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars_whitespace.h"
 #include "handlebars.tab.h"
@@ -68,53 +70,49 @@ int handlebars_yy_debug = 0;
 %}
 
 %union {
-  struct {
-	  char * text;
-	  size_t length;
-  };
+    struct handlebars_string * string;
+    struct handlebars_ast_node * ast_node;
+    struct handlebars_ast_list * ast_list;
   
-  struct handlebars_ast_node * ast_node;
-  struct handlebars_ast_list * ast_list;
-  
-  struct handlebars_yy_block_intermediate block_intermediate;
-  struct handlebars_yy_block_params block_params;
+    struct handlebars_yy_block_intermediate block_intermediate;
+    struct handlebars_yy_block_params block_params;
 }
 
 %token END 0 "end of file"
-%token <text> BOOLEAN
-%token <text> CLOSE "}}"
-%token <text> CLOSE_RAW_BLOCK "}}}}"
-%token <text> CLOSE_SEXPR ")"
-%token <text> CLOSE_UNESCAPED "}}}"
-%token <text> COMMENT
-%token <text> CONTENT
-%token <text> DATA
-%token <text> END_RAW_BLOCK // meh
-%token <text> EQUALS "="
-%token <text> ID
-%token <text> INVALID
-%token <text> INVERSE
-%token <text> NUMBER
-%token <text> OPEN "{{"
-%token <text> OPEN_BLOCK "{{#"
-%token <text> OPEN_ENDBLOCK
-%token <text> OPEN_INVERSE "{{^"
-%token <text> OPEN_PARTIAL "{{>"
-%token <text> OPEN_RAW_BLOCK "{{{{"
-%token <text> OPEN_SEXPR "("
-%token <text> OPEN_UNESCAPED "{{{"
-%token <text> SEP
-%token <text> STRING
+%token <string> BOOLEAN
+%token <string> CLOSE "}}"
+%token <string> CLOSE_RAW_BLOCK "}}}}"
+%token <string> CLOSE_SEXPR ")"
+%token <string> CLOSE_UNESCAPED "}}}"
+%token <string> COMMENT
+%token <string> CONTENT
+%token <string> DATA
+%token <string> END_RAW_BLOCK // meh
+%token <string> EQUALS "="
+%token <string> ID
+%token <string> INVALID
+%token <string> INVERSE
+%token <string> NUMBER
+%token <string> OPEN "{{"
+%token <string> OPEN_BLOCK "{{#"
+%token <string> OPEN_ENDBLOCK
+%token <string> OPEN_INVERSE "{{^"
+%token <string> OPEN_PARTIAL "{{>"
+%token <string> OPEN_RAW_BLOCK "{{{{"
+%token <string> OPEN_SEXPR "("
+%token <string> OPEN_UNESCAPED "{{{"
+%token <string> SEP
+%token <string> STRING
 
 // Added in v3
-%token <text> CLOSE_BLOCK_PARAMS
-%token <text> NUL "NULL"
-%token <text> OPEN_BLOCK_PARAMS
-%token <text> OPEN_INVERSE_CHAIN
-%token <text> UNDEFINED "undefined"
+%token <string> CLOSE_BLOCK_PARAMS
+%token <string> NUL "NULL"
+%token <string> OPEN_BLOCK_PARAMS
+%token <string> OPEN_INVERSE_CHAIN
+%token <string> UNDEFINED "undefined"
 
 // Added in v4
-%token <text> OPEN_PARTIAL_BLOCK "{{#>"
+%token <string> OPEN_PARTIAL_BLOCK "{{#>"
 
 %type <ast_node> program
 %type <ast_list> statements
@@ -138,7 +136,7 @@ int handlebars_yy_debug = 0;
 %type <ast_list> hash_pairs
 %type <ast_node> hash_pair
 %type <ast_list> path_segments
-%type <text> content
+%type <string> content
 
 // Added in v3
 %type <block_params> block_params
@@ -218,7 +216,7 @@ statement
 
 content
   : CONTENT content {
-      $$ = MC(handlebars_talloc_strdup_append($1, $2));
+      $$ = handlebars_string_append(CONTEXT, $1, $2->val, $2->len);
       $$ = talloc_steal(parser, $$);
     }
   | CONTENT {
@@ -272,7 +270,7 @@ open_block
   : OPEN_BLOCK intermediate4 CLOSE {
       $$ = $2;
       $$->strip = handlebars_ast_helper_strip_flags($1, $3);
-      $$->node.intermediate.open = handlebars_talloc_strdup($$, $1);
+      $$->node.intermediate.open = talloc_steal($$, handlebars_string_copy_ctor(CONTEXT, $1));
     }
   ;
 
@@ -463,11 +461,11 @@ hash_pair
 
 block_params
   : OPEN_BLOCK_PARAMS ID ID CLOSE_BLOCK_PARAMS {
-      $$.block_param1 = MC(handlebars_talloc_strdup(parser, $2));
-      $$.block_param2 = MC(handlebars_talloc_strdup(parser, $3));
+      $$.block_param1 = handlebars_string_copy_ctor(CONTEXT, $2);
+      $$.block_param2 = handlebars_string_copy_ctor(CONTEXT, $3);
     }
   | OPEN_BLOCK_PARAMS ID CLOSE_BLOCK_PARAMS {
-      $$.block_param1 = MC(handlebars_talloc_strdup(parser, $2));
+      $$.block_param1 = handlebars_string_copy_ctor(CONTEXT, $2);
       $$.block_param2 = NULL;
     }
   ;
@@ -489,10 +487,10 @@ helper_name
       $$ = handlebars_ast_node_ctor_boolean(parser, $1, &@$);
     }
   | UNDEFINED {
-      $$ = handlebars_ast_node_ctor_undefined(parser, &@$);
+      $$ = handlebars_ast_node_ctor_undefined(parser, $1, &@$);
     }
   | NUL {
-      $$ = handlebars_ast_node_ctor_null(parser, &@$);
+      $$ = handlebars_ast_node_ctor_null(parser, $1, &@$);
     }
   ;
   

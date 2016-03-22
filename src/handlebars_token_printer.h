@@ -13,9 +13,8 @@
 extern "C" {
 #endif
 
-/**
- * Declarations
- */
+struct handlebars_context;
+struct handlebars_string;
 struct handlebars_token;
 struct handlebars_token_list;
 
@@ -51,7 +50,7 @@ char * handlebars_token_print(struct handlebars_token * token, int flags);
  * @param[in] flags The print flags
  * @return The printed tokens
  */
-char * handlebars_token_list_print(struct handlebars_token_list * list, int flags);
+struct handlebars_string * handlebars_token_list_print(struct handlebars_context * context, struct handlebars_token_list * list, int flags);
 
 #ifdef	__cplusplus
 }
