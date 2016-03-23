@@ -33,6 +33,7 @@ struct handlebars_cache_entry {
 };
 
 struct handlebars_cache * handlebars_cache_ctor(struct handlebars_context * context);
+void handlebars_cache_dtor(struct handlebars_cache * cache);
 int handlebars_cache_gc(struct handlebars_cache * cache);
 struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_compiler * compiler);
 struct handlebars_cache_entry * handlebars_cache_find(struct handlebars_cache * cache, struct handlebars_string * tmpl);

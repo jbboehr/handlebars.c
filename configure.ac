@@ -28,7 +28,7 @@ AC_CONFIG_HEADERS([config.h src/handlebars_config.h])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE([foreign -Wall -Werror subdir-objects])
+AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
 
 AX_CHECK_ENABLE_DEBUG([no])
 AX_CFLAGS_WARN_ALL

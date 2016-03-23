@@ -159,7 +159,7 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
 {
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
-    struct handlebars_token_list * list;
+    struct handlebars_token_list * list = NULL;
     jmp_buf * prev = HBSCTX(parser)->jmp;
     jmp_buf buf;
     YYSTYPE * lval;
@@ -173,7 +173,7 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
     }
 
     // Prepare token list
-    list = handlebars_token_list_ctor(parser);
+    list = handlebars_token_list_ctor(HBSCTX(parser));
     
     // Run
     do {
@@ -187,7 +187,7 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
         lval = handlebars_yy_get_lval(parser->scanner);
         
         // Make token object
-        token = talloc_steal(list, handlebars_token_ctor(parser, token_int, lval->string));
+        token = talloc_steal(list, handlebars_token_ctor(HBSCTX(parser), token_int, lval->string));
         
         // Append
         handlebars_token_list_append(list, token);
@@ -260,10 +260,10 @@ struct handlebars_context * _HBSCTX(void * ctx, const char * loc)
 {
     struct handlebars_context * r = (
             talloc_get_type(ctx, struct handlebars_context) ?:
-            talloc_get_type(ctx, struct handlebars_parser) ?:
-            talloc_get_type(ctx, struct handlebars_compiler) ?:
-            talloc_get_type(ctx, struct handlebars_vm) ?:
-            talloc_get_type(ctx, struct handlebars_cache)
+            (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_parser) ?:
+            (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_compiler) ?:
+            (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_vm) ?:
+            (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_cache)
     );
     if( !r ) {
         fprintf(stderr, "Not a context at %s\n", loc);

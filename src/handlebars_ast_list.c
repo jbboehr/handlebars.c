@@ -148,7 +148,6 @@ bool handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handle
 
 void handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {
-    int error = HANDLEBARS_SUCCESS;
     struct handlebars_ast_list_item * item = NULL;
 
     assert(list != NULL);

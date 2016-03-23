@@ -24,7 +24,7 @@ struct handlebars_string {
 
 static inline unsigned long handlebars_string_hash_cont(const unsigned char * str, size_t len, unsigned long hash)
 {
-    int c, i;
+    size_t c, i;
     for( i = 0, c = *str++; i < len && c; i++, c = *str++ ) {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     }

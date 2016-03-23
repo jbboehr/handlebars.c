@@ -483,6 +483,7 @@ void handlebars_whitespace_accept(struct handlebars_parser * parser,
         case HANDLEBARS_AST_NODE_CONTENT:
         case HANDLEBARS_AST_NODE_HASH:
         case HANDLEBARS_AST_NODE_HASH_PAIR:
+        case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
         case HANDLEBARS_AST_NODE_NUL:
         case HANDLEBARS_AST_NODE_NUMBER:
         case HANDLEBARS_AST_NODE_PATH:

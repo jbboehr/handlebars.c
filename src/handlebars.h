@@ -294,8 +294,8 @@ static inline void * handlebars_check(struct handlebars_context * context, void 
     return ptr;
 }
 
-#ifndef NDEBUG
 struct handlebars_context * _HBSCTX(void * ctx, const char * loc);
+#ifndef NDEBUG
 #define HBSCTX(ctx) _HBSCTX(ctx, HBS_S2(__FILE__) ":" HBS_S2(__LINE__))
 #else
 #define HBSCTX(ctx) ((struct handlebars_context *)ctx)
