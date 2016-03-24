@@ -180,6 +180,19 @@ START_TEST(test_handlebars_string_stripcslashes_7)
     handlebars_talloc_free(input);
 END_TEST
 
+START_TEST(test_handlebars_string_asprintf)
+    struct handlebars_string * actual = handlebars_string_asprintf(context, "|%d|%c|%s|", 148, 56, "1814");
+    ck_assert_str_eq(actual->val, "|148|8|1814|");
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_handlebars_string_asprintf_append)
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("PREFIX"));
+    input = handlebars_string_asprintf_append(context, input, "|%d|%c|%s|", 148, 56, "1814");
+    ck_assert_str_eq(input->val, "PREFIX|148|8|1814|");
+    handlebars_talloc_free(input);
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("String");
@@ -192,20 +205,21 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_1, "handlebars_string_reduce 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_2, "handlebars_string_reduce 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_3, "handlebars_string_reduce 3");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_1, "test_handlebars_string_addcslashes 1");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_2, "test_handlebars_string_addcslashes 2");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_3, "test_handlebars_string_addcslashes 3");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_4, "test_handlebars_string_addcslashes 4");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_5, "test_handlebars_string_addcslashes 5");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_6, "test_handlebars_string_addcslashes 6");
-
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_1, "test_handlebars_string_addcslashes 1");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_2, "test_handlebars_string_addcslashes 2");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_3, "test_handlebars_string_addcslashes 3");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_4, "test_handlebars_string_addcslashes 4");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_5, "test_handlebars_string_addcslashes 5");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_6, "test_handlebars_string_addcslashes 6");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_7, "test_handlebars_string_addcslashes 7");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_1, "handlebars_string_addcslashes 1");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_2, "handlebars_string_addcslashes 2");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_3, "handlebars_string_addcslashes 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_4, "handlebars_string_addcslashes 4");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_5, "handlebars_string_addcslashes 5");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_6, "handlebars_string_addcslashes 6");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_1, "handlebars_string_addcslashes 1");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_2, "handlebars_string_addcslashes 2");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_3, "handlebars_string_addcslashes 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_4, "handlebars_string_addcslashes 4");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_5, "handlebars_string_addcslashes 5");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_6, "handlebars_string_addcslashes 6");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_7, "handlebars_string_addcslashes 7");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf, "handlebars_string_asprintf");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf_append, "handlebars_string_asprintf_append");
 
     return s;
 }

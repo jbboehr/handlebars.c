@@ -217,8 +217,7 @@ inverse:
 struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_ARGS)
 {
     if( argc != 0 ) {
-        char * msg = handlebars_talloc_asprintf(options->vm, "Missing helper: \"%s\"", options->name->val);
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, msg);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Missing helper: \"%s\"", options->name->val);
     }
     SAFE_RETURN(NULL);
 }

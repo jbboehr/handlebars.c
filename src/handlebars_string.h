@@ -4,7 +4,9 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include <memory.h>
+#include <talloc.h>
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
@@ -72,14 +74,24 @@ static inline struct handlebars_string * handlebars_string_copy_ctor(struct hand
     return st;
 }
 
+static inline struct handlebars_string * handlebars_string_extend(struct handlebars_context * context, struct handlebars_string * string, size_t len)
+{
+    size_t size;
+    if( string == NULL ) {
+        return handlebars_string_init(context, len);
+    }
+    size = HANDLEBARS_STRING_SIZE(len);
+    if( size > talloc_get_size(string) ) {
+        string = (struct handlebars_string *) handlebars_talloc_realloc_size(context, string, size);
+        HANDLEBARS_MEMCHECK(string, context);
+    }
+    return string;
+}
+
 static inline struct handlebars_string * handlebars_string_append(struct handlebars_context * context, struct handlebars_string * st2, const char * str, size_t len)
 {
     unsigned long newhash = handlebars_string_hash_cont((const unsigned char *)str, len, st2->hash);
-    size_t newsize = HANDLEBARS_STRING_SIZE(st2->len + len);
-    if( newsize > talloc_get_size(st2) ) {
-        st2 = (struct handlebars_string *) handlebars_talloc_realloc_size(context, st2, newsize);
-        HANDLEBARS_MEMCHECK(st2, context);
-    }
+    st2 = handlebars_string_extend(context, st2, st2->len + len);
     memcpy(st2->val + st2->len, str, len);
     st2->len += len;
     st2->val[st2->len] = 0;
@@ -154,11 +166,37 @@ struct handlebars_string * handlebars_string_addcslashes(
     struct handlebars_context * context,
     struct handlebars_string * string,
     const char * what, size_t what_length
-) HBS_ATTR_NONNULL(1, 2, 3);
+) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_stripcslashes(
     struct handlebars_string * string
-) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_NONNULL(1);
+) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_string * handlebars_string_asprintf(
+        struct handlebars_context * context,
+        const char * fmt,
+        ...
+) PRINTF_ATTRIBUTE(2, 3) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_string * handlebars_string_asprintf_append(
+        struct handlebars_context * context,
+        struct handlebars_string * string,
+        const char * fmt,
+        ...
+) PRINTF_ATTRIBUTE(3, 4) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_string * handlebars_string_vasprintf(
+        struct handlebars_context * context,
+        const char * fmt,
+        va_list ap
+) PRINTF_ATTRIBUTE(2, 0) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_string * handlebars_string_vasprintf_append(
+        struct handlebars_context * context,
+        struct handlebars_string * string,
+        const char * fmt,
+        va_list ap
+) PRINTF_ATTRIBUTE(3, 0) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }

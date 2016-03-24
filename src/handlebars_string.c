@@ -173,3 +173,73 @@ struct handlebars_string * handlebars_string_stripcslashes(struct handlebars_str
 
     return handlebars_string_compact(string);
 }
+
+struct handlebars_string * handlebars_string_asprintf(
+        struct handlebars_context * context,
+        const char * fmt,
+        ...
+) {
+    va_list ap;
+    struct handlebars_string * string;
+
+    va_start(ap, fmt);
+    string = handlebars_string_vasprintf_append(context, NULL, fmt, ap);
+    va_end(ap);
+
+    return string;
+}
+
+struct handlebars_string * handlebars_string_asprintf_append(
+        struct handlebars_context * context,
+        struct handlebars_string * string,
+        const char * fmt,
+        ...
+) {
+    va_list ap;
+
+    va_start(ap, fmt);
+    string = handlebars_string_vasprintf_append(context, string, fmt, ap);
+    va_end(ap);
+
+    return string;
+}
+
+struct handlebars_string * handlebars_string_vasprintf(
+        struct handlebars_context * context,
+        const char * fmt,
+        va_list ap
+) {
+    return handlebars_string_vasprintf_append(context, NULL, fmt, ap);
+}
+
+struct handlebars_string * handlebars_string_vasprintf_append(
+        struct handlebars_context * context,
+        struct handlebars_string * string,
+        const char * fmt,
+        va_list ap
+) {
+    va_list ap2;
+    size_t len;
+    size_t slen = string ? string->len : 0;
+
+    // Calculate size
+    va_copy(ap2, ap);
+    len = vsnprintf(NULL, 0, fmt, ap2);
+    va_end(ap2);
+
+    // Nothing to do
+    if( len <= 0 ) {
+        return string;
+    }
+
+    // Resize
+    string = handlebars_string_extend(context, string, slen + len);
+
+    // Print
+    va_copy(ap2, ap);
+    vsnprintf(string->val + slen, len + 1, fmt, ap2);
+    va_end(ap2);
+
+    string->len += len;
+    return string;
+}
