@@ -193,6 +193,26 @@ START_TEST(test_handlebars_string_asprintf_append)
     handlebars_talloc_free(input);
 END_TEST
 
+START_TEST(test_handlebars_string_implode_1)
+    struct handlebars_string ** parts = handlebars_talloc_array(context, struct handlebars_string *, 1);
+    parts[0] = NULL;
+    struct handlebars_string * actual = handlebars_string_implode(context, HBS_STRL("!!!"), parts);
+    ck_assert_str_eq(actual->val, "");
+    handlebars_talloc_free(parts);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_handlebars_string_implode_2)
+    struct handlebars_string ** parts = handlebars_talloc_array(context, struct handlebars_string *, 3);
+    parts[0] = handlebars_string_ctor(context, HBS_STRL("one"));
+    parts[1] = handlebars_string_ctor(context, HBS_STRL("two"));
+    parts[2] = NULL;
+    struct handlebars_string * actual = handlebars_string_implode(context, HBS_STRL("!"), parts);
+    ck_assert_str_eq(actual->val, "one!two");
+    handlebars_talloc_free(parts);
+    handlebars_talloc_free(actual);
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("String");
@@ -220,6 +240,8 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_7, "handlebars_string_addcslashes 7");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf, "handlebars_string_asprintf");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf_append, "handlebars_string_asprintf_append");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_implode_1, "handlebars_string_implode 1");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_implode_2, "handlebars_string_implode 2");
 
     return s;
 }

@@ -243,3 +243,37 @@ struct handlebars_string * handlebars_string_vasprintf_append(
     string->len += len;
     return string;
 }
+
+struct handlebars_string * handlebars_string_implode(
+        struct handlebars_context * context,
+        const char * sep,
+        size_t sep_len,
+        struct handlebars_string ** parts
+) {
+    struct handlebars_string * string;
+    struct handlebars_string ** ptr;
+    size_t len = 0;
+
+    // Calc new size
+    for( ptr = parts; *ptr; ptr++ ) {
+        len += (*ptr)->len + sep_len;
+    }
+    if( len > 0 ) {
+        len -= sep_len;
+    } else {
+        return handlebars_string_init(context, 0);
+    }
+
+    // Allocate
+    string = handlebars_string_init(context, len);
+
+    // Append
+    ptr = parts;
+    string = handlebars_string_append(context, string, (*ptr)->val, (*ptr)->len);
+    for( ptr++; *ptr; ptr++ ) {
+        string = handlebars_string_append(context, string, sep, sep_len);
+        string = handlebars_string_append(context, string, (*ptr)->val, (*ptr)->len);
+    }
+
+    return string;
+}

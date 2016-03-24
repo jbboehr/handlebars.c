@@ -173,30 +173,37 @@ struct handlebars_string * handlebars_string_stripcslashes(
 ) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_asprintf(
-        struct handlebars_context * context,
-        const char * fmt,
-        ...
+    struct handlebars_context * context,
+    const char * fmt,
+    ...
 ) PRINTF_ATTRIBUTE(2, 3) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_asprintf_append(
-        struct handlebars_context * context,
-        struct handlebars_string * string,
-        const char * fmt,
-        ...
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const char * fmt,
+    ...
 ) PRINTF_ATTRIBUTE(3, 4) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_vasprintf(
-        struct handlebars_context * context,
-        const char * fmt,
-        va_list ap
+    struct handlebars_context * context,
+    const char * fmt,
+    va_list ap
 ) PRINTF_ATTRIBUTE(2, 0) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_vasprintf_append(
-        struct handlebars_context * context,
-        struct handlebars_string * string,
-        const char * fmt,
-        va_list ap
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const char * fmt,
+    va_list ap
 ) PRINTF_ATTRIBUTE(3, 0) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_string * handlebars_string_implode(
+    struct handlebars_context * context,
+    const char * sep,
+    size_t sep_len,
+    struct handlebars_string ** parts
+) HBS_ATTR_NONNULL(1, 2, 4) HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }
