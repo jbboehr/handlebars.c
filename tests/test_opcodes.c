@@ -362,26 +362,49 @@ END_TEST
 */
 
 START_TEST(test_operand_set_arrayval)
-{
-    struct handlebars_operand op;
-    const char * strs[] = {
-        "foo", "bar", "baz", "helicopter", NULL
-    };
-    int ret;
-    const char ** ptr1;
-    struct handlebars_string ** ptr2;
-    
-    ret = handlebars_operand_set_arrayval(compiler, &op, strs);
-    
-    ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
-    ck_assert_int_eq(handlebars_operand_type_array, op.type);
-    ck_assert_ptr_ne(NULL, op.data.array);
-    
-    // Compare arrays
-    for( ptr1 = strs, ptr2 = op.data.array; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
-        ck_assert_str_eq(*ptr1, (*ptr2)->val);
+    {
+        struct handlebars_operand op;
+        const char * strs[] = {
+                "foo", "bar", "baz", "helicopter", NULL
+        };
+        int ret;
+        const char ** ptr1;
+        struct handlebars_string ** ptr2;
+
+        handlebars_operand_set_arrayval(compiler, &op, strs);
+
+        ck_assert_int_eq(handlebars_operand_type_array, op.type);
+        ck_assert_ptr_ne(NULL, op.data.array);
+
+        // Compare arrays
+        for( ptr1 = strs, ptr2 = op.data.array; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
+            ck_assert_str_eq(*ptr1, (*ptr2)->val);
+        }
     }
-}
+END_TEST
+
+START_TEST(test_operand_set_arrayval_string)
+    struct handlebars_string * strings[5];
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invalid);
+
+    strings[0] = handlebars_string_ctor(context, HBS_STRL("foo"));
+    strings[1] = handlebars_string_ctor(context, HBS_STRL("bar"));
+    strings[2] = handlebars_string_ctor(context, HBS_STRL("baz"));
+    strings[3] = handlebars_string_ctor(context, HBS_STRL("helicopter"));
+    strings[4] = NULL;
+
+    struct handlebars_string ** ptr1;
+    struct handlebars_string ** ptr2;
+
+    handlebars_operand_set_arrayval_string(HBSCTX(compiler), opcode, &opcode->op1, strings);
+
+    ck_assert_int_eq(handlebars_operand_type_array, opcode->op1.type);
+    ck_assert_ptr_ne(NULL, opcode->op1.data.array);
+
+    // Compare arrays
+    for( ptr1 = strings, ptr2 = opcode->op1.data.array; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
+        ck_assert_str_eq((*ptr1)->val, (*ptr2)->val);
+    }
 END_TEST
 
 Suite * parser_suite(void)
@@ -407,7 +430,8 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_operand_set_longval, "Set operand longval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_stringval, "Set operand stringval");
 	//REGISTER_TEST_FIXTURE(s, test_operand_set_stringval_failed_alloc, "Set operand stringval (failed alloc)");
-	REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval, "Set operand arrayval");
+    REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval, "Set operand arrayval");
+    REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval_string, "operand_set_arrayval_string");
 	
 	
     return s;

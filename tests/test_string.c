@@ -213,6 +213,54 @@ START_TEST(test_handlebars_string_implode_2)
     handlebars_talloc_free(actual);
 END_TEST
 
+START_TEST(test_handlebars_string_ltrim_1)
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(" \n \r test "));
+    struct handlebars_string * ret = handlebars_string_ltrim(in, HBS_STRL(" \t\r\n"));
+    ck_assert_str_eq(ret->val, "test ");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+END_TEST
+
+START_TEST(test_handlebars_string_ltrim_2)
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("\n  "));
+    struct handlebars_string * ret = handlebars_string_ltrim(in, HBS_STRL(" \t"));
+    ck_assert_str_eq(ret->val, "\n  ");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+END_TEST
+
+START_TEST(test_handlebars_string_ltrim_3)
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(""));
+    struct handlebars_string * ret = handlebars_string_ltrim(in, HBS_STRL(""));
+    ck_assert_str_eq(ret->val, "");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+END_TEST
+
+START_TEST(test_handlebars_string_rtrim_1)
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("test \n \r "));
+    struct handlebars_string * ret = handlebars_string_rtrim(in, HBS_STRL(" \t\r\n"));
+    ck_assert_str_eq(ret->val, "test");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+END_TEST
+
+START_TEST(test_handlebars_string_rtrim_2)
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("\n"));
+    struct handlebars_string * ret = handlebars_string_rtrim(in, HBS_STRL(" \v\t\r\n"));
+    ck_assert_str_eq(ret->val, "");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+END_TEST
+
+START_TEST(test_handlebars_string_rtrim_3)
+    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(""));
+    struct handlebars_string * ret = handlebars_string_rtrim(in, HBS_STRL(""));
+    ck_assert_str_eq(ret->val, "");
+    ck_assert_ptr_eq(in, ret);
+    handlebars_talloc_free(in);
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("String");
@@ -242,6 +290,12 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf_append, "handlebars_string_asprintf_append");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_implode_1, "handlebars_string_implode 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_implode_2, "handlebars_string_implode 2");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_ltrim_1, "test_handlebars_string_ltrim 1");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_ltrim_2, "test_handlebars_string_ltrim 2");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_ltrim_3, "test_handlebars_string_ltrim 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_rtrim_1, "test_handlebars_string_rtrim 1");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_rtrim_2, "test_handlebars_string_rtrim 2");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_rtrim_3, "test_handlebars_string_rtrim 3");
 
     return s;
 }

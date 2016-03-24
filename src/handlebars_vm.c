@@ -471,7 +471,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
         struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
         char *tmp2 = handlebars_value_expression(ret, 0);
-        char *tmp3 = handlebars_indent(tmp2, tmp2, opcode->op3.data.string->val);
+        struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), tmp2, strlen(tmp2), HBS_STR_STRL(opcode->op3.data.string));
         vm->buffer = MC(handlebars_talloc_strdup_append_buffer(vm->buffer, tmp2));
         handlebars_talloc_free(tmp3);
         handlebars_talloc_free(tmp2);
@@ -543,8 +543,9 @@ ACCEPT_FUNCTION(invoke_partial)
     handlebars_vm_execute(vm2, compiler, context2);
 
     if( vm2->buffer ) {
-        char *tmp2 = handlebars_indent(vm2, vm2->buffer, opcode->op3.data.string->val);
-        vm->buffer = MC(handlebars_talloc_strdup_append_buffer(vm->buffer, tmp2));
+        struct handlebars_string * tmp2 = handlebars_string_indent(
+                HBSCTX(vm2), vm2->buffer, talloc_get_size(vm2->buffer) - 1, HBS_STR_STRL(opcode->op3.data.string));
+        vm->buffer = MC(handlebars_talloc_strndup_append_buffer(vm->buffer, tmp2->val, tmp2->len));
         handlebars_talloc_free(tmp2);
     }
 

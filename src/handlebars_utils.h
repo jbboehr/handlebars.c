@@ -23,44 +23,6 @@ union YYSTYPE;
 char * handlebars_htmlspecialchars(const char * str);
 char * handlebars_htmlspecialchars_append_buffer(char * buf, const char * str, size_t len);
 
-char * handlebars_implode(const char * sep, const char ** arr);
-
-char * handlebars_indent(void * ctx, const char * str, const char * indent);
-
-/**
- * @brief Trims a set of characters off the left end of string. Trims in
- *        place by setting a null terminator and moving the contents
- * 
- * @param[in] str the string to trim
- * @param[in] str_length The length of the input string
- * @param[in] what the set of characters to trim
- * @param[in] what_length The length of the character list
- * @return the original pointer, with trimmed input characters
- */
-struct handlebars_string * handlebars_ltrim(struct handlebars_string * string, const char * what, size_t what_length);
-
-/**
- * @brief Trims a set of characters off the right end of string. Trims in
- *        place by setting a null terminator.
- * 
- * @param[in] str the string to trim
- * @param[in] str_length The length of the input string
- * @param[in] what the set of characters to trim
- * @param[in] what_length The length of the character list
- * @return the original pointer, with null moved to trim input characters
- */
-struct handlebars_string * handlebars_rtrim(struct handlebars_string * string, const char * what, size_t what_length);
-
-/**
- * @brief Strips slashes from a string. Changes are done in-place. length accepts
- *        NULL, uses strlen for length.
- * 
- * @param[in] str The input string
- * @param[in] length The length of the input string
- * @return The original pointer, transformed
- */
-char * handlebars_stripcslashes_ex(char * str, size_t * length);
-
 /**
  * @brief Handle an error in the parser. Prints message to stderr
  * 

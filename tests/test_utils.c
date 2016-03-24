@@ -58,54 +58,6 @@ START_TEST(test_htmlspecialchars)
 }
 END_TEST
 
-START_TEST(test_ltrim)
-{
-    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(" \n \r test "));
-    struct handlebars_string * ret = handlebars_ltrim(in, HBS_STRL(" \t\r\n"));
-    ck_assert_str_eq(ret->val, "test ");
-    ck_assert_ptr_eq(in, ret);
-    handlebars_talloc_free(in);
-}
-{
-    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("\n  "));
-    struct handlebars_string * ret = handlebars_ltrim(in, HBS_STRL(" \t"));
-    ck_assert_str_eq(ret->val, "\n  ");
-    ck_assert_ptr_eq(in, ret);
-    handlebars_talloc_free(in);
-}
-{
-    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(""));
-    struct handlebars_string * ret = handlebars_ltrim(in, HBS_STRL(""));
-    ck_assert_str_eq(ret->val, "");
-    ck_assert_ptr_eq(in, ret);
-    handlebars_talloc_free(in);
-}
-END_TEST
-
-START_TEST(test_rtrim)
-{
-    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("test \n \r "));
-    struct handlebars_string * ret = handlebars_rtrim(in, HBS_STRL(" \t\r\n"));
-    ck_assert_str_eq(ret->val, "test");
-    ck_assert_ptr_eq(in, ret);
-    handlebars_talloc_free(in);
-}
-{
-    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("\n"));
-    struct handlebars_string * ret = handlebars_rtrim(in, HBS_STRL(" \v\t\r\n"));
-    ck_assert_str_eq(ret->val, "");
-    ck_assert_ptr_eq(in, ret);
-    handlebars_talloc_free(in);
-}
-{
-    struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL(""));
-    struct handlebars_string * ret = handlebars_rtrim(in, HBS_STRL(""));
-    ck_assert_str_eq(ret->val, "");
-    ck_assert_ptr_eq(in, ret);
-    handlebars_talloc_free(in);
-}
-END_TEST
-
 START_TEST(test_yy_error)
 {
     struct YYLTYPE loc;
@@ -216,8 +168,6 @@ Suite * parser_suite(void)
     Suite * s = suite_create("Utils");
 
     REGISTER_TEST_FIXTURE(s, test_htmlspecialchars, "htmlspecialchars");
-    REGISTER_TEST_FIXTURE(s, test_ltrim, "ltrim");
-    REGISTER_TEST_FIXTURE(s, test_rtrim, "rtrim");
     REGISTER_TEST_FIXTURE(s, test_yy_error, "yy_error");
     //REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
     REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");

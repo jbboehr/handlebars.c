@@ -125,7 +125,7 @@ int handlebars_operand_set_strval(struct handlebars_compiler * compiler, struct 
     return HANDLEBARS_SUCCESS;
 }
 
-int handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char ** arg)
+void handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char ** arg)
 {
     struct handlebars_string ** arr;
     struct handlebars_string ** arrptr;
@@ -142,6 +142,7 @@ int handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struc
     
     // Copy each item
     for( ptr = arg; *ptr; ++ptr ) {
+        fprintf(stderr, "ADASDASDASDASD %d %s\n", strlen(*ptr), (*ptr));
         *arrptr = handlebars_string_ctor(HBSCTX(compiler), *ptr, strlen(*ptr));// MC(handlebars_talloc_strdup(arr, *ptr));
         ++arrptr;
     }
@@ -150,8 +151,38 @@ int handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struc
     // Assign to operand
     operand->type = handlebars_operand_type_array;
     operand->data.array = arr;
+}
 
-    return HANDLEBARS_SUCCESS;
+void handlebars_operand_set_arrayval_string(
+        struct handlebars_context * context,
+        struct handlebars_opcode * opcode,
+        struct handlebars_operand * operand,
+        struct handlebars_string ** array
+) {
+    struct handlebars_string ** arr;
+    struct handlebars_string ** arrptr;
+    struct handlebars_string ** ptr;
+    size_t num = 0;
+
+    // Get number of items
+    for( ptr = array; *ptr; ++ptr, ++num );
+
+    // Allocate array
+    arrptr = arr = handlebars_talloc_array(opcode, struct handlebars_string *, num + 1);
+    MEMCHKEX(arr, context);
+
+    // Copy each item
+    for( ptr = array; *ptr; ++ptr ) {
+        // @todo the hash seems to be getting messed up somewhere
+        //*arrptr = talloc_steal(arr, handlebars_string_copy_ctor(context, *ptr));
+        *arrptr = handlebars_string_ctor(context, (*ptr)->val, (*ptr)->len);
+        ++arrptr;
+    }
+    *arrptr++ = NULL;
+
+    // Assign to operand
+    operand->type = handlebars_operand_type_array;
+    operand->data.array = arr;
 }
 
 const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)

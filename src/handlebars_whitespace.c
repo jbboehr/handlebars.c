@@ -108,9 +108,9 @@ bool handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
     original_length = current->node.content.value->len;
 
     if( multiple ) {
-        current->node.content.value = handlebars_rtrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));
+        current->node.content.value = handlebars_string_rtrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));
     } else {
-        current->node.content.value = handlebars_rtrim(current->node.content.value, HBS_STRL(" \t"));
+        current->node.content.value = handlebars_string_rtrim(current->node.content.value, HBS_STRL(" \t"));
     }
     
     if( original_length == current->node.content.value->len ) {
@@ -145,16 +145,18 @@ bool handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
     original_length = current->node.content.value->len;
     
     if( multiple ) {
-        current->node.content.value = handlebars_ltrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));
+        current->node.content.value = handlebars_string_ltrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));
     } else {
-        current->node.content.value = handlebars_ltrim(current->node.content.value, HBS_STRL(" \t"));
+        current->node.content.value = handlebars_string_ltrim(current->node.content.value, HBS_STRL(" \t"));
         if( current->node.content.value->val[0] == '\r' ) {
             memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
             current->node.content.value->len--;
+            current->node.content.value->hash = 0;
         }
         if( current->node.content.value->val[0] == '\n' ) {
             memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
             current->node.content.value->len--;
+            current->node.content.value->hash = 0;
         }
     }
     

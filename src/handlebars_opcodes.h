@@ -233,7 +233,6 @@ int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, stru
 
 int handlebars_operand_set_strval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char * arg);
 
-
 /**
  * @brief Set the value of an operand to an array
  *
@@ -242,7 +241,14 @@ int handlebars_operand_set_strval(struct handlebars_compiler * compiler, struct 
  * @param[in] arg The array value
  * @return void
  */
-int handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char ** arg);
+void handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char ** arg);
+
+void handlebars_operand_set_arrayval_string(
+    struct handlebars_context * context,
+    struct handlebars_opcode * opcode,
+    struct handlebars_operand * operand,
+    struct handlebars_string ** array
+) HBS_ATTR_NONNULL(1, 2, 3, 4);
 
 /**
  * @brief Get a string for the integral opcode type. Should match the 

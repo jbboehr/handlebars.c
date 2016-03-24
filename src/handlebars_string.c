@@ -55,6 +55,7 @@ struct handlebars_string * handlebars_str_reduce(
     }
 
     assert(string->val[string->len] == 0);
+    string->hash = 0;
 
     return string;
 }
@@ -106,6 +107,8 @@ struct handlebars_string * handlebars_string_addcslashes(struct handlebars_conte
     *target = 0;
 
     new_string->len = target - new_string->val;
+    new_string->hash = 0;
+
     return handlebars_string_compact(new_string);
 }
 
@@ -161,7 +164,7 @@ struct handlebars_string * handlebars_string_stripcslashes(struct handlebars_str
                     }
             }
         } else {
-            *target++=*source;
+            *target ++= *source;
         }
     }
 
@@ -170,14 +173,15 @@ struct handlebars_string * handlebars_string_stripcslashes(struct handlebars_str
     //}
 
     string->len = nlen;
+    string->hash = 0;
 
     return handlebars_string_compact(string);
 }
 
 struct handlebars_string * handlebars_string_asprintf(
-        struct handlebars_context * context,
-        const char * fmt,
-        ...
+    struct handlebars_context * context,
+    const char * fmt,
+    ...
 ) {
     va_list ap;
     struct handlebars_string * string;
@@ -190,10 +194,10 @@ struct handlebars_string * handlebars_string_asprintf(
 }
 
 struct handlebars_string * handlebars_string_asprintf_append(
-        struct handlebars_context * context,
-        struct handlebars_string * string,
-        const char * fmt,
-        ...
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const char * fmt,
+    ...
 ) {
     va_list ap;
 
@@ -205,18 +209,18 @@ struct handlebars_string * handlebars_string_asprintf_append(
 }
 
 struct handlebars_string * handlebars_string_vasprintf(
-        struct handlebars_context * context,
-        const char * fmt,
-        va_list ap
+    struct handlebars_context * context,
+    const char * fmt,
+    va_list ap
 ) {
     return handlebars_string_vasprintf_append(context, NULL, fmt, ap);
 }
 
 struct handlebars_string * handlebars_string_vasprintf_append(
-        struct handlebars_context * context,
-        struct handlebars_string * string,
-        const char * fmt,
-        va_list ap
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const char * fmt,
+    va_list ap
 ) {
     va_list ap2;
     size_t len;
@@ -241,14 +245,16 @@ struct handlebars_string * handlebars_string_vasprintf_append(
     va_end(ap2);
 
     string->len += len;
+    string->hash = 0;
+
     return string;
 }
 
 struct handlebars_string * handlebars_string_implode(
-        struct handlebars_context * context,
-        const char * sep,
-        size_t sep_len,
-        struct handlebars_string ** parts
+    struct handlebars_context * context,
+    const char * sep,
+    size_t sep_len,
+    struct handlebars_string ** parts
 ) {
     struct handlebars_string * string;
     struct handlebars_string ** ptr;
@@ -269,10 +275,101 @@ struct handlebars_string * handlebars_string_implode(
 
     // Append
     ptr = parts;
-    string = handlebars_string_append(context, string, (*ptr)->val, (*ptr)->len);
+    string = handlebars_string_append_unsafe(string, (*ptr)->val, (*ptr)->len);
     for( ptr++; *ptr; ptr++ ) {
-        string = handlebars_string_append(context, string, sep, sep_len);
-        string = handlebars_string_append(context, string, (*ptr)->val, (*ptr)->len);
+        string = handlebars_string_append_unsafe(string, sep, sep_len);
+        string = handlebars_string_append_unsafe(string, (*ptr)->val, (*ptr)->len);
+    }
+
+    return string;
+}
+
+struct handlebars_string * handlebars_string_indent(
+    struct handlebars_context * context,
+    const char * str, size_t str_len,
+    const char * indent, size_t indent_len
+) {
+    struct handlebars_string * string = handlebars_string_init(context, str_len);
+    bool endsInLine = (str[str_len - 1] == '\n');
+    size_t i;
+    char tmp[2] = "\0";
+
+    if( endsInLine ) {
+        str_len--;
+    }
+
+    string = handlebars_string_append(context, string, indent, indent_len);
+
+    for( i = 0; i < str_len; i++ ) {
+        if( str[i] == '\n' ) {
+            string = handlebars_string_append(context, string, HBS_STRL("\n"));
+            string = handlebars_string_append(context, string, indent, indent_len);
+        } else {
+            tmp[0] = str[i];
+            string = handlebars_string_append(context, string, tmp, 1);
+        }
+    }
+
+    if( endsInLine ) {
+        string = handlebars_string_append(context, string, HBS_STRL("\n"));
+    }
+
+    return string;
+}
+
+struct handlebars_string * handlebars_string_ltrim(struct handlebars_string * string, const char * what, size_t what_length)
+{
+    size_t i;
+    char flags[256];
+    char * ptr;
+
+    assert(string != NULL);
+
+    if( unlikely(string == NULL || string->len <= 0) ) {
+        return string;
+    }
+
+    // Make char mask
+    memset(flags, 0, sizeof(flags));
+    for( i = 0; i < what_length; i++ ) {
+        flags[(unsigned char) what[i]] = 1;
+    }
+
+    ptr = string->val;
+    while( *ptr && flags[(unsigned char) *ptr] ) {
+        ++ptr;
+        --string->len;
+    }
+
+    if( ptr > string->val ) {
+        memmove(string->val, ptr, string->len + 1);
+    }
+
+    return string;
+}
+
+struct handlebars_string * handlebars_string_rtrim(struct handlebars_string * string, const char * what, size_t what_length)
+{
+    size_t i;
+    char flags[256];
+    char * original;
+
+    assert(string != NULL);
+
+    if( unlikely(string == NULL || string->len <= 0) ) {
+        return string;
+    }
+
+    // Make char mask
+    memset(flags, 0, sizeof(flags));
+    for( i = 0; i < what_length; i++ ) {
+        flags[(unsigned char) what[i]] = 1;
+    }
+
+    original = string->val + string->len;
+    while( original > string->val && flags[(unsigned char) *--original] ) {
+        --string->len;
+        *original = '\0';
     }
 
     return string;

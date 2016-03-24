@@ -219,8 +219,7 @@ void handlebars_compiler_dtor(struct handlebars_compiler * compiler);
 unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compiler);
 
 /**
- * @brief Set the compiler flags, with handlebars_compiler_flag_all as a 
- *        mask.
+ * @brief Set the compiler flags, with handlebars_compiler_flag_all as a mask.
  * 
  * @param[in] compiler
  * @param[in] flags
@@ -235,7 +234,7 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsign
  * @param[in] ast_node The AST node
  * @return The string array
  */
-char ** handlebars_ast_node_get_id_parts(struct handlebars_compiler * compiler, struct handlebars_ast_node * ast_node);
+struct handlebars_string ** handlebars_ast_node_get_id_parts(struct handlebars_compiler * compiler, struct handlebars_ast_node * ast_node);
 
 #ifdef	__cplusplus
 }

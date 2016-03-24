@@ -430,6 +430,5 @@ struct handlebars_string * handlebars_ast_print(struct handlebars_context * cont
     _handlebars_ast_print(ast_node, ctx);
     output = talloc_steal(context, ctx->output);
     handlebars_talloc_free(ctx);
-    output = handlebars_rtrim(output, HBS_STRL(" \t\r\n"));
-    return output;
+    return handlebars_string_rtrim(output, HBS_STRL(" \t\r\n"));
 }

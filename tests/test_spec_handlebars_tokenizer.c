@@ -108,7 +108,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
         handlebars_talloc_free(tmp);
     }
 
-    test->expected = handlebars_rtrim(test->expected, HBS_STRL(" \t\r\n"));
+    test->expected = handlebars_string_rtrim(test->expected, HBS_STRL(" \t\r\n"));
 }
 
 static void loadSpecTest(json_object * object)
@@ -234,7 +234,7 @@ START_TEST(handlebars_spec_tokenizer)
         handlebars_talloc_free(tmp);
     } while( token );
 
-    actual = handlebars_rtrim(actual, HBS_STRL(" \t\r\n"));
+    actual = handlebars_string_rtrim(actual, HBS_STRL(" \t\r\n"));
 
     ck_assert_str_eq_msg(test->expected->val, actual->val, test->tmpl);
     

@@ -52,7 +52,7 @@ static inline bool handlebars_map_entry_eq(struct handlebars_map_entry * entry1,
 
 static inline int _ht_add(struct handlebars_map_entry ** table, size_t table_size, struct handlebars_map_entry * entry)
 {
-    unsigned long index = entry->key->hash % (unsigned long) table_size;
+    unsigned long index = HBS_STR_HASH(entry->key) % (unsigned long) table_size;
     struct handlebars_map_entry * parent = table[index];
     if( parent ) {
         assert(!handlebars_map_entry_eq(parent, entry));
@@ -148,7 +148,7 @@ static inline void _entry_add(struct handlebars_map * map, const char * key, siz
 
 static inline void _entry_remove(struct handlebars_map * map, struct handlebars_map_entry * entry)
 {
-    unsigned long hash = entry->key->hash;
+    unsigned long hash = HBS_STR_HASH(entry->key);
     struct handlebars_value * value = entry->value;
 
     // Remove from linked list
@@ -202,7 +202,7 @@ static inline void _entry_remove(struct handlebars_map * map, struct handlebars_
 
 bool handlebars_map_add(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value)
 {
-    _entry_add(map, string->val, string->len, string->hash, value);
+    _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
     return true;
 }
 
@@ -214,8 +214,7 @@ bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_
 
 bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
 {
-
-    struct handlebars_map_entry * entry = _entry_find(map, key->val, key->len, key->hash);
+    struct handlebars_map_entry * entry = _entry_find(map, key->val, key->len, HBS_STR_HASH(key));
     if( entry ) {
         _entry_remove(map, entry);
         return 1;
@@ -238,7 +237,7 @@ bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, si
 struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key)
 {
     struct handlebars_value * value = NULL;
-    struct handlebars_map_entry * entry = _entry_find(map, key->val, key->len, key->hash);
+    struct handlebars_map_entry * entry = _entry_find(map, key->val, key->len, HBS_STR_HASH(key));
 
     if( entry ) {
         value = entry->value;
@@ -261,17 +260,16 @@ struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, c
     return value;
 }
 
-
 bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value)
 {
-    struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, string->hash);
+    struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, HBS_STR_HASH(string));
     if( entry ) {
         handlebars_value_delref(entry->value);
         entry->value = value;
         handlebars_value_addref(entry->value);
         return true;
     } else {
-        _entry_add(map, string->val, string->len, string->hash, value);
+        _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
         return true;
     }
 }
@@ -279,7 +277,7 @@ bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string
 bool handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     struct handlebars_string * string = talloc_steal(map, handlebars_string_ctor(CONTEXT, key, len));
-    struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, string->hash);
+    struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, HBS_STR_HASH(string));
     if( entry ) {
         handlebars_value_delref(entry->value);
         entry->value = value;
@@ -287,7 +285,7 @@ bool handlebars_map_str_update(struct handlebars_map * map, const char * key, si
         handlebars_talloc_free(string);
         return true;
     } else {
-        _entry_add(map, string->val, string->len, string->hash, value);
+        _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
         return true;
     }
 }
