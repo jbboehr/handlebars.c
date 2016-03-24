@@ -19,7 +19,7 @@
 START_TEST(test_token_ctor)
 {
 	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
-    struct handlebars_token * token = handlebars_token_ctor(parser, OPEN, string);
+    struct handlebars_token * token = handlebars_token_ctor(HBSCTX(parser), OPEN, string);
     
     ck_assert_ptr_ne(NULL, token);
     ck_assert_ptr_ne(NULL, token->string);

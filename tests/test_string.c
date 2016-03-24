@@ -17,31 +17,31 @@
 
 START_TEST(test_handlebars_strnstr_1)
     const char string[] = "";
-    char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL(""));
+    const char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL(""));
     ck_assert_ptr_eq(res, NULL);
 END_TEST
 
 START_TEST(test_handlebars_strnstr_2)
     const char string[] = "abcdefgh";
-    char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL("def"));
+    const char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL("def"));
     ck_assert_ptr_eq(res, string + 3);
 END_TEST
 
 START_TEST(test_handlebars_strnstr_3)
     const char string[] = "a\0bcdefgh";
-    char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL("def"));
+    const char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL("def"));
     ck_assert_ptr_eq(res, string + 4);
 END_TEST
 
 START_TEST(test_handlebars_strnstr_4)
     const char string[] = "abcdefgh";
-    char * res = handlebars_strnstr(string, 4, HBS_STRL("fgh"));
+    const char * res = handlebars_strnstr(string, 4, HBS_STRL("fgh"));
     ck_assert_ptr_eq(res, NULL);
 END_TEST
 
 START_TEST(test_handlebars_strnstr_5)
     const char string[] = "[foo\\\\]";
-    char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL("\\]"));
+    const char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL("\\]"));
     ck_assert_ptr_eq(res, string + 5);
 END_TEST
 

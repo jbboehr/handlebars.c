@@ -141,7 +141,7 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 int regex_compare(const char * regex, const char * string, char ** error)
 {
     pcre * re;
-    char * errmsg = NULL;
+    const char * errmsg = NULL;
     int erroffset;
     int ovector[30];
     int rc, i, ret;

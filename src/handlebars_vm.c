@@ -134,9 +134,7 @@ static inline void setup_options(struct handlebars_vm * vm, int argc, struct han
 static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, bool escape)
 {
     if( result ) {
-        struct handlebars_string * tmp = handlebars_value_expression(result, escape);
-        vm->buffer = handlebars_talloc_strndup_append_buffer(vm->buffer, tmp->val, tmp->len);
-        handlebars_talloc_free(tmp);
+        vm->buffer = handlebars_value_expression_append(vm->buffer, result, escape);
         handlebars_value_delref(result);
     }
 }
@@ -232,7 +230,7 @@ ACCEPT_FUNCTION(append_content)
     assert(opcode->type == handlebars_opcode_type_append_content);
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    vm->buffer = MC(handlebars_talloc_strndup_append_buffer(vm->buffer, opcode->op1.data.string->val, opcode->op1.data.string->len));
+    vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(opcode->op1.data.string));
 }
 
 ACCEPT_FUNCTION(assign_to_hash)
@@ -474,7 +472,7 @@ ACCEPT_FUNCTION(invoke_partial)
         struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
         struct handlebars_string * tmp2 = handlebars_value_expression(ret, 0);
         struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), tmp2->val, tmp2->len, HBS_STR_STRL(opcode->op3.data.string));
-        vm->buffer = MC(handlebars_talloc_strndup_append_buffer(vm->buffer, tmp3->val, tmp3->len));
+        vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(tmp3));
         handlebars_talloc_free(tmp3);
         handlebars_talloc_free(tmp2);
         handlebars_value_try_delref(ret);
@@ -546,8 +544,8 @@ ACCEPT_FUNCTION(invoke_partial)
 
     if( vm2->buffer ) {
         struct handlebars_string * tmp2 = handlebars_string_indent(
-                HBSCTX(vm2), vm2->buffer, talloc_get_size(vm2->buffer) - 1, HBS_STR_STRL(opcode->op3.data.string));
-        vm->buffer = MC(handlebars_talloc_strndup_append_buffer(vm->buffer, tmp2->val, tmp2->len));
+                HBSCTX(vm2), HBS_STR_STRL(vm2->buffer), HBS_STR_STRL(opcode->op3.data.string));
+        vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(tmp2));
         handlebars_talloc_free(tmp2);
     }
 
@@ -817,7 +815,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
 static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler * compiler)
 {
 	size_t i = compiler->opcodes_length;
-    struct handlebars_opcodes ** opcodes = compiler->opcodes;
+    struct handlebars_opcode ** opcodes = compiler->opcodes;
 
 	for( ; i > 0; i-- ) {
 		struct handlebars_opcode * opcode = *opcodes++;
@@ -862,27 +860,29 @@ static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handle
 	}
 }
 
-char * handlebars_vm_execute_program_ex(
-        struct handlebars_vm * vm, long program, struct handlebars_value * context,
-        struct handlebars_value * data, struct handlebars_value * block_params)
-{
+struct handlebars_string * handlebars_vm_execute_program_ex(
+    struct handlebars_vm * vm,
+    long program,
+    struct handlebars_value * context,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params
+) {
     bool pushed_context = false;
     bool pushed_block_param = false;
 
     if( program < 0 ) {
-        return NULL;
+        return handlebars_string_init(CONTEXT, 0);
     }
     if( program >= vm->guid_index ) {
-        assert(program < vm->guid_index);
-        return NULL;
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program: %ld", program);
     }
 
     // Get compiler
 	struct handlebars_compiler * compiler = vm->programs[program];
 
     // Save and set buffer
-    char * prevBuffer = vm->buffer;
-    vm->buffer = MC(handlebars_talloc_strdup(vm, ""));
+    struct handlebars_string * prevBuffer = vm->buffer;
+    vm->buffer = handlebars_string_init(CONTEXT, HANDLEBARS_VM_BUFFER_INIT_SIZE);
 
     // Push the context stack
     if( LEN(vm->contextStack) <= 0 || TOP(vm->contextStack) != context ) {
@@ -919,13 +919,13 @@ char * handlebars_vm_execute_program_ex(
     vm->data = prevData;
 
     // Restore buffer
-    char * buffer = vm->buffer;
+    struct handlebars_string * buffer = vm->buffer;
     vm->buffer = prevBuffer;
 
     return buffer;
 }
 
-char * handlebars_vm_execute_program(struct handlebars_vm * vm, long program, struct handlebars_value * context)
+struct handlebars_string * handlebars_vm_execute_program(struct handlebars_vm * vm, long program, struct handlebars_value * context)
 {
     return handlebars_vm_execute_program_ex(vm, program, context, NULL, NULL);
 }
@@ -968,7 +968,7 @@ static void preprocess_program(struct handlebars_vm * vm, struct handlebars_comp
 }
 
 
-void handlebars_vm_execute(
+struct handlebars_string * handlebars_vm_execute(
 		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
 		struct handlebars_value * context)
 {
@@ -1009,4 +1009,6 @@ done:
     vm->programs = NULL;
     vm->guid_index = 0;
     HBSCTX(vm)->jmp = prev;
+
+    return vm->buffer;
 }

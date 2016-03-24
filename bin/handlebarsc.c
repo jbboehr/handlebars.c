@@ -389,7 +389,8 @@ static int do_execute(void)
 
     handlebars_vm_execute(vm, compiler, context);
 
-    fprintf(stdout, vm->buffer);
+
+    fprintf(stdout, vm->buffer->val);
 
 error:
     handlebars_context_dtor(ctx);

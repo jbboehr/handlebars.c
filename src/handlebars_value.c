@@ -96,6 +96,24 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 	return NULL;
 }
 
+struct handlebars_string * handlebars_value_get_stringval(struct handlebars_value * value)
+{
+    enum handlebars_value_type type = value ? value->type : HANDLEBARS_VALUE_TYPE_NULL;
+
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            return handlebars_string_copy_ctor(CONTEXT, value->v.string);
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            return handlebars_string_asprintf(CONTEXT, "%ld", value->v.lval);
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            return handlebars_string_asprintf(CONTEXT, "%g", value->v.dval);
+        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+            return handlebars_string_asprintf(CONTEXT, "%s", value->v.bval ? "true" : "false");
+        default:
+            return handlebars_string_init(CONTEXT, 0);
+    }
+}
+
 char * handlebars_value_get_strval(struct handlebars_value * value)
 {
     char * ret;
@@ -103,7 +121,7 @@ char * handlebars_value_get_strval(struct handlebars_value * value)
 
     switch( type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
-            ret = handlebars_talloc_strdup(value->ctx, value->v.string->val);
+            ret = handlebars_talloc_strndup(value->ctx, HBS_STR_STRL(value->v.string));
             break;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             ret = handlebars_talloc_asprintf(value->ctx, "%ld", value->v.lval);

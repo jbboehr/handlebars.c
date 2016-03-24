@@ -14,7 +14,7 @@
 
 START_TEST(test_ast_list_append)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);

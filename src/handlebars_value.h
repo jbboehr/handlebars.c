@@ -77,6 +77,7 @@ struct handlebars_value {
 };
 
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
+struct handlebars_string * handlebars_value_get_stringval(struct handlebars_value * value) HBS_ATTR_RETURNS_NONNULL;
 char * handlebars_value_get_strval(struct handlebars_value * value) HBS_ATTR_RETURNS_NONNULL;
 size_t handlebars_value_get_strlen(struct handlebars_value * value);
 bool handlebars_value_get_boolval(struct handlebars_value * value);
@@ -264,6 +265,13 @@ static inline void handlebars_value_str(struct handlebars_value * value, struct 
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = handlebars_string_copy_ctor(value->ctx, string);
+}
+
+static inline void handlebars_value_str_steal(struct handlebars_value * value, struct handlebars_string * string)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.string = talloc_steal(value->ctx, string); // meh
 }
 
 static inline void handlebars_value_string(struct handlebars_value * value, const char * strval) {

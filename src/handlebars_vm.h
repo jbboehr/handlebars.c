@@ -18,6 +18,10 @@ struct handlebars_options;
 #define HANDLEBARS_VM_STACK_SIZE 96
 #endif
 
+#ifndef HANDLEBARS_VM_BUFFER_INIT_SIZE
+#define HANDLEBARS_VM_BUFFER_INIT_SIZE 128
+#endif
+
 typedef void (*handlebars_log_func)(
     int argc,
     struct handlebars_value * argv[],
@@ -40,7 +44,8 @@ struct handlebars_vm {
     handlebars_log_func log_func;
     void * log_ctx;
 
-    char * buffer;
+	struct handlebars_string * buffer;
+
     struct handlebars_value * context;
     struct handlebars_value * data;
     struct handlebars_value * helpers;
@@ -55,19 +60,29 @@ struct handlebars_vm {
     struct handlebars_vm_stack blockParamStack;
 };
 
-struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+
 void handlebars_vm_dtor(struct handlebars_vm * vm);
 
-void handlebars_vm_execute(
-		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
-		struct handlebars_value * context);
+struct handlebars_string * handlebars_vm_execute(
+    struct handlebars_vm * vm,
+    struct handlebars_compiler * compiler,
+    struct handlebars_value * context
+) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL;
 
-char * handlebars_vm_execute_program(
-        struct handlebars_vm * vm, long program, struct handlebars_value * context);
+struct handlebars_string * handlebars_vm_execute_program(
+    struct handlebars_vm * vm,
+    long program,
+    struct handlebars_value * context
+) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
-char * handlebars_vm_execute_program_ex(
-        struct handlebars_vm * vm, long program, struct handlebars_value * context,
-        struct handlebars_value * data, struct handlebars_value * block_params);
+struct handlebars_string * handlebars_vm_execute_program_ex(
+    struct handlebars_vm * vm,
+    long program,
+    struct handlebars_value * context,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params
+) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }

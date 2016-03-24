@@ -262,8 +262,8 @@ START_TEST(test_mustache_spec)
 #ifndef NDEBUG
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
-        fprintf(stderr, "ACTUAL: %s\n", vm->buffer);
-        fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer, test->expected) ? "PASS" : "FAIL");
+        fprintf(stderr, "ACTUAL: %s\n", vm->buffer->val);
+        fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer->val, test->expected) ? "PASS" : "FAIL");
     } else if( ctx->msg ) {
         fprintf(stderr, "ERROR: %s\n", ctx->msg);
     }
@@ -272,12 +272,12 @@ START_TEST(test_mustache_spec)
     ck_assert_msg(ctx->msg == NULL, ctx->msg);
     ck_assert_ptr_ne(vm->buffer, NULL);
 
-    if (strcmp(vm->buffer, test->expected) != 0) {
+    if (strcmp(vm->buffer->val, test->expected) != 0) {
         char *tmp = handlebars_talloc_asprintf(rootctx,
                                                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                                                "" /*test->suite_name*/,
                                                test->name, test->desc, test->flags,
-                                               test->tmpl, test->expected, vm->buffer);
+                                               test->tmpl, test->expected, vm->buffer->val);
         ck_abort_msg(tmp);
     }
 

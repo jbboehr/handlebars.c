@@ -16,7 +16,7 @@
 
 START_TEST(test_ast_node_ctor)
 {
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     
     ck_assert_ptr_ne(NULL, node);
     ck_assert_int_eq(HANDLEBARS_AST_NODE_PROGRAM, node->type);

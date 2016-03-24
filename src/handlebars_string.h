@@ -54,6 +54,7 @@ static inline struct handlebars_string * handlebars_string_init(struct handlebar
     struct handlebars_string * st = handlebars_talloc_size(context, HANDLEBARS_STRING_SIZE(size));
     HANDLEBARS_MEMCHECK(st, context);
     st->len = 0;
+    st->val[0] = 0;
     return st;
 }
 
@@ -128,7 +129,8 @@ static inline struct handlebars_string * handlebars_string_append(
     const char * str, size_t len
 ) {
     string = handlebars_string_extend(context, string, string->len + len);
-    return handlebars_string_append_unsafe(string, str, len);
+    string = handlebars_string_append_unsafe(string, str, len);
+    return string;
 }
 
 HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL
