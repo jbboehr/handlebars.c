@@ -22,6 +22,8 @@ struct handlebars_string {
     char val[];
 };
 
+#define HANDLEBARS_STRING_SIZE(size) (offsetof(struct handlebars_string, val) + (size) + 1)
+
 static inline unsigned long handlebars_string_hash_cont(const unsigned char * str, size_t len, unsigned long hash)
 {
     size_t c, i;
@@ -39,8 +41,9 @@ static inline unsigned long handlebars_string_hash(const unsigned char * str, si
 
 static inline struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t size)
 {
-    struct handlebars_string * st = handlebars_talloc_size(context, offsetof(struct handlebars_string, val) + size);
+    struct handlebars_string * st = handlebars_talloc_size(context, HANDLEBARS_STRING_SIZE(size));
     HANDLEBARS_MEMCHECK(st, context);
+    st->len = 0;
     return st;
 }
 
@@ -62,7 +65,7 @@ static inline struct handlebars_string * handlebars_string_ctor(struct handlebar
 
 static inline struct handlebars_string * handlebars_string_copy_ctor(struct handlebars_context * context, struct handlebars_string * string)
 {
-    size_t size = offsetof(struct handlebars_string, val) + string->len + 1;
+    size_t size = HANDLEBARS_STRING_SIZE(string->len);
     struct handlebars_string * st = handlebars_talloc_size(context, size);
     HANDLEBARS_MEMCHECK(st, context);
     memcpy(st, string, size);
@@ -72,9 +75,9 @@ static inline struct handlebars_string * handlebars_string_copy_ctor(struct hand
 static inline struct handlebars_string * handlebars_string_append(struct handlebars_context * context, struct handlebars_string * st2, const char * str, size_t len)
 {
     unsigned long newhash = handlebars_string_hash_cont((const unsigned char *)str, len, st2->hash);
-    size_t newsize = offsetof(struct handlebars_string, val) + st2->len + len + 1;
+    size_t newsize = HANDLEBARS_STRING_SIZE(st2->len + len);
     if( newsize > talloc_get_size(st2) ) {
-        st2 = (struct handlebars_string *) talloc_realloc_size(context, st2, newsize);
+        st2 = (struct handlebars_string *) handlebars_talloc_realloc_size(context, st2, newsize);
         HANDLEBARS_MEMCHECK(st2, context);
     }
     memcpy(st2->val + st2->len, str, len);
@@ -82,6 +85,15 @@ static inline struct handlebars_string * handlebars_string_append(struct handleb
     st2->val[st2->len] = 0;
     st2->hash = newhash;
     return st2;
+}
+
+static inline struct handlebars_string * handlebars_string_compact(struct handlebars_string * string) {
+    size_t size = HANDLEBARS_STRING_SIZE(string->len);
+    if( talloc_get_size(string) > size ) {
+        return (struct handlebars_string *) handlebars_talloc_realloc_size(NULL, string, size);
+    } else {
+        return string;
+    }
 }
 
 static inline bool handlebars_string_eq_ex(
@@ -96,6 +108,57 @@ static inline bool handlebars_string_eq(struct handlebars_string * string1, stru
 {
     return handlebars_string_eq_ex(string1->val, string1->len, string1->hash, string2->val, string2->len, string2->hash);
 }
+
+/**
+ * @brief Implements strnstr
+ * @param[in] haystack
+ * @param[in] haystack_len
+ * @param[in] needle
+ * @param[in] needle_len
+ * @return Pointer to the found position, or NULL
+ */
+const char * handlebars_strnstr(
+    const char * haystack,
+    size_t haystack_len,
+    const char * needle,
+    size_t needle_len
+) HBS_ATTR_NONNULL(1, 3);
+
+/**
+ * @brief Performs a string replace in-place. `replacement` must not be longer than `search`.
+ *
+ * @param[in] string The input string
+ * @param[in] search The search string
+ * @param[in] search_len The search string length
+ * @param[in] replacement The replacement string
+ * @param[in] replacement_len The replacement string length
+ * @return The original pointer, transformed
+ */
+struct handlebars_string * handlebars_str_reduce(
+    struct handlebars_string * string,
+    const char * search, size_t search_len,
+    const char * replacement, size_t replacement_len
+) HBS_ATTR_NONNULL(1, 2, 4);
+
+/**
+ * @brief Adds slashes to as string for a list of specified characters. Returns a
+ *        newly allocated string, or NULL on failure.
+ *
+ * @param[in] context The handlebars context
+ * @param[in] string The string to which to add slashes
+ * @param[in] what A list of characters to escape
+ * @param[in] what_length The length of the character list
+ * @return The string with escaped characters
+ */
+struct handlebars_string * handlebars_string_addcslashes(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const char * what, size_t what_length
+) HBS_ATTR_NONNULL(1, 2, 3);
+
+struct handlebars_string * handlebars_string_stripcslashes(
+    struct handlebars_string * string
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_NONNULL(1);
 
 #ifdef	__cplusplus
 }

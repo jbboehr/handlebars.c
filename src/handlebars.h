@@ -20,7 +20,6 @@ extern "C" {
 // Declarations
 struct handlebars_ast_node;
 struct handlebars_string;
-struct handlebars_token_list;
 
 // Attributes
 #if (__GNUC__ >= 3)
@@ -234,7 +233,7 @@ void handlebars_parser_dtor(struct handlebars_parser * parser);
  * @param[in] parser The parser
  * @return the token list
  */
-struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Parser a template. The template is stored in handlebars_parser#tmpl and the resultant

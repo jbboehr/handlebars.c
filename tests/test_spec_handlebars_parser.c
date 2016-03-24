@@ -20,15 +20,18 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
-#include "handlebars_memory.h"
 #include "handlebars_string.h"
-#include "handlebars_token_list.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
+
 #include "utils.h"
+
+
 
 struct parser_test {
     struct handlebars_context * ctx;

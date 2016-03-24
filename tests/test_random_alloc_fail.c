@@ -27,7 +27,7 @@ START_TEST(test_random_alloc_fail_tokenizer)
 {
     size_t i;
     int retval;
-    struct handlebars_token_list * list;
+    struct handlebars_token ** tokens;
 
     for( i = 1; i < 300; i++ ) {
         struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
@@ -37,7 +37,7 @@ START_TEST(test_random_alloc_fail_tokenizer)
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
-        list = handlebars_lex(parser);
+        tokens = handlebars_lex(parser);
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);

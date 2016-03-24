@@ -12,9 +12,8 @@ check_PROGRAMS = \
 	test_opcode_printer \
 	test_opcodes \
 	test_scanners \
+	test_string \
 	test_token \
-	test_token_list \
-	test_token_printer \
 	test_utils \
 	test_value \
 	test_spec_handlebars_parser \
@@ -33,9 +32,8 @@ test_map_SOURCES = utils.h utils.c fixtures.c test_map.c
 test_opcode_printer_SOURCES = utils.h utils.c fixtures.c test_opcode_printer.c
 test_opcodes_SOURCES = utils.h utils.c fixtures.c test_opcodes.c
 test_scanners_SOURCES = utils.h utils.c fixtures.c test_scanners.c
+test_string_SOURCES = utils.h utils.c fixtures.c test_string.c
 test_token_SOURCES = utils.h utils.c fixtures.c test_token.c
-test_token_list_SOURCES = utils.h utils.c fixtures.c test_token_list.c
-test_token_printer_SOURCES = utils.h utils.c fixtures.c test_token_printer.c
 test_utils_SOURCES = utils.h utils.c fixtures.c test_utils.c
 test_value_SOURCES = utils.h utils.c fixtures.c test_value.c
 test_spec_handlebars_parser_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_parser.c
@@ -55,9 +53,8 @@ TESTS = \
 	test_opcode_printer \
 	test_opcodes \
 	test_scanners \
+	test_string \
 	test_token \
-	test_token_list \
-	test_token_printer \
 	test_utils \
 	test_value \
 	test_spec_handlebars_parser \

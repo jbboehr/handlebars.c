@@ -22,7 +22,7 @@ START_TEST(test_operand_print_append_null)
     char * str = handlebars_talloc_strdup(context, "");
     
     handlebars_operand_set_null(&op);
-    str = handlebars_operand_print_append(str, &op);
+    str = handlebars_operand_print_append(context, str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[NULL]", str);
     
@@ -36,7 +36,7 @@ START_TEST(test_operand_print_append_boolean)
     char * str = handlebars_talloc_strdup(context, "");
     
     handlebars_operand_set_boolval(&op, 1);
-    str = handlebars_operand_print_append(str, &op);
+    str = handlebars_operand_print_append(context, str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[BOOLEAN:1]", str);
     
@@ -50,7 +50,7 @@ START_TEST(test_operand_print_append_long)
     char * str = handlebars_talloc_strdup(context, "");
     
     handlebars_operand_set_longval(&op, 2358);
-    str = handlebars_operand_print_append(str, &op);
+    str = handlebars_operand_print_append(context, str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[LONG:2358]", str);
     
@@ -64,7 +64,7 @@ START_TEST(test_operand_print_append_string)
     char * str = handlebars_talloc_strdup(context, "");
     
     handlebars_operand_set_strval(compiler, &op, "baz");
-    str = handlebars_operand_print_append(str, &op);
+    str = handlebars_operand_print_append(context, str, &op);
     ck_assert_ptr_ne(NULL, str);
     ck_assert_str_eq("[STRING:baz]", str);
     

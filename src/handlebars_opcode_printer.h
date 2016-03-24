@@ -75,21 +75,23 @@ void handlebars_opcode_printer_dtor(struct handlebars_opcode_printer * printer);
 /**
  * @brief Print an operand and append it to the specified buffer
  *
+ * @param[in] context The handlebars context
  * @param[in] str The string to which to append
  * @param[in] operand The operand to print
  * @return The original pointer, or a new pointer if reallocated
  */
-char * handlebars_operand_print_append(char * str, struct handlebars_operand * operand);
+char * handlebars_operand_print_append(struct handlebars_context * context, char * str, struct handlebars_operand * operand);
 
 /**
  * @brief Print an opcode and append it to the specified buffer
  *
+ * @param[in] context The handlebars context
  * @param[in] str The string to which to append
  * @param[in] opcode The opcode to print
  * @param[in] flags The print flags
  * @return The original pointer, or a new pointer if reallocated
  */
-char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opcode, int flags);
+char * handlebars_opcode_print_append(struct handlebars_context * context, char * str, struct handlebars_opcode * opcode, int flags);
 
 /**
  * @brief Print an opcode and return the string

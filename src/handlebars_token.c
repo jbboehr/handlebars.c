@@ -163,3 +163,23 @@ int handlebars_token_reverse_readable_type(const char * type)
     // Unknown :(
     return -1;
 }
+
+struct handlebars_string * handlebars_token_print(
+        struct handlebars_context * context,
+        struct handlebars_token * token,
+        int flags
+) {
+    const char * name = handlebars_token_readable_type(token->token);
+    size_t name_len = strlen(name);
+    const char * sep = flags & handlebars_token_print_flag_newlines ? "\n" : " ";
+    struct handlebars_string * text = handlebars_string_addcslashes(context, token->string, HBS_STRL("\r\n\t\v"));
+    size_t size = name_len + 2 + text->len + 1 + 1;
+    struct handlebars_string * ret = handlebars_string_init(context, size);
+    handlebars_string_append(context, ret, name, name_len);
+    handlebars_string_append(context, ret, HBS_STRL(" ["));
+    handlebars_string_append(context, ret, text->val, text->len);
+    handlebars_string_append(context, ret, HBS_STRL("]"));
+    handlebars_string_append(context, ret, sep, 1);
+    handlebars_talloc_free(text);
+    return ret;
+}

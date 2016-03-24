@@ -20,21 +20,6 @@ struct handlebars_context;
 struct handlebars_locinfo;
 union YYSTYPE;
 
-#define handlebars_addcslashes(str, what) handlebars_addcslashes_ex(str, strlen(str), what, strlen(what))
-#define handlebars_stripcslashes(str) handlebars_stripcslashes_ex(str, NULL)
-
-/**
- * @brief Adds slashes to as string for a list of specified characters. Returns a  
- *        newly allocated string, or NULL on failure.
- * 
- * @param[in] str The string to which to add slashes
- * @param[in] str_length The length of the input string
- * @param[in] what A list of characters to escape
- * @param[in] what_length The length of the character list
- * @return The string with escaped characters
- */
-char * handlebars_addcslashes_ex(const char * str, size_t str_length, const char * what, size_t what_length);
-
 char * handlebars_htmlspecialchars(const char * str);
 char * handlebars_htmlspecialchars_append_buffer(char * buf, const char * str, size_t len);
 
@@ -75,16 +60,6 @@ struct handlebars_string * handlebars_rtrim(struct handlebars_string * string, c
  * @return The original pointer, transformed
  */
 char * handlebars_stripcslashes_ex(char * str, size_t * length);
-
-/**
- * @brief Performs a string replace in-place (replacement must not be longer than search)
- * 
- * @param[in] string The input string
- * @param[in] substr The search string
- * @param[in] replacement The replacement string
- * @return The original pointer, transformed
- */
-char * handlebars_str_reduce(char * string, const char * substr, const char * replacement);
 
 /**
  * @brief Handle an error in the parser. Prints message to stderr

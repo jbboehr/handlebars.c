@@ -18,31 +18,26 @@
 #endif
 
 #include "handlebars.h"
-#include "handlebars_ast.h"
 #include "handlebars_memory.h"
+
+#include "handlebars_ast.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
-#include "handlebars_token_list.h"
-#include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
+
 #include "utils.h"
 
-struct tokenizer_test_tokens {
-    char * name;
-    char * text;
-};
+
 
 struct tokenizer_test {
     char * description;
     char * it;
     char * tmpl;
-    struct handlebars_token_list * expected;
-    size_t expected_len;
+    struct handlebars_string * expected;
     struct handlebars_context * ctx;
 };
-
 
 static TALLOC_CTX * rootctx;
 static struct tokenizer_test * tests;
@@ -64,7 +59,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
     array_len = json_object_array_length(object);
     
     // Allocate token list
-    test->expected = handlebars_token_list_ctor(test->ctx);
+    test->expected = handlebars_string_init(test->ctx, 256);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -108,9 +103,12 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
         }
         
         // Append
-        handlebars_token_list_append(test->expected, token);
-        test->expected_len++;
+        struct handlebars_string * tmp = handlebars_token_print(test->ctx, token, 1);
+        test->expected = handlebars_string_append(context, test->expected, tmp->val, tmp->len);
+        handlebars_talloc_free(tmp);
     }
+
+    test->expected = handlebars_rtrim(test->expected, HBS_STRL(" \t\r\n"));
 }
 
 static void loadSpecTest(json_object * object)
@@ -215,14 +213,13 @@ START_TEST(handlebars_spec_tokenizer)
     parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
     
     // Prepare token list
-    struct handlebars_token_list * actual = handlebars_token_list_ctor(parser);
-    size_t actual_len = 0;
     struct handlebars_token * token = NULL;
     
     // Run
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
     int token_int = 0;
+    struct handlebars_string * actual = handlebars_string_init(ctx, 256);
     do {
         token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
         if( token_int == END || token_int == INVALID ) break;
@@ -232,15 +229,14 @@ START_TEST(handlebars_spec_tokenizer)
         token = handlebars_token_ctor(test->ctx, token_int, lval->string);
         
         // Append
-        handlebars_token_list_append(actual, token);
-        actual_len++;
+        struct handlebars_string * tmp = handlebars_token_print(ctx, token, 1);
+        actual = handlebars_string_append(ctx, actual, tmp->val, tmp->len);
+        handlebars_talloc_free(tmp);
     } while( token );
-    
-    // Convert to string
-    struct handlebars_string * expected_str = handlebars_token_list_print(test->ctx, test->expected, 1);
-    struct handlebars_string * actual_str = handlebars_token_list_print(test->ctx, actual, 1);
-    
-    ck_assert_str_eq_msg(expected_str->val, actual_str->val, test->tmpl);
+
+    actual = handlebars_rtrim(actual, HBS_STRL(" \t\r\n"));
+
+    ck_assert_str_eq_msg(test->expected->val, actual->val, test->tmpl);
     
     handlebars_context_dtor(ctx);
 }

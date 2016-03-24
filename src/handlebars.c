@@ -11,7 +11,6 @@
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_token.h"
-#include "handlebars_token_list.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
@@ -155,14 +154,19 @@ void handlebars_parser_dtor(struct handlebars_parser * parser)
     handlebars_talloc_free(parser);
 }
 
-struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
+#undef CONTEXT
+#define CONTEXT HBSCTX(parser)
+
+struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
 {
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
-    struct handlebars_token_list * list = NULL;
     jmp_buf * prev = HBSCTX(parser)->jmp;
     jmp_buf buf;
     YYSTYPE * lval;
+    struct handlebars_token ** tokens;
+    struct handlebars_token * token;
+    size_t i = 0;
 
     // Save jump buffer
     if( !prev ) {
@@ -173,29 +177,29 @@ struct handlebars_token_list * handlebars_lex(struct handlebars_parser * parser)
     }
 
     // Prepare token list
-    list = handlebars_token_list_ctor(HBSCTX(parser));
+    tokens = MC(talloc_array(parser, struct handlebars_token *, 32));
     
     // Run
     do {
-        struct handlebars_token * token;
-        int token_int;
-        
-        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
+        int token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
         if( unlikely(token_int == END || token_int == INVALID) ) {
             break;
         }
         lval = handlebars_yy_get_lval(parser->scanner);
         
         // Make token object
-        token = talloc_steal(list, handlebars_token_ctor(HBSCTX(parser), token_int, lval->string));
+        token = handlebars_token_ctor(HBSCTX(parser), token_int, lval->string);
         
         // Append
-        handlebars_token_list_append(list, token);
+        tokens = talloc_realloc(parser, tokens, struct handlebars_token *, i + 2);
+        tokens[i] = talloc_steal(tokens, token);
+        tokens[i + 1] = NULL;
+        i++;
     } while( 1 );
 
 done:
     HBSCTX(parser)->jmp = prev;
-    return list;
+    return tokens;
 }
 
 bool handlebars_parse(struct handlebars_parser * parser)

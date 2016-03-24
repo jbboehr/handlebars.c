@@ -362,7 +362,7 @@ BLOCKPARAM [\x7C]
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes_ex(yylval->string->val, &yylval->string->len);
+										yylval->string = handlebars_string_stripcslashes(yylval->string);
                                    		return STRING;
                                  	}
 
@@ -371,7 +371,7 @@ BLOCKPARAM [\x7C]
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes_ex(yylval->string->val, &yylval->string->len);
+										yylval->string = handlebars_string_stripcslashes(yylval->string);
 										return STRING;
                                 	}
                                  
@@ -436,8 +436,7 @@ BLOCKPARAM [\x7C]
 										//yytext[--yyleng] = 0;
 										//yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_str_reduce(yylval->string->val, "\\]", "]");
-										yylval->string->len = strlen(yylval->string->val);
+										yylval->string = handlebars_str_reduce(yylval->string, HBS_STRL("\\]"), HBS_STRL("]"));
 										return ID;
 									}
 

@@ -56,8 +56,6 @@ include_HEADERS = \
 	handlebars_stack.h \
 	handlebars_string.h \
 	handlebars_token.h \
-	handlebars_token_list.h \
-	handlebars_token_printer.h \
 	handlebars_utils.h \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
@@ -102,12 +100,9 @@ libhandlebars_la_SOURCES = \
 	handlebars_stack.h \
 	handlebars_stack.c \
 	handlebars_string.h \
+	handlebars_string.c \
 	handlebars_token.h \
 	handlebars_token.c \
-	handlebars_token_list.h \
-	handlebars_token_list.c \
-	handlebars_token_printer.h \
-	handlebars_token_printer.c \
 	handlebars_utils.h \
 	handlebars_utils.c \
 	handlebars_value.h \

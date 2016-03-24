@@ -24,6 +24,22 @@ struct handlebars_token {
 };
 
 /**
+ * @brief Flags to control print behaviour
+ */
+enum handlebars_token_print_flags
+{
+    /**
+     * @brief Default print behaviour flag
+     */
+    handlebars_token_print_flag_none = 0,
+
+    /**
+     * @brief Use newlines between tokens instead of spaces
+     */
+    handlebars_token_print_flag_newlines = 1
+};
+
+/**
  * @brief Construct a token. Returns NULL on failure.
  *
  * @param[in] parser The handlebars parser
@@ -77,6 +93,20 @@ const char * handlebars_token_readable_type(int type) HBS_ATTR_RETURNS_NONNULL;
  * @return The integral token type
  */
 int handlebars_token_reverse_readable_type(const char * type);
+
+/**
+ * @brief Print a token into a human-readable string
+ *
+ * @param[in] context The handlebars context
+ * @param[in] token The token to print
+ * @param[in] flags The print flags
+ * @return The printed token
+ */
+struct handlebars_string * handlebars_token_print(
+    struct handlebars_context * context,
+    struct handlebars_token * token,
+    int flags
+) HBS_ATTR_NONNULL(1, 2);
 
 #ifdef	__cplusplus
 }

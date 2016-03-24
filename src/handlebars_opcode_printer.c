@@ -31,7 +31,7 @@ void handlebars_opcode_printer_dtor(struct handlebars_opcode_printer * printer)
     handlebars_talloc_free(printer);
 }
 
-char * handlebars_operand_print_append(char * str, struct handlebars_operand * operand)
+char * handlebars_operand_print_append(struct handlebars_context * context, char * str, struct handlebars_operand * operand)
 {
     assert(str != NULL);
     assert(operand != NULL);
@@ -47,11 +47,9 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
             str = handlebars_talloc_asprintf_append(str, "[LONG:%ld]", operand->data.longval);
             break;
         case handlebars_operand_type_string: {
-            char * tmp = handlebars_addcslashes(operand->data.string->val, "\r\n\t");
-            if( likely(tmp != NULL) ) {
-                str = handlebars_talloc_asprintf_append(str, "[STRING:%s]", tmp);
-                handlebars_talloc_free(tmp);
-            }
+            struct handlebars_string * tmp = handlebars_string_addcslashes(context, operand->data.string, HBS_STRL("\r\n\t"));
+            str = handlebars_talloc_asprintf_append(str, "[STRING:%s]", tmp->val);
+            handlebars_talloc_free(tmp);
             break;
         }
         case handlebars_operand_type_array: {
@@ -70,7 +68,7 @@ char * handlebars_operand_print_append(char * str, struct handlebars_operand * o
     return str;
 }
 
-char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opcode, int flags)
+char * handlebars_opcode_print_append(struct handlebars_context * context, char * str, struct handlebars_opcode * opcode, int flags)
 {
     const char * name = handlebars_opcode_readable_type(opcode->type);
     short num = handlebars_opcode_num_operands(opcode->type);
@@ -79,22 +77,22 @@ char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opc
     
     // @todo add option to override this
     if( num >= 1 ) {
-        str = handlebars_operand_print_append(str, &opcode->op1);
+        str = handlebars_operand_print_append(context, str, &opcode->op1);
     } else {
         assert(opcode->op1.type == handlebars_operand_type_null);
     }
     if( num >= 2 ) {
-        str = handlebars_operand_print_append(str, &opcode->op2);
+        str = handlebars_operand_print_append(context, str, &opcode->op2);
     } else {
         assert(opcode->op2.type == handlebars_operand_type_null);
     }
     if( num >= 3 ) {
-        str = handlebars_operand_print_append(str, &opcode->op3);
+        str = handlebars_operand_print_append(context, str, &opcode->op3);
     } else {
         assert(opcode->op3.type == handlebars_operand_type_null);
     }
     if( num >= 4 ) {
-        str = handlebars_operand_print_append(str, &opcode->op4);
+        str = handlebars_operand_print_append(context, str, &opcode->op4);
     } else {
         assert(opcode->op4.type == handlebars_operand_type_null);
     }
@@ -112,7 +110,7 @@ char * handlebars_opcode_print_append(char * str, struct handlebars_opcode * opc
 char * handlebars_opcode_print(struct handlebars_context * context, struct handlebars_opcode * opcode)
 {
     char * str = MC(handlebars_talloc_strdup(context, ""));
-    return MC(handlebars_opcode_print_append(str, opcode, 0));
+    return MC(handlebars_opcode_print_append(context, str, opcode, 0));
 }
 
 #undef CONTEXT
@@ -131,7 +129,7 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
     
     for( i = 0; i < count; i++, opcodes++ ) {
         printer->output = MC(handlebars_talloc_strdup_append(printer->output, indentbuf));
-        printer->output = MC(handlebars_opcode_print_append(printer->output, *opcodes, printer->flags));
+        printer->output = MC(handlebars_opcode_print_append(CONTEXT, printer->output, *opcodes, printer->flags));
         printer->output = MC(handlebars_talloc_strdup_append(printer->output, "\n"));
     }
     

@@ -186,7 +186,57 @@ START_TEST(test_token_reverse_readable_type)
 	_RTYPE_REV_TEST(OPEN_PARTIAL_BLOCK);
 }
 END_TEST
-	
+
+START_TEST(test_token_print)
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
+    struct handlebars_token * tok = handlebars_token_ctor(context, OPEN, string);
+    struct handlebars_string * actual = handlebars_token_print(context, tok, 0);
+    ck_assert_str_eq("OPEN [{{] ", actual->val);
+    handlebars_talloc_free(tok);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_token_print2)
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
+    struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
+    struct handlebars_string * actual = handlebars_token_print(context, tok, 0);
+    ck_assert_str_eq("CONTENT [this\\nis\\ra\\ttest] ", actual->val);
+    handlebars_talloc_free(tok);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_token_print3)
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
+    struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
+    struct handlebars_string * actual = handlebars_token_print(context, tok, handlebars_token_print_flag_newlines);
+    ck_assert_str_eq("CONTENT [this\\nis\\ra\\ttest]\n", actual->val);
+    handlebars_talloc_free(tok);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_token_print_failed_alloc)
+#if HANDLEBARS_MEMORY
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("tok1"));
+    struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
+	struct handlebars_string * expected = NULL;
+    jmp_buf buf;
+
+    if( !handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_token_dtor(tok);
+        return;
+    }
+
+    handlebars_memory_fail_enable();
+    handlebars_token_print(context, tok, 0);
+    handlebars_memory_fail_disable();
+
+    ck_assert(0);
+
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
+END_TEST
+
 Suite * parser_suite(void)
 {
 	Suite * s = suite_create("Token");
@@ -198,7 +248,11 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_token_get_text, "Get text");
 	REGISTER_TEST_FIXTURE(s, test_token_readable_type, "Readable Type");
 	REGISTER_TEST_FIXTURE(s, test_token_reverse_readable_type, "Reverse Readable Type");
-	
+	REGISTER_TEST_FIXTURE(s, test_token_print, "Print Token");
+	REGISTER_TEST_FIXTURE(s, test_token_print2, "Print Token (2)");
+	REGISTER_TEST_FIXTURE(s, test_token_print3, "Print Token (3)");
+	REGISTER_TEST_FIXTURE(s, test_token_print_failed_alloc, "Print Token (failed alloc)");
+
 	return s;
 }
 

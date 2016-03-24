@@ -8,12 +8,12 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
+
 #include "handlebars_string.h"
 #include "handlebars_token.h"
-#include "handlebars_token_list.h"
-#include "handlebars_token_printer.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
+
 #include "utils.h"
 
 
@@ -52,23 +52,25 @@ END_TEST
 
 START_TEST(test_lex)
 {
-    struct handlebars_token_list * list;
+    struct handlebars_token ** tokens;
     
     parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{foo}}"));
+
+    tokens = handlebars_lex(parser);
     
-    list = handlebars_lex(parser);
+    ck_assert_ptr_ne(NULL, tokens[0]);
+    ck_assert_int_eq(OPEN, tokens[0]->token);
+    ck_assert_str_eq("{{", tokens[0]->string->val);
     
-    ck_assert_ptr_ne(NULL, list->first);
-    ck_assert_int_eq(OPEN, list->first->data->token);
-    ck_assert_str_eq("{{", list->first->data->string->val);
+    ck_assert_ptr_ne(NULL, tokens[1]);
+    ck_assert_int_eq(ID, tokens[1]->token);
+    ck_assert_str_eq("foo", tokens[1]->string->val);
     
-    ck_assert_ptr_ne(NULL, list->first->next);
-    ck_assert_int_eq(ID, list->first->next->data->token);
-    ck_assert_str_eq("foo", list->first->next->data->string->val);
-    
-    ck_assert_ptr_ne(NULL, list->first->next->next);
-    ck_assert_int_eq(CLOSE, list->first->next->next->data->token);
-    ck_assert_str_eq("}}", list->first->next->next->data->string->val);
+    ck_assert_ptr_ne(NULL, tokens[2]);
+    ck_assert_int_eq(CLOSE, tokens[2]->token);
+    ck_assert_str_eq("}}", tokens[2]->string->val);
+
+    ck_assert_ptr_eq(NULL, tokens[3]);
 }
 END_TEST
 

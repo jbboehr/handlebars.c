@@ -15,8 +15,6 @@
 #include "handlebars_opcode_printer.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
-#include "handlebars_token_list.h"
-#include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
@@ -208,11 +206,11 @@ static int do_version(void)
 
 static int do_debug(void)
 {
-    fprintf(stderr, "sizeof(struct handlebars_context): %ld\n", sizeof(struct handlebars_context));
-    fprintf(stderr, "sizeof(struct handlebars_compiler): %ld\n", sizeof(struct handlebars_compiler));
-    fprintf(stderr, "sizeof(struct handlebars_parser): %ld\n", sizeof(struct handlebars_parser));
-    fprintf(stderr, "sizeof(struct handlebars_value): %ld\n", sizeof(struct handlebars_value));
-    fprintf(stderr, "sizeof(struct handlebars_vm): %ld\n", sizeof(struct handlebars_vm));
+    fprintf(stderr, "sizeof(struct handlebars_context): %lu\n", (long unsigned) sizeof(struct handlebars_context));
+    fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) sizeof(struct handlebars_compiler));
+    fprintf(stderr, "sizeof(struct handlebars_parser): %lu\n", (long unsigned) sizeof(struct handlebars_parser));
+    fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) sizeof(struct handlebars_value));
+    fprintf(stderr, "sizeof(struct handlebars_vm): %lu\n", (long unsigned) sizeof(struct handlebars_vm));
     return 0;
 }
 
@@ -222,6 +220,7 @@ static int do_lex(void)
     struct handlebars_parser * parser;
     struct handlebars_token * token = NULL;
     int token_int = 0;
+    struct handlebars_string * output;
     
     readInput();
     ctx = handlebars_context_ctor();
@@ -234,7 +233,6 @@ static int do_lex(void)
         YYLTYPE yylloc_param;
         YYSTYPE * lval;
         char * text;
-        char * output;
         
         token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
         if( token_int == END || token_int == INVALID ) {
@@ -246,9 +244,10 @@ static int do_lex(void)
         token = handlebars_token_ctor(ctx, token_int, lval->string);
         
         // Print token
-        output = handlebars_token_print(token, 0);
-        fprintf(stdout, "%s\n", output);
+        output = handlebars_token_print(ctx, token, 0);
+        fprintf(stdout, "%s\n", output->val);
         fflush(stdout);
+        handlebars_talloc_free(output);
     } while( token && token_int != END && token_int != INVALID );
     
     return 0;
@@ -277,7 +276,7 @@ static int do_parse(void)
         error = ctx->num;
         goto error;
     } else {
-        struct handlebars_string * output = handlebars_ast_print(parser, parser->program);
+        struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), parser->program);
         fprintf(stdout, "%s\n", output->val);
     }
 
