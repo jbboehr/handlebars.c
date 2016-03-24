@@ -236,6 +236,17 @@ struct handlebars_string * handlebars_string_vasprintf_append(
     va_list ap
 ) PRINTF_ATTRIBUTE(3, 0) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
+struct handlebars_string * handlebars_string_htmlspecialchars(
+    struct handlebars_context * context,
+    const char * str, size_t len
+) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_string * handlebars_string_htmlspecialchars_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const char * str, size_t len
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+
 struct handlebars_string * handlebars_string_implode(
     struct handlebars_context * context,
     const char * sep,

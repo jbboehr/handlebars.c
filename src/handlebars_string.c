@@ -14,6 +14,21 @@
 #include "handlebars_string.h"
 
 
+
+struct htmlspecialchars_pair {
+    const char * str;
+    size_t len;
+};
+
+static const struct htmlspecialchars_pair htmlspecialchars[256] = {
+    ['&']  = {HBS_STRL("&amp;")},
+    ['"']  = {HBS_STRL("&quot;")},
+    ['\''] = {HBS_STRL("&#x27;")}, //"&#039;"
+    ['<']  = {HBS_STRL("&lt;")},
+    ['>']  = {HBS_STRL("&gt;")},
+    ['`']  = {HBS_STRL("&#x60;")},
+};
+
 const char * handlebars_strnstr(const char * haystack, size_t haystack_len, const char * needle, size_t needle_len)
 {
     const char * end = haystack + haystack_len - needle_len;
@@ -246,6 +261,58 @@ struct handlebars_string * handlebars_string_vasprintf_append(
 
     string->len += len;
     string->hash = 0;
+
+    return string;
+}
+
+struct handlebars_string * handlebars_string_htmlspecialchars(
+    struct handlebars_context * context,
+    const char * str, size_t len
+) {
+    struct handlebars_string * string = handlebars_string_init(context, len * 4);
+    string = handlebars_string_htmlspecialchars_append(context, string, str, len);
+    return handlebars_string_compact(string);
+}
+
+struct handlebars_string * handlebars_string_htmlspecialchars_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const char * str, size_t len
+) {
+    size_t new_len = len;
+    const char * p;
+    const char * end;
+    const struct htmlspecialchars_pair * pair;
+
+    if( len <= 0 ) {
+        return string;
+    }
+
+    // Calculate new size
+    for( p = str + len - 1; p >= str; p-- ) {
+        pair = &htmlspecialchars[(unsigned char) *p];
+        if( pair->len ) {
+            new_len += pair->len - 1; // @todo check if sizeof works
+        }
+    }
+
+    // If new len is equal to len, nothing to escape, just append
+    if( new_len == len ) {
+        return handlebars_string_append(context, string, str, len);
+    }
+
+    // Realloc original buffer
+    string = handlebars_string_extend(context, string, string->len + new_len);
+
+    // Copy
+    for( p = str, end = str + len; p < end; p++ ) {
+        pair = &htmlspecialchars[(unsigned char) *p];
+        if( pair->len ) {
+            string = handlebars_string_append_unsafe(string, pair->str, pair->len);
+        } else {
+            string = handlebars_string_append_unsafe(string, p, 1);
+        }
+    }
 
     return string;
 }

@@ -20,9 +20,6 @@ struct handlebars_context;
 struct handlebars_locinfo;
 union YYSTYPE;
 
-char * handlebars_htmlspecialchars(const char * str);
-char * handlebars_htmlspecialchars_append_buffer(char * buf, const char * str, size_t len);
-
 /**
  * @brief Handle an error in the parser. Prints message to stderr
  * 

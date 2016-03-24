@@ -17,47 +17,6 @@
 
 
 
-START_TEST(test_htmlspecialchars)
-{
-    char * out = handlebars_htmlspecialchars("&");
-    talloc_steal(root, out);
-    ck_assert_str_eq("&amp;", out);
-    handlebars_talloc_free(out);
-}
-{
-    char * out = handlebars_htmlspecialchars("<");
-    talloc_steal(root, out);
-    ck_assert_str_eq("&lt;", out);
-    handlebars_talloc_free(out);
-}
-{
-    char * out = handlebars_htmlspecialchars(">");
-    talloc_steal(root, out);
-    ck_assert_str_eq("&gt;", out);
-    handlebars_talloc_free(out);
-}
-{
-    char * out = handlebars_htmlspecialchars("'");
-    talloc_steal(root, out);
-    ck_assert_str_eq("&#x27;", out);
-    handlebars_talloc_free(out);
-}
-{
-    char * out = handlebars_htmlspecialchars("\"");
-    talloc_steal(root, out);
-    ck_assert_str_eq("&quot;", out);
-    handlebars_talloc_free(out);
-}
-{
-    const char * in = "a&b<c>d\'e\"f";
-    const char * exp = "a&amp;b&lt;c&gt;d&#x27;e&quot;f";
-    char * out = handlebars_htmlspecialchars(in);
-    talloc_steal(root, out);
-    ck_assert_str_eq(exp, out);
-    handlebars_talloc_free(out);
-}
-END_TEST
-
 START_TEST(test_yy_error)
 {
     struct YYLTYPE loc;
@@ -167,7 +126,6 @@ Suite * parser_suite(void)
 {
     Suite * s = suite_create("Utils");
 
-    REGISTER_TEST_FIXTURE(s, test_htmlspecialchars, "htmlspecialchars");
     REGISTER_TEST_FIXTURE(s, test_yy_error, "yy_error");
     //REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
     REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");

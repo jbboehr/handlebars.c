@@ -193,6 +193,42 @@ START_TEST(test_handlebars_string_asprintf_append)
     handlebars_talloc_free(input);
 END_TEST
 
+START_TEST(test_handlebars_string_htmlspecialchars_1)
+    struct handlebars_string * actual = handlebars_string_htmlspecialchars(context, HBS_STRL("&"));
+    ck_assert_str_eq("&amp;", actual->val);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_handlebars_string_htmlspecialchars_2)
+    struct handlebars_string * actual = handlebars_string_htmlspecialchars(context, HBS_STRL("<"));
+    ck_assert_str_eq("&lt;", actual->val);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_handlebars_string_htmlspecialchars_3)
+    struct handlebars_string * actual = handlebars_string_htmlspecialchars(context, HBS_STRL(">"));
+    ck_assert_str_eq("&gt;", actual->val);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_handlebars_string_htmlspecialchars_4)
+    struct handlebars_string * actual = handlebars_string_htmlspecialchars(context, HBS_STRL("'"));
+    ck_assert_str_eq("&#x27;", actual->val);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_handlebars_string_htmlspecialchars_5)
+    struct handlebars_string * actual = handlebars_string_htmlspecialchars(context, HBS_STRL("\""));
+    ck_assert_str_eq("&quot;", actual->val);
+    handlebars_talloc_free(actual);
+END_TEST
+
+START_TEST(test_handlebars_string_htmlspecialchars_6)
+    struct handlebars_string * actual = handlebars_string_htmlspecialchars(context, HBS_STRL("a&b<c>d\'e\"f"));
+    ck_assert_str_eq("a&amp;b&lt;c&gt;d&#x27;e&quot;f", actual->val);
+    handlebars_talloc_free(actual);
+END_TEST
+
 START_TEST(test_handlebars_string_implode_1)
     struct handlebars_string ** parts = handlebars_talloc_array(context, struct handlebars_string *, 1);
     parts[0] = NULL;
@@ -288,6 +324,14 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_7, "handlebars_string_addcslashes 7");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf, "handlebars_string_asprintf");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf_append, "handlebars_string_asprintf_append");
+
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_htmlspecialchars_1, "handlebars_string_htmlspecialchars 1");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_htmlspecialchars_2, "handlebars_string_htmlspecialchars 2");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_htmlspecialchars_3, "handlebars_string_htmlspecialchars 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_htmlspecialchars_4, "handlebars_string_htmlspecialchars 4");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_htmlspecialchars_5, "handlebars_string_htmlspecialchars 5");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_htmlspecialchars_6, "handlebars_string_htmlspecialchars 6");
+
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_implode_1, "handlebars_string_implode 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_implode_2, "handlebars_string_implode 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_ltrim_1, "test_handlebars_string_ltrim 1");

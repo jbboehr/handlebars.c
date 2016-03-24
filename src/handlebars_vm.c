@@ -134,7 +134,9 @@ static inline void setup_options(struct handlebars_vm * vm, int argc, struct han
 static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, bool escape)
 {
     if( result ) {
-        vm->buffer = handlebars_value_expression_append_buffer(vm->buffer, result, escape);
+        struct handlebars_string * tmp = handlebars_value_expression(result, escape);
+        vm->buffer = handlebars_talloc_strndup_append_buffer(vm->buffer, tmp->val, tmp->len);
+        handlebars_talloc_free(tmp);
         handlebars_value_delref(result);
     }
 }
@@ -470,9 +472,9 @@ ACCEPT_FUNCTION(invoke_partial)
         argv[0] = context2;
 
         struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
-        char *tmp2 = handlebars_value_expression(ret, 0);
-        struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), tmp2, strlen(tmp2), HBS_STR_STRL(opcode->op3.data.string));
-        vm->buffer = MC(handlebars_talloc_strdup_append_buffer(vm->buffer, tmp2));
+        struct handlebars_string * tmp2 = handlebars_value_expression(ret, 0);
+        struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), tmp2->val, tmp2->len, HBS_STR_STRL(opcode->op3.data.string));
+        vm->buffer = MC(handlebars_talloc_strndup_append_buffer(vm->buffer, tmp3->val, tmp3->len));
         handlebars_talloc_free(tmp3);
         handlebars_talloc_free(tmp2);
         handlebars_value_try_delref(ret);

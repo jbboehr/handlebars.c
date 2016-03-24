@@ -1336,16 +1336,20 @@ FIXTURE_FN(4005129518)
     // "function (options) {\n        var hash = options.hash;\n        var ariaLabel = Handlebars.Utils.escapeExpression(hash['aria-label']);\n        var placeholder = Handlebars.Utils.escapeExpression(hash.placeholder);\n        return new Handlebars.SafeString('<input aria-label=\"' + ariaLabel + '\" placeholder=\"' + placeholder + '\" \/>');\n      }"
     struct handlebars_value * label = handlebars_value_map_str_find(options->hash, HBS_STRL("aria-label"));
     struct handlebars_value * placeholder = handlebars_value_map_str_find(options->hash, HBS_STRL("placeholder"));
-    char * tmp = handlebars_talloc_asprintf(
+    struct handlebars_string * tmp1 = handlebars_value_expression(label, 1);
+    struct handlebars_string * tmp2 = handlebars_value_expression(placeholder, 1);
+    char * tmp3 = handlebars_talloc_asprintf(
             options->vm,
             "<input aria-label=\"%s\" placeholder=\"%s\" />",
-            handlebars_value_expression(label, 1),
-            handlebars_value_expression(placeholder, 1)
+            tmp1->val,
+            tmp2->val
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
-    handlebars_talloc_free(tmp);
+    handlebars_value_string(result, tmp3);
     result->flags |= HANDLEBARS_VALUE_FLAG_SAFE_STRING;
+    handlebars_talloc_free(tmp1);
+    handlebars_talloc_free(tmp2);
+    handlebars_talloc_free(tmp3);
     return result;
 }
 

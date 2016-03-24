@@ -88,8 +88,17 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key);
 struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len);
 
-char * handlebars_value_expression(struct handlebars_value * value, bool escape) HBS_ATTR_RETURNS_NONNULL;
-char * handlebars_value_expression_append_buffer(char * buf, struct handlebars_value * value, bool escape) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_value_expression(
+    struct handlebars_value * value,
+    bool escape
+) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_string * handlebars_value_expression_append(
+        struct handlebars_string * string,
+        struct handlebars_value * value,
+        bool escape
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+
 char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx) HBS_ATTR_RETURNS_NONNULL;
