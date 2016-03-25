@@ -216,27 +216,27 @@ struct handlebars_string * handlebars_string_asprintf(
     struct handlebars_context * context,
     const char * fmt,
     ...
-) PRINTF_ATTRIBUTE(2, 3) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_PRINTF(2, 3) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_asprintf_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
     const char * fmt,
     ...
-) PRINTF_ATTRIBUTE(3, 4) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_PRINTF(3, 4) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_vasprintf(
     struct handlebars_context * context,
     const char * fmt,
     va_list ap
-) PRINTF_ATTRIBUTE(2, 0) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_PRINTF(2, 0) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_vasprintf_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
     const char * fmt,
     va_list ap
-) PRINTF_ATTRIBUTE(3, 0) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_PRINTF(3, 0) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_string_htmlspecialchars(
     struct handlebars_context * context,

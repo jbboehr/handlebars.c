@@ -23,10 +23,10 @@ typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebar
 typedef bool (*handlebars_iterator_init_func)(struct handlebars_value_iterator * it, struct handlebars_value * value);
 typedef bool (*handlebars_iterator_next_func)(struct handlebars_value_iterator * it);
 typedef struct handlebars_value * (*handlebars_call_func)(
-        struct handlebars_value * value,
-        int argc,
-        struct handlebars_value * argv[],
-        struct handlebars_options * options
+    struct handlebars_value * value,
+    int argc,
+    struct handlebars_value * argv[],
+    struct handlebars_options * options
 );
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
 

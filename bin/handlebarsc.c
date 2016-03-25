@@ -290,13 +290,12 @@ static int do_compile(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
-    struct handlebars_opcode_printer * printer;
+    struct handlebars_string * output;
     int error = 0;
     
     ctx = handlebars_context_ctor();
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
-    printer = handlebars_opcode_printer_ctor(ctx);
     
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
         parser->ignore_standalone = 1;
@@ -324,10 +323,9 @@ static int do_compile(void)
         goto error;
     }
     
-    // Printer
-    //printer->flags = handlebars_opcode_printer_flag_locations;
-    handlebars_opcode_printer_print(printer, compiler);
-    fprintf(stdout, "%s\n", printer->output);
+    // Print
+    output = handlebars_compiler_print(compiler, 0);
+    fprintf(stdout, "%.*s\n", (int) output->len, output->val);
 
 error:
     handlebars_context_dtor(ctx);

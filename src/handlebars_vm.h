@@ -60,7 +60,7 @@ struct handlebars_vm {
     struct handlebars_vm_stack blockParamStack;
 };
 
-struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 void handlebars_vm_dtor(struct handlebars_vm * vm);
 
@@ -68,13 +68,13 @@ struct handlebars_string * handlebars_vm_execute(
     struct handlebars_vm * vm,
     struct handlebars_compiler * compiler,
     struct handlebars_value * context
-) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_vm_execute_program(
     struct handlebars_vm * vm,
     long program,
     struct handlebars_value * context
-) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_vm * vm,

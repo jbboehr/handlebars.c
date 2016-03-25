@@ -17,100 +17,132 @@
 
 
 
-struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_context * context)
+struct handlebars_opcode_printer {
+    struct handlebars_context * ctx;
+    struct handlebars_opcode ** opcodes;
+    size_t opcodes_length;
+    size_t indent;
+    int flags;
+    struct handlebars_string * output;
+};
+
+
+
+static struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_context * context)
 {
     struct handlebars_opcode_printer * printer = MC(handlebars_talloc_zero(context, struct handlebars_opcode_printer));
-    printer->output = MC(handlebars_talloc_strdup(printer, ""));
+    printer->output = handlebars_string_init(context, 128);
     return printer;
 }
 
-void handlebars_opcode_printer_dtor(struct handlebars_opcode_printer * printer)
+static inline struct handlebars_string * append_indent(struct handlebars_context * context, struct handlebars_string * string, size_t num)
 {
-    assert(printer != NULL);
-
-    handlebars_talloc_free(printer);
+    num *= 2;
+    char tmp[256];
+    memset(tmp, ' ', num);
+    tmp[num] = 0;
+    return handlebars_string_append(context, string, tmp, num);
 }
 
-char * handlebars_operand_print_append(struct handlebars_context * context, char * str, struct handlebars_operand * operand)
-{
-    assert(str != NULL);
+struct handlebars_string * handlebars_operand_print_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    struct handlebars_operand * operand
+) {
+    struct handlebars_string * tmp;
+    struct handlebars_string ** arr;
+
+    assert(string != NULL);
     assert(operand != NULL);
 
     switch( operand->type ) {
         case handlebars_operand_type_null:
-            str = handlebars_talloc_strdup_append(str, "[NULL]");
+            string = handlebars_string_append(context, string, HBS_STRL("[NULL]"));
             break;
         case handlebars_operand_type_boolean:
-            str = handlebars_talloc_asprintf_append(str, "[BOOLEAN:%d]", operand->data.boolval);
+            string = handlebars_string_asprintf_append(context, string, "[BOOLEAN:%d]", operand->data.boolval);
             break;
         case handlebars_operand_type_long:
-            str = handlebars_talloc_asprintf_append(str, "[LONG:%ld]", operand->data.longval);
+            string = handlebars_string_asprintf_append(context, string, "[LONG:%ld]", operand->data.longval);
             break;
-        case handlebars_operand_type_string: {
-            struct handlebars_string * tmp = handlebars_string_addcslashes(context, operand->data.string, HBS_STRL("\r\n\t"));
-            str = handlebars_talloc_asprintf_append(str, "[STRING:%.*s]", (int) tmp->len, tmp->val);
+        case handlebars_operand_type_string:
+            tmp = handlebars_string_addcslashes(context, operand->data.string, HBS_STRL("\r\n\t"));
+            string = handlebars_string_asprintf_append(context, string, "[STRING:%.*s]", (int) tmp->len, tmp->val);
             handlebars_talloc_free(tmp);
             break;
-        }
         case handlebars_operand_type_array: {
-            struct handlebars_string ** tmp = operand->data.array;
-            str = handlebars_talloc_strdup_append(str, "[ARRAY:");
-            for( ; *tmp; ++tmp ) {
-                if( tmp != operand->data.array ) {
-                    str = handlebars_talloc_strdup_append(str, ",");
+            arr = operand->data.array;
+            string = handlebars_string_append(context, string, HBS_STRL("[ARRAY:"));
+            for( ; *arr; ++arr ) {
+                if( arr != operand->data.array ) {
+                    string = handlebars_string_append(context, string, HBS_STRL(","));
                 }
-                str = handlebars_talloc_strdup_append(str, (*tmp)->val);
+                string = handlebars_string_append(context, string, HBS_STR_STRL((*arr)));
             }
-            str = handlebars_talloc_strdup_append(str, "]");
+            string = handlebars_string_append(context, string, HBS_STRL("]"));
             break;
         }
     }
-    return str;
+    return string;
 }
 
-char * handlebars_opcode_print_append(struct handlebars_context * context, char * str, struct handlebars_opcode * opcode, int flags)
-{
+struct handlebars_string * handlebars_operand_print(
+    struct handlebars_context * context,
+    struct handlebars_operand * operand
+) {
+    struct handlebars_string * string = handlebars_string_init(context, 64);
+    return handlebars_operand_print_append(context, string, operand);
+}
+
+struct handlebars_string * handlebars_opcode_print_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    struct handlebars_opcode * opcode,
+    int flags
+) {
     const char * name = handlebars_opcode_readable_type(opcode->type);
     short num = handlebars_opcode_num_operands(opcode->type);
-    
-    str = handlebars_talloc_strdup_append(str, name);
-    
-    // @todo add option to override this
+
+    string = handlebars_string_append(context, string, name, strlen(name));
+
     if( num >= 1 ) {
-        str = handlebars_operand_print_append(context, str, &opcode->op1);
+        string = handlebars_operand_print_append(context, string, &opcode->op1);
     } else {
         assert(opcode->op1.type == handlebars_operand_type_null);
     }
     if( num >= 2 ) {
-        str = handlebars_operand_print_append(context, str, &opcode->op2);
+        string = handlebars_operand_print_append(context, string, &opcode->op2);
     } else {
         assert(opcode->op2.type == handlebars_operand_type_null);
     }
     if( num >= 3 ) {
-        str = handlebars_operand_print_append(context, str, &opcode->op3);
+        string = handlebars_operand_print_append(context, string, &opcode->op3);
     } else {
         assert(opcode->op3.type == handlebars_operand_type_null);
     }
     if( num >= 4 ) {
-        str = handlebars_operand_print_append(context, str, &opcode->op4);
+        string = handlebars_operand_print_append(context, string, &opcode->op4);
     } else {
         assert(opcode->op4.type == handlebars_operand_type_null);
     }
     
     // Add location
     if( flags & handlebars_opcode_printer_flag_locations ) {
-        str = handlebars_talloc_asprintf_append(str, " [%d:%d-%d:%d]", 
+        string = handlebars_string_asprintf_append(context, string, " [%d:%d-%d:%d]",
                 opcode->loc.first_line, opcode->loc.first_column,
                 opcode->loc.last_line, opcode->loc.last_column);
     }
     
-    return str;
+    return string;
 }
 
-char * handlebars_opcode_print(struct handlebars_context * context, struct handlebars_opcode * opcode)
-{
-    char * str = MC(handlebars_talloc_strdup(context, ""));
-    return MC(handlebars_opcode_print_append(context, str, opcode, 0));
+struct handlebars_string * handlebars_opcode_print(
+    struct handlebars_context * context,
+    struct handlebars_opcode * opcode,
+    int flags
+) {
+    struct handlebars_string * string = handlebars_string_init(context, 64);
+    return handlebars_opcode_print_append(context, string, opcode, flags);
 }
 
 #undef CONTEXT
@@ -118,25 +150,21 @@ char * handlebars_opcode_print(struct handlebars_context * context, struct handl
 
 static void handlebars_opcode_printer_array_print(struct handlebars_opcode_printer * printer)
 {
-    size_t indent = printer->indent < 8 ? printer->indent * 2 : 16;
-    char indentbuf[17];
     struct handlebars_opcode ** opcodes = printer->opcodes;
     size_t count = printer->opcodes_length;
     size_t i;
     
-    memset(&indentbuf, ' ', indent);
-    indentbuf[indent] = 0;
-    
     for( i = 0; i < count; i++, opcodes++ ) {
-        printer->output = MC(handlebars_talloc_strdup_append(printer->output, indentbuf));
-        printer->output = MC(handlebars_opcode_print_append(CONTEXT, printer->output, *opcodes, printer->flags));
-        printer->output = MC(handlebars_talloc_strdup_append(printer->output, "\n"));
+        printer->output = append_indent(CONTEXT, printer->output, printer->indent);
+        printer->output = handlebars_opcode_print_append(CONTEXT, printer->output, *opcodes, printer->flags);
+        printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("\n"));
     }
-    
-    printer->output = MC(handlebars_talloc_asprintf_append(printer->output, "%.*s-----\n", (int) indent, indentbuf));
+
+    printer->output = append_indent(CONTEXT, printer->output, printer->indent);
+    printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("-----\n"));
 }
 
-void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
+static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
 {
     size_t i;
     char indentbuf[17];
@@ -171,4 +199,16 @@ void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer,
     }
     
     printer->indent--;
+}
+
+struct handlebars_string * handlebars_compiler_print(struct handlebars_compiler * compiler, int flags)
+{
+    struct handlebars_opcode_printer * printer = handlebars_opcode_printer_ctor(HBSCTX(compiler));
+    struct handlebars_string * ret;
+
+    handlebars_opcode_printer_print(printer, compiler);
+    ret = handlebars_string_ctor(HBSCTX(compiler), printer->output, strlen(printer->output));
+    handlebars_talloc_free(printer);
+
+    return ret;
 }

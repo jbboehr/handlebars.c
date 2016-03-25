@@ -32,11 +32,24 @@ struct handlebars_cache_entry {
     time_t last_used;
 };
 
-struct handlebars_cache * handlebars_cache_ctor(struct handlebars_context * context);
-void handlebars_cache_dtor(struct handlebars_cache * cache);
-int handlebars_cache_gc(struct handlebars_cache * cache);
-struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_compiler * compiler);
-struct handlebars_cache_entry * handlebars_cache_find(struct handlebars_cache * cache, struct handlebars_string * tmpl);
+struct handlebars_cache * handlebars_cache_ctor(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+void handlebars_cache_dtor(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
+
+int handlebars_cache_gc(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
+
+struct handlebars_cache_entry * handlebars_cache_add(
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl,
+    struct handlebars_compiler * compiler
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_cache_entry * handlebars_cache_find(
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl
+) HBS_ATTR_NONNULL_ALL;
 
 #ifdef	__cplusplus
 }

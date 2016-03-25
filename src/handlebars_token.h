@@ -52,7 +52,7 @@ struct handlebars_token * handlebars_token_ctor(
     struct handlebars_context * context,
     int token_int,
     struct handlebars_string * string
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct a token
@@ -60,7 +60,7 @@ struct handlebars_token * handlebars_token_ctor(
  * @param[in] token Token type
  * @return void
  */
-void handlebars_token_dtor(struct handlebars_token * token);
+void handlebars_token_dtor(struct handlebars_token * token) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the token type
@@ -68,7 +68,7 @@ void handlebars_token_dtor(struct handlebars_token * token);
  * @param[in] token Token
  * @return void
  */
-int handlebars_token_get_type(struct handlebars_token * token);
+int handlebars_token_get_type(struct handlebars_token * token) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the token text.
@@ -92,7 +92,7 @@ const char * handlebars_token_readable_type(int type) HBS_ATTR_RETURNS_NONNULL;
  * @param[in] type The token type name
  * @return The integral token type
  */
-int handlebars_token_reverse_readable_type(const char * type);
+int handlebars_token_reverse_readable_type(const char * type) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Print a token into a human-readable string
@@ -106,7 +106,7 @@ struct handlebars_string * handlebars_token_print(
     struct handlebars_context * context,
     struct handlebars_token * token,
     int flags
-) HBS_ATTR_NONNULL(1, 2);
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }

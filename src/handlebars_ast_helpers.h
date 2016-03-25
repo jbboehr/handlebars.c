@@ -87,7 +87,7 @@ void handlebars_ast_helper_set_strip_flags(
     struct handlebars_ast_node * ast_node,
     struct handlebars_string * open,
     struct handlebars_string * close
-);
+) HBS_ATTR_NONNULL(1);
 
 /**
  * @brief Calculate the strip flags of a node
@@ -102,7 +102,7 @@ bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path);
 
 bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path);
 
-bool handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node);
+bool handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
 
 #ifdef	__cplusplus
 }

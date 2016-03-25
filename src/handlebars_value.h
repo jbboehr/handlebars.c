@@ -76,47 +76,47 @@ struct handlebars_value {
 	struct handlebars_context * ctx;
 };
 
-enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
+enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 struct handlebars_string * handlebars_value_get_stringval(struct handlebars_value * value) HBS_ATTR_RETURNS_NONNULL;
-char * handlebars_value_get_strval(struct handlebars_value * value) HBS_ATTR_RETURNS_NONNULL;
-size_t handlebars_value_get_strlen(struct handlebars_value * value);
-bool handlebars_value_get_boolval(struct handlebars_value * value);
-long handlebars_value_get_intval(struct handlebars_value * value);
-double handlebars_value_get_floatval(struct handlebars_value * value);
+char * handlebars_value_get_strval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+size_t handlebars_value_get_strlen(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+bool handlebars_value_get_boolval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+long handlebars_value_get_intval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+double handlebars_value_get_floatval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 
-struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index);
+struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index) HBS_ATTR_NONNULL_ALL;
 
-struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key);
-struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len);
+struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key) HBS_ATTR_NONNULL_ALL;
+struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_string * handlebars_value_expression(
     struct handlebars_value * value,
     bool escape
-) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_string * handlebars_value_expression_append(
-        struct handlebars_string * string,
-        struct handlebars_value * value,
-        bool escape
-) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+    struct handlebars_string * string,
+    struct handlebars_value * value,
+    bool escape
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBS_ATTR_RETURNS_NONNULL;
+char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx) HBS_ATTR_RETURNS_NONNULL;
-struct handlebars_value * handlebars_value_copy(struct handlebars_value * value) HBS_ATTR_RETURNS_NONNULL;
-void handlebars_value_dtor(struct handlebars_value * value);
+struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_value * handlebars_value_copy(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+void handlebars_value_dtor(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
-void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse);
-bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value);
-bool handlebars_value_iterator_next(struct handlebars_value_iterator * it);
+void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse) HBS_ATTR_NONNULL_ALL;
+bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+bool handlebars_value_iterator_next(struct handlebars_value_iterator * it) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_value * handlebars_value_call(
-        struct handlebars_value * value,
-        int argc,
-        struct handlebars_value * argv[],
-        struct handlebars_options * options
-);
+    struct handlebars_value * value,
+    int argc,
+    struct handlebars_value * argv[],
+    struct handlebars_options * options
+) HBS_ATTR_NONNULL_ALL;
 
 #if 0
 static inline int _handlebars_value_addref(struct handlebars_value * value, const char * loc) {

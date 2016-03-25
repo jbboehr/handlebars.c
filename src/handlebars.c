@@ -112,16 +112,8 @@ char * handlebars_error_message_js(struct handlebars_context * context)
 
 struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ctx)
 {
-    struct handlebars_parser * parser;
     int lexerr = 0;
-
-    // Allocate struct as new top level talloc context
-    parser = MC(handlebars_talloc_zero(ctx, struct handlebars_parser));
-    if( unlikely(parser == NULL) ) {
-        // Mainly doing this for consistency with lex init
-        errno = ENOMEM;
-        goto done;
-    }
+    struct handlebars_parser * parser = MC(handlebars_talloc_zero(ctx, struct handlebars_parser));
 
     // Set the current context in a variable for yyalloc >.>
     _handlebars_parser_init_current = parser;
@@ -130,6 +122,7 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     // @todo set a destructor on the context object to deinit the lexer?
     lexerr = handlebars_yy_lex_init(&parser->scanner);
     if( unlikely(lexerr != 0) ) {
+        handlebars_talloc_free(parser);
         handlebars_throw(CONTEXT, HANDLEBARS_NOMEM, "Lexer initialization failed");
     }
 
@@ -260,7 +253,7 @@ void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_er
     }
 }
 
-struct handlebars_context * _HBSCTX(void * ctx, const char * loc)
+struct handlebars_context * handlebars_get_context(void * ctx, const char * loc)
 {
     struct handlebars_context * r = (
             talloc_get_type(ctx, struct handlebars_context) ?:

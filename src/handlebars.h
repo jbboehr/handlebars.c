@@ -27,11 +27,13 @@ struct handlebars_string;
 #define HBS_ATTR_PRINTF(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
 #define HBS_ATTR_UNUSED  __attribute__((__unused__))
 #define HBS_ATTR_NONNULL(...) __attribute__((nonnull (__VA_ARGS__)))
+#define HBS_ATTR_NONNULL_ALL __attribute__((nonnull))
 #else
 #define HBS_ATTR_NORETURN
 #define HBS_ATTR_PRINTF(a1, a2)
 #define HBS_ATTR_UNUSED
 #define HBS_ATTR_NONNULL
+#define HBS_ATTR_NONNULL_ALL
 #endif
 
 // returns_nonnull
@@ -212,28 +214,32 @@ static inline struct handlebars_context * handlebars_context_ctor(void) {
  * @param[in] context The parent handlebars and talloc context
  * @return void
  */
-void handlebars_context_dtor(struct handlebars_context * context);
+void handlebars_context_dtor(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Construct a parser
  * @param[in] ctx The parent handlebars and talloc context
  * @return the parser pointer
  */
-struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ctx);
+struct handlebars_parser * handlebars_parser_ctor(
+    struct handlebars_context * ctx
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Free a parser and it's resources.
  * @param[in] parser The parser to free
  * @return void
  */
-void handlebars_parser_dtor(struct handlebars_parser * parser);
+void handlebars_parser_dtor(struct handlebars_parser * parser) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Convenience function for lexing to a token list
  * @param[in] parser The parser
  * @return the token list
  */
-struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_token ** handlebars_lex(
+    struct handlebars_parser * parser
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Parser a template. The template is stored in handlebars_parser#tmpl and the resultant
@@ -241,7 +247,7 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser) HBS
  * @param[in] parser The parser
  * @return true on success
  */
-bool handlebars_parse(struct handlebars_parser * parser);
+bool handlebars_parse(struct handlebars_parser * parser) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Throw an error. If the context has a `jmp_buf`, `longjmp(context->jmp, num)` will be called, otherwise
@@ -250,7 +256,12 @@ bool handlebars_parse(struct handlebars_parser * parser);
  * @param[in] num The error code from the `handlebars_error_type`
  * @param[in] msg The error message
  */
-void handlebars_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...) HBS_ATTR_NORETURN HBS_ATTR_PRINTF(3, 4);
+void handlebars_throw(
+    struct handlebars_context * context,
+    enum handlebars_error_type num,
+    const char * msg,
+    ...
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_PRINTF(3, 4) HBS_ATTR_NORETURN;
 
 /**
  * @brief Throw an error. If the context has a `jmp_buf`, `longjmp(context->jmp, num)` will be called, otherwise
@@ -260,14 +271,20 @@ void handlebars_throw(struct handlebars_context * context, enum handlebars_error
  * @param[in] loc The location of the error
  * @param[in] msg The error message
  */
-void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...) HBS_ATTR_NORETURN  HBS_ATTR_PRINTF(4, 5);
+void handlebars_throw_ex(
+    struct handlebars_context * context,
+    enum handlebars_error_type num,
+    struct handlebars_locinfo * loc,
+    const char * msg,
+    ...
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_PRINTF(4, 5) HBS_ATTR_NORETURN;
 
 /**
  * @brief Get the error message from a context, or NULL.
  * @param[in] context The handlebars context
  * @return The error message
  */
-char * handlebars_error_message(struct handlebars_context * context);
+char * handlebars_error_message(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the error message from a context, or NULL (compatibility for handlebars specification)
@@ -275,7 +292,7 @@ char * handlebars_error_message(struct handlebars_context * context);
  * @param[in] context
  * @return the error message
  */
-char * handlebars_error_message_js(struct handlebars_context * context);
+char * handlebars_error_message_js(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Used to check for memory allocation failure. If `ptr` is `NULL`, handlebars_throw() will be called.
@@ -293,9 +310,10 @@ static inline void * handlebars_check(struct handlebars_context * context, void 
     return ptr;
 }
 
-struct handlebars_context * _HBSCTX(void * ctx, const char * loc);
+struct handlebars_context * handlebars_get_context(void * ctx, const char * loc);
+
 #ifndef NDEBUG
-#define HBSCTX(ctx) _HBSCTX(ctx, HBS_S2(__FILE__) ":" HBS_S2(__LINE__))
+#define HBSCTX(ctx) handlebars_get_context(ctx, HBS_S2(__FILE__) ":" HBS_S2(__LINE__))
 #else
 #define HBSCTX(ctx) ((struct handlebars_context *)ctx)
 #endif

@@ -823,8 +823,8 @@ static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handle
         // Print opcode?
 #ifndef NDEBUG
         if( getenv("DEBUG") ) {
-            char *tmp = handlebars_opcode_print(vm, opcode);
-            fprintf(stdout, "V[%ld] P[%ld] OPCODE: %s\n", vm->depth, compiler->guid, tmp);
+            struct handlebars_string * tmp = handlebars_opcode_print(HBSCTX(vm), opcode, 0);
+            fprintf(stdout, "V[%ld] P[%ld] OPCODE: %.*s\n", vm->depth, compiler->guid, (int) tmp->len, tmp->val);
             talloc_free(tmp);
         }
 #endif

@@ -128,6 +128,8 @@ struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * c
     }
 
     entry = handlebars_talloc_zero(HBSCTX(cache), struct handlebars_cache_entry);
+    HANDLEBARS_MEMCHECK(entry, HBSCTX(cache));
+
     entry->compiler = talloc_steal(entry, compiler);
     entry->size = size;
     time(&entry->last_used);

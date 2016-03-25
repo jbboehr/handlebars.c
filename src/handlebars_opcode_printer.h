@@ -46,33 +46,6 @@ enum handlebars_opcode_printer_flag {
 };
 
 /**
- * @brief Opcode printer context
- */
-struct handlebars_opcode_printer {
-    struct handlebars_context * ctx;
-    struct handlebars_opcode ** opcodes;
-    size_t opcodes_length;
-    size_t indent;
-    int flags;
-    char * output;
-};
-
-/**
- * @brief Construct an opcode printer context
- *
- * @param[in] compiler The handlebars compiler
- * @return The printer
- */
-struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_context * context) HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Destruct an opcode printer context
- *
- * @param[in] printer The printer context to destruct
- */
-void handlebars_opcode_printer_dtor(struct handlebars_opcode_printer * printer);
-
-/**
  * @brief Print an operand and append it to the specified buffer
  *
  * @param[in] context The handlebars context
@@ -80,7 +53,16 @@ void handlebars_opcode_printer_dtor(struct handlebars_opcode_printer * printer);
  * @param[in] operand The operand to print
  * @return The original pointer, or a new pointer if reallocated
  */
-char * handlebars_operand_print_append(struct handlebars_context * context, char * str, struct handlebars_operand * operand);
+struct handlebars_string * handlebars_operand_print_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    struct handlebars_operand * operand
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_string * handlebars_operand_print(
+    struct handlebars_context * context,
+    struct handlebars_operand * operand
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Print an opcode and append it to the specified buffer
@@ -91,7 +73,12 @@ char * handlebars_operand_print_append(struct handlebars_context * context, char
  * @param[in] flags The print flags
  * @return The original pointer, or a new pointer if reallocated
  */
-char * handlebars_opcode_print_append(struct handlebars_context * context, char * str, struct handlebars_opcode * opcode, int flags);
+struct handlebars_string * handlebars_opcode_print_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    struct handlebars_opcode * opcode,
+    int flags
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Print an opcode and return the string
@@ -100,19 +87,23 @@ char * handlebars_opcode_print_append(struct handlebars_context * context, char 
  * @param[in] opcode The opcode to print
  * @return The printed opcode
  */
-char * handlebars_opcode_print(
+struct handlebars_string * handlebars_opcode_print(
     struct handlebars_context * context,
-    struct handlebars_opcode * opcode
-) HBS_ATTR_RETURNS_NONNULL;
+    struct handlebars_opcode * opcode,
+    int flags
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Print a compiler context
  *
- * @param[in] printer The printer context
  * @param[in] compiler The compiler context
+ * @param[in] flags
  * @return void
  */
-void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler);
+struct handlebars_string * handlebars_compiler_print(
+    struct handlebars_compiler * compiler,
+    int flags
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }

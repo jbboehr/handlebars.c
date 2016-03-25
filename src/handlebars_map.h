@@ -16,7 +16,6 @@ struct handlebars_map_entry {
     struct handlebars_value * value;
     struct handlebars_map_entry * next;
     struct handlebars_map_entry * prev;
-
     struct handlebars_map_entry * parent;
     struct handlebars_map_entry * child;
 };
@@ -34,20 +33,21 @@ struct handlebars_map {
 #define handlebars_map_foreach(list, el, tmp) \
     for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
 
-struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx) HBS_ATTR_RETURNS_NONNULL;
-void handlebars_map_dtor(struct handlebars_map * map);
+struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key);
-struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len);
+void handlebars_map_dtor(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
 
-bool handlebars_map_add(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value);
-bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value);
+struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key) HBS_ATTR_NONNULL_ALL;
+struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
 
-bool handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value);
-bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value);
+bool handlebars_map_add(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 
-bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key);
-bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len);
+bool handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+
+bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key) HBS_ATTR_NONNULL_ALL;
+bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
 
 #ifdef	__cplusplus
 }

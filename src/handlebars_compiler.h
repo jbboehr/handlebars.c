@@ -192,7 +192,9 @@ struct handlebars_compiler {
  * @param[in] node The AST node to compile
  */
 void handlebars_compiler_compile(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node);
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Construct a compiler context object.
@@ -200,7 +202,9 @@ void handlebars_compiler_compile(
  * @param[in] context The handlebars context
  * @return the compiler context pointer
  */
-struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * context) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_compiler * handlebars_compiler_ctor(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Free a compiler context and it's resources.
@@ -208,7 +212,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context 
  * @param[in] compiler
  * @return void
  */
-void handlebars_compiler_dtor(struct handlebars_compiler * compiler);
+void handlebars_compiler_dtor(struct handlebars_compiler * compiler) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the compiler flags.
@@ -216,7 +220,7 @@ void handlebars_compiler_dtor(struct handlebars_compiler * compiler);
  * @param[in] compiler
  * @return the compiler flags
  */
-unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compiler);
+unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compiler) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Set the compiler flags, with handlebars_compiler_flag_all as a mask.
@@ -225,7 +229,7 @@ unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compile
  * @param[in] flags
  * @return void
  */
-void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsigned long flags);
+void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsigned long flags) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get an array of parts of an ID AST node.
@@ -234,7 +238,10 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsign
  * @param[in] ast_node The AST node
  * @return The string array
  */
-struct handlebars_string ** handlebars_ast_node_get_id_parts(struct handlebars_compiler * compiler, struct handlebars_ast_node * ast_node);
+struct handlebars_string ** handlebars_ast_node_get_id_parts(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL;
 
 #ifdef	__cplusplus
 }

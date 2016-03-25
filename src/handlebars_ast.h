@@ -54,9 +54,9 @@ struct handlebars_ast_node_block {
     struct handlebars_ast_node * hash;
     struct handlebars_ast_node * program;
     struct handlebars_ast_node * inverse;
-    unsigned open_strip;
-    unsigned inverse_strip;
-    unsigned close_strip;
+    unsigned int open_strip;
+    unsigned int inverse_strip;
+    unsigned int close_strip;
     bool is_decorator;
 };
 
@@ -185,12 +185,12 @@ struct handlebars_ast_node {
   /**
    * @brief Stores info about whitespace stripping 
    */
-  unsigned strip;
+  unsigned int strip;
   
   /**
    * @brief Stores info about location
    */
-  struct YYLTYPE loc;
+  struct handlebars_locinfo loc;
   
   /**
    * @brief A union with structs of the different node types
@@ -208,7 +208,7 @@ struct handlebars_ast_node {
 struct handlebars_ast_node * handlebars_ast_node_ctor(
     struct handlebars_context * context,
     enum handlebars_ast_node_type type
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct an AST node
@@ -216,7 +216,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor(
  * @param[in] ast_node The AST node to destruct
  * @return void
  */
-void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
+void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the first part of an ID name of an AST node. Returns NULL if not 
@@ -225,7 +225,7 @@ void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node);
  * @param[in] ast_node The AST node
  * @return The string
  */
-struct handlebars_string * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node);
+struct handlebars_string * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the string mode value of an AST node. Returns NULL if not 
@@ -237,20 +237,20 @@ struct handlebars_string * handlebars_ast_node_get_id_part(struct handlebars_ast
 struct handlebars_string * handlebars_ast_node_get_string_mode_value(
 	struct handlebars_context * context,
 	struct handlebars_ast_node * ast_node
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-struct handlebars_ast_node * handlebars_ast_node_get_path(struct handlebars_ast_node * node);
+struct handlebars_ast_node * handlebars_ast_node_get_path(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
 
-struct handlebars_ast_list * handlebars_ast_node_get_params(struct handlebars_ast_node * node);
+struct handlebars_ast_list * handlebars_ast_node_get_params(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
 
-struct handlebars_ast_node * handlebars_ast_node_get_hash(struct handlebars_ast_node * node);
+struct handlebars_ast_node * handlebars_ast_node_get_hash(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get a string for the integral AST node type
  * @param[in] type The integral AST node type
  * @return The string name of the type
  */
-const char * handlebars_ast_node_readable_type(int type);
+const char * handlebars_ast_node_readable_type(int type) HBS_ATTR_RETURNS_NONNULL;
 
 // Specialized constructors
 
@@ -263,32 +263,32 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
     unsigned inverse_strip,
     unsigned close_strip,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 8) HBS_ATTR_RETURNS_NONNULL;
     
 struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
     struct handlebars_parser * parser,
     struct handlebars_string * boolean,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_comment(
     struct handlebars_parser * parser,
 	struct handlebars_string * comment,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_content(
     struct handlebars_parser * parser,
 	struct handlebars_string * content,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_hash_pair(
     struct handlebars_parser * parser,
 	struct handlebars_string * key,
     struct handlebars_ast_node * value,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
     struct handlebars_parser * parser,
@@ -297,7 +297,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_intermediate(
     struct handlebars_ast_node * hash,
     unsigned strip,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 6) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
     struct handlebars_parser * parser,
@@ -305,19 +305,19 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_inverse(
     bool chained,
     unsigned strip,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 5) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_null(
     struct handlebars_parser * parser,
     struct handlebars_string * string,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_number(
     struct handlebars_parser * parser,
 	struct handlebars_string * number,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
     struct handlebars_parser * parser,
@@ -326,7 +326,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
     struct handlebars_ast_node * hash,
     unsigned strip,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 6) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
     struct handlebars_parser * parser,
@@ -334,7 +334,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
     struct handlebars_ast_node * program,
     struct handlebars_ast_node * close,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 5) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_program(
     struct handlebars_parser * parser,
@@ -344,7 +344,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_program(
     unsigned strip,
 	bool chained,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 7) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_path(
     struct handlebars_parser * parser,
@@ -353,39 +353,39 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path(
     unsigned int depth,
     bool data,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 3, 6) HBS_ATTR_RETURNS_NONNULL;
     
 struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     struct handlebars_parser * parser,
 	struct handlebars_string * part,
 	struct handlebars_string * separator,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     struct handlebars_parser * parser,
     struct handlebars_ast_node * intermediate,
     struct handlebars_ast_node * content,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
     struct handlebars_parser * parser,
     struct handlebars_ast_node * intermediate,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_string(
     struct handlebars_parser * parser,
     struct handlebars_string * string,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
     struct handlebars_parser * parser,
     struct handlebars_string * string,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus
 }

@@ -34,7 +34,7 @@ struct compiler_test {
     char * description;
     char * it;
     char * tmpl;
-    char * expected;
+    struct handlebars_string * expected;
     int exception;
     char * message;
     char ** known_helpers;
@@ -63,7 +63,6 @@ static struct compiler_test * tests = NULL;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
 static char * export_dir = NULL;
-static const int opcode_printer_flags = 0; //handlebars_opcode_printer_flag_locations;
 
 
 static int loadTestOpcodeOperand(
@@ -330,24 +329,21 @@ error:
     return error;
 }
 
-static char * loadTestOpcodesPrint(json_object * object)
+static struct handlebars_string * loadTestOpcodesPrint(json_object * object)
 {
     struct handlebars_context * context;
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
-    struct handlebars_opcode_printer * printer;
-    char * output;
+    struct handlebars_string * output;
 
     context = handlebars_context_ctor_ex(rootctx);
     parser = handlebars_parser_ctor(context);
     compiler = handlebars_compiler_ctor(HBSCTX(context));
-    printer = handlebars_opcode_printer_ctor(compiler);
     
     loadTestCompiler(compiler, object);
-    
-    printer->flags = opcode_printer_flags;
-    handlebars_opcode_printer_print(printer, compiler);
-    output = talloc_steal(rootctx, printer->output);
+
+    output = handlebars_compiler_print(compiler, 0);
+    output = talloc_steal(rootctx, output);
     
 error:
     handlebars_compiler_dtor(compiler);
@@ -621,7 +617,7 @@ START_TEST(handlebars_spec_compiler)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
-    struct handlebars_opcode_printer * printer;
+    struct handlebars_string * actual;
     
     // NOTE: works but handlebars.js doesn't concatenate adjacent content blocks
     if( 0 == strcmp(test->it, "escaping") && 0 == strcmp(test->description, "basic context") ) {
@@ -635,7 +631,6 @@ START_TEST(handlebars_spec_compiler)
     parser = handlebars_parser_ctor(ctx);
     parser->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
-    printer = handlebars_opcode_printer_ctor(ctx);
 
     // Parse
     parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
@@ -651,21 +646,19 @@ START_TEST(handlebars_spec_compiler)
     ck_assert_int_eq(0, ctx->num);
     
     // Printer
-    printer->flags = opcode_printer_flags;
-    handlebars_opcode_printer_print(printer, compiler);
-    //fprintf(stdout, "%s\n", printer->output);
+    actual = handlebars_compiler_print(compiler, 0);
     
     // Check
     /*if( test->exception ) {
        ck_assert_int_ne(0, compiler->errnum);
     } else {*/
         //ck_assert_str_eq(printer->output, test->expected);
-        if( strcmp(printer->output, test->expected) != 0 ) {
+        if( strcmp(actual->val, test->expected->val) != 0 ) {
             char * tmp = handlebars_talloc_asprintf(rootctx,
                 "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                 test->suite_name,
                 test->description, test->it, test->flags,
-                test->tmpl, test->expected, printer->output);
+                test->tmpl, test->expected->val, actual->val);
             ck_abort_msg(tmp);
         }
     /* } */

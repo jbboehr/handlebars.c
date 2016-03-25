@@ -36,8 +36,6 @@ struct handlebars_ast_node * handlebars_ast_node_ctor(struct handlebars_context 
 
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node)
 {
-    assert(ast_node != NULL);
-    
     handlebars_talloc_free(ast_node);
 }
 
@@ -336,10 +334,10 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_number(
 struct handlebars_ast_node * handlebars_ast_node_ctor_partial(
         struct handlebars_parser * parser, struct handlebars_ast_node * name,
         struct handlebars_ast_list * params, struct handlebars_ast_node * hash,
-        unsigned strip, struct handlebars_locinfo * yylloc)
+        unsigned strip, struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PARTIAL);
-    ast_node->loc = *yylloc;
+    ast_node->loc = *locinfo;
     ast_node->strip = strip;
     ast_node->node.partial.name = talloc_steal(ast_node, name);
     ast_node->node.partial.params = talloc_steal(ast_node, params);
@@ -370,7 +368,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
 
     ast_node->node.block.program = talloc_steal(ast_node, program);
     ast_node->node.block.open_strip = open ? open->strip : 0;
-    ast_node->node.block.close_strip = close->strip;
+    ast_node->node.block.close_strip = close ? close->strip : 0;
 
     return ast_node;
 }
@@ -435,8 +433,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     struct handlebars_parser * parser, struct handlebars_ast_node * intermediate,
-    struct handlebars_ast_node * content,  struct handlebars_locinfo * locinfo)
-{
+    struct handlebars_ast_node * content,  struct handlebars_locinfo * locinfo
+) {
     struct handlebars_ast_node * ast_node;
     struct handlebars_ast_node * path;
     struct handlebars_ast_list * params;

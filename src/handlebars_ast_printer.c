@@ -46,6 +46,19 @@
 #define __PRINT(node) \
     _handlebars_ast_print(node, ctx)
 
+/**
+ * @brief AST printer context object
+ */
+struct handlebars_ast_printer_context {
+    struct handlebars_context * ctx;
+    int padding;
+    int error;
+    struct handlebars_string * output;
+    bool in_partial;
+};
+
+
+
 static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
 void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx);
 

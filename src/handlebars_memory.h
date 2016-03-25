@@ -86,9 +86,9 @@ extern "C" {
 
 // Typedefs for memory function pointers
 typedef void * (*handlebars_talloc_array_func)(const void * ctx, size_t el_size, unsigned count, const char * name);
-typedef char * (*handlebars_talloc_asprintf_func)(const void *t, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
-typedef char * (*handlebars_talloc_asprintf_append_func)(char *s, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
-typedef char * (*handlebars_talloc_asprintf_append_buffer_func)(char *s, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
+typedef char * (*handlebars_talloc_asprintf_func)(const void *t, const char *fmt, ...) HBS_ATTR_PRINTF(2,3);
+typedef char * (*handlebars_talloc_asprintf_append_func)(char *s, const char *fmt, ...) HBS_ATTR_PRINTF(2,3);
+typedef char * (*handlebars_talloc_asprintf_append_buffer_func)(char *s, const char *fmt, ...) HBS_ATTR_PRINTF(2,3);
 typedef int    (*handlebars_talloc_free_func)(void *ptr, const char *location);
 typedef void * (*handlebars_talloc_named_const_func)(const void * context, size_t size, const char * name);
 typedef void * (*handlebars_talloc_realloc_array_func)(const void *ctx, void *ptr, size_t el_size, unsigned count, const char *name);

@@ -25,10 +25,10 @@
 #define CONTEXT HBSCTX(parser)
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
-        struct handlebars_parser * parser, struct handlebars_ast_node * open_block,
-        struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_and_program,
-        struct handlebars_ast_node * close, int inverted,
-        struct handlebars_locinfo * locinfo)
+    struct handlebars_parser * parser, struct handlebars_ast_node * open_block,
+    struct handlebars_ast_node * program, struct handlebars_ast_node * inverse_and_program,
+    struct handlebars_ast_node * close, int inverted,
+    struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
     struct handlebars_ast_node * open_block_path = open_block->node.intermediate.path;
@@ -418,11 +418,13 @@ bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
 
 bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path)
 {
-    return ( path &&
+    return (
+        path &&
         path->node.path.parts && 
         handlebars_ast_list_count(path->node.path.parts) == 1 &&
         !handlebars_ast_helper_scoped_id(path) && 
-        !path->node.path.depth );
+        !path->node.path.depth
+    );
 }
 
 bool handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node)
