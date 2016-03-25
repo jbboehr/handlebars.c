@@ -107,22 +107,20 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
     operand->data.longval = arg;
 }
 
-int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, struct handlebars_string * string)
+void handlebars_operand_set_stringval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, struct handlebars_string * string)
 {
     assert(operand != NULL);
 
     operand->type = handlebars_operand_type_string;
     operand->data.string = talloc_steal(compiler, string); //MC(handlebars_string_ctor(HBSCTX(compiler), arg, strlen(arg)));
-    return HANDLEBARS_SUCCESS;
 }
 
-int handlebars_operand_set_strval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char * arg)
+void handlebars_operand_set_strval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char * arg)
 {
     assert(operand != NULL);
 
     operand->type = handlebars_operand_type_string;
     operand->data.string = MC(handlebars_string_ctor(HBSCTX(compiler), arg, strlen(arg)));
-    return HANDLEBARS_SUCCESS;
 }
 
 void handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char ** arg)

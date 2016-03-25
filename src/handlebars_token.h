@@ -42,10 +42,9 @@ enum handlebars_token_print_flags
 /**
  * @brief Construct a token. Returns NULL on failure.
  *
- * @param[in] parser The handlebars parser
+ * @param[in] context The handlebars context
  * @param[in] token_int Token type
- * @param[in] text Token text
- * @param[in] length Length of the text
+ * @param[in] string Token text
  * @return the new token object
  */
 struct handlebars_token * handlebars_token_ctor(

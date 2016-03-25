@@ -231,6 +231,7 @@ struct handlebars_string * handlebars_ast_node_get_id_part(struct handlebars_ast
  * @brief Get the string mode value of an AST node. Returns NULL if not 
  * applicable. Returns a pointer to the current buffer.
  *
+ * @param[in] context The handlebars context
  * @param[in] ast_node The AST node
  * @return The string
  */
@@ -360,7 +361,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
 	struct handlebars_string * part,
 	struct handlebars_string * separator,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2, 4) HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     struct handlebars_parser * parser,

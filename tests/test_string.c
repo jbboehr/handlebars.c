@@ -14,6 +14,9 @@
 #include "utils.h"
 
 
+START_TEST(test_handlebars_string_hash)
+    ck_assert_uint_eq(229466050689405, handlebars_string_hash(HBS_STRL("foobar\xFF")));
+END_TEST
 
 START_TEST(test_handlebars_strnstr_1)
     const char string[] = "";
@@ -301,6 +304,7 @@ Suite * parser_suite(void)
 {
     Suite * s = suite_create("String");
 
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_hash, "handlebars_string_hash");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_1, "handlebars_strnstr 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_2, "handlebars_strnstr 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_3, "handlebars_strnstr 3");

@@ -226,12 +226,28 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
  *
  * @param[in] compiler The handlebars compiler
  * @param[in] operand The operand of which to change the value
- * @param[in] arg The string value
+ * @param[in] string The string value
  * @return void
  */
-int handlebars_operand_set_stringval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, struct handlebars_string * string);
+void handlebars_operand_set_stringval(
+    struct handlebars_compiler * compiler,
+    struct handlebars_operand * operand,
+    struct handlebars_string * string
+);
 
-int handlebars_operand_set_strval(struct handlebars_compiler * compiler, struct handlebars_operand * operand, const char * arg);
+/**
+ * @brief Set the value of an operand to a string
+ *
+ * @param[in] compiler The handlebars compiler
+ * @param[in] operand The operand of which to change the value
+ * @param[in] str The string value
+ * @return void
+ */
+void handlebars_operand_set_strval(
+    struct handlebars_compiler * compiler,
+    struct handlebars_operand * operand,
+    const char * str
+);
 
 /**
  * @brief Set the value of an operand to an array

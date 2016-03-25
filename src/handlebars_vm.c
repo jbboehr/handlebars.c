@@ -38,7 +38,7 @@
         if( stack.i < HANDLEBARS_VM_STACK_SIZE ) { \
             stack.v[stack.i++] = value; \
         } else { \
-            handlebars_throw(vm, HANDLEBARS_STACK_OVERFLOW, "Stack overflow in %s", #stack); \
+            handlebars_throw(HBSCTX(vm), HANDLEBARS_STACK_OVERFLOW, "Stack overflow in %s", #stack); \
         } \
     } while(0)
 
@@ -191,7 +191,6 @@ ACCEPT_FUNCTION(ambiguous_block_value)
 {
     struct handlebars_value * current;
     struct handlebars_value * result;
-    struct handlebars_value * helper;
     struct handlebars_options options = {0};
     struct handlebars_value * argv[1];
 
@@ -300,6 +299,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     struct handlebars_value * value = POP(vm->stack);
     struct handlebars_value * result;
     struct handlebars_options options = {0};
+    struct handlebars_value * argv[0];
 
     ACCEPT_FN(empty_hash)(vm, opcode);
 
@@ -314,7 +314,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         append_to_buffer(vm, result, 0);
         vm->last_helper = options.name;
     } else if( value && handlebars_value_is_callable(value) ) {
-        result = handlebars_value_call(value, 0, NULL, &options);
+        result = handlebars_value_call(value, 0, argv, &options);
         assert(result != NULL);
         PUSH(vm->stack, result);
     } else {
@@ -486,7 +486,7 @@ ACCEPT_FUNCTION(invoke_partial)
     // Save jump buffer
     context->jmp = &buf;
     if( setjmp(buf) ) {
-        handlebars_throw_ex(CONTEXT, context->num, &context->loc, context->msg);
+        handlebars_throw_ex(CONTEXT, context->num, &context->loc, "%s", context->msg);
     }
 
     // Get template

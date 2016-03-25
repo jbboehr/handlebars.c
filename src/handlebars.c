@@ -129,7 +129,6 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     // Set the extra on the lexer
     handlebars_yy_set_extra(parser, parser->scanner);
 
-done:
     _handlebars_parser_init_current = NULL;
     return parser;
 }

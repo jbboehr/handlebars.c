@@ -31,18 +31,19 @@ struct handlebars_string {
 #define HANDLEBARS_STRING_SIZE(size) (offsetof(struct handlebars_string, val) + (size) + 1)
 
 HBS_ATTR_NONNULL(1)
-static inline unsigned long handlebars_string_hash_cont(const unsigned char * str, size_t len, unsigned long hash)
+static inline unsigned long handlebars_string_hash_cont(const char * str, size_t len, unsigned long hash)
 {
     unsigned long c;
-    const unsigned char * end = str + len;
-    for( c = *str++; str <= end && c; c = *str++ ) {
+    const unsigned char * ptr = (const unsigned char *) str;
+    const unsigned char * end = ptr + len;
+    for( c = *ptr++; ptr <= end && c; c = *ptr++ ) {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     }
     return hash;
 }
 
 HBS_ATTR_NONNULL(1)
-static inline unsigned long handlebars_string_hash(const unsigned char * str, size_t len)
+static inline unsigned long handlebars_string_hash(const char * str, size_t len)
 {
     unsigned long hash = 5381;
     return handlebars_string_hash_cont(str, len, hash);
@@ -266,8 +267,7 @@ struct handlebars_string * handlebars_string_indent(
  * @brief Trims a set of characters off the left end of string. Trims in
  *        place by setting a null terminator and moving the contents
  *
- * @param[in] str the string to trim
- * @param[in] str_length The length of the input string
+ * @param[in] string the string to trim
  * @param[in] what the set of characters to trim
  * @param[in] what_length The length of the character list
  * @return the original pointer, with trimmed input characters
@@ -281,8 +281,7 @@ struct handlebars_string * handlebars_string_ltrim(
  * @brief Trims a set of characters off the right end of string. Trims in
  *        place by setting a null terminator.
  *
- * @param[in] str the string to trim
- * @param[in] str_length The length of the input string
+ * @param[in] string the string to trim
  * @param[in] what the set of characters to trim
  * @param[in] what_length The length of the character list
  * @return the original pointer, with null moved to trim input characters

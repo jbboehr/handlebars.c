@@ -133,7 +133,7 @@ static inline struct handlebars_value * handlebars_value_addref2(struct handleba
     return value;
 }
 #else
-#define handlebars_value_addref
+#define handlebars_value_addref(value) (void) (value)
 #define handlebars_value_addref2(value) (value)
 #endif
 
@@ -162,7 +162,7 @@ static inline int handlebars_value_delref(struct handlebars_value * value) {
     return --value->refcount;
 }
 #else
-#define handlebars_value_delref
+#define handlebars_value_delref(value) (void) (value)
 #endif
 
 #if !defined(HANDLEBARS_NO_REFCOUNT)
@@ -173,7 +173,7 @@ static inline int handlebars_value_try_delref(struct handlebars_value * value) {
     return -1;
 }
 #else
-#define handlebars_value_try_delref
+#define handlebars_value_try_delref(value) (void) (value)
 #endif
 
 #if !defined(HANDLEBARS_NO_REFCOUNT)
@@ -184,7 +184,7 @@ static inline int handlebars_value_try_addref(struct handlebars_value * value) {
     return -1;
 }
 #else
-#define handlebars_value_try_addref
+#define handlebars_value_try_addref(value) (void) (value)
 #endif
 
 #if !defined(HANDLEBARS_NO_REFCOUNT)

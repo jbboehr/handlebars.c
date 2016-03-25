@@ -53,7 +53,7 @@ void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_par
     fprintf(stderr, "%d : %s\n", lloc->first_line, err);
 #endif
 
-    handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, lloc, err);
+    handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, lloc, "%s", err);
 }
 
 void handlebars_yy_fatal_error(const char * msg, HANDLEBARS_ATTR_UNUSED void * yyscanner)

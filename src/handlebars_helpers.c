@@ -60,7 +60,6 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     struct handlebars_string * tmp;
     size_t i = 0;
     long len;
-    struct handlebars_options * options2;
     struct handlebars_value * ret = NULL;
     struct handlebars_value * key = NULL;
     struct handlebars_value * index = NULL;

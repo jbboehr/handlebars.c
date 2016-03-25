@@ -49,7 +49,7 @@ enum handlebars_opcode_printer_flag {
  * @brief Print an operand and append it to the specified buffer
  *
  * @param[in] context The handlebars context
- * @param[in] str The string to which to append
+ * @param[in] string The string to which to append
  * @param[in] operand The operand to print
  * @return The original pointer, or a new pointer if reallocated
  */
@@ -68,7 +68,7 @@ struct handlebars_string * handlebars_operand_print(
  * @brief Print an opcode and append it to the specified buffer
  *
  * @param[in] context The handlebars context
- * @param[in] str The string to which to append
+ * @param[in] string The string to which to append
  * @param[in] opcode The opcode to print
  * @param[in] flags The print flags
  * @return The original pointer, or a new pointer if reallocated
@@ -83,8 +83,9 @@ struct handlebars_string * handlebars_opcode_print_append(
 /**
  * @brief Print an opcode and return the string
  *
- * @param[in] compiler The handlebars compiler
+ * @param[in] context The handlebars context
  * @param[in] opcode The opcode to print
+ * @param[in] flags The print flags
  * @return The printed opcode
  */
 struct handlebars_string * handlebars_opcode_print(

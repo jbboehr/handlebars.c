@@ -167,17 +167,8 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
 static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
 {
     size_t i;
-    char indentbuf[17];
-    size_t indent;
     struct handlebars_compiler * child;
 
-    printer->ctx = HBSCTX(compiler);
-    
-    // Make indent
-    indent = printer->indent < 8 ? printer->indent * 2 : 16;
-    memset(&indentbuf, ' ', indent);
-    indentbuf[indent] = 0;
-    
     // Print opcodes
     printer->opcodes = compiler->opcodes;
     printer->opcodes_length = compiler->opcodes_length;
@@ -187,7 +178,8 @@ static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * p
     
     // Print decorators
     for( i = 0; i < compiler->decorators_length; i++ ) {
-        printer->output = handlebars_talloc_asprintf_append(printer->output, "%.*sDECORATOR\n", (int) indent, indentbuf);
+        printer->output = append_indent(CONTEXT, printer->output, (size_t) printer->indent);
+        printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("DECORATOR\n"));
         child = *(compiler->decorators + i);
         handlebars_opcode_printer_print(printer, child);
     }
@@ -204,11 +196,8 @@ static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * p
 struct handlebars_string * handlebars_compiler_print(struct handlebars_compiler * compiler, int flags)
 {
     struct handlebars_opcode_printer * printer = handlebars_opcode_printer_ctor(HBSCTX(compiler));
-    struct handlebars_string * ret;
-
+    printer->ctx = HBSCTX(compiler);
+    printer->flags = flags;
     handlebars_opcode_printer_print(printer, compiler);
-    ret = handlebars_string_ctor(HBSCTX(compiler), printer->output, strlen(printer->output));
-    handlebars_talloc_free(printer);
-
-    return ret;
+    return printer->output;
 }

@@ -232,7 +232,6 @@ static int do_lex(void)
         YYSTYPE yylval_param;
         YYLTYPE yylloc_param;
         YYSTYPE * lval;
-        char * text;
         
         token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
         if( token_int == END || token_int == INVALID ) {
@@ -270,7 +269,7 @@ static int do_parse(void)
 
     handlebars_parse(parser);
     
-    if( ctx->num != NULL ) {
+    if( ctx->num != HANDLEBARS_SUCCESS ) {
         char * output = handlebars_error_message(ctx);
         fprintf(stderr, "%s\n", output);
         error = ctx->num;
@@ -388,7 +387,7 @@ static int do_execute(void)
     handlebars_vm_execute(vm, compiler, context);
 
 
-    fprintf(stdout, vm->buffer->val);
+    fprintf(stdout, "%.*s", (int) vm->buffer->len, vm->buffer->val);
 
 error:
     handlebars_context_dtor(ctx);

@@ -328,11 +328,9 @@ START_TEST(test_operand_set_stringval)
 {
     struct handlebars_operand op;
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("bar"));
-    int ret;
     
-    ret = handlebars_operand_set_stringval(compiler, &op, string);
-    
-    ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
+    handlebars_operand_set_stringval(compiler, &op, string);
+
     ck_assert_int_eq(handlebars_operand_type_string, op.type);
     ck_assert_ptr_ne(NULL, op.data.string);
     ck_assert_str_eq(string->val, op.data.string->val);

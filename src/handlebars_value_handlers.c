@@ -97,6 +97,9 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
             }
             break;
         }
+        default:
+            // nothing to do
+            break;
     }
 }
 
@@ -192,7 +195,7 @@ bool std_json_iterator_next(struct handlebars_value_iterator * it)
                 it->usr = (void *) (entry = entry->next);
                 tmp = (char *) entry->k;
                 it->key = handlebars_string_ctor(value->ctx, tmp, strlen(tmp));
-                it->current = handlebars_value_from_json_object(CONTEXT, entry->v);
+                it->current = handlebars_value_from_json_object(CONTEXT, (struct json_object *) entry->v);
             }
             break;
         case json_type_array:
@@ -306,7 +309,7 @@ void handlebars_value_init_json_string(struct handlebars_context *ctx, struct ha
     }
 }
 
-struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json)
+struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object * json)
 {
     struct handlebars_value * value = handlebars_value_ctor(ctx);
     handlebars_value_init_json_object(ctx, value, json);
@@ -356,27 +359,27 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
             }
             break;
         case YAML_SCALAR_NODE:
-            if( 0 == strcmp(node->data.scalar.value, "true") ) {
+            if( 0 == strcmp((const char *) node->data.scalar.value, "true") ) {
                 handlebars_value_boolean(value, 1);
-            } else if( 0 == strcmp(node->data.scalar.value, "false") ) {
+            } else if( 0 == strcmp((const char *) node->data.scalar.value, "false") ) {
                 handlebars_value_boolean(value, 0);
             } else {
                 long lval;
                 double dval;
                 // Long
-                lval = strtol(node->data.scalar.value, &end, 10);
+                lval = strtol((const char *) node->data.scalar.value, &end, 10);
                 if( !*end ) {
                     handlebars_value_integer(value, lval);
                     return;
                 }
                 // Double
-                dval = strtod(node->data.scalar.value, &end);
+                dval = strtod((const char *) node->data.scalar.value, &end);
                 if( !*end ) {
                     handlebars_value_float(value, dval);
                     return;
                 }
                 // String
-                handlebars_value_stringl(value, node->data.scalar.value, node->data.scalar.length);
+                handlebars_value_stringl(value, (const char *) node->data.scalar.value, node->data.scalar.length);
             }
             break;
         default:

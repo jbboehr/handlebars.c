@@ -100,7 +100,7 @@ struct handlebars_string * handlebars_value_get_stringval(struct handlebars_valu
 {
     enum handlebars_value_type type = value ? value->type : HANDLEBARS_VALUE_TYPE_NULL;
 
-    switch( value->type ) {
+    switch( type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
             return handlebars_string_copy_ctor(CONTEXT, value->v.string);
         case HANDLEBARS_VALUE_TYPE_INTEGER:

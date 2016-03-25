@@ -176,7 +176,6 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
         struct handlebars_ast_node * program)
 {
     bool is_root = !parser->whitespace_root_seen;
-    int error = HANDLEBARS_SUCCESS;
     struct handlebars_ast_list * statements = program->node.program.statements;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;

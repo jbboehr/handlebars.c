@@ -208,7 +208,7 @@ bool handlebars_map_add(struct handlebars_map * map, struct handlebars_string * 
 
 bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
-    _entry_add(map, key, len, handlebars_string_hash((const unsigned char *)key, len), value);
+    _entry_add(map, key, len, handlebars_string_hash(key, len), value);
     return true;
 }
 
@@ -224,7 +224,7 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
 
 bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
 {
-    unsigned long hash = handlebars_string_hash((const unsigned char *)key, len);
+    unsigned long hash = handlebars_string_hash(key, len);
     struct handlebars_map_entry * entry = _entry_find(map, key, len, hash);
     if( entry ) {
         _entry_remove(map, entry);
@@ -250,7 +250,7 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struc
 struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len)
 {
     struct handlebars_value * value = NULL;
-    struct handlebars_map_entry * entry = _entry_find(map, key, len, handlebars_string_hash((const unsigned char *)key, len));
+    struct handlebars_map_entry * entry = _entry_find(map, key, len, handlebars_string_hash(key, len));
 
     if( entry ) {
         value = entry->value;
