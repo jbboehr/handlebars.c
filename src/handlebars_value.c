@@ -107,8 +107,10 @@ struct handlebars_string * handlebars_value_get_stringval(struct handlebars_valu
             return handlebars_string_asprintf(CONTEXT, "%ld", value->v.lval);
         case HANDLEBARS_VALUE_TYPE_FLOAT:
             return handlebars_string_asprintf(CONTEXT, "%g", value->v.dval);
-        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            return handlebars_string_asprintf(CONTEXT, "%s", value->v.bval ? "true" : "false");
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+            return handlebars_string_ctor(CONTEXT, HBS_STRL("true"));
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            return handlebars_string_ctor(CONTEXT, HBS_STRL("false"));
         default:
             return handlebars_string_init(CONTEXT, 0);
     }
@@ -129,8 +131,11 @@ char * handlebars_value_get_strval(struct handlebars_value * value)
         case HANDLEBARS_VALUE_TYPE_FLOAT:
             ret = handlebars_talloc_asprintf(value->ctx, "%g", value->v.dval);
             break;
-        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            ret = handlebars_talloc_strdup(value->ctx, value->v.bval ? "true" : "false");
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+            ret = handlebars_talloc_strdup(value->ctx, "true");
+            break;
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            ret = handlebars_talloc_strdup(value->ctx, "false");
             break;
         default:
             ret = handlebars_talloc_strdup(value->ctx, "");
@@ -156,8 +161,10 @@ bool handlebars_value_get_boolval(struct handlebars_value * value)
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
             return false;
-        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            return value->v.bval;
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+            return true;
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            return false;
         case HANDLEBARS_VALUE_TYPE_FLOAT:
             return value->v.dval != 0;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
@@ -362,8 +369,14 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
     memset(indent2, ' ', (depth + 1) * 4); // @todo fix
 
     switch( handlebars_value_get_type(value) ) {
-        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "boolean(%s)", value->v.bval ? "true" : "false");
+        case HANDLEBARS_VALUE_TYPE_NULL:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "NULL");
+            break;
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+            buf = handlebars_talloc_strndup_append_buffer(buf, HBS_STRL("boolean(true)"));
+            break;
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            buf = handlebars_talloc_strndup_append_buffer(buf, HBS_STRL("boolean(false)"));
             break;
         case HANDLEBARS_VALUE_TYPE_FLOAT:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "float(%f)", value->v.dval);
@@ -371,11 +384,8 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "integer(%ld)", value->v.lval);
             break;
-        case HANDLEBARS_VALUE_TYPE_NULL:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "NULL");
-            break;
         case HANDLEBARS_VALUE_TYPE_STRING:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%s)", value->v.string->val);
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%.*s)", (int) value->v.string->len, value->v.string->val);
             break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "[");
@@ -392,7 +402,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             handlebars_value_iterator_init(&it, value);
             for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
                 char * tmp = handlebars_value_dump(it.current, depth + 1);
-                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s => %s\n", indent2, it.key->val, tmp);
+                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%.*s => %s\n", indent2, (int) it.key->len, it.key->val, tmp);
                 handlebars_talloc_free(tmp);
             }
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "}");
@@ -420,12 +430,12 @@ struct handlebars_string * handlebars_value_expression_append(
     struct handlebars_value_iterator it;
 
     switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
-            if( value->v.bval ) {
-                string = handlebars_string_append(value->ctx, string, HBS_STRL("true"));
-            } else {
-                string = handlebars_string_append(value->ctx, string, HBS_STRL("false"));
-            }
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+            string = handlebars_string_append(value->ctx, string, HBS_STRL("true"));
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            string = handlebars_string_append(value->ctx, string, HBS_STRL("false"));
             break;
 
         case HANDLEBARS_VALUE_TYPE_FLOAT:

@@ -247,9 +247,7 @@ FIXTURE_FN(666457330)
 {
     // "function (options) {\n          if (options.hash.print === true) {\n            return 'GOODBYE ' + options.hash.cruel + ' ' + options.fn(this);\n          } else if (options.hash.print === false) {\n            return 'NOT PRINTING';\n          } else {\n            return 'THIS SHOULD NOT HAPPEN';\n          }\n        }"
     struct handlebars_value * print = handlebars_value_map_str_find(options->hash, HBS_STRL("print"));
-    if( print->type != HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
-        FIXTURE_STRING("THIS SHOULD NOT HAPPEND");
-    } else if( handlebars_value_get_boolval(print) ) {
+    if( print->type == HANDLEBARS_VALUE_TYPE_TRUE ) {
         struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
         struct handlebars_string * res = handlebars_vm_execute_program(options->vm, options->program, options->scope);
         char * tmp = handlebars_talloc_asprintf(
@@ -263,8 +261,10 @@ FIXTURE_FN(666457330)
         handlebars_value_string(result, tmp);
         handlebars_talloc_free(tmp);
         return result;
-    } else {
+    } else if( print->type == HANDLEBARS_VALUE_TYPE_FALSE ) {
         FIXTURE_STRING("NOT PRINTING");
+    } else {
+        FIXTURE_STRING("THIS SHOULD NOT HAPPEN");
     }
 }
 
@@ -458,9 +458,7 @@ FIXTURE_FN(1041501180)
 FIXTURE_FN(1102272015)
 {
     struct handlebars_value * print = handlebars_value_map_str_find(options->hash, HBS_STRL("print"));
-    if( print->type != HANDLEBARS_VALUE_TYPE_BOOLEAN ) {
-        FIXTURE_STRING("THIS SHOULD NOT HAPPEND");
-    } else if( handlebars_value_get_boolval(print) ) {
+    if( print->type == HANDLEBARS_VALUE_TYPE_TRUE ) {
         struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
         struct handlebars_value * world = handlebars_value_map_str_find(options->hash, HBS_STRL("world"));
         char * tmp = handlebars_talloc_asprintf(
@@ -473,8 +471,10 @@ FIXTURE_FN(1102272015)
         handlebars_value_string(result, tmp);
         handlebars_talloc_free(tmp);
         return result;
-    } else {
+    } else if( print->type == HANDLEBARS_VALUE_TYPE_FALSE ) {
         FIXTURE_STRING("NOT PRINTING");
+    } else {
+        FIXTURE_STRING("THIS SHOULD NOT HAPPEN");
     }
 }
 

@@ -39,7 +39,7 @@ START_TEST(test_boolean_json_true)
 {
     struct handlebars_value * value = handlebars_value_from_json_string(context, "true");
     ck_assert_ptr_ne(value, NULL);
-    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_TRUE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
@@ -52,7 +52,7 @@ START_TEST(test_boolean_yaml_true)
 {
     struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\ntrue");
     ck_assert_ptr_ne(value, NULL);
-    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_TRUE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
@@ -65,7 +65,7 @@ START_TEST(test_boolean_json_false)
 {
     struct handlebars_value * value = handlebars_value_from_json_string(context, "false");
     ck_assert_ptr_ne(value, NULL);
-    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_BOOLEAN);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FALSE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 0);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));

@@ -26,15 +26,16 @@ struct yaml_node_s;
 
 enum handlebars_value_type {
     HANDLEBARS_VALUE_TYPE_NULL = 0,
-    HANDLEBARS_VALUE_TYPE_BOOLEAN = 1,
-    HANDLEBARS_VALUE_TYPE_INTEGER = 2,
-    HANDLEBARS_VALUE_TYPE_FLOAT = 3,
-    HANDLEBARS_VALUE_TYPE_STRING = 4,
-    HANDLEBARS_VALUE_TYPE_ARRAY = 5,
-    HANDLEBARS_VALUE_TYPE_MAP = 6,
-    HANDLEBARS_VALUE_TYPE_USER = 7,
-    HANDLEBARS_VALUE_TYPE_PTR = 8,
-    HANDLEBARS_VALUE_TYPE_HELPER = 9
+    HANDLEBARS_VALUE_TYPE_TRUE = 1,
+    HANDLEBARS_VALUE_TYPE_FALSE = 2,
+    HANDLEBARS_VALUE_TYPE_INTEGER = 3,
+    HANDLEBARS_VALUE_TYPE_FLOAT = 4,
+    HANDLEBARS_VALUE_TYPE_STRING = 5,
+    HANDLEBARS_VALUE_TYPE_ARRAY = 6,
+    HANDLEBARS_VALUE_TYPE_MAP = 7,
+    HANDLEBARS_VALUE_TYPE_USER = 8,
+    HANDLEBARS_VALUE_TYPE_PTR = 9,
+    HANDLEBARS_VALUE_TYPE_HELPER = 10
 };
 
 enum handlebars_value_flags {
@@ -62,7 +63,6 @@ struct handlebars_value {
     unsigned long flags;
 	union {
         long lval;
-        bool bval;
         double dval;
         struct handlebars_string * string;
         struct handlebars_map * map;
@@ -207,7 +207,8 @@ static inline void handlebars_value_init(struct handlebars_context * ctx, struct
 static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
-        case HANDLEBARS_VALUE_TYPE_BOOLEAN:
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+        case HANDLEBARS_VALUE_TYPE_FALSE:
         case HANDLEBARS_VALUE_TYPE_FLOAT:
         case HANDLEBARS_VALUE_TYPE_INTEGER:
         case HANDLEBARS_VALUE_TYPE_STRING:
@@ -244,8 +245,7 @@ static inline void handlebars_value_null(struct handlebars_value * value) {
 
 static inline void handlebars_value_boolean(struct handlebars_value * value, bool bval) {
     handlebars_value_null(value);
-    value->type = HANDLEBARS_VALUE_TYPE_BOOLEAN;
-    value->v.bval = bval;
+    value->type = bval ? HANDLEBARS_VALUE_TYPE_TRUE : HANDLEBARS_VALUE_TYPE_FALSE;
 }
 
 static inline void handlebars_value_integer(struct handlebars_value * value, long lval) {

@@ -142,9 +142,7 @@ void handlebars_operand_set_arrayval(struct handlebars_compiler * compiler, stru
     
     // Copy each item
     for( ptr = arg; *ptr; ++ptr ) {
-        fprintf(stderr, "ADASDASDASDASD %d %s\n", strlen(*ptr), (*ptr));
-        *arrptr = handlebars_string_ctor(HBSCTX(compiler), *ptr, strlen(*ptr));// MC(handlebars_talloc_strdup(arr, *ptr));
-        ++arrptr;
+        *arrptr++ = handlebars_string_ctor(HBSCTX(compiler), *ptr, strlen(*ptr));
     }
     *arrptr++ = NULL;
     

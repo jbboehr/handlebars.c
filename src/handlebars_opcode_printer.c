@@ -48,7 +48,7 @@ char * handlebars_operand_print_append(struct handlebars_context * context, char
             break;
         case handlebars_operand_type_string: {
             struct handlebars_string * tmp = handlebars_string_addcslashes(context, operand->data.string, HBS_STRL("\r\n\t"));
-            str = handlebars_talloc_asprintf_append(str, "[STRING:%s]", tmp->val);
+            str = handlebars_talloc_asprintf_append(str, "[STRING:%.*s]", (int) tmp->len, tmp->val);
             handlebars_talloc_free(tmp);
             break;
         }
@@ -133,7 +133,7 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
         printer->output = MC(handlebars_talloc_strdup_append(printer->output, "\n"));
     }
     
-    printer->output = MC(handlebars_talloc_asprintf_append(printer->output, "%s-----\n", indentbuf));
+    printer->output = MC(handlebars_talloc_asprintf_append(printer->output, "%.*s-----\n", (int) indent, indentbuf));
 }
 
 void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
@@ -159,7 +159,7 @@ void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer,
     
     // Print decorators
     for( i = 0; i < compiler->decorators_length; i++ ) {
-        printer->output = handlebars_talloc_asprintf_append(printer->output, "%sDECORATOR\n", indentbuf);
+        printer->output = handlebars_talloc_asprintf_append(printer->output, "%.*sDECORATOR\n", (int) indent, indentbuf);
         child = *(compiler->decorators + i);
         handlebars_opcode_printer_print(printer, child);
     }

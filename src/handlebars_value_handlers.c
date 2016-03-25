@@ -254,8 +254,11 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
             // do nothing
             break;
         case json_type_boolean:
-            value->type = HANDLEBARS_VALUE_TYPE_BOOLEAN;
-            value->v.bval = json_object_get_boolean(json);
+            if( json_object_get_boolean(json) ) {
+                value->type = HANDLEBARS_VALUE_TYPE_TRUE;
+            } else {
+                value->type = HANDLEBARS_VALUE_TYPE_FALSE;
+            }
             break;
         case json_type_double:
             value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
