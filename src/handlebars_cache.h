@@ -11,6 +11,7 @@ extern "C" {
 
 struct handlebars_compiler;
 struct handlebars_map;
+struct handlebars_program;
 
 
 struct handlebars_cache {
@@ -28,7 +29,7 @@ struct handlebars_cache {
 struct handlebars_cache_entry {
     size_t size;
     struct handlebars_context * context;
-    struct handlebars_compiler * compiler;
+    struct handlebars_program * program;
     time_t last_used;
 };
 
@@ -43,7 +44,7 @@ int handlebars_cache_gc(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 struct handlebars_cache_entry * handlebars_cache_add(
     struct handlebars_cache * cache,
     struct handlebars_string * tmpl,
-    struct handlebars_compiler * compiler
+    struct handlebars_program * program
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 struct handlebars_cache_entry * handlebars_cache_find(

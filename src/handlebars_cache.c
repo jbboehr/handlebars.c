@@ -86,8 +86,8 @@ int handlebars_cache_gc(struct handlebars_cache * cache)
             // Remove
             handlebars_map_remove(cache->map, map_entry->key);
 #ifdef HANDLEBARS_NO_REFCOUNT
-            // Delref should handle it if refcounting enabled
-            handlebars_value_dtor(map_entry->value);
+            // Delref should handle it if refcounting enabled - maybe?
+            //handlebars_value_dtor(map_entry->value);
 #endif
             cache->current_entries--;
             cache->current_size -= oldsize;
@@ -116,11 +116,11 @@ struct handlebars_cache_entry * handlebars_cache_find(struct handlebars_cache * 
     return entry;
 }
 
-struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_compiler * compiler)
+struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_program * program)
 {
     struct handlebars_value * value;
     struct handlebars_cache_entry * entry;
-    size_t size = talloc_total_size(compiler); // this might take a while
+    size_t size = talloc_total_size(program); // this might take a while
 
     // Check if it would exceed the size
     if( should_gc(cache) ) {
@@ -130,7 +130,7 @@ struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * c
     entry = handlebars_talloc_zero(HBSCTX(cache), struct handlebars_cache_entry);
     HANDLEBARS_MEMCHECK(entry, HBSCTX(cache));
 
-    entry->compiler = talloc_steal(entry, compiler);
+    entry->program = talloc_steal(entry, program);
     entry->size = size;
     time(&entry->last_used);
 

@@ -18,7 +18,7 @@
 
 START_TEST(test_opcode_ctor)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_append);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_append);
     
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append, opcode->type);
@@ -52,7 +52,7 @@ START_TEST(test_opcode_ctor_long)
 {
     struct handlebars_opcode * opcode;
     
-    opcode = handlebars_opcode_ctor_long(compiler, handlebars_opcode_type_get_context, 1);
+    opcode = handlebars_opcode_ctor_long(context, handlebars_opcode_type_get_context, 1);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
     ck_assert_int_eq(1, opcode->op1.data.longval);
@@ -87,7 +87,7 @@ START_TEST(test_opcode_ctor_long_string)
     struct handlebars_opcode * opcode;
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("blah"));
     
-    opcode = handlebars_opcode_ctor_long_string(compiler, handlebars_opcode_type_get_context, 1, string);
+    opcode = handlebars_opcode_ctor_long_string(context, handlebars_opcode_type_get_context, 1, string);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
     ck_assert_int_eq(1, opcode->op1.data.longval);
@@ -125,7 +125,7 @@ START_TEST(test_opcode_ctor_string)
     struct handlebars_opcode * opcode;
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("foo"));
     
-    opcode = handlebars_opcode_ctor_string(compiler, handlebars_opcode_type_append_content, string);
+    opcode = handlebars_opcode_ctor_string(context, handlebars_opcode_type_append_content, string);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
     ck_assert_str_eq(string->val, opcode->op1.data.string->val);
@@ -164,7 +164,7 @@ START_TEST(test_opcode_ctor_string2)
     struct handlebars_string * string1 = handlebars_string_ctor(context, HBS_STRL("foo"));
     struct handlebars_string * string2 = handlebars_string_ctor(context, HBS_STRL("bar"));
     
-    opcode = handlebars_opcode_ctor_string2(compiler, handlebars_opcode_type_append_content, string1, string2);
+    opcode = handlebars_opcode_ctor_string2(context, handlebars_opcode_type_append_content, string1, string2);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
     ck_assert_str_eq(string1->val, opcode->op1.data.string->val);
@@ -204,7 +204,7 @@ START_TEST(test_opcode_ctor_string_long)
     struct handlebars_opcode * opcode;
     struct handlebars_string * string1 = handlebars_string_ctor(context, HBS_STRL("foo"));
     
-    opcode = handlebars_opcode_ctor_string_long(compiler, handlebars_opcode_type_append_content, string1, 3);
+    opcode = handlebars_opcode_ctor_string_long(context, handlebars_opcode_type_append_content, string1, 3);
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
     ck_assert_str_eq(string1->val, opcode->op1.data.string->val);
@@ -327,9 +327,10 @@ END_TEST
 START_TEST(test_operand_set_stringval)
 {
     struct handlebars_operand op;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("bar"));
     
-    handlebars_operand_set_stringval(compiler, &op, string);
+    handlebars_operand_set_stringval(context, opcode, &op, string);
 
     ck_assert_int_eq(handlebars_operand_type_string, op.type);
     ck_assert_ptr_ne(NULL, op.data.string);
@@ -360,30 +361,29 @@ END_TEST
 */
 
 START_TEST(test_operand_set_arrayval)
-    {
-        struct handlebars_operand op;
-        const char * strs[] = {
-                "foo", "bar", "baz", "helicopter", NULL
-        };
-        int ret;
-        const char ** ptr1;
-        struct handlebars_string ** ptr2;
+    struct handlebars_operand op;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
+    const char * strs[] = {
+            "foo", "bar", "baz", "helicopter", NULL
+    };
+    int ret;
+    const char ** ptr1;
+    struct handlebars_string ** ptr2;
 
-        handlebars_operand_set_arrayval(compiler, &op, strs);
+    handlebars_operand_set_arrayval(context, opcode, &op, strs);
 
-        ck_assert_int_eq(handlebars_operand_type_array, op.type);
-        ck_assert_ptr_ne(NULL, op.data.array);
+    ck_assert_int_eq(handlebars_operand_type_array, op.type);
+    ck_assert_ptr_ne(NULL, op.data.array);
 
-        // Compare arrays
-        for( ptr1 = strs, ptr2 = op.data.array; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
-            ck_assert_str_eq(*ptr1, (*ptr2)->val);
-        }
+    // Compare arrays
+    for( ptr1 = strs, ptr2 = op.data.array; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
+        ck_assert_str_eq(*ptr1, (*ptr2)->val);
     }
 END_TEST
 
 START_TEST(test_operand_set_arrayval_string)
     struct handlebars_string * strings[5];
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(compiler, handlebars_opcode_type_invalid);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_invalid);
 
     strings[0] = handlebars_string_ctor(context, HBS_STRL("foo"));
     strings[1] = handlebars_string_ctor(context, HBS_STRL("bar"));
@@ -394,7 +394,7 @@ START_TEST(test_operand_set_arrayval_string)
     struct handlebars_string ** ptr1;
     struct handlebars_string ** ptr2;
 
-    handlebars_operand_set_arrayval_string(HBSCTX(compiler), opcode, &opcode->op1, strings);
+    handlebars_operand_set_arrayval_string(context, opcode, &opcode->op1, strings);
 
     ck_assert_int_eq(handlebars_operand_type_array, opcode->op1.type);
     ck_assert_ptr_ne(NULL, opcode->op1.data.array);

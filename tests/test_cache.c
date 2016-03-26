@@ -113,12 +113,12 @@ START_TEST(test_cache_execution)
 
     vm->cache = handlebars_cache_ctor(context);
 
-    handlebars_vm_execute(vm, compiler, value);
+    handlebars_vm_execute(vm, compiler->program, value);
     ck_assert_str_eq(vm->buffer->val, "baz");
 
     int i;
     for( i = 0; i < 10; i++ ) {
-        handlebars_vm_execute(vm, compiler, value);
+        handlebars_vm_execute(vm, compiler->program, value);
         ck_assert_str_eq(vm->buffer->val, "baz");
     }
 

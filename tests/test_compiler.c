@@ -95,13 +95,13 @@ START_TEST(test_compiler_is_known_helper)
 
     //ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, NULL));
     
-    id = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PATH);
+    id = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PATH);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    id->node.path.parts = parts = handlebars_ast_list_ctor(parser);
+    id->node.path.parts = parts = handlebars_ast_list_ctor(HBSCTX(parser));
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
-    path_segment = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PATH);
+    path_segment = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PATH);
     handlebars_ast_list_append(parts, path_segment);
     ck_assert_int_eq(0, handlebars_compiler_is_known_helper(compiler, id));
     
@@ -128,16 +128,16 @@ START_TEST(test_compiler_opcode)
     op2 = handlebars_opcode_ctor(compiler, handlebars_opcode_type_append_escaped);
     
     handlebars_compiler_opcode(compiler, op1);
-    ck_assert_ptr_ne(NULL, compiler->opcodes);
-    ck_assert_int_ne(0, compiler->opcodes_size);
-    ck_assert_int_eq(1, compiler->opcodes_length);
-    ck_assert_ptr_eq(op1, *compiler->opcodes);
+    ck_assert_ptr_ne(NULL, compiler->program->opcodes);
+    ck_assert_int_ne(0, compiler->program->opcodes_size);
+    ck_assert_int_eq(1, compiler->program->opcodes_length);
+    ck_assert_ptr_eq(op1, *compiler->program->opcodes);
     
     handlebars_compiler_opcode(compiler, op2);
-    ck_assert_ptr_ne(NULL, compiler->opcodes);
-    ck_assert_int_ne(0, compiler->opcodes_size);
-    ck_assert_int_eq(2, compiler->opcodes_length);
-    ck_assert_ptr_eq(op2, *(compiler->opcodes + 1));
+    ck_assert_ptr_ne(NULL, compiler->program->opcodes);
+    ck_assert_int_ne(0, compiler->program->opcodes_size);
+    ck_assert_int_eq(2, compiler->program->opcodes_length);
+    ck_assert_ptr_eq(op2, *(compiler->program->opcodes + 1));
 }
 END_TEST
 

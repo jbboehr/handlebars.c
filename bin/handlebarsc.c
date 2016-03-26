@@ -323,7 +323,7 @@ static int do_compile(void)
     }
     
     // Print
-    output = handlebars_compiler_print(compiler, 0);
+    output = handlebars_program_print(ctx, compiler->program, 0);
     fprintf(stdout, "%.*s\n", (int) output->len, output->val);
 
 error:
@@ -384,7 +384,7 @@ static int do_execute(void)
         goto error;
     }
 
-    handlebars_vm_execute(vm, compiler, context);
+    handlebars_vm_execute(vm, compiler->program, context);
 
 
     fprintf(stdout, "%.*s", (int) vm->buffer->len, vm->buffer->val);

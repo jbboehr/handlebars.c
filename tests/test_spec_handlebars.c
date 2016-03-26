@@ -393,9 +393,7 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     // Execute
-    handlebars_vm_execute(vm, compiler, context);
-
-    fprintf(stderr, "ARGGGGGGG %p %d\n", vm->buffer, vm->buffer);
+    handlebars_vm_execute(vm, compiler->program, context);
 
 #ifndef NDEBUG
     if( test->expected ) {

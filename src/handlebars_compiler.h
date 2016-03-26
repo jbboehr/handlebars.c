@@ -121,26 +121,32 @@ struct handlebars_source_node_stack {
     int i;
 };
 
+struct handlebars_program {
+    long guid;
+
+    struct handlebars_opcode ** opcodes;
+    size_t opcodes_length;
+    size_t opcodes_size;
+
+    struct handlebars_program ** children;
+    size_t children_length;
+    size_t children_size;
+
+    struct handlebars_program ** decorators;
+    size_t decorators_length;
+    size_t decorators_size;
+
+    struct handlebars_program ** programs;
+    size_t programs_index;
+};
+
 /**
  * @brief Main compiler state struct
  */
 struct handlebars_compiler {
     struct handlebars_context ctx;
-
     struct handlebars_parser * parser;
-
-    struct handlebars_opcode ** opcodes;
-    size_t opcodes_length;
-    size_t opcodes_size;
-    
-    struct handlebars_compiler ** children;
-    size_t children_length;
-    size_t children_size;
-    
-    struct handlebars_compiler ** decorators;
-    size_t decorators_length;
-    size_t decorators_size;
-    
+    struct handlebars_program * program;
     struct handlebars_block_param_stack * bps;
     struct handlebars_source_node_stack sns;
     
@@ -180,9 +186,6 @@ struct handlebars_compiler {
      * @brief Number of block params used
      */
     int block_params;
-
-    struct handlebars_compiler ** programs;
-    size_t programs_index;
 };
 
 /**

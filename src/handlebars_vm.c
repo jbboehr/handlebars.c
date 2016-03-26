@@ -495,12 +495,16 @@ ACCEPT_FUNCTION(invoke_partial)
         goto done;
     }
 
+    // Construct VM
+    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
+
     // Check for cached template, if available
     struct handlebars_compiler * compiler = NULL;
+    struct handlebars_program * program = NULL;
     struct handlebars_cache_entry * cache_entry;
     if( vm->cache && (cache_entry = handlebars_cache_find(vm->cache, tmpl)) ) {
         // Use cached
-        compiler = cache_entry->compiler;
+        program = cache_entry->program;
     } else {
         // Recompile
 
@@ -514,17 +518,16 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_compiler_set_flags(compiler, vm->flags);
         handlebars_compiler_compile(compiler, parser->program);
 
+        program = talloc_steal(vm2, compiler->program);
+
         // Save cache entry
         if( vm->cache ) {
-            handlebars_cache_add(vm->cache, tmpl, compiler);
+            handlebars_cache_add(vm->cache, tmpl, compiler->program);
         }
 
         // Cleanup parser
         handlebars_parser_dtor(parser);
     }
-
-    // Construct VM
-    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
     // Get context
     struct handlebars_value * context1 = argv[0];
@@ -540,7 +543,7 @@ ACCEPT_FUNCTION(invoke_partial)
     memcpy(&vm2->contextStack, &vm->contextStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->contextStack)));
     memcpy(&vm2->blockParamStack, &vm->blockParamStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->blockParamStack)));
 
-    handlebars_vm_execute(vm2, compiler, context2);
+    handlebars_vm_execute(vm2, program, context2);
 
     if( vm2->buffer ) {
         struct handlebars_string * tmp2 = handlebars_string_indent(
@@ -812,10 +815,10 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     handlebars_value_delref(top);
 }
 
-static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_compiler * compiler)
+static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_program * program)
 {
-	size_t i = compiler->opcodes_length;
-    struct handlebars_opcode ** opcodes = compiler->opcodes;
+	size_t i = program->opcodes_length;
+    struct handlebars_opcode ** opcodes = program->opcodes;
 
 	for( ; i > 0; i-- ) {
 		struct handlebars_opcode * opcode = *opcodes++;
@@ -824,7 +827,7 @@ static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handle
 #ifndef NDEBUG
         if( getenv("DEBUG") ) {
             struct handlebars_string * tmp = handlebars_opcode_print(HBSCTX(vm), opcode, 0);
-            fprintf(stdout, "V[%ld] P[%ld] OPCODE: %.*s\n", vm->depth, compiler->guid, (int) tmp->len, tmp->val);
+            fprintf(stdout, "V[%ld] P[%ld] OPCODE: %.*s\n", vm->depth, program->guid, (int) tmp->len, tmp->val);
             talloc_free(tmp);
         }
 #endif
@@ -862,7 +865,7 @@ static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handle
 
 struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_vm * vm,
-    long program,
+    long program_num,
     struct handlebars_value * context,
     struct handlebars_value * data,
     struct handlebars_value * block_params
@@ -870,15 +873,15 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     bool pushed_context = false;
     bool pushed_block_param = false;
 
-    if( program < 0 ) {
+    if( program_num < 0 ) {
         return handlebars_string_init(CONTEXT, 0);
     }
-    if( program >= vm->guid_index ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program: %ld", program);
+    if( program_num >= vm->guid_index ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program: %ld", program_num);
     }
 
     // Get compiler
-	struct handlebars_compiler * compiler = vm->programs[program];
+	struct handlebars_program * program = vm->programs[program_num];
 
     // Save and set buffer
     struct handlebars_string * prevBuffer = vm->buffer;
@@ -903,7 +906,7 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     }
 
     // Execute the program
-	handlebars_vm_accept(vm, compiler);
+	handlebars_vm_accept(vm, program);
 
     // Pop context stack
     if( pushed_context ) {
@@ -930,48 +933,49 @@ struct handlebars_string * handlebars_vm_execute_program(struct handlebars_vm * 
     return handlebars_vm_execute_program_ex(vm, program, context, NULL, NULL);
 }
 
-static void preprocess_opcode(struct handlebars_vm * vm, struct handlebars_opcode * opcode, struct handlebars_compiler * compiler)
+static void preprocess_opcode(struct handlebars_vm * vm, struct handlebars_opcode * opcode, struct handlebars_program * program)
 {
-    long program;
-    struct handlebars_compiler * child;
+    long program_num;
+    struct handlebars_program * child;
 
     if( opcode->type == handlebars_opcode_type_push_program ) {
         if( opcode->op1.type == handlebars_operand_type_long && !opcode->op4.data.boolval ) {
-            program = opcode->op1.data.longval;
-            assert(program < compiler->children_length);
-            child = compiler->children[program];
+            program_num = opcode->op1.data.longval;
+            assert(program_num < program->children_length);
+            child = program->children[program_num];
             opcode->op1.data.longval = child->guid;
             opcode->op4.data.boolval = 1;
         }
     }
 }
 
-static void preprocess_program(struct handlebars_vm * vm, struct handlebars_compiler * compiler) {
+static void preprocess_program(struct handlebars_vm * vm, struct handlebars_program * program) {
     size_t i;
 
-    compiler->guid = vm->guid_index++;
+    program->guid = vm->guid_index++;
 
     // Realloc
-    if( compiler->guid >= talloc_array_length(vm->programs) ) {
-        vm->programs = MC(handlebars_talloc_realloc(vm, vm->programs, struct handlebars_compiler *, talloc_array_length(vm->programs) * 2));
+    if( program->guid >= talloc_array_length(vm->programs) ) {
+        vm->programs = MC(handlebars_talloc_realloc(vm, vm->programs, struct handlebars_program *, talloc_array_length(vm->programs) * 2));
     }
 
-    vm->programs[compiler->guid] = compiler;
+    vm->programs[program->guid] = program;
 
-    for( i = 0; i < compiler->children_length; i++ ) {
-        preprocess_program(vm, compiler->children[i]);
+    for( i = 0; i < program->children_length; i++ ) {
+        preprocess_program(vm, program->children[i]);
     }
 
-    for( i = 0; i < compiler->opcodes_length; i++ ) {
-        preprocess_opcode(vm, compiler->opcodes[i], compiler);
+    for( i = 0; i < program->opcodes_length; i++ ) {
+        preprocess_opcode(vm, program->opcodes[i], program);
     }
 }
 
 
 struct handlebars_string * handlebars_vm_execute(
-		struct handlebars_vm * vm, struct handlebars_compiler * compiler,
-		struct handlebars_value * context)
-{
+		struct handlebars_vm * vm,
+        struct handlebars_program * program,
+		struct handlebars_value * context
+) {
     jmp_buf * prev = HBSCTX(vm)->jmp;
     jmp_buf buf;
 
@@ -983,15 +987,14 @@ struct handlebars_string * handlebars_vm_execute(
     }
 
     // Preprocess
-    if( compiler->programs ) {
-        vm->programs = compiler->programs;
-        vm->guid_index = compiler->programs_index;
+    if( program->programs ) {
+        vm->programs = program->programs;
+        vm->guid_index = program->programs_index;
     } else {
-        vm->programs = compiler->programs = MC(handlebars_talloc_array(compiler, struct handlebars_compiler *, 32));
-        preprocess_program(vm, compiler);
-        compiler->programs_index = vm->guid_index;
-        compiler->programs = talloc_steal(compiler, vm->programs);
-        compiler->programs_index = vm->guid_index;
+        vm->programs = program->programs = MC(handlebars_talloc_array(program, struct handlebars_program *, 32));
+        preprocess_program(vm, program);
+        program->programs = talloc_steal(program, vm->programs);
+        program->programs_index = vm->guid_index;
     }
 
     // Save context

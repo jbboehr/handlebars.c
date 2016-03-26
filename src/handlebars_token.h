@@ -97,6 +97,22 @@ int handlebars_token_reverse_readable_type(const char * type) HBS_ATTR_NONNULL_A
  * @brief Print a token into a human-readable string
  *
  * @param[in] context The handlebars context
+ * @param[in] string The string to append the result
+ * @param[in] token The token to print
+ * @param[in] flags The print flags
+ * @return The printed token
+ */
+struct handlebars_string * handlebars_token_print_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    struct handlebars_token * token,
+    int flags
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+/**
+ * @brief Print a token into a human-readable string
+ *
+ * @param[in] context The handlebars context
  * @param[in] token The token to print
  * @param[in] flags The print flags
  * @return The printed token

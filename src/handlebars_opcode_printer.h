@@ -95,14 +95,16 @@ struct handlebars_string * handlebars_opcode_print(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
- * @brief Print a compiler context
+ * @brief Print a program
  *
- * @param[in] compiler The compiler context
+ * @param[in] context The handlebars conteext
+ * @param[in] program The program to print
  * @param[in] flags
  * @return void
  */
-struct handlebars_string * handlebars_compiler_print(
-    struct handlebars_compiler * compiler,
+struct handlebars_string * handlebars_program_print(
+    struct handlebars_context * context,
+    struct handlebars_program * program,
     int flags
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 

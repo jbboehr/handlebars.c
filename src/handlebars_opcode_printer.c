@@ -164,40 +164,43 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
     printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("-----\n"));
 }
 
-static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_compiler * compiler)
+static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_program * program)
 {
     size_t i;
-    struct handlebars_compiler * child;
+    struct handlebars_program * child;
 
     // Print opcodes
-    printer->opcodes = compiler->opcodes;
-    printer->opcodes_length = compiler->opcodes_length;
+    printer->opcodes = program->opcodes;
+    printer->opcodes_length = program->opcodes_length;
     handlebars_opcode_printer_array_print(printer);
     
     printer->indent++;
     
     // Print decorators
-    for( i = 0; i < compiler->decorators_length; i++ ) {
+    for( i = 0; i < program->decorators_length; i++ ) {
         printer->output = append_indent(CONTEXT, printer->output, (size_t) printer->indent);
         printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("DECORATOR\n"));
-        child = *(compiler->decorators + i);
+        child = *(program->decorators + i);
         handlebars_opcode_printer_print(printer, child);
     }
     
     // Print children
-    for( i = 0; i < compiler->children_length; i++ ) {
-        child = *(compiler->children + i);
+    for( i = 0; i < program->children_length; i++ ) {
+        child = *(program->children + i);
         handlebars_opcode_printer_print(printer, child);
     }
     
     printer->indent--;
 }
 
-struct handlebars_string * handlebars_compiler_print(struct handlebars_compiler * compiler, int flags)
-{
-    struct handlebars_opcode_printer * printer = handlebars_opcode_printer_ctor(HBSCTX(compiler));
-    printer->ctx = HBSCTX(compiler);
+struct handlebars_string * handlebars_program_print(
+    struct handlebars_context * context,
+    struct handlebars_program * program,
+    int flags
+) {
+    struct handlebars_opcode_printer * printer = handlebars_opcode_printer_ctor(context);
+    printer->ctx = context;
     printer->flags = flags;
-    handlebars_opcode_printer_print(printer, compiler);
+    handlebars_opcode_printer_print(printer, program);
     return printer->output;
 }

@@ -257,7 +257,7 @@ START_TEST(test_mustache_spec)
     }
 
     // Execute
-    handlebars_vm_execute(vm, compiler, test->data);
+    handlebars_vm_execute(vm, compiler->program, test->data);
 
 #ifndef NDEBUG
     if( test->expected ) {

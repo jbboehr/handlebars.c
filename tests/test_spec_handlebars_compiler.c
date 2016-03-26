@@ -66,10 +66,11 @@ static char * export_dir = NULL;
 
 
 static int loadTestOpcodeOperand(
-        struct handlebars_compiler * compiler,
-        struct handlebars_opcode * opcode,
-        struct handlebars_operand * operand,
-        json_object * object
+    struct handlebars_context * context,
+    struct handlebars_program * program,
+    struct handlebars_opcode * opcode,
+    struct handlebars_operand * operand,
+    json_object * object
 ) {
     if( !object ) {
         return 0;
@@ -82,7 +83,7 @@ static int loadTestOpcodeOperand(
             handlebars_operand_set_boolval(operand, json_object_get_boolean(object) ? true : false);
             break;
         case json_type_string:
-            handlebars_operand_set_strval(compiler, operand, json_object_get_string(object));
+            handlebars_operand_set_strval(context, opcode, operand, json_object_get_string(object));
             break;
         case json_type_int:
             handlebars_operand_set_longval(operand, json_object_get_int(object));
@@ -99,13 +100,13 @@ static int loadTestOpcodeOperand(
                 *arrptr++ = handlebars_talloc_strdup(opcode, json_object_get_string(array_item));
             }
             *arrptr++ = NULL;
-            handlebars_operand_set_arrayval(compiler, operand, arr);
+            handlebars_operand_set_arrayval(context, opcode, operand, arr);
             break;
         }
         case json_type_double: {
             char tmp[64];
             snprintf(tmp, 63, "%g", json_object_get_double(object));
-            handlebars_operand_set_strval(compiler, operand, tmp);
+            handlebars_operand_set_strval(context, opcode, operand, tmp);
             //handlebars_operand_set_stringval(opcode, operand, json_object_get_string(object));
             break;
         }
@@ -118,9 +119,10 @@ static int loadTestOpcodeOperand(
 }
 
 static int loadTestOpcodeLoc(
-        struct handlebars_compiler * compiler,
-        struct handlebars_opcode * opcode,
-        json_object * object
+    struct handlebars_context * context,
+    struct handlebars_program * program,
+    struct handlebars_opcode * opcode,
+    json_object * object
 ) {
     struct json_object * cur = NULL;
     struct json_object * line = NULL;
@@ -166,7 +168,8 @@ error:
     return 1;
 }
 
-static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * compiler, json_object * object)
+static struct handlebars_opcode * loadTestOpcode(struct handlebars_context * context,
+                                                 struct handlebars_program * program, json_object * object)
 {
     struct handlebars_opcode * opcode = NULL;
     enum handlebars_opcode_type type;
@@ -187,7 +190,7 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
     }
     
     // Construct opcode
-    opcode = handlebars_opcode_ctor(compiler, type);
+    opcode = handlebars_opcode_ctor(context, type);
     
     // Get args
     cur = json_object_object_get(object, "args");
@@ -201,22 +204,22 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
     switch( array_len ) {
 		case 4: {
             array_item = json_object_array_get_idx(cur, 3);
-            loadTestOpcodeOperand(compiler, opcode, &opcode->op4, array_item);
+            loadTestOpcodeOperand(context, program, opcode, &opcode->op4, array_item);
 		}
         /* no break */
         case 3: {
             array_item = json_object_array_get_idx(cur, 2);
-            loadTestOpcodeOperand(compiler, opcode, &opcode->op3, array_item);
+            loadTestOpcodeOperand(context, program, opcode, &opcode->op3, array_item);
         }
         /* no break */
         case 2: {
             array_item = json_object_array_get_idx(cur, 1);
-            loadTestOpcodeOperand(compiler, opcode, &opcode->op2, array_item);
+            loadTestOpcodeOperand(context, program, opcode, &opcode->op2, array_item);
         }
         /* no break */
         case 1: {
             array_item = json_object_array_get_idx(cur, 0);
-            loadTestOpcodeOperand(compiler, opcode, &opcode->op1, array_item);
+            loadTestOpcodeOperand(context, program, opcode, &opcode->op1, array_item);
             break;
         }
     }
@@ -228,7 +231,7 @@ static struct handlebars_opcode * loadTestOpcode(struct handlebars_compiler * co
         //fprintf(stderr, "Opcode loc was not an object!\n");
         //goto error;
     } else {
-        loadTestOpcodeLoc(compiler, opcode, cur);
+        loadTestOpcodeLoc(context, program, opcode, cur);
     }
     
 error:
@@ -250,7 +253,7 @@ static int loadTestCompilerDepths(struct handlebars_compiler * compiler, json_ob
 }
 */
 
-static int loadTestCompiler(struct handlebars_compiler * compiler, json_object * object)
+static int loadTestProgram(struct handlebars_context * context, struct handlebars_program * program, json_object * object)
 {
     int error = 0;
     json_object * cur = NULL;
@@ -283,8 +286,8 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     array_len = json_object_array_length(cur);
     
     // Allocate opcodes array
-    compiler->opcodes_size += array_len;
-    compiler->opcodes = talloc_zero_array(compiler, struct handlebars_opcode *, compiler->opcodes_size);
+    program->opcodes_size += array_len;
+    program->opcodes = talloc_zero_array(program, struct handlebars_opcode *, program->opcodes_size);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -293,8 +296,8 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
             fprintf(stderr, "Warning: opcode was not an object, was: %s\n", json_object_get_string(array_item));
             continue;
         }
-        
-        compiler->opcodes[compiler->opcodes_length++] = loadTestOpcode(compiler, array_item);
+
+        program->opcodes[program->opcodes_length++] = loadTestOpcode(context, program, array_item);
     }
     
     // Load children
@@ -308,21 +311,21 @@ static int loadTestCompiler(struct handlebars_compiler * compiler, json_object *
     array_len = json_object_array_length(cur);
     
     // Allocate children array
-    compiler->children_size += array_len;
-    compiler->children = talloc_zero_array(compiler, struct handlebars_compiler *, compiler->children_size);
+    program->children_size += array_len;
+    program->children = talloc_zero_array(program, struct handlebars_program *, program->children_size);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
-        struct handlebars_compiler * subcompiler = handlebars_compiler_ctor(HBSCTX(compiler));
+        struct handlebars_program * subprogram = handlebars_talloc_zero(program, struct handlebars_program);
         
         array_item = json_object_array_get_idx(cur, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: child was not an object, was: %s\n", json_object_get_string(array_item));
             continue;
         }
-        
-        compiler->children[compiler->children_length++] = subcompiler;
-        loadTestCompiler(subcompiler, array_item);
+
+        program->children[program->children_length++] = subprogram;
+        loadTestProgram(context, subprogram, array_item);
     }
 
 error:
@@ -332,29 +335,23 @@ error:
 static struct handlebars_string * loadTestOpcodesPrint(json_object * object)
 {
     struct handlebars_context * context;
-    struct handlebars_parser * parser;
-    struct handlebars_compiler * compiler;
+    struct handlebars_program * program;
     struct handlebars_string * output;
 
     context = handlebars_context_ctor_ex(rootctx);
-    parser = handlebars_parser_ctor(context);
-    compiler = handlebars_compiler_ctor(HBSCTX(context));
+    program = handlebars_talloc_zero(context, struct handlebars_program);
     
-    loadTestCompiler(compiler, object);
+    loadTestProgram(context, program, object);
 
-    output = handlebars_compiler_print(compiler, 0);
+    output = handlebars_program_print(context, program, 0);
     output = talloc_steal(rootctx, output);
-    
-error:
-    handlebars_compiler_dtor(compiler);
+
     handlebars_context_dtor(context);
     return output;
 }
 
 static int loadSpecTestKnownHelpers(struct compiler_test * test, json_object * object)
 {
-    struct json_object * array_item = NULL;
-    int array_len = 0;
     // Let's just allocate a nice fat array >.>
     char ** known_helpers = talloc_zero_array(rootctx, char *, 32);
     char ** ptr = known_helpers;
@@ -646,7 +643,7 @@ START_TEST(handlebars_spec_compiler)
     ck_assert_int_eq(0, ctx->num);
     
     // Printer
-    actual = handlebars_compiler_print(compiler, 0);
+    actual = handlebars_program_print(ctx, compiler->program, 0);
     
     // Check
     /*if( test->exception ) {
