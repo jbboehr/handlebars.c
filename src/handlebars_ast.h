@@ -240,10 +240,28 @@ struct handlebars_string * handlebars_ast_node_get_string_mode_value(
 	struct handlebars_ast_node * ast_node
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Get the path child of an AST node
+ *
+ * @param[in] node The parent node
+ * @return The path AST node, or NULL
+ */
 struct handlebars_ast_node * handlebars_ast_node_get_path(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Get the params child of an AST node
+ *
+ * @param[in] node The parent node
+ * @return The params node list, or NULL
+ */
 struct handlebars_ast_list * handlebars_ast_node_get_params(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Get the hash child of an AST node
+ *
+ * @param[in] node The parent node
+ * @return The hash AST node, or NULL
+ */
 struct handlebars_ast_node * handlebars_ast_node_get_hash(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
 
 /**

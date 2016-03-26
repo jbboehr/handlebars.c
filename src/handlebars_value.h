@@ -58,20 +58,22 @@ struct handlebars_value_user {
     void * ptr;
 };
 
+union handlebars_value_internals {
+    long lval;
+    double dval;
+    struct handlebars_string * string;
+    struct handlebars_map * map;
+    struct handlebars_stack * stack;
+    struct handlebars_value_user usr;
+    void * ptr;
+    handlebars_helper_func helper;
+    struct handlebars_options * options;
+};
+
 struct handlebars_value {
 	enum handlebars_value_type type;
     unsigned long flags;
-	union {
-        long lval;
-        double dval;
-        struct handlebars_string * string;
-        struct handlebars_map * map;
-        struct handlebars_stack * stack;
-        struct handlebars_value_user usr;
-        void * ptr;
-        handlebars_helper_func helper;
-        struct handlebars_options * options;
-	} v;
+    union handlebars_value_internals v;
     int refcount;
 	struct handlebars_context * ctx;
 };

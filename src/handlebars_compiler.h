@@ -94,14 +94,16 @@ enum handlebars_compiler_result_flag {
     handlebars_compiler_result_flag_all = ((1 << 4) - 1)
 };
 
+struct handlebars_block_param_pair {
+    struct handlebars_string * block_param1;
+    struct handlebars_string * block_param2;
+};
+
 struct handlebars_block_param_stack {
     /**
      * @brief Block param stack
      */
-    struct {
-        struct handlebars_string * block_param1;
-        struct handlebars_string * block_param2;
-    } s[HANDLEBARS_COMPILER_STACK_SIZE];
+    struct handlebars_block_param_pair s[HANDLEBARS_COMPILER_STACK_SIZE];
     
     /**
      * @brief Block param stack index
