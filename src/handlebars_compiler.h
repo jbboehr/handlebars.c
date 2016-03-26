@@ -124,6 +124,21 @@ struct handlebars_source_node_stack {
 struct handlebars_program {
     long guid;
 
+    /**
+     * @brief Compiler flags
+     */
+    unsigned long flags;
+
+    /**
+     * @brief Result flags
+     */
+    int result_flags;
+
+    /**
+     * @brief Number of block params used
+     */
+    int block_params;
+
     struct handlebars_opcode ** opcodes;
     size_t opcodes_length;
     size_t opcodes_size;
@@ -176,16 +191,6 @@ struct handlebars_compiler {
     bool explicit_partial_context;
     bool ignore_standalone;
     bool alternate_decorators;
-    
-    /**
-     * @brief Result flags
-     */
-    int result_flags;
-    
-    /**
-     * @brief Number of block params used
-     */
-    int block_params;
 };
 
 /**

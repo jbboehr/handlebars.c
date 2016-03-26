@@ -186,7 +186,7 @@ static inline void handlebars_compiler_add_depth(
     assert(compiler != NULL);
     
     if( depth > 0 ) {
-        compiler->result_flags |= handlebars_compiler_result_flag_use_depths;
+        compiler->program->result_flags |= handlebars_compiler_result_flag_use_depths;
     }
 }
 
@@ -295,10 +295,11 @@ static inline long handlebars_compiler_compile_program(
     
     // compile
     handlebars_compiler_compile(subcompiler, node);
+    subcompiler->program->flags = subcompiler->flags;
     guid = compiler->guid++;
 
     // Don't propogate use_decorators
-    compiler->result_flags |= (subcompiler->result_flags & ~handlebars_compiler_result_flag_use_decorators);
+    program->result_flags |= (subcompiler->program->result_flags & ~handlebars_compiler_result_flag_use_decorators);
     
     // Realloc children array
     if( program->children_size <= program->children_length ) {
@@ -606,13 +607,13 @@ static inline void handlebars_compiler_accept_program(
     
     compiler->bps->i--;
     if( 1 == statement_count ) {
-        compiler->result_flags |= handlebars_compiler_result_flag_is_simple;
+        compiler->program->result_flags |= handlebars_compiler_result_flag_is_simple;
     }
     if( block_param1 ) {
-        compiler->block_params++;
+        compiler->program->block_params++;
     }
     if( block_param2 ) {
-        compiler->block_params++;
+        compiler->program->block_params++;
     }
     // @todo fix
     // this.blockParams = program.blockParams ? program.blockParams.length : 0;
@@ -721,7 +722,7 @@ static inline void _handlebars_compiler_accept_partial(
     assert(node != NULL);
     assert(name != NULL);
 
-    compiler->result_flags |= handlebars_compiler_result_flag_use_partial;
+    compiler->program->result_flags |= handlebars_compiler_result_flag_use_partial;
 
     count = (params ? handlebars_ast_list_count(params) : 0);
     
@@ -879,9 +880,9 @@ static inline void handlebars_compiler_accept_decorator(
         program->decorators[program->decorators_length++] = talloc_steal(program, subcompiler->program);
         compiler = subcompiler;
         
-        origcompiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
+        origcompiler->program->result_flags |= handlebars_compiler_result_flag_use_decorators;
     } else {
-        compiler->result_flags |= handlebars_compiler_result_flag_use_decorators;
+        compiler->program->result_flags |= handlebars_compiler_result_flag_use_decorators;
     }
     
 	original = handlebars_ast_node_get_string_mode_value(CONTEXT, path);
@@ -1322,7 +1323,9 @@ void handlebars_compiler_compile(
         }
     }
 
+    compiler->program->flags = compiler->flags;
     handlebars_compiler_accept(compiler, node);
+
 done:
     HBSCTX(compiler)->jmp = prev;
 }
