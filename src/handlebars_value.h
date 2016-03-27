@@ -51,6 +51,7 @@ struct handlebars_value_iterator {
     struct handlebars_value * value;
     struct handlebars_value * current;
     void * usr;
+    bool (*next)(struct handlebars_value_iterator * it);
 };
 
 struct handlebars_user {
@@ -110,7 +111,6 @@ void handlebars_value_dtor(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse) HBS_ATTR_NONNULL_ALL;
 bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
-bool handlebars_value_iterator_next(struct handlebars_value_iterator * it) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_value * handlebars_value_call(
     struct handlebars_value * value,

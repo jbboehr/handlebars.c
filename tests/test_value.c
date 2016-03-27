@@ -173,7 +173,7 @@ START_TEST(test_array_iterator)
 
     ck_assert_ptr_ne(it.current, NULL);
 
-    for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+    for( ; it.current != NULL; it.next(&it) ) {
         ck_assert_ptr_ne(it.current, NULL);
         ck_assert_int_eq(it.current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
         ck_assert_int_eq(it.current->v.lval, ++i);
@@ -215,7 +215,7 @@ START_TEST(test_map_iterator)
 
     ck_assert_ptr_ne(it.current, NULL);
 
-    for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+    for( ; it.current != NULL; it.next(&it) ) {
         ++i;
         ck_assert_ptr_ne(it.current, NULL);
         ck_assert_int_eq(it.current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
@@ -244,7 +244,7 @@ START_TEST(test_array_iterator_json)
     handlebars_value_iterator_init(&it, value);
     ck_assert_ptr_ne(it.current, NULL);
 
-    for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+    for( ; it.current != NULL; it.next(&it) ) {
         ck_assert_ptr_ne(it.current, NULL);
         ck_assert_int_eq(it.current->type, HANDLEBARS_VALUE_TYPE_INTEGER);
         ck_assert_int_eq(it.current->v.lval, ++i);
@@ -266,7 +266,7 @@ START_TEST(test_map_iterator_json)
     handlebars_value_iterator_init(&it, value);
     ck_assert_ptr_ne(it.current, NULL);
 
-    for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+    for( ; it.current != NULL; it.next(&it) ) {
         ++i;
         ck_assert_ptr_ne(it.current, NULL);
         ck_assert_int_eq(it.current->type, HANDLEBARS_VALUE_TYPE_INTEGER);

@@ -211,7 +211,7 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
         case HANDLEBARS_VALUE_TYPE_MAP:
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             handlebars_value_iterator_init(&it, value);
-            for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+            for( ; it.current != NULL; it.next(&it) ) {
                 handlebars_value_convert_ex(it.current, recurse);
             }
             break;
@@ -219,6 +219,55 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
             // do nothing
             break;
     }
+}
+
+static bool handlebars_value_iterator_next_void(struct handlebars_value_iterator * it)
+{
+    return false;
+}
+
+static bool handlebars_value_iterator_next_stack(struct handlebars_value_iterator * it)
+{
+    struct handlebars_value * value = it->value;
+
+    assert(value != NULL);
+    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
+
+    if( it->current != NULL ) {
+        handlebars_value_delref(it->current);
+        it->current = NULL;
+    }
+
+    if( it->index >= handlebars_stack_length(value->v.stack) - 1 ) {
+        return false;
+    }
+
+    it->index++;
+    it->current = handlebars_stack_get(value->v.stack, it->index);
+    return true;
+}
+
+static bool handlebars_value_iterator_next_map(struct handlebars_value_iterator * it)
+{
+    struct handlebars_map_entry * entry;
+
+    assert(it->value != NULL);
+    assert(it->value->type == HANDLEBARS_VALUE_TYPE_MAP);
+
+    if( it->current != NULL ) {
+        handlebars_value_delref(it->current);
+        it->current = NULL;
+    }
+
+    entry = talloc_get_type(it->usr, struct handlebars_map_entry);
+    if( !entry || !entry->next ) {
+        return false;
+    }
+
+    it->usr = (void *) (entry = entry->next);
+    it->key = entry->key;
+    it->current = entry->value;
+    handlebars_value_addref(it->current);
 }
 
 bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
@@ -232,6 +281,7 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
             it->value = value;
             it->current = handlebars_stack_get(value->v.stack, 0);
             it->length = handlebars_stack_length(value->v.stack);
+            it->next = &handlebars_value_iterator_next_stack;
             return true;
 
         case HANDLEBARS_VALUE_TYPE_MAP:
@@ -242,8 +292,11 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
                 it->key = entry->key;
                 it->current = entry->value;
                 it->length = value->v.map->i;
+                it->next = &handlebars_value_iterator_next_map;
                 handlebars_value_addref(it->current);
                 return true;
+            } else {
+                it->next = &handlebars_value_iterator_next_void;
             }
             break;
 
@@ -251,92 +304,12 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
             return handlebars_value_get_handlers(value)->iterator(it, value);
 
         default:
+            it->next = &handlebars_value_iterator_next_void;
             //handlebars_context_throw(value->ctx, HANDLEBARS_ERROR, "Cannot iterator over type %d", value->type);
             break;
     }
 
     return false;
-}
-/*
-struct handlebars_value_iterator * handlebars_value_iterator_ctor(struct handlebars_value * value)
-{
-    struct handlebars_value_iterator * it;
-    struct handlebars_map_entry * entry;
-
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
-            it->value = value;
-            it->current = handlebars_stack_get(value->v.stack, 0);
-            it->length = handlebars_stack_length(value->v.stack);
-            break;
-        case HANDLEBARS_VALUE_TYPE_MAP:
-            it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
-            entry = value->v.map->first;
-            if( entry ) {
-                it->value = value;
-                it->usr = (void *) entry;
-                it->key = entry->key;
-                it->current = entry->value;
-                it->length = value->v.map->i;
-                handlebars_value_addref(it->current);
-            }
-            break;
-        case HANDLEBARS_VALUE_TYPE_USER:
-            it = value->handlers->iterator(value);
-            break;
-        default:
-            it = MC(handlebars_talloc_zero(value, struct handlebars_value_iterator));
-            //handlebars_context_throw(value->ctx, HANDLEBARS_ERROR, "Cannot iterator over type %d", value->type);
-            break;
-    }
-
-    return it;
-}
-*/
-
-bool handlebars_value_iterator_next(struct handlebars_value_iterator * it)
-{
-    struct handlebars_value * value;
-    struct handlebars_map_entry * entry;
-    bool ret = false;
-
-    assert(it != NULL);
-    assert(it->value != NULL);
-
-    value = it->value;
-    if( it->current != NULL ) {
-        handlebars_value_delref(it->current);
-        it->current = NULL;
-    }
-
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            if( it->index < handlebars_stack_length(value->v.stack) - 1 ) {
-                ret = true;
-                it->index++;
-                it->current = handlebars_stack_get(value->v.stack, it->index);
-            }
-            break;
-        case HANDLEBARS_VALUE_TYPE_MAP:
-            entry = talloc_get_type(it->usr, struct handlebars_map_entry);
-            if( entry && entry->next ) {
-                ret = true;
-                it->usr = (void *) (entry = entry->next);
-                it->key = entry->key;
-                it->current = entry->value;
-                handlebars_value_addref(it->current);
-            }
-            break;
-        case HANDLEBARS_VALUE_TYPE_USER:
-            ret = handlebars_value_get_handlers(value)->next(it);
-            break;
-        default:
-            // do nothing
-            break;
-    }
-
-    return ret;
 }
 
 struct handlebars_value * handlebars_value_call(struct handlebars_value * value, HANDLEBARS_HELPER_ARGS)
@@ -390,7 +363,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "[");
             handlebars_value_iterator_init(&it, value);
-            for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+            for( ; it.current != NULL; it.next(&it) ) {
                 char * tmp = handlebars_value_dump(it.current, depth + 1);
                 buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%ld => %s\n", indent2, it.index, tmp);
                 handlebars_talloc_free(tmp);
@@ -400,7 +373,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
         case HANDLEBARS_VALUE_TYPE_MAP:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "{");
             handlebars_value_iterator_init(&it, value);
-            for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+            for( ; it.current != NULL; it.next(&it) ) {
                 char * tmp = handlebars_value_dump(it.current, depth + 1);
                 buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%.*s => %s\n", indent2, (int) it.key->len, it.key->val, tmp);
                 handlebars_talloc_free(tmp);
@@ -462,7 +435,7 @@ struct handlebars_string * handlebars_value_expression_append(
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             handlebars_value_iterator_init(&it, value);
             bool first = true;
-            for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+            for( ; it.current != NULL; it.next(&it) ) {
                 if( !first ) {
                     string = handlebars_string_append(value->ctx, string, HBS_STRL(","));
                 }
@@ -491,7 +464,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             new_value = handlebars_value_ctor(CONTEXT);
             handlebars_value_array_init(new_value);
             handlebars_value_iterator_init(&it, value);
-            for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+            for( ; it.current != NULL; it.next(&it) ) {
                 handlebars_stack_set(new_value->v.stack, it.index, it.current);
             }
             break;
@@ -499,7 +472,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             new_value = handlebars_value_ctor(CONTEXT);
             handlebars_value_map_init(new_value);
             handlebars_value_iterator_init(&it, value);
-            for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+            for( ; it.current != NULL; it.next(&it) ) {
                 handlebars_map_update(new_value->v.map, it.key, it.current);
             }
             break;

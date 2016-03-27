@@ -396,11 +396,11 @@ static inline struct handlebars_value * merge_hash(struct handlebars_context * c
         context2 = handlebars_value_ctor(context);
         handlebars_value_map_init(context2);
         handlebars_value_iterator_init(&it, context1);
-        for( ; it.current ; handlebars_value_iterator_next(&it) ) {
+        for( ; it.current ; it.next(&it) ) {
             handlebars_map_update(context2->v.map, it.key, it.current);
         }
         handlebars_value_iterator_init(&it, hash);
-        for( ; it.current ; handlebars_value_iterator_next(&it) ) {
+        for( ; it.current ; it.next(&it) ) {
             handlebars_map_update(context2->v.map, it.key, it.current);
         }
     } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {

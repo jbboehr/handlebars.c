@@ -379,7 +379,7 @@ FIXTURE_FN(931412676)
     handlebars_value_map_init(frame);
     struct handlebars_value_iterator it;
     handlebars_value_iterator_init(&it, options->data);
-    for( ; it.current; handlebars_value_iterator_next(&it) ) {
+    for( ; it.current; it.next(&it) ) {
         if( 0 == strcmp(it.key->val, "depth") ) {
             struct handlebars_value * tmp = handlebars_value_ctor(CONTEXT);
             handlebars_value_integer(tmp, handlebars_value_get_intval(it.current) + 1);
@@ -959,11 +959,11 @@ FIXTURE_FN(2919388099)
     handlebars_value_map_init(frame);
     struct handlebars_value_iterator it;
     handlebars_value_iterator_init(&it, options->data);
-    for (; it.current; handlebars_value_iterator_next(&it)) {
+    for (; it.current; it.next(&it)) {
         handlebars_map_update(frame->v.map, it.key, it.current);
     }
     handlebars_value_iterator_init(&it, options->hash);
-    for (; it.current; handlebars_value_iterator_next(&it)) {
+    for (; it.current; it.next(&it)) {
         handlebars_map_update(frame->v.map, it.key, it.current);
     }
     handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
@@ -1299,7 +1299,7 @@ FIXTURE_FN(3878511480)
     if( !handlebars_value_is_empty(context) ) {
         handlebars_value_iterator_init(&it, context);
         tmp = handlebars_talloc_strdup(options->vm, "<ul>");
-        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+        for (; it.current != NULL; it.next(&it)) {
             struct handlebars_string * tmp2 = handlebars_vm_execute_program(options->vm, options->program, it.current);
             tmp = handlebars_talloc_asprintf_append(
                     tmp,
@@ -1570,14 +1570,14 @@ void load_fixtures(struct handlebars_value * value)
             } else {
                 // Recurse
                 handlebars_value_iterator_init(&it, value);
-                for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+                for( ; it.current != NULL; it.next(&it) ) {
                     load_fixtures(it.current);
                 }
             }
             break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             handlebars_value_iterator_init(&it, value);
-            for( ; it.current != NULL; handlebars_value_iterator_next(&it) ) {
+            for( ; it.current != NULL; it.next(&it) ) {
                 load_fixtures(it.current);
             }
             break;

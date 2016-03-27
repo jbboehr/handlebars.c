@@ -141,6 +141,59 @@ static struct handlebars_value * std_json_array_find(struct handlebars_value * v
     return handlebars_value_from_json_object(CONTEXT, item);
 }
 
+static bool std_json_iterator_next_void(struct handlebars_value_iterator * it)
+{
+    return false;
+}
+
+static bool std_json_iterator_next_object(struct handlebars_value_iterator * it)
+{
+    struct handlebars_value * value = it->value;
+    struct lh_entry * entry;
+    char * tmp;
+
+    assert(value != NULL);
+    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
+
+    if( it->current != NULL ) {
+        handlebars_value_delref(it->current);
+        it->current = NULL;
+    }
+
+    entry = (struct lh_entry *) it->usr;
+    if( !entry || !entry->next ) {
+        return false;
+    }
+
+    it->usr = (void *) (entry = entry->next);
+    tmp = (char *) entry->k;
+    it->key = handlebars_string_ctor(value->ctx, tmp, strlen(tmp));
+    it->current = handlebars_value_from_json_object(CONTEXT, (struct json_object *) entry->v);
+    return true;
+}
+
+static bool std_json_iterator_next_array(struct handlebars_value_iterator * it)
+{
+    struct handlebars_value * value = it->value;
+    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
+
+    assert(value != NULL);
+    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
+
+    if( it->current != NULL ) {
+        handlebars_value_delref(it->current);
+        it->current = NULL;
+    }
+
+    if( it->index >= json_object_array_length(intern) - 1 ) {
+        return false;
+    }
+
+    it->index++;
+    it->current = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, it->index));
+    return true;
+}
+
 bool std_json_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
 {
     struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
@@ -157,59 +210,24 @@ bool std_json_iterator_init(struct handlebars_value_iterator * it, struct handle
                 it->key = handlebars_string_ctor(value->ctx, tmp, strlen(tmp));
                 it->current = handlebars_value_from_json_object(CONTEXT, (json_object *) entry->v);
                 it->length = (size_t) json_object_object_length(intern);
+                it->next = &std_json_iterator_next_object;
                 return true;
+            } else {
+                it->next = &std_json_iterator_next_void;
             }
             break;
         case json_type_array:
             it->index = 0;
             it->current = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, (int) it->index));
             it->length = (size_t) json_object_array_length(intern);
+            it->next = &std_json_iterator_next_array;
             return true;
         default:
-            // do nothing
+            it->next = &std_json_iterator_next_void;
             break;
     }
 
     return false;
-}
-
-bool std_json_iterator_next(struct handlebars_value_iterator * it)
-{
-    struct handlebars_value * value = it->value;
-    struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
-    struct lh_entry * entry;
-    bool ret = false;
-
-    if( it->key ) {
-        handlebars_talloc_free(it->key);
-        it->key = NULL;
-    }
-
-    switch( json_object_get_type(intern) ) {
-        case json_type_object:
-            entry = (struct lh_entry *) it->usr;
-            if( entry && entry->next ) {
-                char * tmp;
-                ret = true;
-                it->usr = (void *) (entry = entry->next);
-                tmp = (char *) entry->k;
-                it->key = handlebars_string_ctor(value->ctx, tmp, strlen(tmp));
-                it->current = handlebars_value_from_json_object(CONTEXT, (struct json_object *) entry->v);
-            }
-            break;
-        case json_type_array:
-            if( it->index < json_object_array_length(intern) - 1 ) {
-                ret = true;
-                it->index++;
-                it->current = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, it->index));
-            }
-            break;
-        default:
-            // @todo throw
-            break;
-    }
-
-    return ret;
 }
 
 long std_json_count(struct handlebars_value * value)
@@ -235,7 +253,6 @@ static struct handlebars_value_handlers handlebars_value_std_json_handlers = {
     &std_json_map_find,
     &std_json_array_find,
     &std_json_iterator_init,
-    &std_json_iterator_next,
     NULL, // call
     &std_json_count
 };

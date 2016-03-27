@@ -341,7 +341,7 @@ static inline void run_test(struct generic_test * test, int _i)
         helpers = handlebars_value_from_json_object(ctx, test->globalHelpers);
         load_fixtures(helpers);
         handlebars_value_iterator_init(&it, helpers);
-        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+        for (; it.current != NULL; it.next(&it)) {
             //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
                 handlebars_map_update(vm->helpers->v.map, it.key, it.current);
             //}
@@ -352,7 +352,7 @@ static inline void run_test(struct generic_test * test, int _i)
         helpers = handlebars_value_from_json_object(ctx, test->helpers);
         load_fixtures(helpers);
         handlebars_value_iterator_init(&it, helpers);
-        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+        for (; it.current != NULL; it.next(&it)) {
             //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
             handlebars_map_update(vm->helpers->v.map, it.key, it.current);
             //}
@@ -367,7 +367,7 @@ static inline void run_test(struct generic_test * test, int _i)
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->globalPartials);
         load_fixtures(partials);
         handlebars_value_iterator_init(&it, partials);
-        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+        for (; it.current != NULL; it.next(&it)) {
             handlebars_map_update(vm->partials->v.map, it.key, it.current);
         }
         handlebars_value_delref(partials);
@@ -376,7 +376,7 @@ static inline void run_test(struct generic_test * test, int _i)
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->partials);
         load_fixtures(partials);
         handlebars_value_iterator_init(&it, partials);
-        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+        for (; it.current != NULL; it.next(&it)) {
             handlebars_map_update(vm->partials->v.map, it.key, it.current);
         }
         handlebars_value_delref(partials);

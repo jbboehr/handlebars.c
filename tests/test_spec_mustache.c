@@ -251,7 +251,7 @@ START_TEST(test_mustache_spec)
     handlebars_value_map_init(vm->partials);
     if( test->partials ) {
         handlebars_value_iterator_init(&it, test->partials);
-        for (; it.current != NULL; handlebars_value_iterator_next(&it)) {
+        for (; it.current != NULL; it.next(&it)) {
             handlebars_map_update(vm->partials->v.map, it.key, it.current);
         }
     }
