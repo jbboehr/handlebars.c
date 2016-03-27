@@ -53,9 +53,8 @@ struct handlebars_value_iterator {
     void * usr;
 };
 
-struct handlebars_value_user {
+struct handlebars_user {
     struct handlebars_value_handlers * handlers;
-    void * ptr;
 };
 
 union handlebars_value_internals {
@@ -64,7 +63,7 @@ union handlebars_value_internals {
     struct handlebars_string * string;
     struct handlebars_map * map;
     struct handlebars_stack * stack;
-    struct handlebars_value_user usr;
+    struct handlebars_user * usr;
     void * ptr;
     handlebars_helper_func helper;
     struct handlebars_options * options;
@@ -198,7 +197,7 @@ static inline int handlebars_value_refcount(struct handlebars_value * value) {
 #endif
 
 static inline struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value) {
-    return value->v.usr.handlers;
+    return value->v.usr->handlers;
 }
 
 static inline void handlebars_value_init(struct handlebars_context * ctx, struct handlebars_value * value)

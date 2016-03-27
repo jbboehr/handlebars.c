@@ -24,9 +24,11 @@
 #include "handlebars_value_handlers.h"
 
 
-#define HANDLEBARS_JSON_OBJ(value) ((struct handlebars_json *) talloc_get_type(value->v.usr.ptr, struct handlebars_json))->object
+#define HANDLEBARS_JSON(value) ((struct handlebars_json *) talloc_get_type(value->v.usr, struct handlebars_json))
+#define HANDLEBARS_JSON_OBJ(value) HANDLEBARS_JSON(value)->object
 
 struct handlebars_json {
+    struct handlebars_user usr;
     struct json_object * object;
 };
 
@@ -57,12 +59,9 @@ static struct handlebars_value * std_json_copy(struct handlebars_value * value)
 
 static void std_json_dtor(struct handlebars_value * value)
 {
-    assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
-
-    handlebars_talloc_free(value->v.usr.ptr);
-    //
-    value->v.usr.ptr = NULL;
-    value->v.usr.handlers = NULL;
+    struct handlebars_json * json = HANDLEBARS_JSON(value);
+    handlebars_talloc_free(json);
+    value->v.usr = NULL;
 }
 
 static void std_json_convert(struct handlebars_value * value, bool recurse)
@@ -228,16 +227,17 @@ long std_json_count(struct handlebars_value * value)
 }
 
 static struct handlebars_value_handlers handlebars_value_std_json_handlers = {
-        &std_json_copy,
-        &std_json_dtor,
-        &std_json_convert,
-        &std_json_type,
-        &std_json_map_find,
-        &std_json_array_find,
-        &std_json_iterator_init,
-        &std_json_iterator_next,
-        NULL, // call
-        &std_json_count
+    "json",
+    &std_json_copy,
+    &std_json_dtor,
+    &std_json_convert,
+    &std_json_type,
+    &std_json_map_find,
+    &std_json_array_find,
+    &std_json_iterator_init,
+    &std_json_iterator_next,
+    NULL, // call
+    &std_json_count
 };
 
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers()
@@ -283,12 +283,12 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
             json_object_get(json);
 
             obj = MC(handlebars_talloc(ctx, struct handlebars_json));
+            obj->usr.handlers = handlebars_value_get_std_json_handlers();
             obj->object = json;
             talloc_set_destructor(obj, handlebars_json_dtor);
 
             value->type = HANDLEBARS_VALUE_TYPE_USER;
-            value->v.usr.handlers = handlebars_value_get_std_json_handlers();
-            value->v.usr.ptr = (void *) obj;
+            value->v.usr = (struct handlebars_user *) obj;
             break;
         default:
             // ruh roh

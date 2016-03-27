@@ -31,6 +31,7 @@ typedef struct handlebars_value * (*handlebars_call_func)(
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
 
 struct handlebars_value_handlers {
+    const char * name;
     handlebars_copy_func copy;
     handlebars_value_dtor_func dtor;
     handlebars_value_convert_func convert;
