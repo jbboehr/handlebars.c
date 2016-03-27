@@ -111,7 +111,7 @@ START_TEST(test_random_alloc_fail_vm)
             // For now, don't do yy alloc
             handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
             handlebars_memory_fail_counter(i);
-            handlebars_vm_execute(vm, compiler, value);
+            handlebars_vm_execute(vm, compiler->program, value);
             handlebars_memory_fail_disable();
 
             handlebars_context_dtor(ctx);
