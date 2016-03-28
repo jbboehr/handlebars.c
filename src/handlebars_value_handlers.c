@@ -119,6 +119,8 @@ static enum handlebars_value_type std_json_type(struct handlebars_value * value)
             assert(0);
             break;
     }
+
+    return HANDLEBARS_VALUE_TYPE_NULL;
 }
 
 static struct handlebars_value * std_json_map_find(struct handlebars_value * value, struct handlebars_string * key)
@@ -153,12 +155,14 @@ static bool std_json_iterator_next_object(struct handlebars_value_iterator * it)
     char * tmp;
 
     assert(value != NULL);
-    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
+    assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
+    assert(it->current != NULL);
+    assert(it->key != NULL);
 
-    if( it->current != NULL ) {
-        handlebars_value_delref(it->current);
-        it->current = NULL;
-    }
+    handlebars_talloc_free(it->key);
+
+    handlebars_value_delref(it->current);
+    it->current = NULL;
 
     entry = (struct lh_entry *) it->usr;
     if( !entry || !entry->next ) {
@@ -178,12 +182,11 @@ static bool std_json_iterator_next_array(struct handlebars_value_iterator * it)
     struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
 
     assert(value != NULL);
-    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
+    assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
+    assert(it->current != NULL);
 
-    if( it->current != NULL ) {
-        handlebars_value_delref(it->current);
-        it->current = NULL;
-    }
+    handlebars_value_delref(it->current);
+    it->current = NULL;
 
     if( it->index >= json_object_array_length(intern) - 1 ) {
         return false;

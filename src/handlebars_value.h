@@ -241,7 +241,9 @@ static inline bool handlebars_value_is_empty(struct handlebars_value * value) {
 }
 
 static inline void handlebars_value_null(struct handlebars_value * value) {
-    handlebars_value_dtor(value);
+    if( value->type != HANDLEBARS_VALUE_TYPE_NULL ) {
+        handlebars_value_dtor(value);
+    }
 }
 
 static inline void handlebars_value_boolean(struct handlebars_value * value, bool bval) {

@@ -114,9 +114,6 @@ START_TEST(test_context_get_errmsg)
     ck_assert_ptr_ne(NULL, strstr(actual, "line 1"));
     ck_assert_ptr_ne(NULL, strstr(actual, "column 2"));
 }
-{
-    ck_assert_ptr_eq(NULL, handlebars_error_message(NULL));
-}
 END_TEST
 
 START_TEST(test_context_get_errmsg_failed_alloc)
@@ -158,9 +155,6 @@ START_TEST(test_context_get_errmsg_js)
     ck_assert_ptr_ne(NULL, strstr(actual, "line 1"));
     ck_assert_ptr_ne(NULL, strstr(actual, "column 2"));
     ck_assert_ptr_ne(NULL, strstr(actual, "Parse error"));
-}
-{
-    ck_assert_ptr_eq(NULL, handlebars_error_message_js(NULL));
 }
 END_TEST
 

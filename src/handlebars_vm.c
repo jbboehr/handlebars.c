@@ -35,6 +35,7 @@
 #define TOP(stack) handlebars_value_addref2(stack.i > 0 ? stack.v[stack.i - 1] : NULL)
 #define POP(stack) (stack.i > 0 ? stack.v[--stack.i] : NULL)
 #define PUSH(stack, value) do { \
+        assert(value != NULL); \
         if( stack.i < HANDLEBARS_VM_STACK_SIZE ) { \
             stack.v[stack.i++] = value; \
         } else { \
@@ -315,7 +316,6 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         vm->last_helper = options.name;
     } else if( value && handlebars_value_is_callable(value) ) {
         result = handlebars_value_call(value, 0, argv, &options);
-        assert(result != NULL);
         PUSH(vm->stack, result);
     } else {
         result = call_helper_str("helperMissing", sizeof("helperMissing") - 1, 0, NULL, &options);
@@ -329,7 +329,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
 ACCEPT_FUNCTION(invoke_helper)
 {
     struct handlebars_value * value = POP(vm->stack);
-    struct handlebars_value * result = NULL;
+    struct handlebars_value * result;
     struct handlebars_options options = {0};
 
     assert(opcode->op1.type == handlebars_operand_type_long);
@@ -351,13 +351,12 @@ ACCEPT_FUNCTION(invoke_helper)
         result = handlebars_value_call(value, argc, argv, &options);
     } else {
         result = call_helper_str("helperMissing", sizeof("helperMissing") - 1, argc, argv, &options);
+        if( !result ) {
+            result = handlebars_value_ctor(CONTEXT);
+        }
     }
 
 done:
-    if( !result ) {
-        result = handlebars_value_ctor(CONTEXT);
-    }
-
     PUSH(vm->stack, result);
 
     handlebars_options_deinit(&options);
@@ -389,7 +388,7 @@ ACCEPT_FUNCTION(invoke_known_helper)
 
 static inline struct handlebars_value * merge_hash(struct handlebars_context * context, struct handlebars_value * hash, struct handlebars_value * context1)
 {
-    struct handlebars_value * context2 = NULL;
+    struct handlebars_value * context2;
     struct handlebars_value_iterator it;
     if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
         hash && hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
@@ -434,9 +433,8 @@ ACCEPT_FUNCTION(invoke_partial)
     if( opcode->op1.data.boolval ) {
         // Dynamic partial
         tmp = POP(vm->stack);
-        if( tmp ) {
-            name = tmp->v.string;
-        }
+        assert(tmp != NULL);
+        name = tmp->v.string;
         options.name = NULL; // fear
     } else {
         if( opcode->op2.type == handlebars_operand_type_long ) {
@@ -499,8 +497,8 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
     // Check for cached template, if available
-    struct handlebars_compiler * compiler = NULL;
-    struct handlebars_program * program = NULL;
+    struct handlebars_compiler * compiler;
+    struct handlebars_program * program;
     struct handlebars_cache_entry * cache_entry;
     if( vm->cache && (cache_entry = handlebars_cache_find(vm->cache, tmpl)) ) {
         // Use cached
@@ -619,7 +617,7 @@ ACCEPT_FUNCTION(lookup_data)
     assert(opcode->op2.type == handlebars_operand_type_array);
     assert(opcode->op3.type == handlebars_operand_type_boolean || opcode->op3.type == handlebars_operand_type_null);
 
-    size_t depth = opcode->op1.data.longval;
+    long depth = opcode->op1.data.longval;
     struct handlebars_string ** arr = opcode->op2.data.array;
     struct handlebars_string * first = *arr++;
 
@@ -636,21 +634,24 @@ ACCEPT_FUNCTION(lookup_data)
         val = tmp;
     } else if( 0 == strcmp(first->val, "root") ) {
         val = BOTTOM(vm->contextStack);
+    } else {
+        goto done_and_null;
     }
 
-    if( val ) {
-        for (; *arr != NULL; arr++) {
-            struct handlebars_string * part = *arr;
-            if (val == NULL || handlebars_value_get_type(val) != HANDLEBARS_VALUE_TYPE_MAP) {
-                break;
-            }
-            tmp = handlebars_value_map_find(val, part);
-            handlebars_value_delref(val);
-            val = tmp;
+    assert(val != NULL);
+
+    for( ; *arr != NULL; arr++ ) {
+        struct handlebars_string * part = *arr;
+        if( val == NULL || handlebars_value_get_type(val) != HANDLEBARS_VALUE_TYPE_MAP ) {
+            goto done_and_null;
         }
+        tmp = handlebars_value_map_find(val, part);
+        handlebars_value_delref(val);
+        val = tmp;
     }
 
     if( !val ) {
+        done_and_null:
         val = handlebars_value_ctor(CONTEXT);
     }
 
@@ -676,30 +677,31 @@ ACCEPT_FUNCTION(lookup_on_context)
     struct handlebars_value * value = TOP(vm->stack);
     struct handlebars_value * tmp;
 
-    if( value ) {
-        do {
-            if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-                tmp = handlebars_value_map_find(value, (*arr));
-                handlebars_value_try_delref(value);
-                value = tmp;
-            } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-                if( sscanf((*arr)->val, "%ld", &index) ) {
-                    tmp = handlebars_value_array_find(value, index);
-                } else {
-                    tmp = NULL;
-                }
-                handlebars_value_try_delref(value);
-                value = tmp;
-            } else {
-                value = NULL;
-            }
-            if( !value ) {
-                break;
-            }
-        } while( *++arr );
-    }
+    assert(value != NULL);
 
-    if( !value ) {
+    do {
+        if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
+            tmp = handlebars_value_map_find(value, (*arr));
+            handlebars_value_try_delref(value);
+            value = tmp;
+        } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+            if( sscanf((*arr)->val, "%ld", &index) ) {
+                tmp = handlebars_value_array_find(value, index);
+            } else {
+                tmp = NULL;
+            }
+            handlebars_value_try_delref(value);
+            value = tmp;
+        } else {
+            goto done_and_null;
+        }
+        if( !value ) {
+            goto done_and_null;
+        }
+    } while( *++arr );
+
+    if( value == NULL ) {
+        done_and_null:
         value = handlebars_value_ctor(CONTEXT);
     }
 
@@ -710,9 +712,7 @@ ACCEPT_FUNCTION(lookup_on_context)
 ACCEPT_FUNCTION(pop_hash)
 {
     struct handlebars_value * hash = POP(vm->hashStack);
-    if( !hash ) {
-        hash = handlebars_value_ctor(CONTEXT);
-    }
+    assert(hash != NULL);
     PUSH(vm->stack, hash);
 }
 
@@ -755,7 +755,7 @@ ACCEPT_FUNCTION(push_literal)
 
     switch( opcode->op1.type ) {
         case handlebars_operand_type_string:
-            // @todo we should move this to the parser
+            // @todo should we move this to the parser?
             if( 0 == strcmp(opcode->op1.data.string->val, "undefined") ) {
                 break;
             } else if( 0 == strcmp(opcode->op1.data.string->val, "null") ) {
@@ -797,6 +797,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     struct handlebars_value * result;
 
     assert(top != NULL);
+
     if( handlebars_value_is_callable(top) ) {
         struct handlebars_options options = {0};
         int argc = 1;
@@ -805,9 +806,6 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
         options.vm = vm;
         options.scope = TOPCONTEXT;
         result = handlebars_value_call(top, argc, argv, &options);
-        if( !result ) {
-            result = handlebars_value_ctor(CONTEXT);
-        }
         handlebars_value_delref(POP(vm->stack));
         PUSH(vm->stack, result);
         handlebars_options_deinit(&options);
@@ -854,7 +852,6 @@ static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handle
             ACCEPT(push_program);
             ACCEPT(push_literal);
             ACCEPT(push_string);
-            //ACCEPT(push_string_param);
             ACCEPT(resolve_possible_lambda);
             default:
                 handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
@@ -875,12 +872,11 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
 
     if( program_num < 0 ) {
         return handlebars_string_init(CONTEXT, 0);
-    }
-    if( program_num >= vm->guid_index ) {
+    } else if( program_num >= vm->guid_index ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program: %ld", program_num);
     }
 
-    // Get compiler
+    // Get program
 	struct handlebars_program * program = vm->programs[program_num];
 
     // Save and set buffer

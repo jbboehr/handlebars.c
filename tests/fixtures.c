@@ -419,6 +419,11 @@ FIXTURE_FN(1211570580)
     return result;
 }
 
+FIXTURE_FN(1250888967)
+{
+    FIXTURE_STRING("missing");
+}
+
 FIXTURE_FN(1091971719)
 {
     // "function (options) {\n          if (options.name === 'link_to') {\n            return new Handlebars.SafeString('<a>winning<\/a>');\n          }\n        }"
@@ -1459,6 +1464,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(1102272015);
         FIXTURE_CASE(1198465479);
         FIXTURE_CASE(1211570580);
+        FIXTURE_CASE(1250888967);
         FIXTURE_CASE(1252527367);
         FIXTURE_CASE(1283397100);
         FIXTURE_CASE(1341397520);

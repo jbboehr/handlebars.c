@@ -297,8 +297,12 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_parser *
     unsigned strip = 0;
     bool do_standalone = true; //!parser->ignore_standalone;
     
-    handlebars_whitespace_accept(parser, block->node.block.program);
-    handlebars_whitespace_accept(parser, block->node.block.inverse);
+    if( block->node.block.program ) {
+        handlebars_whitespace_accept(parser, block->node.block.program);
+    }
+    if( block->node.block.inverse ) {
+        handlebars_whitespace_accept(parser, block->node.block.inverse);
+    }
     
     program = (block->node.block.program ? block->node.block.program : block->node.block.inverse);
     inverse = (block->node.block.program ? block->node.block.inverse : NULL);

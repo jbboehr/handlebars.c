@@ -3,6 +3,7 @@
 #include "config.h"
 #endif
 
+#include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 
@@ -67,7 +68,9 @@ char * handlebars_error_message(struct handlebars_context * context)
     char * errmsg;
     char errbuf[256];
 
-    if( context == NULL || context->msg == NULL ) {
+    assert(context != NULL);
+
+    if( context->msg == NULL ) {
         return NULL;
     }
 
@@ -90,7 +93,9 @@ char * handlebars_error_message_js(struct handlebars_context * context)
     char * errmsg;
     char errbuf[512];
 
-    if( context == NULL || context->msg == NULL ) {
+    assert(context != NULL);
+
+    if( context->msg == NULL ) {
         return NULL;
     }
 

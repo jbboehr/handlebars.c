@@ -69,7 +69,6 @@ START_TEST(test_token_get_type)
     struct handlebars_token * token = handlebars_token_ctor(context, OPEN, string);
     
     ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
-    ck_assert_int_eq(-1, handlebars_token_get_type(NULL));
     
     handlebars_token_dtor(token);
 }
@@ -82,7 +81,6 @@ START_TEST(test_token_get_text)
 
     ck_assert_str_eq("{{", handlebars_token_get_text(token)->val);
     ck_assert_uint_eq(sizeof("{{") - 1, handlebars_token_get_text(token)->len);
-    ck_assert_ptr_eq(NULL, handlebars_token_get_text(NULL));
     
     handlebars_token_dtor(token);
 }

@@ -35,20 +35,12 @@ void handlebars_token_dtor(struct handlebars_token * token)
 
 int handlebars_token_get_type(struct handlebars_token * token)
 {
-    if( likely(token != NULL) ) {
-        return token->token;
-    } else {
-        return -1;
-    }
+    return token->token;
 }
 
 struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token)
 {
-    if( likely(token != NULL) ) {
-        return token->string;
-    } else {
-        return NULL;
-    }
+    return token->string;
 }
 
 const char * handlebars_token_readable_type(int type)
