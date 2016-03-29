@@ -159,7 +159,11 @@ static inline bool handlebars_string_eq_ex(
 HBS_ATTR_NONNULL(1, 2)
 static inline bool handlebars_string_eq(struct handlebars_string * string1, struct handlebars_string * string2)
 {
-    return handlebars_string_eq_ex(string1->val, string1->len, string1->hash, string2->val, string2->len, string2->hash);
+    if( string1->len != string2->len ) {
+        return false;
+    } else {
+        return HBS_STR_HASH(string1) == HBS_STR_HASH(string2);
+    }
 }
 
 /**
