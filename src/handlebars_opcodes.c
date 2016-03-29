@@ -60,18 +60,6 @@ void handlebars_operand_set_stringval(
     operand->data.string = talloc_steal(opcode, string);
 }
 
-void handlebars_operand_set_strval(
-    struct handlebars_context * context,
-    struct handlebars_opcode * opcode,
-    struct handlebars_operand * operand,
-    const char * arg
-) {
-    assert(operand != NULL);
-
-    operand->type = handlebars_operand_type_string;
-    operand->data.string = talloc_steal(opcode, MC(handlebars_string_ctor(HBSCTX(context), arg, strlen(arg))));
-}
-
 void handlebars_operand_set_arrayval(
     struct handlebars_context * context,
     struct handlebars_opcode * opcode,

@@ -171,22 +171,6 @@ void handlebars_operand_set_stringval(
 );
 
 /**
- * @brief Set the value of an operand to a string
- *
- * @param[in] context The handlebars context
- * @param[in] opcode The opcode
- * @param[in] operand The operand of which to change the value
- * @param[in] str The string value
- * @return void
- */
-void handlebars_operand_set_strval(
-    struct handlebars_context * context,
-    struct handlebars_opcode * opcode,
-    struct handlebars_operand * operand,
-    const char * str
-);
-
-/**
  * @brief Set the value of an operand to an array
  *
  * @param[in] context The handlebars context

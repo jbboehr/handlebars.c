@@ -72,6 +72,7 @@ static int loadTestOpcodeOperand(
     struct handlebars_operand * operand,
     json_object * object
 ) {
+    struct handlebars_string * str;
     if( !object ) {
         return 0;
     }
@@ -83,7 +84,8 @@ static int loadTestOpcodeOperand(
             handlebars_operand_set_boolval(operand, json_object_get_boolean(object) ? true : false);
             break;
         case json_type_string:
-            handlebars_operand_set_strval(context, opcode, operand, json_object_get_string(object));
+            str = handlebars_string_ctor(context, json_object_get_string(object), json_object_get_string_len(object));
+            handlebars_operand_set_stringval(context, opcode, operand, str);
             break;
         case json_type_int:
             handlebars_operand_set_longval(operand, json_object_get_int(object));
@@ -106,7 +108,8 @@ static int loadTestOpcodeOperand(
         case json_type_double: {
             char tmp[64];
             snprintf(tmp, 63, "%g", json_object_get_double(object));
-            handlebars_operand_set_strval(context, opcode, operand, tmp);
+            str = handlebars_string_ctor(context, tmp, strlen(tmp));
+            handlebars_operand_set_stringval(context, opcode, operand, str);
             //handlebars_operand_set_stringval(opcode, operand, json_object_get_string(object));
             break;
         }

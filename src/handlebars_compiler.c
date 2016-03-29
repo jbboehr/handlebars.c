@@ -407,7 +407,8 @@ static inline void handlebars_compiler_push_param(
             }
             handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, string);
         }
-        handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op2, handlebars_ast_node_readable_type(param->type));
+        const char * name = handlebars_ast_node_readable_type(param->type);
+        handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, handlebars_string_ctor(CONTEXT, name, strlen(name)));
         __PUSH(opcode);
         
         if( param->type == HANDLEBARS_AST_NODE_SEXPR ) {
@@ -440,14 +441,14 @@ static inline void handlebars_compiler_push_param(
                 block_param_arr[1] = &tmp[16];
                 block_param_arr[2] = NULL;
                 
-                handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op1, "BlockParam");
+                handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, handlebars_string_ctor(CONTEXT, HBS_STRL("BlockParam")));
                 handlebars_operand_set_arrayval(CONTEXT, opcode, &opcode->op2, block_param_arr);
                 parts_arr = MC(handlebars_ast_node_get_id_parts(compiler, param));
                 if( *parts_arr ) {
                     block_param_parts = MC(handlebars_string_implode(CONTEXT, HBS_STRL("."), parts_arr + 1));
                     handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, block_param_parts);
                 } else {
-                    handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op3, "");
+                    handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, handlebars_string_init(CONTEXT, 0));
                 }
                 handlebars_talloc_free(parts_arr);
                 __PUSH(opcode);
@@ -462,7 +463,8 @@ static inline void handlebars_compiler_push_param(
                 } else if( *strval == '.' && *(strval + 1) == '/' ) {
                     strval += 2;
                 }
-                handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op1, handlebars_ast_node_readable_type(param->type));
+                const char * name = handlebars_ast_node_readable_type(param->type);
+                handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, handlebars_string_ctor(CONTEXT, name, strlen(name)));
                 // @todo need to remove leading .
                 if( param->type == HANDLEBARS_AST_NODE_BOOLEAN ) {
                     handlebars_operand_set_boolval(&opcode->op2, strcmp(strval, "true") == 0);
@@ -470,10 +472,8 @@ static inline void handlebars_compiler_push_param(
                     long lval;
                     sscanf(strval, "%10ld", &lval);
                     handlebars_operand_set_longval(&opcode->op2, lval);
-                } else if( param->type == HANDLEBARS_AST_NODE_STRING ) {
-                    handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op2, strval ? strval : "");
                 } else {
-                    handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op2, strval);
+                    handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, handlebars_string_ctor(CONTEXT, strval, strlen(strval)));
                 }
                 __PUSH(opcode);
             }
@@ -749,7 +749,7 @@ static inline void _handlebars_compiler_accept_partial(
     } else if( !params || !handlebars_ast_list_count(params) ) {
     	if( compiler->flags & handlebars_compiler_flag_explicit_partial_context ) {
             struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_push_literal);
-            handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op1, "undefined");
+            handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, handlebars_string_ctor(CONTEXT, HBS_STRL("undefined")));
             __PUSH(opcode);
     		//__OPS(push_literal, "undefined";
     	} else {
@@ -810,7 +810,7 @@ static inline void _handlebars_compiler_accept_partial(
         if( indent ) {
             handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, indent);
         } else {
-            handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op3, "");
+            handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, handlebars_string_init(CONTEXT, 0));
         }
         __PUSH(opcode);
     } while(0);
@@ -1189,7 +1189,7 @@ static inline void handlebars_compiler_accept_nul(
     assert(node->type == HANDLEBARS_AST_NODE_NUL);
 
     opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_push_literal);
-    handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op1, "null");
+    handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, handlebars_string_ctor(CONTEXT, HBS_STRL("null")));
     __PUSH(opcode);
 }
 
@@ -1203,7 +1203,7 @@ static inline void handlebars_compiler_accept_undefined(
     assert(node->type == HANDLEBARS_AST_NODE_UNDEFINED);
 
     opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_push_literal);
-    handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op1, "undefined");
+    handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, handlebars_string_ctor(CONTEXT, HBS_STRL("undefined")));
     __PUSH(opcode);
 }
 
