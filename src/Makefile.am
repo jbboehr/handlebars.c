@@ -50,6 +50,7 @@ include_HEADERS = \
 	handlebars_map.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
+	handlebars_opcode_serializer.h \
 	handlebars_opcodes.h \
 	handlebars_private.h \
 	handlebars_scanners.h \
@@ -92,6 +93,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_map.c \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_printer.c \
+	handlebars_opcode_serializer.h \
+	handlebars_opcode_serializer.c \
 	handlebars_opcodes.h \
 	handlebars_opcodes.c \
 	handlebars_private.h \
