@@ -5,7 +5,6 @@
 
 #include <assert.h>
 #include <string.h>
-#include <handlebars_string.h>
 
 #include "handlebars.h"
 #include "handlebars_compiler.h"
@@ -13,6 +12,7 @@
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_private.h"
+#include "handlebars_string.h"
 #include "handlebars_utils.h"
 
 
