@@ -25,14 +25,25 @@
 #define __MK(type) handlebars_opcode_type_ ## type
 #define __PUSH(opcode) handlebars_compiler_opcode(compiler, opcode)
 
-#define __OPB(type, arg) __PUSH(handlebars_opcode_ctor_boolean(CONTEXT, __MK(type), arg))
-#define __OPL(type, arg) __PUSH(handlebars_opcode_ctor_long(CONTEXT, __MK(type), arg))
 #define __OPN(type) __PUSH(handlebars_opcode_ctor(CONTEXT, __MK(type)))
-#define __OPS(type, arg) __PUSH(handlebars_opcode_ctor_string(CONTEXT, __MK(type), arg))
 
-#define __OPLS(type, arg1, arg2) __PUSH(handlebars_opcode_ctor_long_string(CONTEXT, __MK(type), arg1, arg2))
-#define __OPS2(type, arg1, arg2) __PUSH(handlebars_opcode_ctor_string2(CONTEXT, __MK(type), arg1, arg2))
-#define __OPSL(type, arg1, arg2) __PUSH(handlebars_opcode_ctor_string_long(CONTEXT, __MK(type), arg1, arg2))
+#define __OPB(type, arg) do { \
+        struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
+        handlebars_operand_set_boolval(&opcode->op1, arg); \
+        __PUSH(opcode); \
+    } while(0)
+
+#define __OPL(type, arg) do { \
+        struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
+        handlebars_operand_set_longval(&opcode->op1, arg); \
+        __PUSH(opcode); \
+    } while(0)
+
+#define __OPS(type, arg) do { \
+        struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
+        handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, arg); \
+        __PUSH(opcode); \
+    } while(0)
 
 enum handlebars_compiler_sexpr_type {
     SEXPR_AMBIG = 0,
@@ -100,6 +111,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context 
     struct handlebars_compiler * compiler;
     compiler = MC(handlebars_talloc_zero(CONTEXT, struct handlebars_compiler));
     compiler->program = MC(handlebars_talloc_zero(compiler, struct handlebars_program));
+    compiler->program->main = compiler->program;
     compiler->known_helpers = handlebars_builtins_names();
     compiler->bps = MC(handlebars_talloc_zero(compiler, struct handlebars_block_param_stack));
     return compiler;
@@ -287,6 +299,7 @@ static inline long handlebars_compiler_compile_program(
 
     program = compiler->program;
     subcompiler = MC(handlebars_compiler_ctor(HBSCTX(compiler)));
+    subcompiler->program->main = program->main;
     
     // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
@@ -337,6 +350,20 @@ static inline void handlebars_compiler_opcode(
     program->opcodes[program->opcodes_length++] = talloc_steal(program, opcode);
 }
 
+static inline void push_program_pair(struct handlebars_compiler * compiler, long programGuid, long inverseGuid)
+{
+    if( programGuid == -1 ) {
+        __OPN(push_program);
+    } else {
+        __OPL(push_program, programGuid);
+    }
+    if( inverseGuid == -1 ) {
+        __OPN(push_program);
+    } else {
+        __OPL(push_program, inverseGuid);
+    }
+}
+
 static inline void handlebars_compiler_push_param(
         struct handlebars_compiler * compiler,
         struct handlebars_ast_node * param
@@ -382,11 +409,6 @@ static inline void handlebars_compiler_push_param(
         }
         handlebars_operand_set_strval(CONTEXT, opcode, &opcode->op2, handlebars_ast_node_readable_type(param->type));
         __PUSH(opcode);
-        /*
-        __OPS2(push_string_param, 
-                handlebars_ast_node_get_string_mode_value(param), 
-                handlebars_ast_node_readable_type(param->type));
-        */
         
         if( param->type == HANDLEBARS_AST_NODE_SEXPR ) {
             handlebars_compiler_accept/*_sexpr*/(compiler, param);
@@ -493,9 +515,7 @@ static inline struct handlebars_ast_list * handlebars_compiler_setup_full_mustac
     hash = handlebars_ast_node_get_hash(sexpr);
     
     handlebars_compiler_push_params(compiler, params);
-    
-    programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
-    inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
+    push_program_pair(compiler, programGuid, inverseGuid);
     
     if( hash ) {
         handlebars_compiler_accept/*_hash*/(compiler, hash);
@@ -649,15 +669,13 @@ static inline void handlebars_compiler_accept_block(
 				break;
 			case SEXPR_SIMPLE:
 				handlebars_compiler_accept_sexpr_simple(compiler, sexpr);
-				programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
-				inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
+                push_program_pair(compiler, programGuid, inverseGuid);
 				__OPN(empty_hash);
 				__OPS(block_value, path->node.path.original);
 				break;
 			case SEXPR_AMBIG:
 				handlebars_compiler_accept_sexpr_ambiguous(compiler, sexpr, programGuid, inverseGuid);
-				programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
-				inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
+                push_program_pair(compiler, programGuid, inverseGuid);
 				__OPN(empty_hash);
 				__OPN(ambiguous_block_value);
 				break;
@@ -888,7 +906,11 @@ static inline void handlebars_compiler_accept_decorator(
 	original = handlebars_ast_node_get_string_mode_value(CONTEXT, path);
 	params = handlebars_compiler_setup_full_mustache_params(
                 compiler, ast_node, programGuid, inverseGuid, 0);
-    __OPLS(register_decorator, handlebars_ast_list_count(params), original);
+
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_register_decorator);
+    handlebars_operand_set_longval(&opcode->op1, handlebars_ast_list_count(params));
+    handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, original);
+    __PUSH(opcode);
 }
 
 static inline void handlebars_compiler_accept_mustache(
@@ -933,8 +955,7 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
     name = handlebars_ast_node_get_id_part(path);
     
     __OPL(get_context, path->node.path.depth);
-    programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
-    inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
+    push_program_pair(compiler, programGuid, inverseGuid);
 
 	path->node.path.strict = 1;
     handlebars_compiler_accept/*_id*/(compiler, path);
@@ -976,7 +997,6 @@ static inline void handlebars_compiler_accept_sexpr_helper(
     struct handlebars_ast_node * path;
     struct handlebars_ast_list * params;
     struct handlebars_string * name;
-    struct handlebars_opcode * opcode;
 
     assert(compiler != NULL);
     assert(sexpr != NULL);
@@ -991,7 +1011,10 @@ static inline void handlebars_compiler_accept_sexpr_helper(
     name = handlebars_ast_node_get_id_part(path);
     
     if( handlebars_compiler_is_known_helper(compiler, path) ) {
-        __OPLS(invoke_known_helper, handlebars_ast_list_count(params), name);
+        struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_invoke_known_helper);
+        handlebars_operand_set_longval(&opcode->op1, handlebars_ast_list_count(params));
+        handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, name);
+        __PUSH(opcode);
     } else if( compiler->known_helpers_only ) {
         handlebars_throw(CONTEXT, HANDLEBARS_UNKNOWN_HELPER, "You specified knownHelpersOnly, but used the unknown helper %s", name->val);
     } else {
@@ -1000,8 +1023,8 @@ static inline void handlebars_compiler_accept_sexpr_helper(
         path->node.path.falsy = true;
     	path->node.path.strict = true;
         handlebars_compiler_accept/*_id*/(compiler, path);
-        
-        opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_invoke_helper);
+
+        struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_invoke_helper);
         handlebars_operand_set_longval(&opcode->op1, handlebars_ast_list_count(params));
         //handlebars_operand_set_stringval(compiler, &opcode->op2, name);
         handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, path->node.path.original);
@@ -1216,15 +1239,13 @@ static inline void handlebars_compiler_accept_raw_block(
             break;
         case SEXPR_SIMPLE:
             handlebars_compiler_accept_sexpr_simple(compiler, sexpr);
-            programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
-            inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
+            push_program_pair(compiler, programGuid, inverseGuid);
             __OPN(empty_hash);
             __OPS(block_value, path->node.path.original);
             break;
         case SEXPR_AMBIG:
             handlebars_compiler_accept_sexpr_ambiguous(compiler, sexpr, programGuid, inverseGuid);
-            programGuid == -1 ? __OPN(push_program) : __OPL(push_program, programGuid);
-            inverseGuid == -1 ? __OPN(push_program) : __OPL(push_program, inverseGuid);
+            push_program_pair(compiler, programGuid, inverseGuid);
             __OPN(empty_hash);
             __OPN(ambiguous_block_value);
             break;

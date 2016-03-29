@@ -124,6 +124,8 @@ struct handlebars_source_node_stack {
 };
 
 struct handlebars_program {
+    struct handlebars_program * main;
+
     long guid;
 
     /**

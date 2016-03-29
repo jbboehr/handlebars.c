@@ -24,63 +24,6 @@ struct handlebars_opcode * handlebars_opcode_ctor(
     return opcode;
 }
 
-struct handlebars_opcode * handlebars_opcode_ctor_boolean(
-        struct handlebars_context * context, enum handlebars_opcode_type type, bool arg)
-{
-    struct handlebars_opcode * opcode = MC(handlebars_talloc_zero(context, struct handlebars_opcode));
-    opcode->type = type;
-    handlebars_operand_set_boolval(&opcode->op1, arg);
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_long(
-        struct handlebars_context * context, enum handlebars_opcode_type type, long arg)
-{
-    struct handlebars_opcode * opcode = MC(handlebars_talloc_zero(context, struct handlebars_opcode));
-    opcode->type = type;
-    handlebars_operand_set_longval(&opcode->op1, arg);
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_long_string(
-        struct handlebars_context * context, enum handlebars_opcode_type type, long arg1, struct handlebars_string * arg2)
-{
-    struct handlebars_opcode * opcode = MC(handlebars_talloc_zero(context, struct handlebars_opcode));
-    opcode->type = type;
-    handlebars_operand_set_longval(&opcode->op1, arg1);
-    handlebars_operand_set_stringval(context, opcode, &opcode->op2, arg2);
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_string(
-        struct handlebars_context * context, enum handlebars_opcode_type type, struct handlebars_string * arg)
-{
-    struct handlebars_opcode * opcode = MC(handlebars_talloc_zero(context, struct handlebars_opcode));
-    opcode->type = type;
-    handlebars_operand_set_stringval(context, opcode, &opcode->op1, arg);
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_string2(
-        struct handlebars_context * context, enum handlebars_opcode_type type, struct handlebars_string * arg1, struct handlebars_string * arg2)
-{
-    struct handlebars_opcode * opcode = MC(handlebars_talloc_zero(context, struct handlebars_opcode));
-    opcode->type = type;
-    handlebars_operand_set_stringval(context, opcode, &opcode->op1, arg1);
-    handlebars_operand_set_stringval(context, opcode, &opcode->op2, arg2);
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_string_long(
-        struct handlebars_context * context, enum handlebars_opcode_type type, struct handlebars_string * arg1, long arg2)
-{
-    struct handlebars_opcode * opcode = MC(handlebars_talloc_zero(context, struct handlebars_opcode));
-    opcode->type = type;
-    handlebars_operand_set_stringval(context, opcode, &opcode->op1, arg1);
-    handlebars_operand_set_longval(&opcode->op2, arg2);
-    return opcode;
-}
-
 void handlebars_operand_set_null(struct handlebars_operand * operand)
 {
     assert(operand != NULL);
