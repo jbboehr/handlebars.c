@@ -18,9 +18,11 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
-#include "handlebars_memory.h"
+#include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
@@ -329,6 +331,9 @@ static inline void run_test(struct generic_test * test, int _i)
         ck_assert_int_eq(1, test->exception);
         goto done;
     }
+
+    // Serialize opcodes
+    struct handlebars_module * module = handlebars_program_serialize(HBSCTX(compiler), compiler->program);
 
     // Setup VM
     vm = handlebars_vm_ctor(ctx);
