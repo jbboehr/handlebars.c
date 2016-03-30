@@ -107,7 +107,7 @@ START_TEST(test_operand_set_null)
     ck_assert_int_eq(handlebars_operand_type_null, op.type);
     ck_assert_int_eq(0, op.data.boolval);
     ck_assert_int_eq(0, op.data.longval);
-    ck_assert_ptr_eq(NULL, op.data.string);
+    ck_assert_ptr_eq(NULL, op.data.string.string);
 }
 END_TEST
 
@@ -144,8 +144,8 @@ START_TEST(test_operand_set_stringval)
     handlebars_operand_set_stringval(context, opcode, &op, string);
 
     ck_assert_int_eq(handlebars_operand_type_string, op.type);
-    ck_assert_ptr_ne(NULL, op.data.string);
-    ck_assert_str_eq(string->val, op.data.string->val);
+    ck_assert_ptr_ne(NULL, op.data.string.string);
+    ck_assert_str_eq(string->val, op.data.string.string->val);
     //ck_assert_ptr_ne(str, op.data.stringval);
 }
 END_TEST
@@ -179,16 +179,16 @@ START_TEST(test_operand_set_arrayval)
     };
     int ret;
     const char ** ptr1;
-    struct handlebars_string ** ptr2;
+    struct handlebars_operand_string * ptr2;
 
     handlebars_operand_set_arrayval(context, opcode, &op, strs);
 
     ck_assert_int_eq(handlebars_operand_type_array, op.type);
-    ck_assert_ptr_ne(NULL, op.data.array);
+    ck_assert_ptr_ne(NULL, op.data.array.array);
 
     // Compare arrays
-    for( ptr1 = strs, ptr2 = op.data.array; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
-        ck_assert_str_eq(*ptr1, (*ptr2)->val);
+    for( ptr1 = strs, ptr2 = op.data.array.array; *ptr1 /*|| *ptr2*/; ptr1++, ptr2++ ) {
+        ck_assert_str_eq(*ptr1, ptr2->string->val);
     }
 END_TEST
 
@@ -203,16 +203,16 @@ START_TEST(test_operand_set_arrayval_string)
     strings[4] = NULL;
 
     struct handlebars_string ** ptr1;
-    struct handlebars_string ** ptr2;
+    struct handlebars_operand_string * ptr2;
 
     handlebars_operand_set_arrayval_string(context, opcode, &opcode->op1, strings);
 
     ck_assert_int_eq(handlebars_operand_type_array, opcode->op1.type);
-    ck_assert_ptr_ne(NULL, opcode->op1.data.array);
+    ck_assert_ptr_ne(NULL, opcode->op1.data.array.array);
 
     // Compare arrays
-    for( ptr1 = strings, ptr2 = opcode->op1.data.array; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
-        ck_assert_str_eq((*ptr1)->val, (*ptr2)->val);
+    for( ptr1 = strings, ptr2 = opcode->op1.data.array.array; *ptr1 /* || *ptr2*/; ptr1++, ptr2++ ) {
+        ck_assert_str_eq((*ptr1)->val, ptr2->string->val);
     }
 END_TEST
 

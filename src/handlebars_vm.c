@@ -230,7 +230,7 @@ ACCEPT_FUNCTION(append_content)
     assert(opcode->type == handlebars_opcode_type_append_content);
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(opcode->op1.data.string));
+    vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(opcode->op1.data.string.string));
 }
 
 ACCEPT_FUNCTION(assign_to_hash)
@@ -241,7 +241,7 @@ ACCEPT_FUNCTION(assign_to_hash)
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(hash->type == HANDLEBARS_VALUE_TYPE_MAP);
 
-    handlebars_map_update(hash->v.map, opcode->op1.data.string, value);
+    handlebars_map_update(hash->v.map, opcode->op1.data.string.string, value);
 
     handlebars_value_delref(hash);
     handlebars_value_delref(value);
@@ -256,7 +256,7 @@ ACCEPT_FUNCTION(block_value)
 
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    options.name = opcode->op1.data.string;
+    options.name = opcode->op1.data.string.string;
     setup_options(vm, 0, argv, &options);
 
     current = POP(vm->stack);
@@ -307,7 +307,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(opcode->op2.type == handlebars_operand_type_boolean);
 
-    options.name = opcode->op1.data.string;
+    options.name = opcode->op1.data.string.string;
     setup_options(vm, 0, NULL, &options);
     vm->last_helper = NULL;
 
@@ -338,7 +338,7 @@ ACCEPT_FUNCTION(invoke_helper)
 
     int argc = (int) opcode->op1.data.longval;
     struct handlebars_value * argv[argc];
-    options.name = opcode->op2.data.string;
+    options.name = opcode->op2.data.string.string;
     setup_options(vm, argc, argv, &options);
 
     if( opcode->op3.data.boolval ) { // isSimple
@@ -373,7 +373,7 @@ ACCEPT_FUNCTION(invoke_known_helper)
 
     int argc = (int) opcode->op1.data.longval;
     struct handlebars_value * argv[argc];
-    options.name = opcode->op2.data.string;
+    options.name = opcode->op2.data.string.string;
     setup_options(vm, argc, argv, &options);
 
     result = call_helper(options.name, argc, argv, &options);
@@ -443,7 +443,7 @@ ACCEPT_FUNCTION(invoke_partial)
             name = handlebars_string_ctor(HBSCTX(vm), tmp_str, tmp_str_len);
             //name = MC(handlebars_talloc_asprintf(vm, "%ld", opcode->op2.data.longval));
         } else if( opcode->op2.type == handlebars_operand_type_string ) {
-            name = opcode->op2.data.string;
+            name = opcode->op2.data.string.string;
         }
     }
 
@@ -469,7 +469,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
         struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
         struct handlebars_string * tmp2 = handlebars_value_expression(ret, 0);
-        struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), tmp2->val, tmp2->len, HBS_STR_STRL(opcode->op3.data.string));
+        struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), tmp2->val, tmp2->len, HBS_STR_STRL(opcode->op3.data.string.string));
         vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(tmp3));
         handlebars_talloc_free(tmp3);
         handlebars_talloc_free(tmp2);
@@ -545,7 +545,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
     if( vm2->buffer ) {
         struct handlebars_string * tmp2 = handlebars_string_indent(
-                HBSCTX(vm2), HBS_STR_STRL(vm2->buffer), HBS_STR_STRL(opcode->op3.data.string));
+                HBSCTX(vm2), HBS_STR_STRL(vm2->buffer), HBS_STR_STRL(opcode->op3.data.string.string));
         vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(tmp2));
         handlebars_talloc_free(tmp2);
     }
@@ -570,8 +570,8 @@ ACCEPT_FUNCTION(lookup_block_param)
     assert(opcode->op1.type == handlebars_operand_type_array);
     assert(opcode->op2.type == handlebars_operand_type_array);
 
-    sscanf(opcode->op1.data.array[0]->val, "%ld", &blockParam1);
-    sscanf(opcode->op1.data.array[1]->val, "%ld", &blockParam2);
+    sscanf(opcode->op1.data.array.array[0].string->val, "%ld", &blockParam1);
+    sscanf(opcode->op1.data.array.array[1].string->val, "%ld", &blockParam2);
 
     if( blockParam1 >= LEN(vm->blockParamStack) ) goto done;
 
@@ -581,13 +581,15 @@ ACCEPT_FUNCTION(lookup_block_param)
     struct handlebars_value * v2 = handlebars_value_array_find(v1, blockParam2);
     if( !v2 ) goto done;
 
-    struct handlebars_string ** arr = opcode->op2.data.array;
-    arr++;
-    if( *arr ) {
+    size_t arr_len = opcode->op2.data.array.count;
+    struct handlebars_operand_string * arr = opcode->op2.data.array.array;
+    size_t i;
+
+    if( arr_len > 1 ) {
         struct handlebars_value * tmp = v2;
         struct handlebars_value * tmp2;
-        for(  ; *arr != NULL; arr++ ) {
-            tmp2 = handlebars_value_map_find(tmp, *arr);
+        for( i = 1; i < arr_len; i++ ) {
+            tmp2 = handlebars_value_map_find(tmp, arr[i].string);
             if( !tmp2 ) {
                 break;
             } else {
@@ -618,8 +620,10 @@ ACCEPT_FUNCTION(lookup_data)
     assert(opcode->op3.type == handlebars_operand_type_boolean || opcode->op3.type == handlebars_operand_type_null);
 
     long depth = opcode->op1.data.longval;
-    struct handlebars_string ** arr = opcode->op2.data.array;
-    struct handlebars_string * first = *arr++;
+    size_t arr_len = opcode->op2.data.array.count;
+    size_t i;
+    struct handlebars_operand_string * arr = opcode->op2.data.array.array;
+    struct handlebars_operand_string * first = arr;
 
     if( depth && data ) {
         handlebars_value_addref(data);
@@ -630,9 +634,9 @@ ACCEPT_FUNCTION(lookup_data)
         }
     }
 
-    if( data && (tmp = handlebars_value_map_find(data, first)) ) {
+    if( data && (tmp = handlebars_value_map_find(data, first->string)) ) {
         val = tmp;
-    } else if( 0 == strcmp(first->val, "root") ) {
+    } else if( 0 == strcmp(first->string->val, "root") ) {
         val = BOTTOM(vm->contextStack);
     } else {
         goto done_and_null;
@@ -640,12 +644,12 @@ ACCEPT_FUNCTION(lookup_data)
 
     assert(val != NULL);
 
-    for( ; *arr != NULL; arr++ ) {
-        struct handlebars_string * part = *arr;
+    for( i = 1 ; i < arr_len; i++ ) {
+        struct handlebars_operand_string * part = arr + i;
         if( val == NULL || handlebars_value_get_type(val) != HANDLEBARS_VALUE_TYPE_MAP ) {
             goto done_and_null;
         }
-        tmp = handlebars_value_map_find(val, part);
+        tmp = handlebars_value_map_find(val, part->string);
         handlebars_value_delref(val);
         val = tmp;
     }
@@ -665,11 +669,13 @@ ACCEPT_FUNCTION(lookup_on_context)
     assert(opcode->op3.type == handlebars_operand_type_boolean || opcode->op3.type == handlebars_operand_type_null);
     assert(opcode->op4.type == handlebars_operand_type_boolean || opcode->op4.type == handlebars_operand_type_null);
 
-    struct handlebars_string ** arr = opcode->op1.data.array;
+    size_t arr_len = opcode->op1.data.array.count;
+    struct handlebars_operand_string * arr = opcode->op1.data.array.array;
+    struct handlebars_operand_string * arr_end = arr + arr_len;
     long index = -1;
 
     if( !opcode->op4.data.boolval && (vm->flags & handlebars_compiler_flag_compat) ) {
-        depthed_lookup(vm, *arr);
+        depthed_lookup(vm, arr->string);
     } else {
         ACCEPT_FN(push_context)(vm, opcode);
     }
@@ -681,11 +687,11 @@ ACCEPT_FUNCTION(lookup_on_context)
 
     do {
         if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            tmp = handlebars_value_map_find(value, (*arr));
+            tmp = handlebars_value_map_find(value, arr->string);
             handlebars_value_try_delref(value);
             value = tmp;
         } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-            if( sscanf((*arr)->val, "%ld", &index) ) {
+            if( sscanf(arr->string->val, "%ld", &index) ) {
                 tmp = handlebars_value_array_find(value, index);
             } else {
                 tmp = NULL;
@@ -698,7 +704,7 @@ ACCEPT_FUNCTION(lookup_on_context)
         if( !value ) {
             goto done_and_null;
         }
-    } while( *++arr );
+    } while( ++arr < arr_end );
 
     if( value == NULL ) {
         done_and_null:
@@ -756,12 +762,12 @@ ACCEPT_FUNCTION(push_literal)
     switch( opcode->op1.type ) {
         case handlebars_operand_type_string:
             // @todo should we move this to the parser?
-            if( 0 == strcmp(opcode->op1.data.string->val, "undefined") ) {
+            if( 0 == strcmp(opcode->op1.data.string.string->val, "undefined") ) {
                 break;
-            } else if( 0 == strcmp(opcode->op1.data.string->val, "null") ) {
+            } else if( 0 == strcmp(opcode->op1.data.string.string->val, "null") ) {
                 break;
             }
-            handlebars_value_str(value, opcode->op1.data.string);
+            handlebars_value_str(value, opcode->op1.data.string.string);
             break;
         case handlebars_operand_type_boolean:
             handlebars_value_boolean(value, opcode->op1.data.boolval);
@@ -787,7 +793,7 @@ ACCEPT_FUNCTION(push_string)
 
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    handlebars_value_str(value, opcode->op1.data.string);
+    handlebars_value_str(value, opcode->op1.data.string.string);
     PUSH(vm->stack, value);
 }
 

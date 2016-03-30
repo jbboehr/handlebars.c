@@ -12,6 +12,7 @@
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
+#include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
@@ -209,6 +210,8 @@ static int do_debug(void)
     fprintf(stderr, "sizeof(void *): %lu\n", (long unsigned) sizeof(void *));
     fprintf(stderr, "sizeof(struct handlebars_context): %lu\n", (long unsigned) sizeof(struct handlebars_context));
     fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) sizeof(struct handlebars_compiler));
+    fprintf(stderr, "sizeof(struct handlebars_opcode): %lu\n", (long unsigned) sizeof(struct handlebars_opcode));
+    fprintf(stderr, "sizeof(struct handlebars_operand): %lu\n", (long unsigned) sizeof(struct handlebars_operand));
     fprintf(stderr, "sizeof(struct handlebars_parser): %lu\n", (long unsigned) sizeof(struct handlebars_parser));
     fprintf(stderr, "sizeof(struct handlebars_program): %lu\n", (long unsigned) sizeof(struct handlebars_program));
     fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) sizeof(struct handlebars_value));

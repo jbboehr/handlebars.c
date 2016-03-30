@@ -50,7 +50,8 @@ struct handlebars_string * handlebars_operand_print_append(
     struct handlebars_operand * operand
 ) {
     struct handlebars_string * tmp;
-    struct handlebars_string ** arr;
+    struct handlebars_operand_string * arr;
+    size_t i;
 
     assert(string != NULL);
     assert(operand != NULL);
@@ -66,18 +67,18 @@ struct handlebars_string * handlebars_operand_print_append(
             string = handlebars_string_asprintf_append(context, string, "[LONG:%ld]", operand->data.longval);
             break;
         case handlebars_operand_type_string:
-            tmp = handlebars_string_addcslashes(context, operand->data.string, HBS_STRL("\r\n\t"));
+            tmp = handlebars_string_addcslashes(context, operand->data.string.string, HBS_STRL("\r\n\t"));
             string = handlebars_string_asprintf_append(context, string, "[STRING:%.*s]", (int) tmp->len, tmp->val);
             handlebars_talloc_free(tmp);
             break;
         case handlebars_operand_type_array: {
-            arr = operand->data.array;
+            arr = operand->data.array.array;
             string = handlebars_string_append(context, string, HBS_STRL("[ARRAY:"));
-            for( ; *arr; ++arr ) {
-                if( arr != operand->data.array ) {
+            for( i = 0 ; i < operand->data.array.count; ++i ) {
+                if( i > 0 ) {
                     string = handlebars_string_append(context, string, HBS_STRL(","));
                 }
-                string = handlebars_string_append(context, string, HBS_STR_STRL((*arr)));
+                string = handlebars_string_append(context, string, HBS_STR_STRL((arr + i)->string));
             }
             string = handlebars_string_append(context, string, HBS_STRL("]"));
             break;

@@ -83,11 +83,22 @@ enum handlebars_operand_type {
     handlebars_operand_type_array = 4
 };
 
+struct handlebars_operand_string {
+    size_t offset;
+    struct handlebars_string * string;
+};
+
+struct handlebars_operand_array {
+    size_t count;
+    size_t offset;
+    struct handlebars_operand_string * array;
+};
+
 union handlebars_operand_internals {
     bool boolval;
     long longval;
-    struct handlebars_string * string;
-    struct handlebars_string ** array;
+    struct handlebars_operand_string string;
+    struct handlebars_operand_array array;
 };
 
 struct handlebars_operand {
