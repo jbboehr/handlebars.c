@@ -83,6 +83,11 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     const char * path
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+struct handlebars_cache * handlebars_cache_mmap_ctor(
+    struct handlebars_context * context,
+    const char * name
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
 /**
  * @brief Destruct a cache
  *

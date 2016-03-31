@@ -154,15 +154,21 @@ START_TEST(test_lmdb_cache)
     handlebars_cache_dtor(cache);
 END_TEST
 
+START_TEST(test_mmap_cache)
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, "hbs-mmap-test");
+    execute_for_cache(cache);
+    handlebars_cache_dtor(cache);
+END_TEST
+
 Suite * parser_suite(void)
 {
     const char * title = "Handlebars Spec";
-    TCase * tc_handlebars_spec = tcase_create(title);
     Suite * s = suite_create(title);
 
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
     REGISTER_TEST_FIXTURE(s, test_simple_cache, "Simple Cache");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache, "LMDB Cache");
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache, "MMAP Cache");
 
     return s;
 }
