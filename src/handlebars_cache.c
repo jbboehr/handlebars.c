@@ -13,6 +13,7 @@
 #include "handlebars_map.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
+#include "handlebars_opcode_serializer.h"
 
 static inline bool should_gc(struct handlebars_cache * cache)
 {
@@ -116,11 +117,10 @@ struct handlebars_cache_entry * handlebars_cache_find(struct handlebars_cache * 
     return entry;
 }
 
-struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_program * program)
+struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
 {
     struct handlebars_value * value;
     struct handlebars_cache_entry * entry;
-    size_t size = talloc_total_size(program); // this might take a while
 
     // Check if it would exceed the size
     if( should_gc(cache) ) {
@@ -130,8 +130,8 @@ struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * c
     entry = handlebars_talloc_zero(HBSCTX(cache), struct handlebars_cache_entry);
     HANDLEBARS_MEMCHECK(entry, HBSCTX(cache));
 
-    entry->program = talloc_steal(entry, program);
-    entry->size = size;
+    entry->module = talloc_steal(entry, module);
+    entry->size = module->size;
     time(&entry->last_used);
 
     value = handlebars_value_ctor(HBSCTX(cache));
@@ -142,7 +142,7 @@ struct handlebars_cache_entry * handlebars_cache_add(struct handlebars_cache * c
 
     // Update master
     cache->current_entries++;
-    cache->current_size += size;
+    cache->current_size += module->size;
 
     return entry;
 }

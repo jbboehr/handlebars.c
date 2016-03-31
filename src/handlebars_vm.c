@@ -501,10 +501,10 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_compiler * compiler;
     struct handlebars_cache_entry * cache_entry;
     struct handlebars_module * module;
-    /* if( vm->cache && (cache_entry = handlebars_cache_find(vm->cache, tmpl)) ) {
+    if( vm->cache && (cache_entry = handlebars_cache_find(vm->cache, tmpl)) ) {
         // Use cached
-        program = cache_entry->program;
-    } else { */
+        module = cache_entry->module;
+    } else {
         // Recompile
 
         // Parse
@@ -521,13 +521,13 @@ ACCEPT_FUNCTION(invoke_partial)
         module = handlebars_program_serialize(CONTEXT, compiler->program);
 
         // Save cache entry
-        /* if( vm->cache ) {
-            handlebars_cache_add(vm->cache, tmpl, compiler->program);
-        } */
+        if( vm->cache ) {
+            handlebars_cache_add(vm->cache, tmpl, module);
+        }
 
         // Cleanup parser
         handlebars_parser_dtor(parser);
-    /* } */
+    }
 
     // Get context
     struct handlebars_value * context1 = argv[0];

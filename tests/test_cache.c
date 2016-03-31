@@ -20,10 +20,12 @@
 #endif
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+
 #include "handlebars_cache.h"
 #include "handlebars_compiler.h"
+#include "handlebars_opcode_serializer.h"
 #include "handlebars_helpers.h"
-#include "handlebars_memory.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
@@ -54,7 +56,9 @@ static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cach
     struct cache_test_ctx * ctx = handlebars_talloc(context, struct cache_test_ctx);
     ctx->tmpl = handlebars_string_ctor(context, tmpls[i], strlen(tmpls[i]));
     ctx->compiler = handlebars_compiler_ctor(context);
-    ctx->cache_entry = handlebars_cache_add(cache, ctx->tmpl, ctx->compiler);
+    struct handlebars_module * module = handlebars_talloc_zero(context, struct handlebars_module);
+    module->size = sizeof(struct handlebars_module);
+    ctx->cache_entry = handlebars_cache_add(cache, ctx->tmpl, module);
     return ctx;
 }
 
@@ -64,26 +68,26 @@ START_TEST(test_cache_gc_entries)
 {
     struct handlebars_cache * cache = handlebars_cache_ctor(context);
     struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
-    size_t compiler_size = talloc_total_size(compiler);
+    size_t expected_size = sizeof(struct handlebars_module);
 
     struct cache_test_ctx * ctx0 = make_cache_test_ctx(0, cache);
     ctx0->cache_entry->last_used = 3;
-    ck_assert_uint_eq(cache->current_size, compiler_size);
+    ck_assert_uint_eq(cache->current_size, expected_size);
 
     struct cache_test_ctx * ctx1 = make_cache_test_ctx(1, cache);
     ctx1->cache_entry->last_used = 2;
-    ck_assert_uint_eq(cache->current_size, compiler_size * 2);
+    ck_assert_uint_eq(cache->current_size, expected_size * 2);
 
     struct cache_test_ctx * ctx2 = make_cache_test_ctx(2, cache);
     ctx2->cache_entry->last_used = 1;
-    ck_assert_uint_eq(cache->current_size, compiler_size * 3);
+    ck_assert_uint_eq(cache->current_size, expected_size * 3);
 
     // Garbage collection
     cache->max_entries = 1;
     handlebars_cache_gc(cache);
 
     ck_assert_uint_eq(cache->current_entries, 1);
-    ck_assert_uint_eq(cache->current_size, compiler_size);
+    ck_assert_uint_eq(cache->current_size, expected_size);
     ck_assert_ptr_ne(NULL, handlebars_cache_find(cache, ctx0->tmpl));
     ck_assert_ptr_eq(NULL, handlebars_cache_find(cache, ctx1->tmpl));
     ck_assert_ptr_eq(NULL, handlebars_cache_find(cache, ctx2->tmpl));
@@ -107,18 +111,20 @@ START_TEST(test_cache_execution)
     handlebars_parse(parser);
     handlebars_compiler_compile(compiler, parser->program);
 
+    struct handlebars_module * module = handlebars_program_serialize(context, compiler->program);
+
     vm->helpers = handlebars_value_ctor(context);
     handlebars_value_map_init(vm->helpers);
     vm->partials = partials;
 
     vm->cache = handlebars_cache_ctor(context);
 
-    handlebars_vm_execute(vm, compiler->program, value);
+    handlebars_vm_execute(vm, module, value);
     ck_assert_str_eq(vm->buffer->val, "baz");
 
     int i;
     for( i = 0; i < 10; i++ ) {
-        handlebars_vm_execute(vm, compiler->program, value);
+        handlebars_vm_execute(vm, module, value);
         ck_assert_str_eq(vm->buffer->val, "baz");
     }
 
@@ -133,10 +139,8 @@ Suite * parser_suite(void)
     TCase * tc_handlebars_spec = tcase_create(title);
     Suite * s = suite_create(title);
 
-    /*
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
     REGISTER_TEST_FIXTURE(s, test_cache_execution, "Execution");
-    */
 
     return s;
 }

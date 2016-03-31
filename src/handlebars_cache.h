@@ -11,7 +11,7 @@ extern "C" {
 
 struct handlebars_compiler;
 struct handlebars_map;
-struct handlebars_program;
+struct handlebars_module;
 
 /**
  * @brief In-memory opcode cache.
@@ -57,7 +57,7 @@ struct handlebars_cache_entry {
     struct handlebars_context * context;
 
     //! The cached program
-    struct handlebars_program * program;
+    struct handlebars_module * module;
 };
 
 /**
@@ -97,7 +97,7 @@ int handlebars_cache_gc(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 struct handlebars_cache_entry * handlebars_cache_add(
     struct handlebars_cache * cache,
     struct handlebars_string * tmpl,
-    struct handlebars_program * program
+    struct handlebars_module * module
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
