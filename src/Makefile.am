@@ -85,8 +85,9 @@ libhandlebars_la_SOURCES = \
 	handlebars_ast_printer.c \
 	handlebars_cache.h \
 	handlebars_cache.c \
-	handlebars_cache_simple.c \
 	handlebars_cache_lmdb.c \
+	handlebars_cache_mmap.c \
+	handlebars_cache_simple.c \
 	handlebars_compiler.h \
 	handlebars_compiler.c \
 	handlebars_helpers.h \

@@ -45,6 +45,8 @@ struct handlebars_cache {
         struct MDB_env * env;
     } u;
 
+    void * internal;
+
     handlebars_cache_add_func add;
 
     handlebars_cache_find_func find;
