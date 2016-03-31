@@ -177,6 +177,7 @@ struct handlebars_module * handlebars_program_serialize(
     struct handlebars_module * module = handlebars_talloc_zero(context, struct handlebars_module);
     module->version = handlebars_version();
     module->size = sizeof(struct handlebars_module);
+    module->flags = program->flags;
     time(&module->ts);
 
     // Calculate size

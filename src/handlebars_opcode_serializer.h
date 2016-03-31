@@ -25,6 +25,7 @@ struct handlebars_module {
     void * addr;
     size_t size;
     time_t ts;
+    long flags;
 
     size_t program_count;
     struct handlebars_module_table_entry * programs;
