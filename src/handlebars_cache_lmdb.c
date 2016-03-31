@@ -30,6 +30,47 @@ static void cache_dtor(struct handlebars_cache * cache)
 
 static int cache_gc(struct handlebars_cache * cache)
 {
+    int err;
+    MDB_txn *txn;
+    MDB_dbi dbi;
+    MDB_val key;
+    MDB_val data;
+    MDB_cursor *cursor;
+    MDB_stat stat;
+    time_t now;
+
+    time(&now);
+
+    err = mdb_txn_begin(cache->u.env, NULL, 0, &txn);
+    HANDLE_RC(err);
+
+    err = mdb_dbi_open(txn, NULL, MDB_CREATE, &dbi);
+    if( err != 0 ) goto error;
+
+    err = mdb_stat(txn, dbi, &stat);
+    if( err != 0 ) goto error;
+
+    // Update cache info
+    cache->current_entries = stat.ms_entries;
+
+    err = mdb_cursor_open(txn, dbi, &cursor);
+    if( err != 0 ) goto error;
+
+    while( (err = mdb_cursor_get(cursor, &key, &data, MDB_NEXT)) == 0 ) {
+        fprintf(stderr, "key: %p %.*s, data: %p %.*s\n",
+                key.mv_data,  (int) key.mv_size,  (char *) key.mv_data,
+                data.mv_data, (int) data.mv_size, (char *) data.mv_data);
+
+        struct handlebars_module * module = (struct handlebars_module *) data.mv_data;
+        if( difftime(now, module->ts) > cache->max_age ) {
+            mdb_del(txn, dbi, &key, NULL);
+            cache->current_entries--;
+        }
+    }
+
+    mdb_cursor_close(cursor);
+error:
+    mdb_txn_abort(txn);
     return 0;
 }
 
@@ -42,14 +83,15 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     MDB_val data;
     char tmp[256];
     struct handlebars_module * module;
+    time_t now;
 
-    err = mdb_txn_begin(cache->u.env, NULL, 0, &txn);
+    time(&now);
+
+    err = mdb_txn_begin(cache->u.env, NULL, MDB_RDONLY, &txn);
     HANDLE_RC(err);
 
-    err = mdb_open(txn, NULL, 0, &dbi);
-    if( err != 0 ) {
-        goto error;
-    }
+    err = mdb_dbi_open(txn, NULL, MDB_CREATE, &dbi);
+    if( err != 0 ) goto error;
 
     // Make key
     if( tmpl->len > mdb_env_get_maxkeysize(cache->u.env) ) {
@@ -64,14 +106,30 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
     // Fetch data
     err = mdb_get(txn, dbi, &key, &data);
-    if( err != 0 ) {
+    if( err == MDB_NOTFOUND ) {
+        cache->misses++;
+        mdb_txn_abort(txn);
+        return NULL;
+    }
+    if( err != 0 ) goto error;
+
+    module = ((struct handlebars_module *) data.mv_data);
+
+    // Check if it's too old or wrong version
+    if( module->version != handlebars_version() || difftime(now, module->ts) > cache->max_age ) {
+        cache->misses++;
         goto error;
     }
 
+    cache->hits++;
+
     // Duplicate data
-    size_t size = ((struct handlebars_module *) data.mv_data)->size;
+    size_t size = module->size;
     module = handlebars_talloc_size(cache, size);
     memcpy(module, data.mv_data, size);
+
+    // Close
+    mdb_txn_abort(txn);
 
     // Convert pointers
     handlebars_module_patch_pointers(module);
@@ -99,10 +157,8 @@ static void cache_add(
     err = mdb_txn_begin(cache->u.env, NULL, 0, &txn);
     HANDLE_RC(err);
 
-    err = mdb_open(txn, NULL, 0, &dbi);
-    if( err != 0 ) {
-        goto error;
-    }
+    err = mdb_dbi_open(txn, NULL, MDB_CREATE, &dbi);
+    if( err != 0 ) goto error;
 
     // Make key
     if( tmpl->len > mdb_env_get_maxkeysize(cache->u.env) ) {
@@ -121,15 +177,11 @@ static void cache_add(
 
     // Store
     err = mdb_put(txn, dbi, &key, &data, 0);
-    if( err != 0 ) {
-        goto error;
-    }
+    if( err != 0 ) goto error;
 
     // Commit
     err = mdb_txn_commit(txn);
-    if( err != 0 ) {
-        goto error;
-    }
+    if( err != 0 ) goto error;
 
     return;
 
@@ -155,7 +207,7 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     mdb_env_create(&cache->u.env);
     talloc_set_destructor(cache, cache_dtor);
 
-    int err = mdb_env_open(cache->u.env, ".", MDB_WRITEMAP | MDB_MAPASYNC, 0644);
+    int err = mdb_env_open(cache->u.env, path, MDB_WRITEMAP | MDB_MAPASYNC, 0644);
     HANDLE_RC(err);
 
     return cache;

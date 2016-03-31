@@ -6,6 +6,7 @@
 #include <check.h>
 #include <stdio.h>
 #include <talloc.h>
+#include <unistd.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
 #include <json-c/json.h>
@@ -95,7 +96,7 @@ START_TEST(test_cache_gc_entries)
 }
 END_TEST
 
-START_TEST(test_cache_execution)
+static void execute_for_cache(struct handlebars_cache * cache)
 {
     //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
     struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
@@ -118,7 +119,7 @@ START_TEST(test_cache_execution)
     handlebars_value_map_init(vm->helpers);
     vm->partials = partials;
 
-    vm->cache = handlebars_cache_ctor(context);
+    vm->cache = cache;
 
     handlebars_vm_execute(vm, module, value);
     ck_assert_str_eq(vm->buffer->val, "baz");
@@ -129,9 +130,28 @@ START_TEST(test_cache_execution)
         ck_assert_str_eq(vm->buffer->val, "baz");
     }
 
-    ck_assert_int_eq(10, vm->cache->hits);
-    ck_assert_int_eq(1, vm->cache->misses);
+    ck_assert_int_ge(vm->cache->hits, 10);
+    ck_assert_int_le(vm->cache->misses, 1);
+
+    sleep(2);
+
+    // Test GC
+    cache->max_age = 1;
+    cache->gc(cache);
+
+    ck_assert_int_eq(0, cache->current_entries);
 }
+
+START_TEST(test_simple_cache)
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    execute_for_cache(cache);
+    handlebars_cache_dtor(cache);
+END_TEST
+
+START_TEST(test_lmdb_cache)
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, getenv("TMPDIR") ?: "/tmp");
+    execute_for_cache(cache);
+    handlebars_cache_dtor(cache);
 END_TEST
 
 Suite * parser_suite(void)
@@ -141,7 +161,8 @@ Suite * parser_suite(void)
     Suite * s = suite_create(title);
 
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
-    REGISTER_TEST_FIXTURE(s, test_cache_execution, "Execution");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache, "Simple Cache");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache, "LMDB Cache");
 
     return s;
 }

@@ -21,6 +21,7 @@ struct handlebars_module_table_entry {
 };
 
 struct handlebars_module {
+    int version;
     void * addr;
     size_t size;
     time_t ts;

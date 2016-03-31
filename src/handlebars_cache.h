@@ -73,20 +73,6 @@ struct handlebars_cache {
     size_t misses;
 };
 
-//struct handlebars_cache_entry {
-//    //! The size of the entry, including the program
-//    size_t size;
-//
-//    //! The last time this entry was accessed
-//    time_t last_used;
-//
-//    //! The handlebars context for this program
-//    struct handlebars_context * context;
-//
-//    //! The cached program
-//    struct handlebars_module * module;
-//};
-
 /**
  * @brief Construct a new cache
  *
