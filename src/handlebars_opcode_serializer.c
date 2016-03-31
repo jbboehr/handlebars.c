@@ -169,7 +169,6 @@ static void serialize_program(struct handlebars_module * module, struct handleba
     serialize_program2(module, program, entry);
 }
 
-
 struct handlebars_module * handlebars_program_serialize(
     struct handlebars_context * context,
     struct handlebars_program * program
@@ -177,6 +176,7 @@ struct handlebars_module * handlebars_program_serialize(
     // Allocate initial buffer
     struct handlebars_module * module = handlebars_talloc_zero(context, struct handlebars_module);
     module->size = sizeof(struct handlebars_module);
+    time(&module->ts);
 
     // Calculate size
     calculate_size_program(module, program);
@@ -184,6 +184,8 @@ struct handlebars_module * handlebars_program_serialize(
 
     // Reallocate buffer
     module = handlebars_talloc_realloc_size(context, module, module->size);
+    module->addr = (void *) module;
+    talloc_set_type(module, struct handlebars_module);
 
     // Setup pointers
     module->programs = ((void *) module) + sizeof(struct handlebars_module);

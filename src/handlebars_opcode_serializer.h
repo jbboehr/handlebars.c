@@ -2,20 +2,15 @@
 #ifndef HANDLEBARS_OPCODE_SERIALIZER_H
 #define HANDLEBARS_OPCODE_SERIALIZER_H
 
+#include <time.h>
 #include "handlebars.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-struct handlebars_program_header {
-    size_t size;
-    size_t program_count;
-    size_t program_offset;
-    size_t opcode_count;
-    size_t opcode_offset;
-    size_t data_offset;
-};
+struct handlebars_program;
+struct handlebars_opcode;
 
 struct handlebars_module_table_entry {
     size_t guid;
@@ -26,7 +21,9 @@ struct handlebars_module_table_entry {
 };
 
 struct handlebars_module {
+    void * addr;
     size_t size;
+    time_t ts;
 
     size_t program_count;
     struct handlebars_module_table_entry * programs;

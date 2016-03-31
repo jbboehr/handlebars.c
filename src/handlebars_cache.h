@@ -9,9 +9,26 @@
 extern "C" {
 #endif
 
+struct handlebars_cache;
 struct handlebars_compiler;
 struct handlebars_map;
 struct handlebars_module;
+struct MDB_env;
+
+typedef void (*handlebars_cache_add_func)(
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl,
+    struct handlebars_module * module
+);
+
+typedef struct handlebars_module * (*handlebars_cache_find_func)(
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl
+);
+
+typedef int (*handlebars_cache_gc_func)(
+    struct handlebars_cache * cache
+);
 
 /**
  * @brief In-memory opcode cache.
@@ -21,8 +38,18 @@ struct handlebars_cache {
     //! Common header
     struct handlebars_context ctx;
 
-    //! The hashtable for entry storage and lookup
-    struct handlebars_map * map;
+    union {
+        //! The hashtable for entry storage and lookup
+        struct handlebars_map * map;
+
+        struct MDB_env * env;
+    } u;
+
+    handlebars_cache_add_func add;
+
+    handlebars_cache_find_func find;
+
+    handlebars_cache_gc_func gc;
 
     //! The max amount of time to keep an entry, in seconds, or zero to disable
     double max_age;
@@ -46,19 +73,19 @@ struct handlebars_cache {
     size_t misses;
 };
 
-struct handlebars_cache_entry {
-    //! The size of the entry, including the program
-    size_t size;
-
-    //! The last time this entry was accessed
-    time_t last_used;
-
-    //! The handlebars context for this program
-    struct handlebars_context * context;
-
-    //! The cached program
-    struct handlebars_module * module;
-};
+//struct handlebars_cache_entry {
+//    //! The size of the entry, including the program
+//    size_t size;
+//
+//    //! The last time this entry was accessed
+//    time_t last_used;
+//
+//    //! The handlebars context for this program
+//    struct handlebars_context * context;
+//
+//    //! The cached program
+//    struct handlebars_module * module;
+//};
 
 /**
  * @brief Construct a new cache
@@ -66,8 +93,13 @@ struct handlebars_cache_entry {
  * @param[in] context The handlebars context
  * @return The cache
  */
-struct handlebars_cache * handlebars_cache_ctor(
+struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+struct handlebars_cache * handlebars_cache_lmdb_ctor(
+    struct handlebars_context * context,
+    const char * path
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
@@ -79,12 +111,21 @@ struct handlebars_cache * handlebars_cache_ctor(
 void handlebars_cache_dtor(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Garbage collect the cache
+ * @brief Construct a new cache
+ *
+ * @param[in] context The handlebars context
+ * @return The cache
+ */
+#define handlebars_cache_ctor handlebars_cache_simple_ctor
+
+/**
+ * @brief Lookup a program from the cache.
  *
  * @param[in] cache The cache
- * @return The number of entries removed
+ * @param[in] tmpl The template, Can be a filename, actual template, or arbitrary string
+ * @return The cache entry, or NULL
  */
-int handlebars_cache_gc(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
+#define handlebars_cache_find(cache, key) (cache->find(cache, key))
 
 /**
  * @brief Add a program to the cache. Adding the same key twice is an error.
@@ -94,23 +135,15 @@ int handlebars_cache_gc(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
  * @param[in] program The program
  * @return The cache entry
  */
-struct handlebars_cache_entry * handlebars_cache_add(
-    struct handlebars_cache * cache,
-    struct handlebars_string * tmpl,
-    struct handlebars_module * module
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+#define handlebars_cache_add(cache, key, module) (cache->add(cache, key, module))
 
 /**
- * @brief Lookup a program from the cache.
+ * @brief Garbage collect the cache
  *
  * @param[in] cache The cache
- * @param[in] tmpl The template, Can be a filename, actual template, or arbitrary string
- * @return The cache entry, or NULL
+ * @return The number of entries removed
  */
-struct handlebars_cache_entry * handlebars_cache_find(
-    struct handlebars_cache * cache,
-    struct handlebars_string * tmpl
-) HBS_ATTR_NONNULL_ALL;
+#define handlebars_cache_gc(cache) (cache->gc(cache))
 
 #ifdef	__cplusplus
 }

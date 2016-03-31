@@ -176,6 +176,9 @@ AS_IF([test "x$enable_json" != "xno"], [
   ])
 ])
 
+# lmdb
+AC_CHECK_LIB([lmdb], [mdb_version])
+
 # mustache-spec
 AC_ARG_WITH([mustache-spec],
 	[AS_HELP_STRING([--with-mustache-spec=SPEC_LOCATION], [location to find mustache specification @<:@default=./spec/mustache@>:@])],

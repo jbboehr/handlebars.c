@@ -499,11 +499,9 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Check for cached template, if available
     struct handlebars_compiler * compiler;
-    struct handlebars_cache_entry * cache_entry;
     struct handlebars_module * module;
-    if( vm->cache && (cache_entry = handlebars_cache_find(vm->cache, tmpl)) ) {
+    if( vm->cache && (module = handlebars_cache_find(vm->cache, tmpl)) ) {
         // Use cached
-        module = cache_entry->module;
     } else {
         // Recompile
 

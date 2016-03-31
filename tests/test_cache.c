@@ -44,7 +44,7 @@ struct cache_test_ctx {
     struct handlebars_string * tmpl;
     struct handlebars_compiler * compiler;
     struct handlebars_map_entry * map_entry;
-    struct handlebars_cache_entry * cache_entry;
+    struct handlebars_module * module;
 };
 
 static const char * tmpls[] = {
@@ -58,7 +58,8 @@ static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cach
     ctx->compiler = handlebars_compiler_ctor(context);
     struct handlebars_module * module = handlebars_talloc_zero(context, struct handlebars_module);
     module->size = sizeof(struct handlebars_module);
-    ctx->cache_entry = handlebars_cache_add(cache, ctx->tmpl, module);
+    handlebars_cache_add(cache, ctx->tmpl, module);
+    ctx->module = module;
     return ctx;
 }
 
@@ -71,15 +72,15 @@ START_TEST(test_cache_gc_entries)
     size_t expected_size = sizeof(struct handlebars_module);
 
     struct cache_test_ctx * ctx0 = make_cache_test_ctx(0, cache);
-    ctx0->cache_entry->last_used = 3;
+    ctx0->module->ts= 3;
     ck_assert_uint_eq(cache->current_size, expected_size);
 
     struct cache_test_ctx * ctx1 = make_cache_test_ctx(1, cache);
-    ctx1->cache_entry->last_used = 2;
+    ctx1->module->ts = 2;
     ck_assert_uint_eq(cache->current_size, expected_size * 2);
 
     struct cache_test_ctx * ctx2 = make_cache_test_ctx(2, cache);
-    ctx2->cache_entry->last_used = 1;
+    ctx2->module->ts = 1;
     ck_assert_uint_eq(cache->current_size, expected_size * 3);
 
     // Garbage collection
