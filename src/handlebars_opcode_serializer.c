@@ -82,12 +82,18 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
     // Increment for children
     switch( operand->type ) {
         case handlebars_operand_type_string:
+            // Make sure hash is computed
+            HBS_STR_HASH(operand->data.string.string);
+
             size = HANDLEBARS_STRING_SIZE(operand->data.string.string->len);
             operand->data.string.string = append(module, operand->data.string.string, size);
             break;
         case handlebars_operand_type_array:
             operand->data.array.array = append(module, operand->data.array.array, sizeof(struct handlebars_operand_string) * operand->data.array.count);
             for( i = 0; i < operand->data.array.count; i++ ) {
+                // Make sure hash is computed
+                HBS_STR_HASH(operand->data.array.array[i].string);
+
                 size = HANDLEBARS_STRING_SIZE(operand->data.array.array[i].string->len);
                 operand->data.array.array[i].string = append(module, operand->data.array.array[i].string, size);
             }
@@ -98,7 +104,7 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
     }
 }
 
-static void serialize_opcode(struct handlebars_module * module, struct handlebars_opcode * opcode, size_t program_offset)
+static void serialize_opcode(struct handlebars_module * module, struct handlebars_opcode * opcode, struct handlebars_module_table_entry ** table)
 {
     size_t guid = module->opcode_count++;
     struct handlebars_opcode * new_opcode = &module->opcodes[guid];
@@ -115,34 +121,54 @@ static void serialize_opcode(struct handlebars_module * module, struct handlebar
     // Patch push_program opcode
     if( new_opcode->type == handlebars_opcode_type_push_program ) {
         if( new_opcode->op1.type == handlebars_operand_type_long && !new_opcode->op4.data.boolval ) {
-            new_opcode->op1.data.longval += program_offset;
+            new_opcode->op1.data.longval = table[new_opcode->op1.data.longval]->guid;
             new_opcode->op4.data.boolval = 1;
         }
     }
 }
 
-static void serialize_program(struct handlebars_module * module, struct handlebars_program * program)
+static struct handlebars_module_table_entry * serialize_program_shallow(struct handlebars_module * module, struct handlebars_program * program)
 {
     size_t guid = module->program_count++;
     struct handlebars_module_table_entry * entry = &module->programs[guid];
-    size_t i;
 
     entry->guid = guid;
-    entry->opcode_count = program->opcodes_length;
-    entry->opcodes = module->opcodes + module->opcode_count;
     entry->child_count = program->children_length;
     entry->children = module->programs + module->program_count;
 
+    return entry;
+}
+
+static void serialize_program2(struct handlebars_module * module, struct handlebars_program * program, struct handlebars_module_table_entry * entry)
+{
+    size_t guid = entry->guid;
+    size_t i;
+    struct handlebars_module_table_entry * children[program->children_length];
+
+    // Serialize children (shallow)
+    for( i = 0; i < program->children_length; i++ ) {
+        children[i] = serialize_program_shallow(module, program->children[i]);
+    }
+
     // Serialize opcodes
+    entry->opcode_count = program->opcodes_length;
+    entry->opcodes = module->opcodes + module->opcode_count;
     for( i = 0 ; i < program->opcodes_length; i++ ) {
-        serialize_opcode(module, program->opcodes[i], guid + 1);
+        serialize_opcode(module, program->opcodes[i], children);
     }
 
     // Serialize children
     for( i = 0; i < program->children_length; i++ ) {
-        serialize_program(module, program->children[i]);
+        serialize_program2(module, program->children[i], children[i]);
     }
 }
+
+static void serialize_program(struct handlebars_module * module, struct handlebars_program * program)
+{
+    struct handlebars_module_table_entry * entry = serialize_program_shallow(module, program);
+    serialize_program2(module, program, entry);
+}
+
 
 struct handlebars_module * handlebars_program_serialize(
     struct handlebars_context * context,

@@ -14,6 +14,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
+#include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars_utils.h"
@@ -390,8 +391,11 @@ static int do_execute(void)
         goto error;
     }
 
-    handlebars_vm_execute(vm, compiler->program, context);
+    // Serialize
+    struct handlebars_module * module = handlebars_program_serialize(ctx, compiler->program);
 
+    // Execute
+    handlebars_vm_execute(vm, module, context);
 
     fprintf(stdout, "%.*s", (int) vm->buffer->len, vm->buffer->val);
 

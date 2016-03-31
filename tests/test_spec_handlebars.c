@@ -332,8 +332,9 @@ static inline void run_test(struct generic_test * test, int _i)
         goto done;
     }
 
-    // Serialize opcodes
-    struct handlebars_module * module = handlebars_program_serialize(HBSCTX(compiler), compiler->program);
+    // Serialize
+    struct handlebars_module * module = handlebars_program_serialize(ctx, compiler->program);
+    handlebars_compiler_dtor(compiler);
 
     // Setup VM
     vm = handlebars_vm_ctor(ctx);
@@ -398,7 +399,7 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     // Execute
-    handlebars_vm_execute(vm, compiler->program, context);
+    handlebars_vm_execute(vm, module, context);
 
 #ifndef NDEBUG
     if( test->expected ) {

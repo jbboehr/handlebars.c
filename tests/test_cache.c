@@ -133,8 +133,10 @@ Suite * parser_suite(void)
     TCase * tc_handlebars_spec = tcase_create(title);
     Suite * s = suite_create(title);
 
+    /*
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
     REGISTER_TEST_FIXTURE(s, test_cache_execution, "Execution");
+    */
 
     return s;
 }

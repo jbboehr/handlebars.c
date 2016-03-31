@@ -18,7 +18,7 @@ struct handlebars_program_header {
 };
 
 struct handlebars_module_table_entry {
-    long guid;
+    size_t guid;
     size_t opcode_count;
     size_t child_count;
     struct handlebars_opcode * opcodes;

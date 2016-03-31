@@ -10,9 +10,11 @@
 #include <yaml.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
-#include "handlebars_memory.h"
+#include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
@@ -20,6 +22,8 @@
 #include "handlebars.lex.h"
 
 #include "utils.h"
+
+
 
 struct mustache_test {
     char * name;
@@ -241,6 +245,9 @@ START_TEST(test_mustache_spec)
         ck_assert_msg(0, ctx->num);
     }
 
+    // Serialize
+    struct handlebars_module * module = handlebars_program_serialize(HBSCTX(compiler), compiler->program);
+
     // Setup VM
     vm = handlebars_vm_ctor(ctx);
     vm->helpers = handlebars_value_ctor(HBSCTX(vm));
@@ -257,7 +264,7 @@ START_TEST(test_mustache_spec)
     }
 
     // Execute
-    handlebars_vm_execute(vm, compiler->program, test->data);
+    handlebars_vm_execute(vm, module, test->data);
 
 #ifndef NDEBUG
     if( test->expected ) {

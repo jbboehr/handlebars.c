@@ -12,6 +12,7 @@ extern "C" {
 struct handlebars_compiler;
 struct handlebars_context;
 struct handlebars_map;
+struct handlebars_module;
 struct handlebars_options;
 
 #ifndef HANDLEBARS_VM_STACK_SIZE
@@ -37,7 +38,8 @@ struct handlebars_vm {
     struct handlebars_context ctx;
     struct handlebars_cache * cache;
 
-    struct handlebars_program ** programs;
+    struct handlebars_module * module;
+
     size_t guid_index;
     long depth;
     long flags;
@@ -66,7 +68,7 @@ void handlebars_vm_dtor(struct handlebars_vm * vm);
 
 struct handlebars_string * handlebars_vm_execute(
     struct handlebars_vm * vm,
-    struct handlebars_program * program,
+    struct handlebars_module * module,
     struct handlebars_value * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
