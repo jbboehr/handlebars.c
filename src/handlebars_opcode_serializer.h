@@ -40,6 +40,8 @@ struct handlebars_module * handlebars_program_serialize(
     struct handlebars_program * program
 );
 
+void handlebars_module_patch_pointers(struct handlebars_module * module);
+
 #ifdef	__cplusplus
 }
 #endif

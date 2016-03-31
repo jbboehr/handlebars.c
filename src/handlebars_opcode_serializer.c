@@ -207,3 +207,51 @@ struct handlebars_module * handlebars_program_serialize(
 
     return module;
 }
+
+
+#define PATCH(ptr) ptr = ((void *) ptr) - module->addr + (void *) module
+
+
+static inline void patch_operand(struct handlebars_module * module, struct handlebars_operand * operand)
+{
+    int i;
+
+    switch( operand->type ) {
+        case handlebars_operand_type_string:
+            PATCH(operand->data.string.string);
+            break;
+        case handlebars_operand_type_array:
+            PATCH(operand->data.array.array);
+            for( i = 0; i < operand->data.array.count; i++ ) {
+                PATCH(operand->data.array.array[i].string);
+            }
+            break;
+        default:
+            // nothing
+            break;
+    }
+}
+
+void handlebars_module_patch_pointers(struct handlebars_module * module)
+{
+    int i;
+
+    if( module->addr == (void *) module ) {
+        return;
+    }
+
+    PATCH(module->programs);
+    PATCH(module->opcodes);
+
+    for( i = 0; i < module->program_count; i++ ) {
+        PATCH(module->programs[i].children);
+        PATCH(module->programs[i].opcodes);
+    }
+
+    for( i = 0; i < module->opcode_count; i++ ) {
+        patch_operand(module, &module->opcodes[i].op1);
+        patch_operand(module, &module->opcodes[i].op2);
+        patch_operand(module, &module->opcodes[i].op3);
+        patch_operand(module, &module->opcodes[i].op4);
+    }
+}

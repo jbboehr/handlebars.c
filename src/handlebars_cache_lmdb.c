@@ -74,7 +74,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     memcpy(module, data.mv_data, size);
 
     // Convert pointers
-    // @todo
+    handlebars_module_patch_pointers(module);
 
     return module;
 
