@@ -125,8 +125,6 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     const char * name
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
-    cache->u.map = talloc_steal(cache, handlebars_map_ctor(context));
-    cache->u.map->ctx = HBSCTX(cache);
     cache->add = &cache_add;
     cache->find = &cache_find;
     cache->gc = &cache_gc;

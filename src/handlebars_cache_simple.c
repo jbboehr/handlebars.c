@@ -51,28 +51,29 @@ static int cache_compare(const void * ptr1, const void * ptr2)
 
 int cache_gc(struct handlebars_cache * cache)
 {
+    struct handlebars_map * map = (struct handlebars_map *) cache->internal;
     int removed = 0;
-    struct handlebars_map_entry * arr[cache->u.map->i];
+    struct handlebars_map_entry * arr[map->i];
     struct handlebars_map_entry * item;
     struct handlebars_map_entry * tmp;
     size_t i = 0;
     time_t now;
     time(&now);
 
-    handlebars_map_foreach(cache->u.map, item, tmp) {
+    handlebars_map_foreach(map, item, tmp) {
         arr[i++] = item;
     }
-    assert(i == cache->u.map->i);
+    assert(i == map->i);
 
-    qsort(arr, cache->u.map->i, sizeof(struct handlebars_map_entry *), &cache_compare);
+    qsort(arr, map->i, sizeof(struct handlebars_map_entry *), &cache_compare);
 
-    for( i = 0; i < cache->u.map->i; i++ ) {
+    for( i = 0; i < map->i; i++ ) {
         struct handlebars_map_entry * map_entry = arr[i];
         struct handlebars_module * module = talloc_get_type(map_entry->value->v.ptr, struct handlebars_module);
         if( should_gc_entry(cache, module, now) ) {
             size_t oldsize = module->size;
             // Remove
-            handlebars_map_remove(cache->u.map, map_entry->key);
+            handlebars_map_remove(map, map_entry->key);
 #ifdef HANDLEBARS_NO_REFCOUNT
             // Delref should handle it if refcounting enabled - maybe?
             //handlebars_value_dtor(map_entry->value);
@@ -90,7 +91,8 @@ int cache_gc(struct handlebars_cache * cache)
 
 static struct handlebars_module * cache_find(struct handlebars_cache * cache, struct handlebars_string * tmpl)
 {
-    struct handlebars_value * value = handlebars_map_find(cache->u.map, tmpl);
+    struct handlebars_map * map = (struct handlebars_map *) cache->internal;
+    struct handlebars_value * value = handlebars_map_find(map, tmpl);
     struct handlebars_module * module = NULL;
     if( value ) {
         module = (struct handlebars_module *) value->v.ptr;
@@ -106,6 +108,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
 static void cache_add(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
 {
+    struct handlebars_map * map = (struct handlebars_map *) cache->internal;
     struct handlebars_value * value;
 
     // Check if it would exceed the size
@@ -119,7 +122,7 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     value->type = HANDLEBARS_VALUE_TYPE_PTR;
     value->v.ptr = talloc_steal(cache, module);
 
-    handlebars_map_add(cache->u.map, tmpl, value);
+    handlebars_map_add(map, tmpl, value);
 
     // Update master
     cache->current_entries++;
@@ -130,8 +133,9 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
-    cache->u.map = talloc_steal(cache, handlebars_map_ctor(context));
-    cache->u.map->ctx = HBSCTX(cache);
+    struct handlebars_map * map = talloc_steal(cache, handlebars_map_ctor(context));
+    map->ctx = HBSCTX(cache);
+    cache->internal = map;
     cache->add = &cache_add;
     cache->find = &cache_find;
     cache->gc = &cache_gc;

@@ -38,13 +38,6 @@ struct handlebars_cache {
     //! Common header
     struct handlebars_context ctx;
 
-    union {
-        //! The hashtable for entry storage and lookup
-        struct handlebars_map * map;
-
-        struct MDB_env * env;
-    } u;
-
     void * internal;
 
     handlebars_cache_add_func add;
