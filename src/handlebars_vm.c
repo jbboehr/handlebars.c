@@ -494,15 +494,11 @@ ACCEPT_FUNCTION(invoke_partial)
         goto done;
     }
 
-    // Construct VM
-    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
-
     // Check for cached template, if available
     struct handlebars_compiler * compiler;
-    struct handlebars_module * module;
-    if( vm->cache && (module = handlebars_cache_find(vm->cache, tmpl)) ) {
-        // Use cached
-    } else {
+    struct handlebars_module * module = vm->cache ? handlebars_cache_find(vm->cache, tmpl) : NULL;
+    bool from_cache = module != NULL;
+    if( !from_cache ) {
         // Recompile
 
         // Parse
@@ -516,7 +512,7 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_compiler_compile(compiler, parser->program);
 
         // Serialize
-        module = handlebars_program_serialize(CONTEXT, compiler->program);
+        module = handlebars_program_serialize(context, compiler->program);
 
         // Save cache entry
         if( vm->cache ) {
@@ -525,6 +521,15 @@ ACCEPT_FUNCTION(invoke_partial)
 
         // Cleanup parser
         handlebars_parser_dtor(parser);
+    }
+
+    // Construct child VM
+    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
+
+    // Save jump buffer
+    vm2->ctx.jmp = &buf;
+    if( setjmp(buf) ) {
+        handlebars_throw_ex(CONTEXT, vm2->ctx.num, &vm2->ctx.loc, "%s", vm2->ctx.msg);
     }
 
     // Get context
