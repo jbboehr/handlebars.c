@@ -31,13 +31,15 @@ START_TEST(test_yy_error)
     if( !handlebars_setjmp_ex(parser, &buf) ) {
         handlebars_yy_error(&loc, parser, err);
     }
-    
-    ck_assert_int_eq(parser->ctx.num, HANDLEBARS_PARSEERR);
-    ck_assert_str_eq(parser->ctx.msg, err);
-    ck_assert_int_eq(parser->ctx.loc.first_line, loc.first_line);
-    ck_assert_int_eq(parser->ctx.loc.first_column, loc.first_column);
-    ck_assert_int_eq(parser->ctx.loc.last_line, loc.last_line);
-    ck_assert_int_eq(parser->ctx.loc.last_column, loc.last_column);
+
+    struct handlebars_locinfo loc2 = handlebars_error_loc(HBSCTX(parser));
+
+    ck_assert_int_eq(handlebars_error_num(HBSCTX(parser)), HANDLEBARS_PARSEERR);
+    ck_assert_str_eq(handlebars_error_msg(HBSCTX(parser)), err);
+    ck_assert_int_eq(loc2.first_line, loc.first_line);
+    ck_assert_int_eq(loc2.first_column, loc.first_column);
+    ck_assert_int_eq(loc2.last_line, loc.last_line);
+    ck_assert_int_eq(loc2.last_column, loc.last_column);
 }
 END_TEST
 

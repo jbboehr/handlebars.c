@@ -313,9 +313,9 @@ static inline void run_test(struct generic_test * test, int _i)
     handlebars_parse(parser);
 
     // Check error
-    if( parser->ctx.num ) {
+    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         // @todo maybe check message
-        ck_assert_msg(test->exception, parser->ctx.msg);
+        ck_assert_msg(test->exception, handlebars_error_msg(ctx));
         goto done;
     }
 
@@ -326,7 +326,7 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     handlebars_compiler_compile(compiler, parser->program);
-    if( compiler->ctx.num ) {
+    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         // @todo check message
         ck_assert_int_eq(1, test->exception);
         goto done;
@@ -412,29 +412,29 @@ static inline void run_test(struct generic_test * test, int _i)
 #endif
 
     if( test->exception ) {
-        ck_assert_ptr_ne(vm->ctx.msg, NULL);
+        ck_assert_ptr_ne(handlebars_error_msg(HBSCTX(vm)), NULL);
 //        if( test->message ) {
 //            ck_assert_str_eq(vm->errmsg, test->message);
 //        }
         if( test->message == NULL ) {
             // Just check if there was an error
-            ck_assert_str_ne("", vm->ctx.msg);
+            ck_assert_str_ne("", handlebars_error_msg(HBSCTX(vm)));
         } else if( test->message[0] == '/' && test->message[strlen(test->message) - 1] == '/' ) {
             // It's a regex
             char * tmp = strdup(test->message + 1);
             tmp[strlen(test->message) - 2] = '\0';
             char * regex_error = NULL;
-            if( 0 == regex_compare(tmp, vm->ctx.msg, &regex_error) ) {
+            if( 0 == regex_compare(tmp, handlebars_error_msg(HBSCTX(vm)), &regex_error) ) {
                 // ok
             } else {
                 ck_assert_msg(0, regex_error);
             }
             free(tmp);
         } else {
-            ck_assert_str_eq(test->message, vm->ctx.msg);
+            ck_assert_str_eq(test->message, handlebars_error_msg(HBSCTX(vm)));
         }
     } else {
-        ck_assert_msg(vm->ctx.msg == NULL, vm->ctx.msg);
+        ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
         ck_assert_ptr_ne(test->expected, NULL);
         ck_assert_ptr_ne(vm->buffer, NULL);
 

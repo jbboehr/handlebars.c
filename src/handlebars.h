@@ -84,9 +84,10 @@ struct handlebars_string;
     } while(0)
 #define HBS_MEMCHK(cond) MEMCHKEX(cond, CONTEXT)
 
-#define handlebars_setjmp(ctx) setjmp(*(HBSCTX(ctx)->jmp))
-#define handlebars_setjmp_cp(ctx, ctx2) setjmp(*(HBSCTX(ctx)->jmp = ctx2->jmp))
-#define handlebars_setjmp_ex(ctx, buf) setjmp(*(HBSCTX(ctx)->jmp = (buf)))
+#define handlebars_setjmp(ctx) setjmp(*(HBSCTX(ctx)->e->jmp))
+#define handlebars_setjmp_cp(ctx, ctx2) setjmp(*(HBSCTX(ctx)->e->jmp = ctx2->jmp))
+#define handlebars_setjmp_ex(ctx, buf) setjmp(*(HBSCTX(ctx)->e->jmp = (buf)))
+#define handlebars_rethrow(parent, child) handlebars_throw_ex(parent, child->e->num, &child->e->loc, "%s", child->e->msg);
 
 /**
  * @brief Enumeration of error types
@@ -133,10 +134,7 @@ struct handlebars_locinfo
 };
 #define YYLTYPE handlebars_locinfo
 
-/**
- * @brief Common structure header, used to store error info and a `jmp_buf`
- */
-struct handlebars_context
+struct handlebars_error
 {
     //! The type of error that has occurred
     enum handlebars_error_type num;
@@ -150,6 +148,14 @@ struct handlebars_context
     //! On an unrecoverable error, if `jmp` is non-null, `longjmp` will be called with it as an argument,
     //! otherwise `abort`
     jmp_buf * jmp;
+};
+
+/**
+ * @brief Common structure header, used to store error info and a `jmp_buf`
+ */
+struct handlebars_context
+{
+    struct handlebars_error * e;
 };
 
 /**
@@ -208,6 +214,8 @@ struct handlebars_context * handlebars_context_ctor_ex(void * ctx);
 static inline struct handlebars_context * handlebars_context_ctor(void) {
     return handlebars_context_ctor_ex(NULL);
 }
+
+void handlebars_context_bind(struct handlebars_context * parent, struct handlebars_context * child) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Free a context and it's resources.
@@ -278,6 +286,14 @@ void handlebars_throw_ex(
     const char * msg,
     ...
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_PRINTF(4, 5) HBS_ATTR_NORETURN;
+
+enum handlebars_error_type handlebars_error_num(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
+
+struct handlebars_locinfo handlebars_error_loc(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
+
+const char * handlebars_error_msg(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
+
+jmp_buf * handlebars_error_jmp(struct handlebars_context * context, jmp_buf * buf);
 
 /**
  * @brief Get the error message from a context, or NULL.

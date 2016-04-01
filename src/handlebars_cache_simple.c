@@ -141,6 +141,8 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
+    handlebars_context_bind(context, HBSCTX(cache));
+
     struct handlebars_map * map = talloc_steal(cache, handlebars_map_ctor(context));
     map->ctx = HBSCTX(cache);
     cache->max_age = -1;

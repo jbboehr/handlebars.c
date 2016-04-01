@@ -56,7 +56,9 @@ ACCEPT_FUNCTION(push_context);
 
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 {
-    return MC(handlebars_talloc_zero(ctx, struct handlebars_vm));
+    struct handlebars_vm * vm =  MC(handlebars_talloc_zero(ctx, struct handlebars_vm));
+    handlebars_context_bind(ctx, HBSCTX(vm));
+    return vm;
 }
 
 #undef CONTEXT
@@ -461,6 +463,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Construct new context
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
+    context->e->jmp = &buf;
 
     // If partial is a function?
     if( handlebars_value_is_callable(partial) ) {
@@ -483,9 +486,8 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     // Save jump buffer
-    context->jmp = &buf;
     if( setjmp(buf) ) {
-        handlebars_throw_ex(CONTEXT, context->num, &context->loc, "%s", context->msg);
+        handlebars_rethrow(CONTEXT, context);
     }
 
     // Get template
@@ -527,12 +529,11 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
     // Save jump buffer
-    vm2->ctx.jmp = &buf;
     if( setjmp(buf) ) {
         if( from_cache ) {
             vm->cache->release(vm->cache, tmpl, module);
         }
-        handlebars_throw_ex(CONTEXT, vm2->ctx.num, &vm2->ctx.loc, "%s", vm2->ctx.msg);
+        handlebars_rethrow(CONTEXT, HBSCTX(vm2));
     }
 
     // Get context
@@ -952,7 +953,8 @@ struct handlebars_string * handlebars_vm_execute(
     struct handlebars_module * module,
     struct handlebars_value * context
 ) {
-    jmp_buf * prev = HBSCTX(vm)->jmp;
+    struct handlebars_error * e = HBSCTX(vm)->e;
+    jmp_buf * prev = e->jmp;
     jmp_buf buf;
 
     // Save jump buffer
@@ -978,7 +980,7 @@ done:
     // Reset
     vm->module = NULL;
     vm->guid_index = 0;
-    HBSCTX(vm)->jmp = prev;
+    e->jmp = prev;
 
     return vm->buffer;
 }

@@ -54,7 +54,22 @@ struct handlebars_context * handlebars_context_ctor_ex(void * ctx)
         errno = ENOMEM;
     }
 
+    context->e = handlebars_talloc_zero(context, struct handlebars_error);
+    if( unlikely(context->e) == NULL ) {
+        handlebars_talloc_free(context);
+        errno = ENOMEM;
+        context = NULL;
+    }
+
     return context;
+}
+
+void handlebars_context_bind(struct handlebars_context * parent, struct handlebars_context * child)
+{
+    if( child->e ) {
+        handlebars_throw(parent, HANDLEBARS_ERROR, "Error context already assigned");
+    }
+    child->e = parent->e;
 }
 
 void handlebars_context_dtor(struct handlebars_context * context)
@@ -62,27 +77,46 @@ void handlebars_context_dtor(struct handlebars_context * context)
     handlebars_talloc_free(context);
 }
 
+enum handlebars_error_type handlebars_error_num(struct handlebars_context * context)
+{
+    assert(context->e != NULL);
+    return context->e->num;
+}
+
+struct handlebars_locinfo handlebars_error_loc(struct handlebars_context * context)
+{
+    assert(context->e != NULL);
+    return context->e->loc;
+}
+
+const char * handlebars_error_msg(struct handlebars_context * context)
+{
+    assert(context->e != NULL);
+    return context->e->msg;
+}
 
 char * handlebars_error_message(struct handlebars_context * context)
 {
     char * errmsg;
     char errbuf[256];
+    struct handlebars_error * e = context->e;
 
     assert(context != NULL);
+    assert(context->error != NULL);
 
-    if( context->msg == NULL ) {
+    if( e->msg == NULL ) {
         return NULL;
     }
 
     snprintf(errbuf, sizeof(errbuf), "%s on line %d, column %d",
-             context->msg,
-             context->loc.last_line,
-             context->loc.last_column);
+             e->msg,
+             e->loc.last_line,
+             e->loc.last_column);
 
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( unlikely(errmsg == NULL) ) {
         // this might be a bad idea...
-        return context->msg;
+        return e->msg;
     }
 
     return errmsg;
@@ -92,24 +126,25 @@ char * handlebars_error_message_js(struct handlebars_context * context)
 {
     char * errmsg;
     char errbuf[512];
+    struct handlebars_error * e = context->e;
 
     assert(context != NULL);
 
-    if( context->msg == NULL ) {
+    if( e->msg == NULL ) {
         return NULL;
     }
 
     // @todo check errno == HANDLEBARS_PARSEERR
 
     snprintf(errbuf, sizeof(errbuf), "Parse error on line %d, column %d : %s",
-             context->loc.last_line,
-             context->loc.last_column,
-             context->msg);
+             e->loc.last_line,
+             e->loc.last_column,
+             e->msg);
 
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( unlikely(errmsg == NULL) ) {
         // this might be a bad idea...
-        return context->msg;
+        return e->msg;
     }
 
     return errmsg;
@@ -119,6 +154,9 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
 {
     int lexerr = 0;
     struct handlebars_parser * parser = MC(handlebars_talloc_zero(ctx, struct handlebars_parser));
+
+    // Bind error context
+    handlebars_context_bind(ctx, HBSCTX(parser));
 
     // Set the current context in a variable for yyalloc >.>
     _handlebars_parser_init_current = parser;
@@ -158,7 +196,8 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
 {
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
-    jmp_buf * prev = HBSCTX(parser)->jmp;
+    struct handlebars_error * e = HBSCTX(parser)->e;
+    jmp_buf * prev = e->jmp;
     jmp_buf buf;
     YYSTYPE * lval;
     struct handlebars_token ** tokens;
@@ -167,7 +206,7 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
 
     // Save jump buffer
     if( !prev ) {
-        HBSCTX(parser)->jmp = &buf;
+        e->jmp = &buf;
         if (setjmp(buf)) {
             goto done;
         }
@@ -195,13 +234,14 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
     } while( 1 );
 
 done:
-    HBSCTX(parser)->jmp = prev;
+    e->jmp = prev;
     return tokens;
 }
 
 bool handlebars_parse(struct handlebars_parser * parser)
 {
-    jmp_buf * prev = HBSCTX(parser)->jmp;
+    struct handlebars_error * e = HBSCTX(parser)->e;
+    jmp_buf * prev = e->jmp;
     jmp_buf buf;
 
     // Save jump buffer
@@ -214,45 +254,48 @@ bool handlebars_parse(struct handlebars_parser * parser)
     handlebars_yy_parse(parser);
 
 done:
-    HBSCTX(parser)->jmp = prev;
+    e->jmp = prev;
     return parser->program != NULL;
 }
 
 static inline void _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
 {
-    context->num = num;
-    context->msg = talloc_vasprintf(context, msg, ap);
+    struct handlebars_error * e = context->e;
+    e->num = num;
+    e->msg = talloc_vasprintf(context, msg, ap);
     if( loc ) {
-        context->loc = *loc;
+        e->loc = *loc;
     } else {
-        memset(&context->loc, 0, sizeof(context->loc));
+        memset(&e->loc, 0, sizeof(e->loc));
     }
 }
 
 void handlebars_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...)
 {
+    struct handlebars_error * e = context->e;
     va_list ap;
     va_start(ap, msg);
     _set_err(context, num, NULL, msg, ap);
     va_end(ap);
-    if( context->jmp ) {
-        longjmp(*context->jmp, num);
+    if( e->jmp ) {
+        longjmp(*e->jmp, num);
     } else {
-        fprintf(stderr, "Throw with invalid jmp_buf: %s\n", context->msg);
+        fprintf(stderr, "Throw with invalid jmp_buf: %s\n", e->msg);
         abort();
     }
 }
 
 void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, ...)
 {
+    struct handlebars_error * e = context->e;
     va_list ap;
     va_start(ap, msg);
     _set_err(context, num, loc, msg, ap);
     va_end(ap);
-    if( context->jmp ) {
-        longjmp(*context->jmp, num);
+    if( e->jmp ) {
+        longjmp(*e->jmp, num);
     } else {
-        fprintf(stderr, "Throw with invalid jmp_buf: %s\n", context->msg);
+        fprintf(stderr, "Throw with invalid jmp_buf: %s\n", e->msg);
         abort();
     }
 }

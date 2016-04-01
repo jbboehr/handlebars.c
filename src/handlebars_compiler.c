@@ -110,6 +110,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context 
 {
     struct handlebars_compiler * compiler;
     compiler = MC(handlebars_talloc_zero(CONTEXT, struct handlebars_compiler));
+    handlebars_context_bind(context, HBSCTX(compiler));
     compiler->program = MC(handlebars_talloc_zero(compiler, struct handlebars_program));
     compiler->program->main = compiler->program;
     compiler->known_helpers = handlebars_builtins_names();
@@ -1334,7 +1335,8 @@ void handlebars_compiler_compile(
         struct handlebars_compiler * compiler,
         struct handlebars_ast_node * node
 ) {
-    jmp_buf * prev = HBSCTX(compiler)->jmp;
+    struct handlebars_error * e = HBSCTX(compiler)->e;
+    jmp_buf * prev = e->jmp;
     jmp_buf buf;
 
     // Save jump buffer
@@ -1348,5 +1350,5 @@ void handlebars_compiler_compile(
     handlebars_compiler_accept(compiler, node);
 
 done:
-    HBSCTX(compiler)->jmp = prev;
+    e->jmp = prev;
 }

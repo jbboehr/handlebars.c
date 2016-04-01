@@ -175,7 +175,7 @@ START_TEST(handlebars_spec_parser)
     parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
     handlebars_parse(parser);
     
-    if( parser->ctx.num ) {
+    if( handlebars_error_num(HBSCTX(parser)) != HANDLEBARS_SUCCESS ) {
         char * errmsg = handlebars_error_message((struct handlebars_context *) parser);
         char * errmsgjs = handlebars_error_message_js((struct handlebars_context *) parser);
         
@@ -207,7 +207,7 @@ START_TEST(handlebars_spec_parser)
             ck_assert_msg(0, lesigh);
         }
     } else {
-        struct handlebars_string * output = handlebars_ast_print(parser, parser->program);
+        struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), parser->program);
         
         if( !test->exception ) {
             ck_assert_ptr_ne(NULL, output);

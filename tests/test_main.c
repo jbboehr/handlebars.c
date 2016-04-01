@@ -105,8 +105,8 @@ START_TEST(test_context_get_errmsg)
     loc.last_line = 1;
     loc.last_column = 2;
 
-    context->msg = "test";
-    context->loc = loc;
+    context->e->msg = "test";
+    context->e->loc = loc;
     actual = handlebars_error_message(context);
 
     ck_assert_ptr_ne(NULL, actual);
@@ -146,8 +146,8 @@ START_TEST(test_context_get_errmsg_js)
     loc.last_line = 1;
     loc.last_column = 2;
 
-    context->msg = "test";
-    context->loc = loc;
+    context->e->msg = "test";
+    context->e->loc = loc;
     actual = handlebars_error_message_js(context);
 
     ck_assert_ptr_ne(NULL, actual);

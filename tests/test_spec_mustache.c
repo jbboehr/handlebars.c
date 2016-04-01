@@ -233,16 +233,16 @@ START_TEST(test_mustache_spec)
     handlebars_parse(parser);
 
     // Check error
-    if( ctx->msg != NULL ) {
-        ck_assert_msg(0, ctx->msg);
+    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
+        ck_assert_msg(0, handlebars_error_msg(ctx));
     }
 
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
-
     handlebars_compiler_compile(compiler, parser->program);
-    if( ctx->num ) {
-        ck_assert_msg(0, ctx->num);
+
+    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
+        ck_assert_msg(0, handlebars_error_msg(ctx));
     }
 
     // Serialize
@@ -276,7 +276,11 @@ START_TEST(test_mustache_spec)
     }
 #endif
 
-    ck_assert_msg(ctx->msg == NULL, ctx->msg);
+    // Check error
+    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
+        ck_assert_msg(0, handlebars_error_msg(ctx));
+    }
+
     ck_assert_ptr_ne(vm->buffer, NULL);
 
     if (strcmp(vm->buffer->val, test->expected) != 0) {

@@ -643,7 +643,7 @@ START_TEST(handlebars_spec_compiler)
     }
 
     handlebars_compiler_compile(compiler, parser->program);
-    ck_assert_int_eq(0, ctx->num);
+    ck_assert_int_eq(0, handlebars_error_num(ctx));
     
     // Printer
     actual = handlebars_program_print(ctx, compiler->program, 0);

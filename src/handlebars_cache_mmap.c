@@ -285,6 +285,8 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     struct handlebars_context * context
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
+    handlebars_context_bind(context, HBSCTX(cache));
+
     cache->max_age = -1;
     cache->add = &cache_add;
     cache->find = &cache_find;

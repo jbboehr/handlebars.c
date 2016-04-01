@@ -228,9 +228,18 @@ static int do_lex(void)
     struct handlebars_token * token = NULL;
     int token_int = 0;
     struct handlebars_string * output;
+    jmp_buf jmp;
     
     readInput();
+
     ctx = handlebars_context_ctor();
+
+    // Save jump buffer
+    if( handlebars_setjmp_ex(ctx, &jmp) ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
+        goto error;
+    }
+
     parser = handlebars_parser_ctor(ctx);
     parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
     
@@ -255,7 +264,9 @@ static int do_lex(void)
         fflush(stdout);
         handlebars_talloc_free(output);
     } while( token && token_int != END && token_int != INVALID );
-    
+
+error:
+handlebars_context_dtor(ctx);
     return 0;
 }
 
@@ -264,9 +275,18 @@ static int do_parse(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     int error = 0;
+    jmp_buf jmp;
     
     readInput();
+
     ctx = handlebars_context_ctor();
+
+    // Save jump buffer
+    if( handlebars_setjmp_ex(ctx, &jmp) ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
+        goto error;
+    }
+
     parser = handlebars_parser_ctor(ctx);
     parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
     
@@ -275,16 +295,9 @@ static int do_parse(void)
     }
 
     handlebars_parse(parser);
-    
-    if( ctx->num != HANDLEBARS_SUCCESS ) {
-        char * output = handlebars_error_message(ctx);
-        fprintf(stderr, "%s\n", output);
-        error = ctx->num;
-        goto error;
-    } else {
-        struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), parser->program);
-        fprintf(stdout, "%s\n", output->val);
-    }
+
+    struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), parser->program);
+    fprintf(stdout, "%s\n", output->val);
 
 error:
     handlebars_context_dtor(ctx);
@@ -298,8 +311,16 @@ static int do_compile(void)
     struct handlebars_compiler * compiler;
     struct handlebars_string * output;
     int error = 0;
+    jmp_buf jmp;
     
     ctx = handlebars_context_ctor();
+
+    // Save jump buffer
+    if( handlebars_setjmp_ex(ctx, &jmp) ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
+        goto error;
+    }
+
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
     
@@ -315,20 +336,10 @@ static int do_compile(void)
     
     // Parse
     handlebars_parse(parser);
-
-    if( parser->ctx.num ) {
-        fprintf(stderr, "ERROR: %s\n", parser->ctx.msg);
-        goto error;
-    }
     
     // Compile
     handlebars_compiler_compile(compiler, parser->program);
 
-    if( compiler->ctx.num ) {
-        fprintf(stderr, "ERROR: %s\n", compiler->ctx.msg);
-        goto error;
-    }
-    
     // Print
     output = handlebars_program_print(ctx, compiler->program, 0);
     fprintf(stdout, "%.*s\n", (int) output->len, output->val);
@@ -345,8 +356,16 @@ static int do_execute(void)
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
     int error = 0;
+    jmp_buf jmp;
 
     ctx = handlebars_context_ctor();
+
+    // Save jump buffer
+    if( handlebars_setjmp_ex(ctx, &jmp) ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
+        goto error;
+    }
+
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
     vm = handlebars_vm_ctor(ctx);
@@ -378,18 +397,8 @@ static int do_execute(void)
     // Parse
     handlebars_parse(parser);
 
-    if( parser->ctx.num ) {
-        fprintf(stderr, "ERROR: %s\n", parser->ctx.msg);
-        goto error;
-    }
-
     // Compile
     handlebars_compiler_compile(compiler, parser->program);
-
-    if( compiler->ctx.num ) {
-        fprintf(stderr, "ERROR: %s\n", compiler->ctx.msg);
-        goto error;
-    }
 
     // Serialize
     struct handlebars_module * module = handlebars_program_serialize(ctx, compiler->program);
