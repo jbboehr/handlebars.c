@@ -67,7 +67,7 @@ static int cache_gc(struct handlebars_cache * cache)
                 data.mv_data, (int) data.mv_size, (char *) data.mv_data); */
 
         struct handlebars_module * module = (struct handlebars_module *) data.mv_data;
-        if( difftime(now, module->ts) > cache->max_age ) {
+        if( cache->max_age >= 0 && difftime(now, module->ts) > cache->max_age ) {
             mdb_del(txn, dbi, &key, NULL);
             cache->current_entries--;
         }
@@ -122,7 +122,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     module = ((struct handlebars_module *) data.mv_data);
 
     // Check if it's too old or wrong version
-    if( module->version != handlebars_version() || difftime(now, module->ts) > cache->max_age ) {
+    if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
         cache->misses++;
         goto error;
     }
@@ -205,6 +205,7 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     const char * path
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
+    cache->max_age = -1;
     cache->add = &cache_add;
     cache->find = &cache_find;
     cache->gc = &cache_gc;

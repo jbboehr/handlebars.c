@@ -26,7 +26,7 @@ static inline bool should_gc(struct handlebars_cache * cache)
 
 static inline bool should_gc_entry(struct handlebars_cache * cache, struct handlebars_module * module, time_t now)
 {
-    if( cache->max_age > 0 && difftime(now, module->ts) > cache->max_age ) {
+    if( cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age ) {
         return true;
     }
     return should_gc(cache);
@@ -135,6 +135,7 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
     struct handlebars_map * map = talloc_steal(cache, handlebars_map_ctor(context));
     map->ctx = HBSCTX(cache);
+    cache->max_age = -1;
     cache->internal = map;
     cache->add = &cache_add;
     cache->find = &cache_find;

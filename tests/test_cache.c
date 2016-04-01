@@ -133,10 +133,8 @@ static void execute_for_cache(struct handlebars_cache * cache)
     ck_assert_int_ge(vm->cache->hits, 10);
     ck_assert_int_le(vm->cache->misses, 1);
 
-    sleep(2);
-
     // Test GC
-    cache->max_age = 1;
+    cache->max_age = 0;
     cache->gc(cache);
 
     ck_assert_int_eq(0, cache->current_entries);

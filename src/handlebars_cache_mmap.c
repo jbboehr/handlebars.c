@@ -170,7 +170,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     struct handlebars_module * shm_module = intern->addr + entry->data_offset;
 
     // Check if it's too old or wrong version
-    if( shm_module->version != handlebars_version() || (cache->max_age && difftime(now, shm_module->ts) > cache->max_age) ) {
+    if( shm_module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, shm_module->ts) >= cache->max_age) ) {
         cache->misses++;
 
         // Flush
@@ -254,6 +254,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     const char * name
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
+    cache->max_age = -1;
     cache->add = &cache_add;
     cache->find = &cache_find;
     cache->gc = &cache_gc;
@@ -263,31 +264,19 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
     talloc_set_destructor(cache, cache_dtor);
 
-    bool create = false;
-    errno = 0;
-    intern->fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0644);
+    intern->fd = shm_open(name, O_RDWR | O_CREAT, 0644);
+    HANDLE_FD_ERROR(intern->fd);
 
-    if( errno == EEXIST ) {
-        // Use existing
-        intern->fd = shm_open(name, O_RDWR, 0644);
-        HANDLE_FD_ERROR(intern->fd);
-    } else {
-        // Create
-        HANDLE_FD_ERROR(intern->fd);
-        ftruncate(intern->fd, DEFAULT_SHM_SIZE);
-        create = true;
-    }
+    ftruncate(intern->fd, 0);
 
-    intern->addr = mmap(NULL, DEFAULT_SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, intern->fd, 0);
+    intern->addr = mmap(NULL, DEFAULT_SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     intern->h = intern->addr;
 
-    if( create ) {
-        memset(intern->h->head, 0, sizeof(struct cache_header));
-        memcpy(intern->h->head, head, sizeof(head));
-        intern->h->size = DEFAULT_SHM_SIZE;
-        intern->h->table_size = DEFAULT_TABLE_SIZE;
-        cache_reset(cache);
-    }
+    memset(intern->h->head, 0, sizeof(struct cache_header));
+    memcpy(intern->h->head, head, sizeof(head));
+    intern->h->size = DEFAULT_SHM_SIZE;
+    intern->h->table_size = DEFAULT_TABLE_SIZE;
+    cache_reset(cache);
 
     return cache;
 }
