@@ -256,4 +256,6 @@ void handlebars_module_patch_pointers(struct handlebars_module * module)
         patch_operand(module, &module->opcodes[i].op3);
         patch_operand(module, &module->opcodes[i].op4);
     }
+
+    module->addr = (void *) module;
 }

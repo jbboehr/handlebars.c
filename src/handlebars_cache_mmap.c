@@ -183,11 +183,16 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
     // Copy
     cache->hits++;
-    module = MC(handlebars_talloc_size(cache, shm_module->size));
-    memcpy(module, shm_module, shm_module->size);
 
-    // Convert pointers
-    handlebars_module_patch_pointers(module);
+    if( (void *) shm_module == shm_module->addr ) {
+        module = shm_module; // danger
+    } else {
+        module = MC(handlebars_talloc_size(cache, shm_module->size));
+        memcpy(module, shm_module, shm_module->size);
+
+        // Convert pointers
+        handlebars_module_patch_pointers(module);
+    }
 
 error:
     flock(intern->fd, LOCK_UN);
@@ -229,6 +234,9 @@ static void cache_add(
 
     // Copy data
     entry->data_offset = append(intern, module, module->size);
+
+    // Pre-patch pointers?
+    handlebars_module_patch_pointers(intern->addr + entry->data_offset);
 
     // Finish
     entry->state = STATE_READY;
