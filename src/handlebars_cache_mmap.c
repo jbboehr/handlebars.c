@@ -68,8 +68,7 @@ struct cache_header {
     size_t data_length;
 
     bool in_reset;
-    pthread_mutex_t write_mutex;
-    pthread_mutexattr_t attrmutex;
+    pthread_spinlock_t write_lock;
     long refcount;
 };
 
@@ -121,7 +120,7 @@ static void cache_reset(struct handlebars_cache * cache)
     struct cache_header * head = intern->h;
 
     // Lock
-    pthread_mutex_lock(&head->write_mutex);
+    pthread_spin_lock(&head->write_lock);
     head->in_reset = true;
 
     // Try to wait for refcount to empty
@@ -146,7 +145,7 @@ static void cache_reset(struct handlebars_cache * cache)
 error:
     // Unlock
     head->in_reset = false;
-    pthread_mutex_unlock(&head->write_mutex);
+    pthread_spin_unlock(&head->write_lock);
 }
 
 static int cache_gc(struct handlebars_cache * cache)
@@ -192,10 +191,10 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     if( shm_module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, shm_module->ts) >= cache->max_age) ) {
         cache->misses++;
 
-        pthread_mutex_lock(&head->write_mutex);
+        pthread_spin_lock(&head->write_lock);
         entry->state = STATE_EMPTY;
         cache->current_entries = intern->h->table_entries--;
-        pthread_mutex_unlock(&head->write_mutex);
+        pthread_spin_unlock(&head->write_lock);
 
         goto error;
     }
@@ -210,9 +209,9 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 //        handlebars_module_patch_pointers(module);
     }
 
-    pthread_mutex_lock(&head->write_mutex);
+    pthread_spin_lock(&head->write_lock);
     intern->h->refcount++;
-    pthread_mutex_unlock(&head->write_mutex);
+    pthread_spin_unlock(&head->write_lock);
 
     module = shm_module; // danger
 
@@ -248,7 +247,7 @@ static void cache_add(
     }
 
     // Otherwise write the key
-    pthread_mutex_lock(&head->write_mutex);
+    pthread_spin_lock(&head->write_lock);
     entry->state = STATE_INIT;
 
     // Copy key
@@ -265,7 +264,7 @@ static void cache_add(
     cache->current_entries = intern->h->table_entries++;
 
     // Unlock
-    pthread_mutex_unlock(&head->write_mutex);
+    pthread_spin_unlock(&head->write_lock);
 
 error:
     ;
@@ -276,9 +275,9 @@ static void cache_release(struct handlebars_cache * cache, struct handlebars_str
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct cache_header * head = intern->h;
 
-    pthread_mutex_lock(&head->write_mutex);
+    pthread_spin_lock(&head->write_lock);
     head->refcount--;
-    pthread_mutex_unlock(&head->write_mutex);
+    pthread_spin_unlock(&head->write_lock);
 }
 
 #undef CONTEXT
@@ -307,9 +306,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     intern->h->size = DEFAULT_SHM_SIZE;
     intern->h->table_size = DEFAULT_TABLE_SIZE;
 
-    pthread_mutexattr_init(&intern->h->attrmutex);
-    pthread_mutexattr_setpshared(&intern->h->attrmutex, PTHREAD_PROCESS_SHARED);
-    pthread_mutex_init(&intern->h->write_mutex, &intern->h->attrmutex);
+    pthread_spin_init(&intern->h->write_lock, PTHREAD_PROCESS_SHARED);
 
     cache_reset(cache);
 
