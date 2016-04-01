@@ -177,8 +177,6 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
         flock(intern->fd, LOCK_EX);
         entry->state = STATE_EMPTY;
         cache->current_entries = intern->h->table_entries--;
-        msync(intern->addr, sizeof(struct cache_header), MS_SYNC);
-        msync(entry, sizeof(struct table_entry), MS_SYNC);
 
         goto error;
     }
@@ -235,10 +233,6 @@ static void cache_add(
     // Finish
     entry->state = STATE_READY;
     cache->current_entries = intern->h->table_entries++;
-
-    // Sync
-    msync(intern->addr, sizeof(struct cache_header), MS_SYNC);
-    msync(intern->addr + entry->data_offset, module->size, MS_SYNC);
 
 error:
     flock(intern->fd, LOCK_UN);
