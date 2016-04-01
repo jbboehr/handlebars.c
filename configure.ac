@@ -111,6 +111,16 @@ AX_GCC_FUNC_ATTRIBUTE(returns_nonnull)
 AC_EXEEXT
 
 # Checks for libraries
+AX_PTHREAD
+AC_CHECK_LIB([lmdb], [mdb_version])
+AC_CHECK_LIB([pcre], [pcre_version])
+AC_CHECK_LIB([talloc], [talloc_version_major], , [
+    AC_MSG_FAILURE([talloc test failed, talloc is required])
+])
+
+LIBS="$PTHREAD_LIBS $LIBS"
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+LDFLAGS="$LDFLAGS $PTHREAD_CFLAGS"
 
 # check
 AC_ARG_ENABLE([check],
@@ -176,9 +186,6 @@ AS_IF([test "x$enable_json" != "xno"], [
   ])
 ])
 
-# lmdb
-AC_CHECK_LIB([lmdb], [mdb_version])
-
 # mustache-spec
 AC_ARG_WITH([mustache-spec],
 	[AS_HELP_STRING([--with-mustache-spec=SPEC_LOCATION], [location to find mustache specification @<:@default=./spec/mustache@>:@])],
@@ -191,9 +198,6 @@ AS_IF([test "x$with_mustache_spec" != "xno"], [
     AC_MSG_FAILURE([mustache spec missing (--without-mustache-spec to disable)])
   ])
 ])
-
-# pcre
-AC_CHECK_LIB([pcre], [pcre_version])
 
 # refcounting
 AC_ARG_ENABLE([refcounting],
@@ -211,11 +215,6 @@ AS_IF([test "x$enable_handlebars_memory" == "xyes"], [
     AC_DEFINE([HANDLEBARS_MEMORY], [1], [Enable handlebars memory testing functions])
 ])
 AM_CONDITIONAL([HANDLEBARS_MEMORY], [test x$enable_handlebars_memory = xyes])
-
-# talloc
-AC_CHECK_LIB([talloc], [talloc_version_major], , [
-  AC_MSG_FAILURE([talloc test failed, talloc is required])
-])
 
 # Options
 AC_DEFINE([YY_NO_UNISTD_H], [1], [Disable usage of unistd.h])
@@ -236,15 +235,6 @@ AS_IF([test "x$enable_gcov" == "xyes"], [
 ])
 
 AM_CONDITIONAL([GCOV], [test x$enable_gcov = xyes])
-
-# memdebug
-#AC_ARG_ENABLE([memdebug], 
-#  [AS_HELP_STRING([--enable-memdebug], [compile with memory debug functions])], [])
-#
-#AS_IF([test "x$enable_memdebug" != "xno"], [
-#  AC_DEFINE([HANDLEBARS_MEMDEBUG], [1], [Defined if memory debugging is requested])
-#])
-#AM_CONDITIONAL([HANDLEBARS_MEMDEBUG], [test x$enable_memdebug = xyes])
 
 # yaml
 AC_ARG_ENABLE([yaml],

@@ -30,6 +30,13 @@ typedef int (*handlebars_cache_gc_func)(
     struct handlebars_cache * cache
 );
 
+typedef void (*handlebars_cache_release_func)(
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl,
+    struct handlebars_module * module
+);
+
+
 /**
  * @brief In-memory opcode cache.
  * @todo Use shared memory
@@ -45,6 +52,8 @@ struct handlebars_cache {
     handlebars_cache_find_func find;
 
     handlebars_cache_gc_func gc;
+
+    handlebars_cache_release_func release;
 
     //! The max amount of time to keep an entry, in seconds, or zero to disable
     double max_age;

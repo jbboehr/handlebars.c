@@ -246,6 +246,11 @@ error:
     flock(intern->fd, LOCK_UN);
 }
 
+static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
+{
+    ;
+}
+
 #undef CONTEXT
 #define CONTEXT context
 
@@ -258,6 +263,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     cache->add = &cache_add;
     cache->find = &cache_find;
     cache->gc = &cache_gc;
+    cache->release = &cache_release;
 
     struct handlebars_cache_mmap * intern = MC(handlebars_talloc_zero(cache, struct handlebars_cache_mmap));
     cache->internal = intern;

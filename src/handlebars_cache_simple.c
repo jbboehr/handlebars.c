@@ -129,6 +129,14 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     cache->current_size += module->size;
 }
 
+static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
+{
+    ;
+}
+
+#undef CONTEXT
+#define CONTEXT context
+
 struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
 ) {
@@ -140,5 +148,6 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     cache->add = &cache_add;
     cache->find = &cache_find;
     cache->gc = &cache_gc;
+    cache->release = &cache_release;
     return cache;
 }

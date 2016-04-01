@@ -197,6 +197,11 @@ error:
     HANDLE_RC(err);
 }
 
+static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
+{
+    ;
+}
+
 #undef CONTEXT
 #define CONTEXT context
 
@@ -209,6 +214,7 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     cache->add = &cache_add;
     cache->find = &cache_find;
     cache->gc = &cache_gc;
+    cache->release = &cache_release;
 
     struct handlebars_cache_lmdb * intern = MC(handlebars_talloc_zero(context, struct handlebars_cache_lmdb));
     cache->internal = intern;

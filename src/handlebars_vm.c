@@ -529,6 +529,9 @@ ACCEPT_FUNCTION(invoke_partial)
     // Save jump buffer
     vm2->ctx.jmp = &buf;
     if( setjmp(buf) ) {
+        if( from_cache ) {
+            vm->cache->release(vm->cache, tmpl, module);
+        }
         handlebars_throw_ex(CONTEXT, vm2->ctx.num, &vm2->ctx.loc, "%s", vm2->ctx.msg);
     }
 
@@ -553,6 +556,10 @@ ACCEPT_FUNCTION(invoke_partial)
                 HBSCTX(vm2), HBS_STR_STRL(vm2->buffer), HBS_STR_STRL(opcode->op3.data.string.string));
         vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(tmp2));
         handlebars_talloc_free(tmp2);
+    }
+
+    if( from_cache ) {
+        vm->cache->release(vm->cache, tmpl, module);
     }
 
     //handlebars_value_try_delref(context1); // @todo double-check
