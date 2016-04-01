@@ -24,11 +24,9 @@
 #include "handlebars_opcode_serializer.h"
 
 
-#define HANDLE_FD_ERROR(fd) if( fd == -1 ) { handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to open shm: %s", strerror(errno)); }
-#define DEFAULT_SHM_SIZE 1024 * 1024 * 100
-#define DEFAULT_TABLE_SIZE 1024 * 1024 * 10
-
-const char head[] = "handlebars shared opcode cache";
+static const size_t DEFAULT_SHM_SIZE = 1024 * 1024 * 64;
+static const size_t DEFAULT_TABLE_SIZE = 1024 * 1024 * 16;
+static const char head[] = "handlebars shared opcode cache";
 
 enum handlebars_cache_mmap_table_entry_state {
     STATE_EMPTY = 0,
@@ -299,8 +297,11 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     talloc_set_destructor(cache, cache_dtor);
 
     intern->addr = mmap(NULL, DEFAULT_SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    intern->h = intern->addr;
+    if( intern->addr == MAP_FAILED ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to mmap: %s", strerror(errno));
+    }
 
+    intern->h = intern->addr;
     memset(intern->h->head, 0, sizeof(struct cache_header));
     memcpy(intern->h->head, head, sizeof(head));
     intern->h->size = DEFAULT_SHM_SIZE;
