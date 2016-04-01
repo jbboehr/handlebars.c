@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <pthread.h>
 #include <string.h>
 #include <sys/file.h>
 #include <sys/mman.h>
@@ -65,6 +66,11 @@ struct cache_header {
 
     //! The length in bytes of the currently used part of the data segment
     size_t data_length;
+
+    bool in_reset;
+    pthread_mutex_t write_mutex;
+    pthread_mutexattr_t attrmutex;
+    long refcount;
 };
 
 struct table_entry {
@@ -79,9 +85,6 @@ struct table_entry {
 };
 
 struct handlebars_cache_mmap {
-    //! The file descriptor for the memory block - used for flock
-    int fd;
-
     //! The mmap'd memory address
     void * addr;
 
@@ -104,21 +107,31 @@ static size_t append(struct handlebars_cache_mmap * intern, void * source, size_
 
 static void cache_dtor(struct handlebars_cache * cache)
 {
+    // This may be unnecessary with MAP_ANONYMOUS
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     if( intern->addr ) {
         munmap(intern->addr, intern->h->size ?: DEFAULT_SHM_SIZE);
     }
-    if( intern->fd > -1 ) {
-        close(intern->fd);
-    }
+    // @todo do we need to release the mutexes?
 }
 
 static void cache_reset(struct handlebars_cache * cache)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    struct cache_header * head = intern->h;
 
     // Lock
-    flock(intern->fd, LOCK_EX);
+    pthread_mutex_lock(&head->write_mutex);
+    head->in_reset = true;
+
+    // Try to wait for refcount to empty
+    int counter = 0;
+    while( head->refcount > 0 && ++counter <= 100 ) {
+        usleep(5000);
+    }
+    if( head->refcount > 0 ) {
+        goto error;
+    }
 
     // Initialize header
     intern->h->version = handlebars_version();
@@ -130,8 +143,10 @@ static void cache_reset(struct handlebars_cache * cache)
     // Zero out the hash table
     memset(intern->addr + intern->h->table_offset, 0, intern->h->table_size);
 
+error:
     // Unlock
-    flock(intern->fd, LOCK_UN);
+    head->in_reset = false;
+    pthread_mutex_unlock(&head->write_mutex);
 }
 
 static int cache_gc(struct handlebars_cache * cache)
@@ -144,15 +159,18 @@ static int cache_gc(struct handlebars_cache * cache)
 static struct handlebars_module * cache_find(struct handlebars_cache * cache, struct handlebars_string * tmpl)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    struct cache_header * head = intern->h;
     struct handlebars_module * module = NULL;
     time_t now;
 
-    time(&now);
+    // Currently resetting
+    if( head->in_reset ) {
+        cache->misses++;
+        goto error;
+    }
 
-    flock(intern->fd, LOCK_SH);
-
-    struct table_entry * table = (intern->addr + intern->h->table_offset);
-    struct table_entry * entry = table + (HBS_STR_HASH(tmpl) % intern->h->table_count);
+    struct table_entry * table = (intern->addr + head->table_offset);
+    struct table_entry * entry = table + (HBS_STR_HASH(tmpl) % head->table_count);
 
     if( entry->state != STATE_READY ) {
         // Not found, or not ready
@@ -170,13 +188,14 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     struct handlebars_module * shm_module = intern->addr + entry->data_offset;
 
     // Check if it's too old or wrong version
+    time(&now);
     if( shm_module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, shm_module->ts) >= cache->max_age) ) {
         cache->misses++;
 
-        // Flush
-        flock(intern->fd, LOCK_EX);
+        pthread_mutex_lock(&head->write_mutex);
         entry->state = STATE_EMPTY;
         cache->current_entries = intern->h->table_entries--;
+        pthread_mutex_unlock(&head->write_mutex);
 
         goto error;
     }
@@ -184,49 +203,52 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Copy
     cache->hits++;
 
-    if( (void *) shm_module == shm_module->addr ) {
-        module = shm_module; // danger
-    } else {
-        module = MC(handlebars_talloc_size(cache, shm_module->size));
-        memcpy(module, shm_module, shm_module->size);
-
-        // Convert pointers
-        handlebars_module_patch_pointers(module);
+    if( (void *) shm_module != shm_module->addr ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Shared memory pointer mismatch: %p != %p", shm_module, shm_module->addr);
+//        module = MC(handlebars_talloc_size(cache, shm_module->size));
+//        memcpy(module, shm_module, shm_module->size);
+//        handlebars_module_patch_pointers(module);
     }
 
+    pthread_mutex_lock(&head->write_mutex);
+    intern->h->refcount++;
+    pthread_mutex_unlock(&head->write_mutex);
+
+    module = shm_module; // danger
+
 error:
-    flock(intern->fd, LOCK_UN);
     return module;
 }
 
 static void cache_add(
-        struct handlebars_cache * cache,
-        struct handlebars_string * tmpl,
-        struct handlebars_module * module
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl,
+    struct handlebars_module * module
 ) {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    struct cache_header * head = intern->h;
 
-    flock(intern->fd, LOCK_SH);
-
-    struct table_entry * table = (intern->addr + intern->h->table_offset);
-    struct table_entry * entry = table + (HBS_STR_HASH(tmpl) % intern->h->table_count);
-
-    if( entry->state == STATE_INIT ) {
-        // Currently being written by another process
+    // Currently resetting
+    if( head->in_reset ) {
         goto error;
-    } else if( entry->state == STATE_READY ) {
-        // This key already exists
+    }
+
+    struct table_entry * table = (intern->addr + head->table_offset);
+    struct table_entry * entry = table + (HBS_STR_HASH(tmpl) % head->table_count);
+
+    if( entry->state != STATE_EMPTY ) {
+        // Currently being written by another process or already exists
         goto error;
     }
 
     // Check if we have available memory
-    if( module->size + intern->h->data_length > intern->h->data_size ) {
+    if( module->size + head->data_length > head->data_size ) {
         // We ran out of memory - reset cache
         cache_reset(cache);
     }
 
     // Otherwise write the key
-    flock(intern->fd, LOCK_EX);
+    pthread_mutex_lock(&head->write_mutex);
     entry->state = STATE_INIT;
 
     // Copy key
@@ -235,28 +257,35 @@ static void cache_add(
     // Copy data
     entry->data_offset = append(intern, module, module->size);
 
-    // Pre-patch pointers?
+    // Pre-patch pointers
     handlebars_module_patch_pointers(intern->addr + entry->data_offset);
 
     // Finish
     entry->state = STATE_READY;
     cache->current_entries = intern->h->table_entries++;
 
+    // Unlock
+    pthread_mutex_unlock(&head->write_mutex);
+
 error:
-    flock(intern->fd, LOCK_UN);
+    ;
 }
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
 {
-    ;
+    struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    struct cache_header * head = intern->h;
+
+    pthread_mutex_lock(&head->write_mutex);
+    head->refcount--;
+    pthread_mutex_unlock(&head->write_mutex);
 }
 
 #undef CONTEXT
 #define CONTEXT context
 
 struct handlebars_cache * handlebars_cache_mmap_ctor(
-    struct handlebars_context * context,
-    const char * name
+    struct handlebars_context * context
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
     cache->max_age = -1;
@@ -270,11 +299,6 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
     talloc_set_destructor(cache, cache_dtor);
 
-    intern->fd = shm_open(name, O_RDWR | O_CREAT, 0644);
-    HANDLE_FD_ERROR(intern->fd);
-
-    ftruncate(intern->fd, 0);
-
     intern->addr = mmap(NULL, DEFAULT_SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     intern->h = intern->addr;
 
@@ -282,6 +306,11 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     memcpy(intern->h->head, head, sizeof(head));
     intern->h->size = DEFAULT_SHM_SIZE;
     intern->h->table_size = DEFAULT_TABLE_SIZE;
+
+    pthread_mutexattr_init(&intern->h->attrmutex);
+    pthread_mutexattr_setpshared(&intern->h->attrmutex, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(&intern->h->write_mutex, &intern->h->attrmutex);
+
     cache_reset(cache);
 
     return cache;

@@ -199,7 +199,7 @@ error:
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
 {
-    ;
+    handlebars_talloc_free(module);
 }
 
 #undef CONTEXT

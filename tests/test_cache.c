@@ -153,7 +153,7 @@ START_TEST(test_lmdb_cache)
 END_TEST
 
 START_TEST(test_mmap_cache)
-    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, "hbs-mmap-test");
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context);
     execute_for_cache(cache);
     handlebars_cache_dtor(cache);
 END_TEST
