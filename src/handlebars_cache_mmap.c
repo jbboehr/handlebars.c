@@ -44,6 +44,8 @@ struct cache_header {
     //! The version of handlebars this block was initialized with
     int version;
 
+    struct handlebars_cache_stat stat;
+
     //! The offset in bytes from the beginning of the block at which the hash table exists
     size_t table_offset;
 
@@ -66,7 +68,9 @@ struct cache_header {
     size_t data_length;
 
     bool in_reset;
+
     pthread_spinlock_t write_lock;
+
     long refcount;
 };
 
@@ -162,7 +166,9 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
     // Currently resetting
     if( head->in_reset ) {
-        cache->misses++;
+        pthread_spin_lock(&head->write_lock);
+        head->stat.misses++;
+        pthread_spin_unlock(&head->write_lock);
         goto error;
     }
 
@@ -171,13 +177,17 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
     if( entry->state != STATE_READY ) {
         // Not found, or not ready
-        cache->misses++;
+        pthread_spin_lock(&head->write_lock);
+        head->stat.misses++;
+        pthread_spin_unlock(&head->write_lock);
         goto error;
     }
 
     // Compare key
     if( !handlebars_string_eq(tmpl, (struct handlebars_string *) (intern->addr + entry->key_offset)) ) {
-        cache->misses++;
+        pthread_spin_lock(&head->write_lock);
+        head->stat.misses++;
+        pthread_spin_unlock(&head->write_lock);
         goto error;
     }
 
@@ -187,18 +197,17 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Check if it's too old or wrong version
     time(&now);
     if( shm_module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, shm_module->ts) >= cache->max_age) ) {
-        cache->misses++;
-
         pthread_spin_lock(&head->write_lock);
         entry->state = STATE_EMPTY;
-        cache->current_entries = intern->h->table_entries--;
+        head->stat.misses++;
+        head->stat.current_entries--;
         pthread_spin_unlock(&head->write_lock);
 
         goto error;
     }
 
     // Copy
-    cache->hits++;
+    head->stat.hits++;
 
     if( (void *) shm_module != shm_module->addr ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Shared memory pointer mismatch: %p != %p", shm_module, shm_module->addr);
@@ -259,7 +268,7 @@ static void cache_add(
 
     // Finish
     entry->state = STATE_READY;
-    cache->current_entries = intern->h->table_entries++;
+    head->stat.current_entries++;
 
     // Unlock
     pthread_spin_unlock(&head->write_lock);
@@ -278,6 +287,13 @@ static void cache_release(struct handlebars_cache * cache, struct handlebars_str
     pthread_spin_unlock(&head->write_lock);
 }
 
+static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
+{
+    struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    struct cache_header * head = intern->h;
+    return head->stat;
+}
+
 #undef CONTEXT
 #define CONTEXT context
 
@@ -292,6 +308,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     cache->find = &cache_find;
     cache->gc = &cache_gc;
     cache->release = &cache_release;
+    cache->stat = &cache_stat;
 
     struct handlebars_cache_mmap * intern = MC(handlebars_talloc_zero(cache, struct handlebars_cache_mmap));
     cache->internal = intern;

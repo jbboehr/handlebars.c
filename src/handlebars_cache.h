@@ -31,11 +31,21 @@ typedef int (*handlebars_cache_gc_func)(
 );
 
 typedef void (*handlebars_cache_release_func)(
-    struct handlebars_cache * cache,
-    struct handlebars_string * tmpl,
-    struct handlebars_module * module
+        struct handlebars_cache * cache,
+        struct handlebars_string * tmpl,
+        struct handlebars_module * module
 );
 
+typedef struct handlebars_cache_stat (*handlebars_cache_stat_func)(
+    struct handlebars_cache * cache
+);
+
+struct handlebars_cache_stat {
+    size_t current_entries;
+    size_t current_size;
+    size_t hits;
+    size_t misses;
+};
 
 /**
  * @brief In-memory opcode cache.
@@ -55,6 +65,8 @@ struct handlebars_cache {
 
     handlebars_cache_release_func release;
 
+    handlebars_cache_stat_func stat;
+
     //! The max amount of time to keep an entry, in seconds, or zero to disable
     double max_age;
 
@@ -63,18 +75,6 @@ struct handlebars_cache {
 
     //! The max size of all entries, or zero to disable
     size_t max_size;
-
-    //! The current number of entries in the cache
-    size_t current_entries;
-
-    //! The current size of the cache
-    size_t current_size;
-
-    //! The number of cache hits
-    size_t hits;
-
-    //! The number of cache misses
-    size_t misses;
 };
 
 /**
@@ -95,14 +95,6 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
 struct handlebars_cache * handlebars_cache_mmap_ctor(
     struct handlebars_context * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Destruct a cache
- *
- * @param[in] cache The cache
- * @return void
- */
-void handlebars_cache_dtor(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Construct a new cache
@@ -138,6 +130,16 @@ void handlebars_cache_dtor(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL
  * @return The number of entries removed
  */
 #define handlebars_cache_gc(cache) (cache->gc(cache))
+
+#define handlebars_cache_stat(cache) (cache->stat(cache))
+
+/**
+ * @brief Destruct a cache
+ *
+ * @param[in] cache The cache
+ * @return void
+ */
+#define handlebars_cache_dtor(cache) handlebars_talloc_free(cache)
 
 #ifdef	__cplusplus
 }

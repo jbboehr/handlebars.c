@@ -20,6 +20,7 @@
 
 struct handlebars_cache_lmdb {
     MDB_env * env;
+    struct handlebars_cache_stat stat;
 };
 
 
@@ -55,9 +56,6 @@ static int cache_gc(struct handlebars_cache * cache)
     err = mdb_stat(txn, dbi, &stat);
     if( err != 0 ) goto error;
 
-    // Update cache info
-    cache->current_entries = stat.ms_entries;
-
     err = mdb_cursor_open(txn, dbi, &cursor);
     if( err != 0 ) goto error;
 
@@ -69,7 +67,6 @@ static int cache_gc(struct handlebars_cache * cache)
         struct handlebars_module * module = (struct handlebars_module *) data.mv_data;
         if( cache->max_age >= 0 && difftime(now, module->ts) > cache->max_age ) {
             mdb_del(txn, dbi, &key, NULL);
-            cache->current_entries--;
         }
     }
 
@@ -113,7 +110,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Fetch data
     err = mdb_get(txn, dbi, &key, &data);
     if( err == MDB_NOTFOUND ) {
-        cache->misses++;
+        intern->stat.misses++;
         mdb_txn_abort(txn);
         return NULL;
     }
@@ -123,11 +120,11 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
     // Check if it's too old or wrong version
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
-        cache->misses++;
+        intern->stat.misses++;
         goto error;
     }
 
-    cache->hits++;
+    intern->stat.hits++;
 
     // Duplicate data
     size_t size = module->size;
@@ -202,6 +199,31 @@ static void cache_release(struct handlebars_cache * cache, struct handlebars_str
     handlebars_talloc_free(module);
 }
 
+static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
+{
+    struct handlebars_cache_lmdb * intern = (struct handlebars_cache_lmdb *) cache->internal;
+    int err;
+    MDB_txn *txn;
+    MDB_dbi dbi;
+    MDB_stat stat;
+
+    err = mdb_txn_begin(intern->env, NULL, 0, &txn);
+    HANDLE_RC(err);
+
+    err = mdb_dbi_open(txn, NULL, MDB_CREATE, &dbi);
+    if( err != 0 ) goto error;
+
+    err = mdb_stat(txn, dbi, &stat);
+    if( err != 0 ) goto error;
+
+    intern->stat.current_entries = stat.ms_entries;
+
+error:
+    mdb_txn_abort(txn);
+    HANDLE_RC(err);
+    return intern->stat;
+}
+
 #undef CONTEXT
 #define CONTEXT context
 
@@ -217,6 +239,7 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     cache->find = &cache_find;
     cache->gc = &cache_gc;
     cache->release = &cache_release;
+    cache->stat = &cache_stat;
 
     struct handlebars_cache_lmdb * intern = MC(handlebars_talloc_zero(context, struct handlebars_cache_lmdb));
     cache->internal = intern;
