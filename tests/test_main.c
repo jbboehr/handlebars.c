@@ -124,15 +124,15 @@ START_TEST(test_context_get_errmsg_failed_alloc)
     loc.last_line = 1;
     loc.last_column = 2;
 
-    context->msg = "test";
-    context->loc = loc;
+    context->e->msg = "test";
+    context->e->loc = loc;
 
     handlebars_memory_fail_enable();
     actual = handlebars_error_message(context);
     handlebars_memory_fail_disable();
 
     //ck_assert_ptr_eq(NULL, actual);
-    ck_assert_ptr_eq(context->msg, actual);
+    ck_assert_ptr_eq(handlebars_error_msg(context), actual);
 #else
         fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
@@ -166,15 +166,15 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
     loc.last_line = 1;
     loc.last_column = 2;
 
-    context->msg = "test";
-    context->loc = loc;
+    context->e->msg = "test";
+    context->e->loc = loc;
 
     handlebars_memory_fail_enable();
     actual = handlebars_error_message_js(context);
     handlebars_memory_fail_disable();
 
     //ck_assert_ptr_eq(NULL, actual);
-    ck_assert_ptr_eq(context->msg, actual);
+    ck_assert_ptr_eq(handlebars_error_msg(context), actual);
 #else
         fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif

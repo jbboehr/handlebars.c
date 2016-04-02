@@ -52,6 +52,7 @@ struct handlebars_context * handlebars_context_ctor_ex(void * ctx)
     if( unlikely(context == NULL) ) {
         // Mainly doing this for consistency with lex init
         errno = ENOMEM;
+        return NULL;
     }
 
     context->e = handlebars_talloc_zero(context, struct handlebars_error);

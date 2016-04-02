@@ -16,26 +16,6 @@ env:
     - PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
     - CC="gcc-4.9"
 
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-      - "ppa:jbboehr/check"
-    packages:
-      - automake
-      - bison
-      - check
-      - flex
-      - gcc-4.9
-      - gperf
-      - lcov
-      - libjson-c-dev
-      - liblmdb-dev
-      - libpcre3-dev
-      - libtalloc-dev
-      - libyaml-dev
-      - pkg-config
-
 cache: false
 
 branches:
@@ -44,6 +24,10 @@ branches:
     - travis
 
 before_install:
+  - travis_retry sudo apt-add-repository -y ppa:ubuntu-toolchain-r/test
+  - travis_retry sudo apt-add-repository -y ppa:jbboehr/ppa
+  - travis_retry sudo apt-get update -y
+  - travis_retry sudo apt-get install -y automake bison check flex gcc-4.9 gperf lcov libjson-c-dev liblmdb-dev libpcre3-dev libtalloc-dev libyaml-dev pkg-config
   - travis_retry gem install coveralls-lcov
 
 install:

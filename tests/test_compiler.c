@@ -36,7 +36,7 @@ START_TEST(test_compiler_ctor_failed_alloc)
 #if HANDLEBARS_MEMORY
     jmp_buf buf;
 
-    context->jmp = &buf;
+    context->e->jmp = &buf;
     if( setjmp(buf) ) {
         ck_assert(1);
         return;

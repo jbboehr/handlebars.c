@@ -1,4 +1,8 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,10 +12,11 @@
 #include <getopt.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
-#include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcode_serializer.h"

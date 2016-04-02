@@ -30,7 +30,7 @@ START_TEST(test_ast_node_ctor_failed_alloc)
 #if HANDLEBARS_MEMORY
     jmp_buf buf;
 
-    parser->ctx.jmp = &buf;
+    context->e->jmp = &buf;
     if( setjmp(buf) ) {
         // Should get here
         ck_assert(1);
@@ -38,7 +38,7 @@ START_TEST(test_ast_node_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
+    handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -50,7 +50,7 @@ END_TEST
 
 START_TEST(test_ast_node_dtor)
 {
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     handlebars_ast_node_dtor(node);
 }
 END_TEST
@@ -58,7 +58,7 @@ END_TEST
 START_TEST(test_ast_node_dtor_failed_alloc)
 {
 #if HANDLEBARS_MEMORY
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(parser, HANDLEBARS_AST_NODE_PROGRAM);
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     int call_count;
     
     handlebars_memory_fail_enable();
