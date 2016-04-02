@@ -30,6 +30,7 @@ addons:
       - gperf
       - lcov
       - libjson-c-dev
+      - liblmdb-dev
       - libpcre3-dev
       - libtalloc-dev
       - libyaml-dev

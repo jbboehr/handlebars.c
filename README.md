@@ -29,8 +29,8 @@ Note: >= gcc 4.9 is required for `returns_nonnull`
 ```bash
 # Install dependencies
 sudo apt-get install autoconf automake bison flex gawk gcc git-core \
-                     libjson0-dev libtalloc-dev libyaml-dev libtool \
-                     m4 make pkg-config
+                     libjson0-dev liblmdb-dev libtalloc-dev libyaml-dev \
+                     libtool m4 make pkg-config
 
 # Install testing dependencies
 sudo apt-get install check gdb lcov libpcre3-dev
