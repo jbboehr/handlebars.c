@@ -102,7 +102,7 @@ char * handlebars_error_message(struct handlebars_context * context)
     struct handlebars_error * e = context->e;
 
     assert(context != NULL);
-    assert(context->error != NULL);
+    assert(context->e != NULL);
 
     if( e->msg == NULL ) {
         return NULL;

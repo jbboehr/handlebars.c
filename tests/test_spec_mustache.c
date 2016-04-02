@@ -271,8 +271,8 @@ START_TEST(test_mustache_spec)
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
         fprintf(stderr, "ACTUAL: %s\n", vm->buffer->val);
         fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer->val, test->expected) ? "PASS" : "FAIL");
-    } else if( ctx->msg ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->msg);
+    } else if( handlebars_error_msg(ctx) ) {
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_msg(ctx));
     }
 #endif
 
