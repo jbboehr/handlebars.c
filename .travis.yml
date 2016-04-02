@@ -60,7 +60,7 @@ script:
 
 after_success:
   - lcov --no-checksum --directory . --capture --compat-libtool --output-file coverage.info
-  - lcov --remove coverage.info "/usr*" --remove coverage.info "*/tests/*" --compat-libtool --output-file coverage.info
+  - lcov --remove coverage.info "/usr*" --remove coverage.info "*/tests/*" --remove coverage.info "handlebars.tab.c" --remove coverage.info "handlebars.lex.c" --remove coverage.info "handlebars_scanners.c" --compat-libtool --output-file coverage.info
   - coveralls-lcov coverage.info
 
 after_failure:

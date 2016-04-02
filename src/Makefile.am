@@ -30,8 +30,8 @@ endif
 # re2c
 if RE2C
 MAINTAINERCLEANFILES = handlebars_scanners.c
-handlebars_scanners.c:
-	$(RE2C) -si8 -o handlebars_scanners.c handlebars_scanners.re
+handlebars_scanners.c: handlebars_scanners.re
+	$(RE2C) -s8 -o handlebars_scanners.c handlebars_scanners.re
 endif
 
 # Main

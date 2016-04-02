@@ -29,7 +29,7 @@ coverage-init:
 
 coverage-main:
 	$(LCOV) --rc lcov_branch_coverage=1 --compat-libtool --directory . --capture --output-file handlebars_c_test.info
-	$(LCOV) --rc lcov_branch_coverage=1 --compat-libtool --directory . --remove handlebars_c_test.info "/usr*" --output-file handlebars_c_test.info
+	$(LCOV) --rc lcov_branch_coverage=1 --compat-libtool --directory . --remove handlebars_c_test.info "/usr*" --remove handlebars_c_test.info "handlebars.tab.c" --remove handlebars_c_test.info "handlebars.lex.c" --remove handlebars_c_test.info "handlebars_scanners.c" --output-file handlebars_c_test.info
 	genhtml --rc genhtml_branch_coverage=1 -o test_coverage -t "handlebars.c test coverage" --num-spaces 4 handlebars_c_test.info
 
 coverage: all coverage-init test coverage-main
