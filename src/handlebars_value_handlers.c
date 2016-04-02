@@ -68,9 +68,11 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
 {
     struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
     struct handlebars_value * new_value;
+    size_t i;
+    size_t l;
 
     switch( json_object_get_type(intern) ) {
-        case json_type_object: {
+        case json_type_object:
             handlebars_value_map_init(value);
             json_object_object_foreach(intern, k, v) {
                 new_value = handlebars_value_from_json_object(CONTEXT, v);
@@ -81,10 +83,8 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
                 handlebars_value_delref(new_value);
             }
             break;
-        }
-        case json_type_array: {
+        case json_type_array:
             handlebars_value_array_init(value);
-            size_t i, l;
 
             for( i = 0, l = json_object_array_length(intern); i < l; i++ ) {
                 new_value = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, i));
@@ -95,10 +95,7 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
                 handlebars_value_delref(new_value);
             }
             break;
-        }
-        default:
-            // nothing to do
-            break;
+        default: break; // LCOV_EXCL_LINE
     }
 }
 
@@ -109,15 +106,7 @@ static enum handlebars_value_type std_json_type(struct handlebars_value * value)
     switch( json_object_get_type(intern) ) {
         case json_type_object: return HANDLEBARS_VALUE_TYPE_MAP;
         case json_type_array: return HANDLEBARS_VALUE_TYPE_ARRAY;
-
-        default:
-        case json_type_null:
-        case json_type_boolean:
-        case json_type_double:
-        case json_type_int:
-        case json_type_string:
-            assert(0);
-            break;
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
 
     return HANDLEBARS_VALUE_TYPE_NULL;
@@ -309,10 +298,6 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
 
             value->type = HANDLEBARS_VALUE_TYPE_USER;
             value->v.usr = (struct handlebars_user *) obj;
-            break;
-        default:
-            // ruh roh
-            assert(0);
             break;
     }
 }

@@ -423,6 +423,36 @@ START_TEST(test_convert)
 }
 END_TEST
 
+START_TEST(test_json_parse_error)
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        char * error = NULL;
+        if( 0 != regex_compare("^JSON Parse error", handlebars_error_msg(context), &error) ) {
+            ck_abort_msg(error);
+        }
+        return;
+    }
+
+    handlebars_value_from_json_string(context, "{\"key\":1");
+    ck_assert_msg(0, "Parse error should have longjmp'd");
+END_TEST
+
+START_TEST(test_yaml_parse_error)
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        char * error = NULL;
+        if( 0 != regex_compare("^YAML Parse Error", handlebars_error_msg(context), &error) ) {
+            ck_abort_msg(error);
+        }
+        return;
+    }
+
+    handlebars_value_from_yaml_string(context, "---\n'");
+    ck_assert_msg(0, "Parse error should have longjmp'd");
+END_TEST
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("Value");
@@ -443,6 +473,8 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_find, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex, "Complex");
     REGISTER_TEST_FIXTURE(s, test_convert, "Convert");
+    REGISTER_TEST_FIXTURE(s, test_json_parse_error, "JSON Parse Error");
+    REGISTER_TEST_FIXTURE(s, test_yaml_parse_error, "JSON Parse Error");
 
     return s;
 }
