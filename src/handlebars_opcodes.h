@@ -69,7 +69,10 @@ enum handlebars_opcode_type {
     handlebars_opcode_type_lookup_block_param = 25,
 
     // Added in v4
-    handlebars_opcode_type_register_decorator = 26
+    handlebars_opcode_type_register_decorator = 26,
+
+    // Special opcode
+    handlebars_opcode_type_return = 27
 };
 
 /**

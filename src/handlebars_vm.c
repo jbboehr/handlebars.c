@@ -872,11 +872,14 @@ static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handle
             ACCEPT(push_literal);
             ACCEPT(push_string);
             ACCEPT(resolve_possible_lambda);
+            case handlebars_opcode_type_return: return;
             default:
                 handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
                 break;
         }
 	}
+
+    assert(0); // Return should be done by the return opcode
 }
 
 struct handlebars_string * handlebars_vm_execute_program_ex(

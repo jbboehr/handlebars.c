@@ -72,6 +72,11 @@ static void calculate_size_program(struct handlebars_module * module, struct han
     for( i = 0; i < program->opcodes_length; i++ ) {
         calculate_size_opcode(module, program->opcodes[i]);
     }
+
+    // Insert return opcode
+    struct handlebars_opcode opcode = {0};
+    opcode.type = handlebars_opcode_type_return;
+    calculate_size_opcode(module, &opcode);
 }
 
 static void serialize_operand(struct handlebars_module * module, struct handlebars_operand * operand)
@@ -156,6 +161,12 @@ static void serialize_program2(struct handlebars_module * module, struct handleb
     for( i = 0 ; i < program->opcodes_length; i++ ) {
         serialize_opcode(module, program->opcodes[i], children);
     }
+
+    // Insert return opcode
+    struct handlebars_opcode opcode = {0};
+    opcode.type = handlebars_opcode_type_return;
+    serialize_opcode(module, &opcode, children);
+    entry->opcode_count++;
 
     // Serialize children
     for( i = 0; i < program->children_length; i++ ) {
