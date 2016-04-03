@@ -24,8 +24,11 @@
 
 
 
+#if INTELLIJ
+#undef HAVE_COMPUTED_GOTOS
+#endif
+
 #define OPCODE_NAME(name) handlebars_opcode_type_ ## name
-#define ACCEPT(name) case OPCODE_NAME(name) : ACCEPT_FN(name)(vm, opcode); break;
 #define ACCEPT_FN(name) accept_ ## name
 #define ACCEPT_NAMED_FUNCTION(name) static inline void name (struct handlebars_vm * vm, struct handlebars_opcode * opcode)
 #define ACCEPT_FUNCTION(name) ACCEPT_NAMED_FUNCTION(ACCEPT_FN(name))
@@ -834,52 +837,78 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
 
 static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_module_table_entry * entry)
 {
-	size_t i = entry->opcode_count;
-    struct handlebars_opcode * opcodes = entry->opcodes;
-
-	for( ; i > 0; i-- ) {
-		struct handlebars_opcode * opcode = opcodes++;
-
-        // Print opcode?
-#ifndef NDEBUG
-        if( getenv("DEBUG") ) {
-            struct handlebars_string * tmp = handlebars_opcode_print(HBSCTX(vm), opcode, 0);
-            fprintf(stdout, "V[%ld] P[%ld] OPCODE: %.*s\n", vm->depth, entry->guid, (int) tmp->len, tmp->val);
-            talloc_free(tmp);
-        }
+#define ACCEPT_ERROR handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
+#if HAVE_COMPUTED_GOTOS
+#define DISPATCH() goto *dispatch_table[opcode->type]
+#define ACCEPT_LABEL(name) do_ ## name
+#define ACCEPT_CASE(name) ACCEPT_LABEL(name):
+#define ACCEPT(name) ACCEPT_LABEL(name): ACCEPT_FN(name)(vm, opcode); opcode++; DISPATCH();
+    static void * dispatch_table[] = {
+            &&do_nil, &&do_ambiguous_block_value, &&do_append, &&do_append_escaped, &&do_empty_hash,
+            &&do_pop_hash, &&do_push_context, &&do_push_hash, &&do_resolve_possible_lambda, &&do_get_context,
+            &&do_push_program, &&do_append_content, &&do_assign_to_hash, &&do_block_value, &&do_push,
+            &&do_push_literal, &&do_push_string, &&do_invoke_partial, &&do_push_id, &&do_push_string_param,
+            &&do_invoke_ambiguous, &&do_invoke_known_helper, &&do_invoke_helper, &&do_lookup_on_context, &&do_lookup_data,
+            &&do_lookup_block_param, &&do_register_decorator, &&do_return
+    };
+#define ACCEPT_DEFAULT
+#define START_ACCEPT DISPATCH();
+#define END_ACCEPT
+#else
+#define ACCEPT_CASE(name) case OPCODE_NAME(name):
+#define ACCEPT(name) case OPCODE_NAME(name) : ACCEPT_FN(name)(vm, opcode); opcode++; break;
+#define ACCEPT_DEFAULT default: ACCEPT_ERROR
+#define START_ACCEPT start: switch( opcode->type ) {
+#define END_ACCEPT } goto start;
 #endif
 
-		switch( opcode->type ) {
-            ACCEPT(ambiguous_block_value);
-            ACCEPT(append)
-            ACCEPT(append_escaped)
-            ACCEPT(append_content);
-            ACCEPT(assign_to_hash);
-            ACCEPT(block_value);
-            ACCEPT(get_context);
-            ACCEPT(empty_hash);
-            ACCEPT(invoke_ambiguous);
-            ACCEPT(invoke_helper);
-            ACCEPT(invoke_known_helper);
-            ACCEPT(invoke_partial);
-            ACCEPT(lookup_block_param);
-            ACCEPT(lookup_data);
-            ACCEPT(lookup_on_context);
-            ACCEPT(pop_hash);
-            ACCEPT(push_context);
-            ACCEPT(push_hash);
-            ACCEPT(push_program);
-            ACCEPT(push_literal);
-            ACCEPT(push_string);
-            ACCEPT(resolve_possible_lambda);
-            case handlebars_opcode_type_return: return;
-            default:
-                handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
-                break;
-        }
-	}
+/*
+#ifndef NDEBUG
+    if( getenv("DEBUG") ) {
+        struct handlebars_string * tmp = handlebars_opcode_print(HBSCTX(vm), opcode, 0);
+        fprintf(stdout, "V[%ld] P[%ld] OPCODE: %.*s\n", vm->depth, entry->guid, (int) tmp->len, tmp->val);
+        talloc_free(tmp);
+    }
+#endif
+*/
 
-    assert(0); // Return should be done by the return opcode
+    struct handlebars_opcode * opcode = entry->opcodes;
+    START_ACCEPT
+        ACCEPT(ambiguous_block_value)
+        ACCEPT(append)
+        ACCEPT(append_escaped)
+        ACCEPT(append_content)
+        ACCEPT(assign_to_hash)
+        ACCEPT(block_value)
+        ACCEPT(get_context)
+        ACCEPT(empty_hash)
+        ACCEPT(invoke_ambiguous)
+        ACCEPT(invoke_helper)
+        ACCEPT(invoke_known_helper)
+        ACCEPT(invoke_partial)
+        ACCEPT(lookup_block_param)
+        ACCEPT(lookup_data)
+        ACCEPT(lookup_on_context)
+        ACCEPT(pop_hash)
+        ACCEPT(push_context)
+        ACCEPT(push_hash)
+        ACCEPT(push_program)
+        ACCEPT(push_literal)
+        ACCEPT(push_string)
+        ACCEPT(resolve_possible_lambda)
+
+        // Special return opcode
+        ACCEPT_CASE(return) return;
+
+        // Unhandled opcodes
+        ACCEPT_CASE(nil)
+        ACCEPT_CASE(push)
+        ACCEPT_CASE(push_id)
+        ACCEPT_CASE(push_string_param)
+        ACCEPT_CASE(register_decorator)
+        ACCEPT_DEFAULT
+            ACCEPT_ERROR
+    END_ACCEPT
 }
 
 struct handlebars_string * handlebars_vm_execute_program_ex(
