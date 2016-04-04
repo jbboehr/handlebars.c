@@ -25,7 +25,7 @@
 
 
 static const size_t DEFAULT_SHM_SIZE = 1024 * 1024 * 64;
-static const size_t DEFAULT_TABLE_SIZE = 1024 * 1024 * 16;
+static const size_t DEFAULT_TABLE_SIZE = 1024 * 1024 * 8;
 static const char head[] = "handlebars shared opcode cache";
 
 enum handlebars_cache_mmap_table_entry_state {
@@ -43,8 +43,6 @@ struct cache_header {
 
     //! The version of handlebars this block was initialized with
     int version;
-
-    struct handlebars_cache_stat stat;
 
     //! The offset in bytes from the beginning of the block at which the hash table exists
     size_t table_offset;
@@ -66,6 +64,10 @@ struct cache_header {
 
     //! The length in bytes of the currently used part of the data segment
     size_t data_length;
+
+    size_t hits;
+
+    size_t misses;
 
     bool in_reset;
 
@@ -167,7 +169,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Currently resetting
     if( head->in_reset ) {
         pthread_spin_lock(&head->write_lock);
-        head->stat.misses++;
+        head->misses++;
         pthread_spin_unlock(&head->write_lock);
         goto error;
     }
@@ -178,7 +180,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     if( entry->state != STATE_READY ) {
         // Not found, or not ready
         pthread_spin_lock(&head->write_lock);
-        head->stat.misses++;
+        head->misses++;
         pthread_spin_unlock(&head->write_lock);
         goto error;
     }
@@ -186,7 +188,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Compare key
     if( !handlebars_string_eq(tmpl, (struct handlebars_string *) (intern->addr + entry->key_offset)) ) {
         pthread_spin_lock(&head->write_lock);
-        head->stat.misses++;
+        head->misses++;
         pthread_spin_unlock(&head->write_lock);
         goto error;
     }
@@ -199,15 +201,15 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     if( shm_module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, shm_module->ts) >= cache->max_age) ) {
         pthread_spin_lock(&head->write_lock);
         entry->state = STATE_EMPTY;
-        head->stat.misses++;
-        head->stat.current_entries--;
+        head->misses++;
+        head->table_entries--;
         pthread_spin_unlock(&head->write_lock);
 
         goto error;
     }
 
     // Copy
-    head->stat.hits++;
+    head->hits++;
 
     if( (void *) shm_module != shm_module->addr ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Shared memory pointer mismatch: %p != %p", shm_module, shm_module->addr);
@@ -268,7 +270,7 @@ static void cache_add(
 
     // Finish
     entry->state = STATE_READY;
-    head->stat.current_entries++;
+    head->table_entries++;
 
     // Unlock
     pthread_spin_unlock(&head->write_lock);
@@ -291,7 +293,19 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct cache_header * head = intern->h;
-    return head->stat;
+    struct handlebars_cache_stat stat = {0};
+    stat.name = "mmap";
+    stat.total_size = head->size;
+    stat.total_table_size = head->table_size;
+    stat.total_data_size = head->data_size;
+    stat.total_entries = head->table_count;
+    stat.current_entries = head->table_entries;
+    stat.current_table_size = head->table_entries * sizeof(struct table_entry);
+    stat.current_data_size = head->data_length;
+    stat.current_size = stat.current_table_size + stat.current_data_size;
+    stat.hits = head->hits;
+    stat.misses = head->misses;
+    return stat;
 }
 
 #undef CONTEXT

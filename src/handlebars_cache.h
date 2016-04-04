@@ -41,9 +41,36 @@ typedef struct handlebars_cache_stat (*handlebars_cache_stat_func)(
 );
 
 struct handlebars_cache_stat {
-    size_t current_entries;
+    const char * name;
+
+    //! The total size of the cache in bytes
+    size_t total_size;
+
+    //! The total size of the cache in bytes
     size_t current_size;
+
+    //! The total size of the table in bytes, or zero for dynamic allocation
+    size_t total_table_size;
+
+    //! The current size of the cache table in bytes
+    size_t current_table_size;
+
+    //! The total size of the data segment in bytes, or zero for dynamic allocation
+    size_t total_data_size;
+
+    //! The current size of the data segment in bytes, or zero for dynamic allocation
+    size_t current_data_size;
+
+    //! The total number of entries in the cache, or zero for dynamic allocation
+    size_t total_entries;
+
+    //! The current number of entries in the cache
+    size_t current_entries;
+
+    //! The number of cache hits
     size_t hits;
+
+    //! The number of cache misses
     size_t misses;
 };
 

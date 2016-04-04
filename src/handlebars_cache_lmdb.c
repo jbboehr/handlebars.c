@@ -223,6 +223,7 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
     err = mdb_stat(txn, dbi, &stat);
     if( err != 0 ) goto error;
 
+    intern->stat.name = "mmap";
     intern->stat.current_entries = stat.ms_entries;
 
 error:

@@ -151,7 +151,10 @@ static void cache_release(struct handlebars_cache * cache, struct handlebars_str
 static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
 {
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
-    return intern->stat;
+    struct handlebars_cache_stat stat = intern->stat;
+    stat.name = "simple";
+    stat.total_size = talloc_total_size(cache); // meh
+    return stat;
 }
 
 #undef CONTEXT
