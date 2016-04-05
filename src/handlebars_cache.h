@@ -72,6 +72,9 @@ struct handlebars_cache_stat {
 
     //! The number of cache misses
     size_t misses;
+
+    //! The number of cache entries currently being executed
+    size_t refcount;
 };
 
 /**
