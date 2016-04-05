@@ -27,6 +27,10 @@
 #undef CONTEXT
 #define CONTEXT HBSCTX(cache)
 
+#if defined(__ATOMIC_SEQ_CST) && !defined(INTELLIJ)
+#define HAVE_ATOMIC_BUILTINS 1
+#endif
+
 static const size_t DEFAULT_SHM_SIZE = 1024 * 1024 * 64;
 static const size_t DEFAULT_TABLE_SIZE = 1024 * 1024 * 8;
 static const char head[] = "handlebars shared opcode cache";
@@ -152,6 +156,14 @@ static inline void unlock(struct handlebars_cache * cache)
     }
 }
 
+#if HAVE_ATOMIC_BUILTINS
+#define INCR(var) __atomic_add_fetch(&var, 1, __ATOMIC_SEQ_CST)
+#define DECR(var) __atomic_sub_fetch(&var, 1, __ATOMIC_SEQ_CST)
+#else
+#define INCR(var) lock(cache); var++; unlock(cache)
+#define DECR(var) lock(cache); var--; unlock(cache)
+#endif
+
 static void cache_dtor(struct handlebars_cache * cache)
 {
     // This may be unnecessary with MAP_ANONYMOUS
@@ -208,21 +220,18 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
         return NULL;
     }
 
-    // Lock
-    lock(cache);
-
     // Find entry
     struct table_entry * entry = table_find(intern, tmpl);
 
     if( entry->state != STATE_READY ) {
         // Not found, or not ready
-        intern->misses++;
+        INCR(intern->misses);
         goto error;
     }
 
     // Compare key
     if( !handlebars_string_eq(tmpl, entry->key) ) {
-        intern->misses++;
+        INCR(intern->misses);
         goto error;
     }
 
@@ -232,25 +241,23 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Check if it's too old or wrong version
     time(&now);
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
+        lock(cache);
         entry->state = STATE_EMPTY;
         intern->misses++;
         intern->table_entries--;
+        unlock(cache);
         goto error;
     }
 
-    // Copy
-    intern->hits++;
-
     // Check for pointer mismatch
     if( ((void *) module) != module->addr ) {
-        unlock(cache);
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Shared memory pointer mismatch: %p != %p", module, module->addr);
     }
 
-    intern->refcount++;
+    INCR(intern->hits);
+    INCR(intern->refcount);
 
 error:
-    unlock(cache);
     return module;
 }
 
