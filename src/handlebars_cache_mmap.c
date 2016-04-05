@@ -351,7 +351,13 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     talloc_set_destructor(cache, cache_dtor);
 
     // Get page size
-    page_size = (size_t) getpagesize();
+#if defined(_SC_PAGESIZE) && _SC_PAGESIZE != -1
+    page_size = (size_t) sysconf(_SC_PAGESIZE);
+#elif defined(PAGE_SIZE)
+    page_size = PAGE_SIZE;
+#else
+#error "Unable to query page size"
+#endif
 
     // Calculate sizes
     size_t intern_size = align_size(sizeof(struct handlebars_cache_mmap));
