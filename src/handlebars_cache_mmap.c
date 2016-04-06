@@ -34,14 +34,8 @@
 static const size_t DEFAULT_SHM_SIZE = 1024 * 1024 * 64;
 static const size_t DEFAULT_TABLE_SIZE = 1024 * 1024 * 8;
 static const char head[] = "handlebars shared opcode cache";
-static const size_t PADDING = 16;
+static const size_t PADDING = 1;
 static size_t page_size;
-
-enum handlebars_cache_mmap_table_entry_state {
-    STATE_EMPTY = 0,
-    STATE_INIT = 1,
-    STATE_READY = 2
-};
 
 struct handlebars_cache_mmap {
     //! Header
@@ -90,7 +84,7 @@ struct handlebars_cache_mmap {
 
 struct table_entry {
     //! The state of the entry
-    int state;
+    bool state;
 
     //! The offset from the beginning of the memory block at which the key for the entry resides
     struct handlebars_string * key;
@@ -116,6 +110,9 @@ static inline struct table_entry * table_find(struct handlebars_cache_mmap * int
 static inline void * append(struct handlebars_cache_mmap * intern, void * source, size_t size)
 {
     void * addr = intern->data + intern->data_length;
+    if( intern->data_length + size + PADDING >= intern->data_size ) {
+        return NULL;
+    }
     intern->data_length += size + PADDING;
     memcpy(addr, source, size);
     memset(addr + size, 0, PADDING);
@@ -223,7 +220,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Find entry
     struct table_entry * entry = table_find(intern, tmpl);
 
-    if( entry->state != STATE_READY ) {
+    if( !entry->state ) {
         // Not found, or not ready
         INCR(intern->misses);
         goto error;
@@ -242,7 +239,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     time(&now);
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
         lock(cache);
-        entry->state = STATE_EMPTY;
+        entry->state = false;
         intern->misses++;
         intern->table_entries--;
         unlock(cache);
@@ -250,7 +247,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     }
 
     // Check for pointer mismatch
-    if( ((void *) module) != module->addr ) {
+    if( unlikely((void *) module != module->addr) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Shared memory pointer mismatch: %p != %p", module, module->addr);
     }
 
@@ -279,34 +276,30 @@ static void cache_add(
 
     assert(module == module->addr);
 
-    // Check if we have available memory
-    if( module->size + intern->data_length + HANDLEBARS_STRING_SIZE(tmpl->len) + PADDING * 2 > intern->data_size ) {
-        // We ran out of memory - reset cache
-        cache_reset(cache);
-    }
-
     struct table_entry * entry = table_find(intern, tmpl);
 
-    if( entry->state == STATE_EMPTY ) {
-        // Otherwise write the key
-        entry->state = STATE_INIT;
-
+    if( !entry->state ) {
         // Copy key
         entry->key = append(intern, (void *) tmpl, HANDLEBARS_STRING_SIZE(tmpl->len));
 
         // Copy data
         entry->data = append(intern, (void *) module, module->size);
 
+        // Check for failure
+        if( unlikely(!entry->key || !entry->data) ) {
+            cache_reset(cache);
+            goto error;
+        }
+
         // Pre-patch pointers
         handlebars_module_patch_pointers(entry->data);
 
-        // Finish
-        entry->state = STATE_READY;
+        // Finish;
+        entry->state = true;
         intern->table_entries++;
-    } else {
-        // Currently being written by another process or already exists
     }
 
+error:
     // Unlock
     unlock(cache);
     protect(cache, true);
@@ -315,9 +308,7 @@ static void cache_add(
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
-    lock(cache);
-    intern->refcount--;
-    unlock(cache);
+    DECR(intern->refcount);
 }
 
 static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
