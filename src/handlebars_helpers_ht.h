@@ -30,7 +30,7 @@ error "gperf generated tables don't work with this execution character set. Plea
 #endif
 
 #line 1 "handlebars_helpers_ht.gperf"
-struct handlebars_builtin_pair { const char * name; int pos };
+struct handlebars_builtin_pair { const char * name; int pos; };
 
 #define TOTAL_KEYWORDS 8
 #define MIN_WORD_LENGTH 2

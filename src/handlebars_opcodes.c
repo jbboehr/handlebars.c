@@ -163,6 +163,9 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
 
         // Added in v4
         _RTYPE_CASE(register_decorator, registerDecorator);
+
+        // Special
+        _RTYPE_CASE(return, return);
     }
     
     return "invalid";

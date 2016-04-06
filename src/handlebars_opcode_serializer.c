@@ -146,7 +146,6 @@ static struct handlebars_module_table_entry * serialize_program_shallow(struct h
 
 static void serialize_program2(struct handlebars_module * module, struct handlebars_program * program, struct handlebars_module_table_entry * entry)
 {
-    size_t guid = entry->guid;
     size_t i;
     struct handlebars_module_table_entry * children[program->children_length];
 

@@ -1,4 +1,4 @@
-struct handlebars_builtin_pair { const char * name; int pos };
+struct handlebars_builtin_pair { const char * name; int pos; };
 %%
 blockHelperMissing,0
 helperMissing,1

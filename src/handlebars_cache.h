@@ -138,7 +138,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
  * @brief Lookup a program from the cache.
  *
  * @param[in] cache The cache
- * @param[in] tmpl The template, Can be a filename, actual template, or arbitrary string
+ * @param[in] key The cache key, Can be a filename, actual template, or arbitrary string
  * @return The cache entry, or NULL
  */
 #define handlebars_cache_find(cache, key) (cache->find(cache, key))
@@ -147,7 +147,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
  * @brief Add a program to the cache. Adding the same key twice is an error.
  *
  * @param[in] cache The cache
- * @param[in] tmpl The template. Can be a filename, actual template, or arbitrary string
+ * @param[in] key The cache key. Can be a filename, actual template, or arbitrary string
  * @param[in] program The program
  * @return The cache entry
  */
