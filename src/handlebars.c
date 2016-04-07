@@ -170,6 +170,9 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
         handlebars_throw(CONTEXT, HANDLEBARS_NOMEM, "Lexer initialization failed");
     }
 
+    // Steal the scanner just in case
+    parser->scanner = talloc_steal(parser, parser->scanner);
+
     // Set the extra on the lexer
     handlebars_yy_set_extra(parser, parser->scanner);
 
