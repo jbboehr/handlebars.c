@@ -4,7 +4,6 @@
 #endif
 
 #include <assert.h>
-#include <lmdb.h>
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
