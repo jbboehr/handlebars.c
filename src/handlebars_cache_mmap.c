@@ -115,7 +115,7 @@ static inline void protect(struct handlebars_cache * cache, bool on)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     int prot = on ? PROT_READ : PROT_READ | PROT_WRITE;
-    int rc = mprotect(intern->data, intern->data_size, prot);
+    int rc = mprotect(intern->table, intern->table_size + intern->data_size, prot);
     if( rc != 0 ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "mprotect error: %s (%d)", strerror(rc), rc);
     }
@@ -165,6 +165,12 @@ static inline void table_set(struct handlebars_cache_mmap * intern, struct table
     } else {
         intern->table[offset] = append(intern, entry, sizeof(struct table_entry));
     }
+}
+
+static inline void table_unset(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
+{
+    size_t offset = HBS_STR_HASH(string) % intern->table_count;
+    intern->table[offset] = NULL;
 }
 
 #if HAVE_ATOMIC_BUILTINS
@@ -220,7 +226,7 @@ static int cache_gc(struct handlebars_cache * cache)
 }
 
 
-static struct handlebars_module * cache_find(struct handlebars_cache * cache, struct handlebars_string * tmpl)
+static struct handlebars_module * cache_find(struct handlebars_cache * cache, struct handlebars_string * key)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct handlebars_module * module = NULL;
@@ -232,7 +238,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     }
 
     // Find entry
-    struct table_entry * entry = table_find(intern, tmpl);
+    struct table_entry * entry = table_find(intern, key);
 
     if( !entry ) {
         // Not found, or not ready
@@ -241,7 +247,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     }
 
     // Compare key
-    if( !handlebars_string_eq(tmpl, entry->key) ) {
+    if( !handlebars_string_eq(key, entry->key) ) {
         INCR(intern->misses);
         //INCR(intern->collisions);
         goto error;
@@ -253,10 +259,13 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Check if it's too old or wrong version
     time(&now);
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
+        protect(cache, false);
         lock(cache);
+        table_unset(intern, key);
         intern->misses++;
         intern->table_entries--;
         unlock(cache);
+        protect(cache, true);
         goto error;
     }
 
