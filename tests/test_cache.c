@@ -148,13 +148,15 @@ START_TEST(test_simple_cache)
 END_TEST
 
 START_TEST(test_lmdb_cache)
-    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, getenv("TMPDIR") ?: "/tmp");
+    char tmp[256];
+    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
     execute_for_cache(cache);
     handlebars_cache_dtor(cache);
 END_TEST
 
 START_TEST(test_mmap_cache)
-    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context);
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
     execute_for_cache(cache);
     handlebars_cache_dtor(cache);
 END_TEST

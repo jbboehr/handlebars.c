@@ -31,8 +31,6 @@
 #define HAVE_ATOMIC_BUILTINS 1
 #endif
 
-static const size_t DEFAULT_SHM_SIZE = 1024 * 1024 * 64;
-static const size_t DEFAULT_TABLE_SIZE = 1024 * 1024 * 8;
 static const char head[] = "handlebars shared opcode cache";
 static const size_t PADDING = 1;
 static size_t page_size;
@@ -51,7 +49,7 @@ struct handlebars_cache_mmap {
     int version;
 
     //! The pointer to the table segment
-    struct table_entry * table;
+    struct table_entry ** table;
 
     //! The size in bytes of the hash table
     size_t table_size;
@@ -75,6 +73,8 @@ struct handlebars_cache_mmap {
 
     size_t misses;
 
+    size_t collisions;
+
     bool in_reset;
 
     pthread_spinlock_t write_lock;
@@ -83,9 +83,6 @@ struct handlebars_cache_mmap {
 };
 
 struct table_entry {
-    //! The state of the entry
-    bool state;
-
     //! The offset from the beginning of the memory block at which the key for the entry resides
     struct handlebars_string * key;
 
@@ -100,11 +97,6 @@ static inline size_t align_size(size_t size)
         pages++;
     }
     return pages * page_size;
-}
-
-static inline struct table_entry * table_find(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
-{
-    return intern->table + (HBS_STR_HASH(string) % intern->table_count);
 }
 
 static inline void * append(struct handlebars_cache_mmap * intern, void * source, size_t size)
@@ -150,6 +142,28 @@ static inline void unlock(struct handlebars_cache * cache)
     rc = pthread_spin_unlock(&intern->write_lock);
     if( rc != 0 ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "pthread unlock error: %s (%d)", strerror(rc), rc);
+    }
+}
+
+static inline bool table_exists(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
+{
+    size_t offset = HBS_STR_HASH(string) % intern->table_count;
+    return NULL != intern->table[offset];
+}
+
+static inline struct table_entry * table_find(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
+{
+    size_t offset = HBS_STR_HASH(string) % intern->table_count;
+    return intern->table[offset];
+}
+
+static inline void table_set(struct handlebars_cache_mmap * intern, struct table_entry * entry)
+{
+    size_t offset = HBS_STR_HASH(entry->key) % intern->table_count;
+    if( entry == NULL ) {
+        intern->table[offset] = NULL;
+    } else {
+        intern->table[offset] = append(intern, entry, sizeof(struct table_entry));
     }
 }
 
@@ -220,7 +234,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Find entry
     struct table_entry * entry = table_find(intern, tmpl);
 
-    if( !entry->state ) {
+    if( !entry ) {
         // Not found, or not ready
         INCR(intern->misses);
         goto error;
@@ -229,6 +243,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Compare key
     if( !handlebars_string_eq(tmpl, entry->key) ) {
         INCR(intern->misses);
+        //INCR(intern->collisions);
         goto error;
     }
 
@@ -239,7 +254,6 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     time(&now);
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
         lock(cache);
-        entry->state = false;
         intern->misses++;
         intern->table_entries--;
         unlock(cache);
@@ -260,10 +274,11 @@ error:
 
 static void cache_add(
     struct handlebars_cache * cache,
-    struct handlebars_string * tmpl,
+    struct handlebars_string * key,
     struct handlebars_module * module
 ) {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    struct table_entry entry;
 
     // Currently resetting
     if( intern->in_reset ) {
@@ -276,28 +291,33 @@ static void cache_add(
 
     assert(module == module->addr);
 
-    struct table_entry * entry = table_find(intern, tmpl);
-
-    if( !entry->state ) {
-        // Copy key
-        entry->key = append(intern, (void *) tmpl, HANDLEBARS_STRING_SIZE(tmpl->len));
-
-        // Copy data
-        entry->data = append(intern, (void *) module, module->size);
-
-        // Check for failure
-        if( unlikely(!entry->key || !entry->data) ) {
-            cache_reset(cache);
-            goto error;
+    // Collision
+    struct table_entry * found = table_find(intern, key);
+    if( found ) {
+        if( !handlebars_string_eq(found->key, key) ) {
+            INCR(intern->collisions);
         }
-
-        // Pre-patch pointers
-        handlebars_module_patch_pointers(entry->data);
-
-        // Finish;
-        entry->state = true;
-        intern->table_entries++;
+        goto error;
     }
+
+    // Copy key
+    entry.key = append(intern, (void *) key, HANDLEBARS_STRING_SIZE(key->len));
+
+    // Copy data
+    entry.data = append(intern, (void *) module, module->size);
+
+    // Check for failure
+    if( unlikely(!entry.key || !entry.data) ) {
+        cache_reset(cache);
+        goto error;
+    }
+
+    // Pre-patch pointers
+    handlebars_module_patch_pointers(entry.data);
+
+    // Finish;
+    table_set(intern, &entry);
+    intern->table_entries++;
 
 error:
     // Unlock
@@ -327,6 +347,7 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
     stat.hits = intern->hits;
     stat.misses = intern->misses;
     stat.refcount = intern->refcount;
+    stat.collisions = intern->collisions;
     return stat;
 }
 
@@ -334,7 +355,9 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
 #define CONTEXT context
 
 struct handlebars_cache * handlebars_cache_mmap_ctor(
-    struct handlebars_context * context
+    struct handlebars_context * context,
+    size_t size,
+    size_t entries
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
     handlebars_context_bind(context, HBSCTX(cache));
@@ -359,9 +382,13 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
     // Calculate sizes
     size_t intern_size = align_size(sizeof(struct handlebars_cache_mmap));
-    size_t shm_size = align_size(DEFAULT_SHM_SIZE);
-    size_t table_size = align_size(DEFAULT_TABLE_SIZE);
+    size_t shm_size = align_size(size);
+    size_t table_size = align_size(entries * sizeof(struct table_entry *));
     size_t data_size = shm_size - table_size - intern_size;
+
+    if( table_size >= shm_size ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Table size must not be greater than segment size");
+    }
 
     struct handlebars_cache_mmap * intern = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if( intern == MAP_FAILED ) {
@@ -376,7 +403,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     intern->intern_size = intern_size;
     intern->table_size = table_size;
     intern->data_size = data_size;
-    intern->table_count = table_size / sizeof(struct table_entry);
+    intern->table_count = entries; //table_size / sizeof(struct table_entry *);
 
     intern->table = ((void *) intern) + intern_size;
     intern->data = ((void *) intern) + intern_size + table_size;

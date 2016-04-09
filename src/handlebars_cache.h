@@ -75,6 +75,9 @@ struct handlebars_cache_stat {
 
     //! The number of cache entries currently being executed
     size_t refcount;
+
+    //! The number of hash table collisions
+    size_t collisions;
 };
 
 /**
@@ -122,8 +125,18 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     const char * path
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Construct a new mmap cache
+ *
+ * @param[in] context The handlebars context
+ * @param[in] size The size of the mmap block
+ * @param[in] entries The fixed number of entries in the hash table
+ * @return The cache
+ */
 struct handlebars_cache * handlebars_cache_mmap_ctor(
-    struct handlebars_context * context
+    struct handlebars_context * context,
+    size_t size,
+    size_t entries
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**

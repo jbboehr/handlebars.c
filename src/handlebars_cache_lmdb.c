@@ -255,7 +255,7 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     mdb_env_create(&intern->env);
     talloc_set_destructor(cache, cache_dtor);
 
-    int err = mdb_env_open(intern->env, path, MDB_WRITEMAP | MDB_MAPASYNC, 0644);
+    int err = mdb_env_open(intern->env, path, MDB_WRITEMAP | MDB_MAPASYNC | MDB_NOSUBDIR, 0644);
     HANDLE_RC(err);
 
     return cache;
