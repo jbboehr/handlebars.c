@@ -200,16 +200,14 @@ static inline void _entry_remove(struct handlebars_map * map, struct handlebars_
 
 
 
-bool handlebars_map_add(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value)
+void handlebars_map_add(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value)
 {
     _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
-    return true;
 }
 
-bool handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+void handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     _entry_add(map, key, len, handlebars_string_hash(key, len), value);
-    return true;
 }
 
 bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
@@ -260,21 +258,19 @@ struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, c
     return value;
 }
 
-bool handlebars_map_update(struct handlebars_map * map, struct handlebars_string * string, struct handlebars_value * value)
+void handlebars_map_update(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
-    struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, HBS_STR_HASH(string));
+    struct handlebars_map_entry * entry = _entry_find(map, key->val, key->len, HBS_STR_HASH(key));
     if( entry ) {
         handlebars_value_delref(entry->value);
         entry->value = value;
         handlebars_value_addref(entry->value);
-        return true;
     } else {
-        _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
-        return true;
+        _entry_add(map, key->val, key->len, HBS_STR_HASH(key), value);
     }
 }
 
-bool handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+void handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     struct handlebars_string * string = talloc_steal(map, handlebars_string_ctor(CONTEXT, key, len));
     struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, HBS_STR_HASH(string));
@@ -283,9 +279,7 @@ bool handlebars_map_str_update(struct handlebars_map * map, const char * key, si
         entry->value = value;
         handlebars_value_addref(entry->value);
         handlebars_talloc_free(string);
-        return true;
     } else {
         _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
-        return true;
     }
 }

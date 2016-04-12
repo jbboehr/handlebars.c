@@ -48,16 +48,30 @@ static inline unsigned long handlebars_string_hash(const char * str, size_t len)
     return handlebars_string_hash_cont(str, len, hash);
 }
 
+/**
+ * @brief Allocate a new, empty string of the specified length
+ * @param[in] context
+ * @param[in] size
+ * @return The newly allocated string
+ */
 HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL
-static inline struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t size)
+static inline struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t length)
 {
-    struct handlebars_string * st = handlebars_talloc_size(context, HBS_STR_SIZE(size));
+    struct handlebars_string * st = handlebars_talloc_size(context, HBS_STR_SIZE(length));
     HANDLEBARS_MEMCHECK(st, context);
     st->len = 0;
     st->val[0] = 0;
     return st;
 }
 
+/**
+ * @brief Construct a string from the specified parameters, including hash
+ * @param[in] context
+ * @param[in] str
+ * @param[in] len
+ * @param[in] hash
+ * @return The newly constructed string
+ */
 HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_ctor_ex(
     struct handlebars_context * context,
@@ -72,6 +86,13 @@ static inline struct handlebars_string * handlebars_string_ctor_ex(
     return st;
 }
 
+/**
+ * @brief Construct a string from the specified parameters
+ * @param[in] context
+ * @param[in] str
+ * @param[in] len
+ * @return The newly constructed string
+ */
 HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_ctor(
     struct handlebars_context * context,
@@ -80,6 +101,12 @@ static inline struct handlebars_string * handlebars_string_ctor(
     return handlebars_string_ctor_ex(context, str, len, 0);
 }
 
+/**
+ * @brief Construct a copy of a string
+ * @param[in] context
+ * @param[in] string
+ * @return The newly constructed string
+ */
 HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_copy_ctor(
     struct handlebars_context * context,
@@ -92,6 +119,13 @@ static inline struct handlebars_string * handlebars_string_copy_ctor(
     return st;
 }
 
+/**
+ * @brief Reserve the specified size with an existing string. Will not decrease the size of the buffer.
+ * @param[in] context
+ * @param[in] string
+ * @param[in] len The desired total length of the string, no less than the current length
+ * @return The original string, unless moved by reallocation
+ */
 HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_extend(
     struct handlebars_context * context,
@@ -110,6 +144,13 @@ static inline struct handlebars_string * handlebars_string_extend(
     return string;
 }
 
+/**
+ * @brief Append to a string without checking length or reallocating
+ * @param[in] string
+ * @param[in] str
+ * @param[in] len
+ * @return The original string
+ */
 HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_append_unsafe(
     struct handlebars_string * string,
@@ -122,6 +163,14 @@ static inline struct handlebars_string * handlebars_string_append_unsafe(
     return string;
 }
 
+/**
+ * @brief Append to a string
+ * @param[in] context
+ * @param[in] string
+ * @param[in] str
+ * @param[in] len
+ * @return The original string, unless moved by reallocation
+ */
 HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_append(
     struct handlebars_context * context,
@@ -133,6 +182,11 @@ static inline struct handlebars_string * handlebars_string_append(
     return string;
 }
 
+/**
+ * @brief Resize a string buffer to match the size of it's contents
+ * @param[in] string
+ * @return The original string
+ */
 HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_compact(struct handlebars_string * string) {
     size_t size = HBS_STR_SIZE(string->len);
@@ -143,6 +197,16 @@ static inline struct handlebars_string * handlebars_string_compact(struct handle
     }
 }
 
+/**
+ * @brief Compare two strings (const char[] with length and hash variant)
+ * @param[in] string1
+ * @param[in] length1
+ * @param[in] hash1
+ * @param[in] string2
+ * @param[in] length2
+ * @param[in] hash2
+ * @return Whether or not the strings are equal
+ */
 HBS_ATTR_NONNULL(1, 4)
 static inline bool handlebars_string_eq_ex(
     const char * string1, size_t length1, unsigned long hash1,
@@ -155,6 +219,12 @@ static inline bool handlebars_string_eq_ex(
     }
 }
 
+/**
+ * @brief Compare two strings (#handlebars_string variant)
+ * @param[in] string1
+ * @param[in] string2
+ * @return Whether or not the strings are equal
+ */
 HBS_ATTR_NONNULL(1, 2)
 static inline bool handlebars_string_eq(struct handlebars_string * string1, struct handlebars_string * string2)
 {
@@ -166,7 +236,7 @@ static inline bool handlebars_string_eq(struct handlebars_string * string1, stru
 }
 
 /**
- * @brief Implements strnstr
+ * @brief Implements `strnstr`
  * @param[in] haystack
  * @param[in] haystack_len
  * @param[in] needle
@@ -182,7 +252,6 @@ const char * handlebars_strnstr(
 
 /**
  * @brief Performs a string replace in-place. `replacement` must not be longer than `search`.
- *
  * @param[in] string The input string
  * @param[in] search The search string
  * @param[in] search_len The search string length
@@ -199,7 +268,6 @@ struct handlebars_string * handlebars_str_reduce(
 /**
  * @brief Adds slashes to as string for a list of specified characters. Returns a
  *        newly allocated string, or NULL on failure.
- *
  * @param[in] context The handlebars context
  * @param[in] string The string to which to add slashes
  * @param[in] what A list of characters to escape
@@ -212,16 +280,35 @@ struct handlebars_string * handlebars_string_addcslashes(
     const char * what, size_t what_length
 ) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Strip slashes in place
+ * @param[in] string
+ * @return The original string
+ */
 struct handlebars_string * handlebars_string_stripcslashes(
     struct handlebars_string * string
 ) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Implements `asprintf` for #handlebars_string
+ * @see asprintf(3)
+ * @param[in] context
+ * @param[in] fmt
+ * @return A newly constructed string
+ */
 struct handlebars_string * handlebars_string_asprintf(
     struct handlebars_context * context,
     const char * fmt,
     ...
 ) HBS_ATTR_PRINTF(2, 3) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Implements `asprintf` by appending for #handlebars_string
+ * @see asprintf(3)
+ * @param[in] context
+ * @param[in] fmt
+ * @return The original string, unless moved by reallocation
+ */
 struct handlebars_string * handlebars_string_asprintf_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
@@ -229,12 +316,28 @@ struct handlebars_string * handlebars_string_asprintf_append(
     ...
 ) HBS_ATTR_PRINTF(3, 4) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Implements `vasprintf` for #handlebars_string
+ * @see vasprintf(3)
+ * @param[in] context
+ * @param[in] fmt
+ * @param[in] ap
+ * @return A newly constructed string
+ */
 struct handlebars_string * handlebars_string_vasprintf(
     struct handlebars_context * context,
     const char * fmt,
     va_list ap
 ) HBS_ATTR_PRINTF(2, 0) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Implements `vasprintf` by appending for #handlebars_string
+ * @see vasprintf(3)
+ * @param[in] context
+ * @param[in] fmt
+ * @param[in] ap
+ * @return The original string, unless moved by reallocation
+ */
 struct handlebars_string * handlebars_string_vasprintf_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
@@ -242,17 +345,41 @@ struct handlebars_string * handlebars_string_vasprintf_append(
     va_list ap
 ) HBS_ATTR_PRINTF(3, 0) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Escapes HTML control characters using the handlebars (not PHP) escape sequences
+ * @param[in] context
+ * @param[in] str
+ * @param[in] len
+ * @return A newly constructed string
+ */
 struct handlebars_string * handlebars_string_htmlspecialchars(
     struct handlebars_context * context,
     const char * str, size_t len
 ) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Escapes HTML control characters using the handlebars (not PHP) escape sequences appended to the
+ *        specified string
+ * @param[in] context
+ * @param[in] string
+ * @param[in] str
+ * @param[in] len
+ * @return The original string, unless moved by reallocation
+ */
 struct handlebars_string * handlebars_string_htmlspecialchars_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
     const char * str, size_t len
 ) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Concat an array of strings with the specified separator
+ * @param[in] context
+ * @param[in] sep
+ * @param[in] sep_len
+ * @param[in] parts NULL-terminated array of strings
+ * @return A newly constructed string
+ */
 struct handlebars_string * handlebars_string_implode(
     struct handlebars_context * context,
     const char * sep,
@@ -260,6 +387,15 @@ struct handlebars_string * handlebars_string_implode(
     struct handlebars_string ** parts
 ) HBS_ATTR_NONNULL(1, 2, 4) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Indent all text by the specified indent
+ * @param[in] context
+ * @param[in] str
+ * @param[in] str_len
+ * @param[in] indent
+ * @param[in] indent_len
+ * @return A newly constructed string
+ */
 struct handlebars_string * handlebars_string_indent(
     struct handlebars_context * context,
     const char * str, size_t str_len,
@@ -269,7 +405,6 @@ struct handlebars_string * handlebars_string_indent(
 /**
  * @brief Trims a set of characters off the left end of string. Trims in
  *        place by setting a null terminator and moving the contents
- *
  * @param[in] string the string to trim
  * @param[in] what the set of characters to trim
  * @param[in] what_length The length of the character list
@@ -283,7 +418,6 @@ struct handlebars_string * handlebars_string_ltrim(
 /**
  * @brief Trims a set of characters off the right end of string. Trims in
  *        place by setting a null terminator.
- *
  * @param[in] string the string to trim
  * @param[in] what the set of characters to trim
  * @param[in] what_length The length of the character list

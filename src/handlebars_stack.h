@@ -12,16 +12,35 @@ struct handlebars_context;
 struct handlebars_value;
 
 struct handlebars_stack {
+    //! Handlebars context
     struct handlebars_context * ctx;
+    //! Number of elements in the stack
     size_t i;
+    //! Currently available number of elements (size of the buffer)
     size_t s;
+    //! Data
     struct handlebars_value ** v;
 };
 
+/**
+ * @brief Construct a new stack
+ * @param[in] ctx The handlebars context
+ * @return The new stack
+ */
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Destruct a stack
+ * @param[in] stack
+ * @return void
+ */
 void handlebars_stack_dtor(struct handlebars_stack * stack) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Get the number of elements in a stack
+ * @param[in] stack
+ * @return The number of elements
+ */
 size_t handlebars_stack_length(struct handlebars_stack * stack) HBS_ATTR_NONNULL_ALL;
 
 /**

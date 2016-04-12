@@ -382,20 +382,27 @@ inverse:
 
 
 static const char * names[] = {
-        "helperMissing", "blockHelperMissing", "each", "if",
-        "unless", "with", "log", "lookup", NULL
+    "blockHelperMissing",
+    "helperMissing",
+    "each",
+    "if",
+    "unless",
+    "with",
+    "log",
+    "lookup",
+    NULL
 };
 
 static handlebars_helper_func builtins[] = {
-        &handlebars_builtin_block_helper_missing,
-        &handlebars_builtin_helper_missing,
-        &handlebars_builtin_each,
-        &handlebars_builtin_if,
-        &handlebars_builtin_unless,
-        &handlebars_builtin_with,
-        &handlebars_builtin_log,
-        &handlebars_builtin_lookup,
-        NULL
+    &handlebars_builtin_block_helper_missing,
+    &handlebars_builtin_helper_missing,
+    &handlebars_builtin_each,
+    &handlebars_builtin_if,
+    &handlebars_builtin_unless,
+    &handlebars_builtin_with,
+    &handlebars_builtin_log,
+    &handlebars_builtin_lookup,
+    NULL
 };
 
 const char ** handlebars_builtins_names(void)

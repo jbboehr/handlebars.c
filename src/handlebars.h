@@ -287,24 +287,45 @@ void handlebars_throw_ex(
     ...
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_PRINTF(4, 5) HBS_ATTR_NORETURN;
 
+/**
+ * @brief Fetch the error code from enum #handlebars_error_type for the specified context
+ * @param[in] context The handlebars context
+ * @return The error code, or #HANDLEBARS_SUCCESS if no error
+ */
 enum handlebars_error_type handlebars_error_num(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Get the error location for parse errors
+ * @param[in] context The handlebars context
+ * @return The error location
+ */
 struct handlebars_locinfo handlebars_error_loc(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Get the error message for the specified context
+ * @param[in] context The handlebars context
+ * @return The error message, or NULL if no error has occurred.
+ */
 const char * handlebars_error_msg(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Set the jump buffer for the specified context.
+ * @see longjmp(3)
+ * @param[in] context The handlebars context
+ * @param[in] buf The jump buffer to use, or NULL to unset
+ * @return The previous jump buffer, or NULL if none was set
+ */
 jmp_buf * handlebars_error_jmp(struct handlebars_context * context, jmp_buf * buf);
 
 /**
- * @brief Get the error message from a context, or NULL.
+ * @brief Get a copy the error message from a context, or NULL.
  * @param[in] context The handlebars context
  * @return The error message
  */
 char * handlebars_error_message(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Get the error message from a context, or NULL (compatibility for handlebars specification)
- *
+ * @brief Get a copy the error message from a context, or NULL (compatibility for handlebars specification)
  * @param[in] context
  * @return the error message
  */
@@ -326,6 +347,13 @@ static inline void * handlebars_check(struct handlebars_context * context, void 
     return ptr;
 }
 
+/**
+ * @brief Check if the specified pointer is a valid handlebars context using `talloc_get_type`. This function
+ *        is used internally when NDEBUG is undefined. If the check fails, the program will abort.
+ * @param[in] ctx
+ * @param[in] loc
+ * @return The context
+ */
 struct handlebars_context * handlebars_get_context(void * ctx, const char * loc);
 
 #ifndef NDEBUG
