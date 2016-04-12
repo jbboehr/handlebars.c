@@ -99,7 +99,7 @@ MU \{\{\{?
 CMU \}\}\}?
 EMU \\\{\{\{?
 EEMU \\\\\{\{\{?
-CONTENT [^\x00\{\\]
+CONTENT [^\x00\{\\\r\n]*[\r\n]*
 
 WHITESPACE [ \r\n\t]
 
@@ -111,14 +111,14 @@ BLOCKPARAM [\x7C]
 %%
 
 
-{CONTENT}+\\\\/{MU}             	{
+{CONTENT}\\\\/{MU}             	    {
 										yytext[--yyleng] = 0;
 										yy_push_state(mu, yyscanner);
 										handlebars_yy_copy_lval();
 										return CONTENT;
 									}
 
-{CONTENT}+                         	{
+{CONTENT}                           {
 										// v2.0.0 handlebars.l line 31
 										handlebars_yy_copy_lval();
 										return CONTENT;
@@ -134,7 +134,7 @@ BLOCKPARAM [\x7C]
 										return CONTENT;
 									}
 									
-{EMU}{CONTENT}+ 					{		
+{EMU}{CONTENT} 					    {
 										// v2.0.0 handlebars.l line 35
 										yy_push_state(emu, yyscanner);
 										yytext++, yyleng--;
