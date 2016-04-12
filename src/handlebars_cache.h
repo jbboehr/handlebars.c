@@ -1,4 +1,9 @@
 
+/**
+ * @file
+ * @brief Opcode cache
+ */
+
 #ifndef HANDLEBARS_CACHE_H
 #define HANDLEBARS_CACHE_H
 
@@ -82,12 +87,12 @@ struct handlebars_cache_stat {
 
 /**
  * @brief In-memory opcode cache.
- * @todo Use shared memory
  */
 struct handlebars_cache {
     //! Common header
     struct handlebars_context ctx;
 
+    //! Opaque pointer for implementation use
     void * internal;
 
     handlebars_cache_add_func add;
@@ -111,8 +116,7 @@ struct handlebars_cache {
 };
 
 /**
- * @brief Construct a new cache
- *
+ * @brief Construct a new simple cache
  * @param[in] context The handlebars context
  * @return The cache
  */
@@ -120,6 +124,13 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Construct a new LMDB cache. The file specified by path does not have
+ *        to exist, but must be writeable.
+ * @param[in] context The handlebars context
+ * @param[in] path The database file
+ * @return The cache
+ */
 struct handlebars_cache * handlebars_cache_lmdb_ctor(
     struct handlebars_context * context,
     const char * path
@@ -127,9 +138,8 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
 
 /**
  * @brief Construct a new mmap cache
- *
  * @param[in] context The handlebars context
- * @param[in] size The size of the mmap block
+ * @param[in] size The size of the mmap block, in bytes
  * @param[in] entries The fixed number of entries in the hash table
  * @return The cache
  */
@@ -141,7 +151,6 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
 /**
  * @brief Construct a new cache
- *
  * @param[in] context The handlebars context
  * @return The cache
  */
@@ -149,7 +158,6 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
 /**
  * @brief Lookup a program from the cache.
- *
  * @param[in] cache The cache
  * @param[in] key The cache key, Can be a filename, actual template, or arbitrary string
  * @return The cache entry, or NULL
@@ -158,7 +166,6 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
 /**
  * @brief Add a program to the cache. Adding the same key twice is an error.
- *
  * @param[in] cache The cache
  * @param[in] key The cache key. Can be a filename, actual template, or arbitrary string
  * @param[in] program The program
@@ -168,17 +175,20 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
 /**
  * @brief Garbage collect the cache
- *
  * @param[in] cache The cache
  * @return The number of entries removed
  */
 #define handlebars_cache_gc(cache) (cache->gc(cache))
 
+/**
+ * @brief Fetch cache statistics
+ * @param[in] cache The cache
+ * @return The cache statistics
+ */
 #define handlebars_cache_stat(cache) (cache->stat(cache))
 
 /**
  * @brief Destruct a cache
- *
  * @param[in] cache The cache
  * @return void
  */

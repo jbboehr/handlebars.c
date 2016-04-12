@@ -46,7 +46,7 @@ struct handlebars_vm {
     handlebars_log_func log_func;
     void * log_ctx;
 
-	struct handlebars_string * buffer;
+    struct handlebars_string * buffer;
 
     struct handlebars_value * context;
     struct handlebars_value * data;
@@ -62,9 +62,21 @@ struct handlebars_vm {
     struct handlebars_vm_stack blockParamStack;
 };
 
-struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+/**
+ * @brief Construct a VM
+ * @param[in] ctx The parent handlebars context
+ * @return The string array
+ */
+struct handlebars_vm * handlebars_vm_ctor(
+    struct handlebars_context * ctx
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-void handlebars_vm_dtor(struct handlebars_vm * vm);
+/**
+ * @brief Destruct a VM
+ * @param[in] vm The VM to destruct
+ * @return The string array
+ */
+void handlebars_vm_dtor(struct handlebars_vm * vm) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_string * handlebars_vm_execute(
     struct handlebars_vm * vm,
