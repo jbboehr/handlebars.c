@@ -310,7 +310,7 @@ static void cache_add(
     }
 
     // Copy key
-    entry.key = append(intern, (void *) key, HANDLEBARS_STRING_SIZE(key->len));
+    entry.key = append(intern, (void *) key, HBS_STR_SIZE(key->len));
 
     // Copy data
     entry.data = append(intern, (void *) module, module->size);

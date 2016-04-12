@@ -44,14 +44,73 @@ struct handlebars_value_handlers {
 
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Initialize a value from a JSON object
+ * @param[in] ctx The handlebars context
+ * @param[in] value The value to initialize
+ * @param[in] json The JSON object
+ * @return void
+ */
 void handlebars_value_init_json_object(struct handlebars_context * ctx, struct handlebars_value * value, struct json_object *json);
+
+/**
+ * @brief Initialize a value from a JSON string
+ * @param[in] ctx The handlebars context
+ * @param[in] value The value to initialize
+ * @param[in] json The JSON string
+ */
 void handlebars_value_init_json_string(struct handlebars_context *ctx, struct handlebars_value * value, const char * json);
+
+/**
+ * @brief Construct a value from a JSON string
+ * @param[in] ctx The handlebars context
+ * @param[in] json The JSON string
+ * @return The constructed value
+ */
 struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json) HBS_ATTR_RETURNS_NONNULL;
+
+/**
+ * @brief Construct a value from a JSON object
+ * @param[in] ctx The handlebars context
+ * @param[in] json The JSON object
+ * @return The constructed value
+ */
 struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json) HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Initialize a value from a YAML node
+ * @param[in] ctx
+ * @param[in] value
+ * @param[in] document
+ * @param[in] node
+ * @return void
+ */
 void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct handlebars_value * value, struct yaml_document_s * document, struct yaml_node_s * node);
+
+/**
+ * @brief Initialize a value from a YAML string
+ * @param[in] ctx
+ * @param[in] value
+ * @param[in] yaml
+ * @return void
+ */
 void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct handlebars_value * value, const char * yaml);
+
+/**
+ * @brief Construct a value from a YAML node
+ * @param[in] ctx The handlebars context
+ * @param[in] document
+ * @param[in] node
+ * @return The constructed value
+ */
 struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node) HBS_ATTR_RETURNS_NONNULL;
+
+/**
+ * @brief Initialize a value from a YAML string
+ * @param[in] ctx The handlebars context
+ * @param[in] yaml The YAML string
+ * @return The constructed value
+ */
 struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml) HBS_ATTR_RETURNS_NONNULL;
 
 #ifdef	__cplusplus

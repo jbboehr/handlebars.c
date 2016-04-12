@@ -24,7 +24,11 @@ struct json_object;
 struct yaml_document_s;
 struct yaml_node_s;
 
-enum handlebars_value_type {
+/**
+ * @brief Enumeration of value types
+ */
+enum handlebars_value_type
+{
     HANDLEBARS_VALUE_TYPE_NULL = 0,
     HANDLEBARS_VALUE_TYPE_TRUE = 1,
     HANDLEBARS_VALUE_TYPE_FALSE = 2,
@@ -33,32 +37,59 @@ enum handlebars_value_type {
     HANDLEBARS_VALUE_TYPE_STRING = 5,
     HANDLEBARS_VALUE_TYPE_ARRAY = 6,
     HANDLEBARS_VALUE_TYPE_MAP = 7,
+    //! A user-defined value type, must implement #handlebars_value_handlers
     HANDLEBARS_VALUE_TYPE_USER = 8,
+    //! An opaque pointer type
     HANDLEBARS_VALUE_TYPE_PTR = 9,
     HANDLEBARS_VALUE_TYPE_HELPER = 10
 };
 
-enum handlebars_value_flags {
+enum handlebars_value_flags
+{
     HANDLEBARS_VALUE_FLAG_NONE = 0,
+    //! Indicates that the string value should not be escaped when appending to the output buffer
     HANDLEBARS_VALUE_FLAG_SAFE_STRING = 1,
+    //! Indicates that the value was not stack allocated, but allocated using talloc
     HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED = 2
 };
 
-struct handlebars_value_iterator {
+/**
+ * @brief Value iterator context. Should be stack allocated. Must be initialized with #handlebars_value_iterator_init
+ */
+struct handlebars_value_iterator
+{
+    //! The number of child elements
     size_t length;
+
+    //! The current array index. Unused for map
     size_t index;
+
+    //! The current map index. Unused for array
     struct handlebars_string * key;
+
+    //! The element being iterated over
     struct handlebars_value * value;
+
+    //! The current child element
     struct handlebars_value * current;
+
+    //! Opaque pointer for user-defined types
     void * usr;
+
+    //! A function pointer to move to the next child element
     bool (*next)(struct handlebars_value_iterator * it);
 };
 
-struct handlebars_user {
+//! Common header for user-defined types
+struct handlebars_user
+{
+    //! User-defined type handlers
     struct handlebars_value_handlers * handlers;
 };
 
-union handlebars_value_internals {
+//! Internal value union
+union handlebars_value_internals
+{
     long lval;
     double dval;
     struct handlebars_string * string;
@@ -70,11 +101,22 @@ union handlebars_value_internals {
     struct handlebars_options * options;
 };
 
-struct handlebars_value {
+//! Main value struct
+struct handlebars_value
+{
+    //! The type of value from enum #handlebars_value_type
 	enum handlebars_value_type type;
+
+    //! Bitwise value flags from enum #handlebars_value_flags
     unsigned long flags;
+
+    //! Internal value union
     union handlebars_value_internals v;
+
+    //! Number of held references to this value
     int refcount;
+
+    //! Handlebars context, used for error handling and memory allocation
 	struct handlebars_context * ctx;
 };
 
@@ -85,33 +127,101 @@ struct handlebars_value {
  */
 enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 
-struct handlebars_string * handlebars_value_get_stringval(struct handlebars_value * value) HBS_ATTR_RETURNS_NONNULL;
-char * handlebars_value_get_strval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+/**
+ * @brief Get the string value, or an empty string for non-string types
+ * @param[in] value
+ * @return The string value
+ */
+const char * handlebars_value_get_strval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+/**
+ * @brief Get the string length, or zero for invalid types
+ * @param[in] value
+ * @return The string length
+ */
 size_t handlebars_value_get_strlen(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Get the boolean value. Follows javascript boolean conversion rules.
+ * @param[in] value
+ * @return The boolean value
+ */
 bool handlebars_value_get_boolval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Get the integer value
+ * @param[in] value
+ * @return The integer value, or zero if not a float type
+ */
 long handlebars_value_get_intval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Get the float value
+ * @param[in] value
+ * @return The float value, or zero if not a float type
+ */
 double handlebars_value_get_floatval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Get the value as a string (primitive types only)
+ * @param[in] value The handlebars value
+ * @return The value as a string
+ */
+struct handlebars_string * handlebars_value_to_string(struct handlebars_value * value) HBS_ATTR_RETURNS_NONNULL;
+
+/**
+ * @brief Lookup an index in an array
+ * @param[in] value
+ * @param[in] index
+ * @return The found element, or NULL
+ */
 struct handlebars_value * handlebars_value_array_find(
     struct handlebars_value * value,
     size_t index
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Lookup a key in a map
+ * @param[in] value
+ * @param[in] key
+ * @return The found element, or NULL
+ */
 struct handlebars_value * handlebars_value_map_find(
     struct handlebars_value * value,
     struct handlebars_string * key
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Lookup a key in a map
+ * @param[in] value
+ * @param[in] key
+ * @param[in] len
+ * @return The found element, or NULL
+ */
 struct handlebars_value * handlebars_value_map_str_find(
     struct handlebars_value * value,
     const char * key, size_t len
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Convert a value to string, following handlebars (javascript) string conversion rules
+ * @param[in] value The value to convert
+ * @param[in] escape Whether or not to escape the value. Overridden by #HANDLEBARS_VALUE_FLAG_SAFE_STRING
+ * @return The value converted to a string
+ */
 struct handlebars_string * handlebars_value_expression(
     struct handlebars_value * value,
     bool escape
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Convert a value to string and append to the given buffer, following handlebars (javascript)
+ *        string conversion rules.
+ * @param[in] string The buffer to which the result will be appended
+ * @param[in] value The value to convert
+ * @param[in] escape Whether or not to escape the value. Overridden by #HANDLEBARS_VALUE_FLAG_SAFE_STRING
+ * @return The original buffer with the expression appended. The pointer may change via realloc.
+ */
 struct handlebars_string * handlebars_value_expression_append(
     struct handlebars_string * string,
     struct handlebars_value * value,
@@ -120,24 +230,59 @@ struct handlebars_string * handlebars_value_expression_append(
 
 char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Construct a new value
+ * @param[in] Handlebars context, used for error handling and memory allocation
+ * @return The newly constructed value
+ */
 struct handlebars_value * handlebars_value_ctor(
     struct handlebars_context * ctx
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Create a copy of a value
+ * @param[in] value
+ * @return The copy of the value
+ */
 struct handlebars_value * handlebars_value_copy(
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+/**
+ * @brief Destruct a value. Does not free the value object itself. Frees any child resources and sets the value to null.
+ * @param[in] value
+ * @return void
+ */
 void handlebars_value_dtor(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 
-#define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
+/**
+ * @brief Convert a value from a user-defined type to an internal type
+ * @param[in] value
+ * @param[in] recurse
+ * @return void
+ */
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse) HBS_ATTR_NONNULL_ALL;
+#define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 
+/**
+ * @brief Initialize an iterator
+ * @param[in] it The iterator to initialize
+ * @param[in] value The value for iteration
+ * @return true, or false if the value is empty or of an invalid type
+ */
 bool handlebars_value_iterator_init(
     struct handlebars_value_iterator * it,
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Call a value, if the value is a callable type such as #HANDLEBARS_VALUE_TYPE_HELPER or
+ *        #HANDLEBARS_VALUE_TYPE_USER. If the value is not callable, this function will return NULL.
+ * @param[in] value
+ * @param[in] argc
+ * @param[in] argv
+ * @param[in] options
+ */
 struct handlebars_value * handlebars_value_call(
     struct handlebars_value * value,
     int argc,
@@ -222,15 +367,31 @@ static inline int handlebars_value_refcount(struct handlebars_value * value) {
 #define handlebars_value_refcount(v) 999
 #endif
 
+/**
+ * @brief Get the handlers for a user-defined value type
+ * @param[in] value
+ * @return The value handlers
+ */
 static inline struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value) {
     return value->v.usr->handlers;
 }
 
+/**
+ * @brief Initialize a value
+ * @param[in] ctx The handlebars context
+ * @param[in] value The uninitialized value
+ * @return void
+ */
 static inline void handlebars_value_init(struct handlebars_context * ctx, struct handlebars_value * value)
 {
     value->ctx = ctx;
 }
 
+/**
+ * @brief Check if the value is a scalar type
+ * @param[in] value
+ * @return Whether or not the value is a scalar type
+ */
 static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
@@ -239,16 +400,26 @@ static inline bool handlebars_value_is_scalar(struct handlebars_value * value) {
         case HANDLEBARS_VALUE_TYPE_FLOAT:
         case HANDLEBARS_VALUE_TYPE_INTEGER:
         case HANDLEBARS_VALUE_TYPE_STRING:
-            return 1;
+            return true;
         default:
-            return 0;
+            return false;
     }
 }
 
-static inline bool handlebars_value_is_callable(struct handlebars_value * value ) {
+/**
+ * @brief Check if the value is callable
+ * @param[in] value
+ * @return Whether or not the value is callable
+ */
+static inline bool handlebars_value_is_callable(struct handlebars_value * value) {
     return handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_HELPER;
 }
 
+/**
+ * @brief Get the number of child elements for array and map
+ * @param[in] value
+ * @return The number of child elements, or -1 for invalid types
+ */
 static inline long handlebars_value_count(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
@@ -262,33 +433,67 @@ static inline long handlebars_value_count(struct handlebars_value * value) {
     }
 }
 
+/**
+ * @brief Check if the value is empty. Follows javascript boolean conversion rules.
+ * @param[in] value
+ * @return Whether or not the value is empty
+ */
 static inline bool handlebars_value_is_empty(struct handlebars_value * value) {
     return !handlebars_value_get_boolval(value);
 }
 
+/**
+ * @brief Set the value to null
+ * @param[in] value
+ * @return void
+ */
 static inline void handlebars_value_null(struct handlebars_value * value) {
     if( value->type != HANDLEBARS_VALUE_TYPE_NULL ) {
         handlebars_value_dtor(value);
     }
 }
 
+/**
+ * @brief Set the boolean value
+ * @param[in] value
+ * @param[in] bval
+ * @return void
+ */
 static inline void handlebars_value_boolean(struct handlebars_value * value, bool bval) {
     handlebars_value_null(value);
     value->type = bval ? HANDLEBARS_VALUE_TYPE_TRUE : HANDLEBARS_VALUE_TYPE_FALSE;
 }
 
+/**
+ * @brief Set the integer value
+ * @param[in] value
+ * @param[in] lval
+ * @return void
+ */
 static inline void handlebars_value_integer(struct handlebars_value * value, long lval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
     value->v.lval = lval;
 }
 
+/**
+ * @brief Set the float value
+ * @param[in] value
+ * @param[in] dval
+ * @return void
+ */
 static inline void handlebars_value_float(struct handlebars_value * value, double dval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
     value->v.dval = dval;
 }
 
+/**
+ * @brief Set the string value (#handlebars_string variant)
+ * @param[in] value
+ * @param[in] string
+ * @return void
+ */
 static inline void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string)
 {
     handlebars_value_null(value);
@@ -296,20 +501,37 @@ static inline void handlebars_value_str(struct handlebars_value * value, struct 
     value->v.string = handlebars_string_copy_ctor(value->ctx, string);
 }
 
+/**
+ * @brief Set the string value (#handlebars_string variant) and `talloc_steal` the given string.
+ * @param[in] value
+ * @param[in] string
+ * @return void
+ */
 static inline void handlebars_value_str_steal(struct handlebars_value * value, struct handlebars_string * string)
 {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = talloc_steal(value->ctx, string); // meh
+    value->v.string = talloc_steal(value->ctx, string);
 }
 
+/**
+ * @brief Set the string value (const char[] variant)
+ * @param[in] value
+ * @param[in] strval
+ * @return void
+ */
 static inline void handlebars_value_string(struct handlebars_value * value, const char * strval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
 }
 
-
+/**
+ * @brief Set the string value (char[] variant) and `talloc_free` the given string
+ * @param[in] value
+ * @param[in] strval
+ * @return void
+ */
 static inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
@@ -317,18 +539,35 @@ static inline void handlebars_value_string_steal(struct handlebars_value * value
     talloc_free(strval); // meh
 }
 
+/**
+ * @brief Set the string value (char[] with length variant)
+ * @param[in] value
+ * @param[in] strval
+ * @param[in] strlen
+ * @return void
+ */
 static inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen)/*)*/;
 }
 
+/**
+ * @brief Set the value to an empty map
+ * @param[in] value
+ * @return void
+ */
 static inline void handlebars_value_map_init(struct handlebars_value * value) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_MAP;
     value->v.map = /*talloc_steal(value,*/ handlebars_map_ctor(value->ctx)/*)*/;
 }
 
+/**
+ * @brief Set the value to an empty array
+ * @param[in] value
+ * @return void
+ */
 static inline void handlebars_value_array_init(struct handlebars_value * value) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;

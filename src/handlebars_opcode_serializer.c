@@ -30,12 +30,12 @@ static void calculate_size_operand(struct handlebars_module * module, struct han
     // Increment for children
     switch( operand->type ) {
         case handlebars_operand_type_string:
-            module->data_size += HANDLEBARS_STRING_SIZE(operand->data.string.string->len);
+            module->data_size += HBS_STR_SIZE(operand->data.string.string->len);
             break;
         case handlebars_operand_type_array:
             for( i = 0; i < operand->data.array.count; i++ ) {
                 module->data_size += sizeof(struct handlebars_operand_string);
-                module->data_size += HANDLEBARS_STRING_SIZE(operand->data.array.array[i].string->len);
+                module->data_size += HBS_STR_SIZE(operand->data.array.array[i].string->len);
             }
             break;
         default:
@@ -90,7 +90,7 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
             // Make sure hash is computed
             HBS_STR_HASH(operand->data.string.string);
 
-            size = HANDLEBARS_STRING_SIZE(operand->data.string.string->len);
+            size = HBS_STR_SIZE(operand->data.string.string->len);
             operand->data.string.string = append(module, operand->data.string.string, size);
             break;
         case handlebars_operand_type_array:
@@ -99,7 +99,7 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
                 // Make sure hash is computed
                 HBS_STR_HASH(operand->data.array.array[i].string);
 
-                size = HANDLEBARS_STRING_SIZE(operand->data.array.array[i].string->len);
+                size = HBS_STR_SIZE(operand->data.array.array[i].string->len);
                 operand->data.array.array[i].string = append(module, operand->data.array.array[i].string, size);
             }
             break;

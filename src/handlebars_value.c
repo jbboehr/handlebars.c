@@ -35,7 +35,7 @@
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_value * value = MC(handlebars_talloc_zero(ctx, struct handlebars_value));
-    value->ctx = CONTEXT;
+    handlebars_value_init(CONTEXT, value);
     value->refcount = 1;
     value->flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
     return value;
@@ -96,7 +96,7 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 	return NULL;
 }
 
-struct handlebars_string * handlebars_value_get_stringval(struct handlebars_value * value)
+struct handlebars_string * handlebars_value_to_string(struct handlebars_value * value)
 {
     enum handlebars_value_type type = value ? value->type : HANDLEBARS_VALUE_TYPE_NULL;
 
@@ -116,35 +116,13 @@ struct handlebars_string * handlebars_value_get_stringval(struct handlebars_valu
     }
 }
 
-char * handlebars_value_get_strval(struct handlebars_value * value)
+const char * handlebars_value_get_strval(struct handlebars_value * value)
 {
-    char * ret;
-    enum handlebars_value_type type = value ? value->type : HANDLEBARS_VALUE_TYPE_NULL;
-
-    switch( type ) {
-        case HANDLEBARS_VALUE_TYPE_STRING:
-            ret = handlebars_talloc_strndup(value->ctx, HBS_STR_STRL(value->v.string));
-            break;
-        case HANDLEBARS_VALUE_TYPE_INTEGER:
-            ret = handlebars_talloc_asprintf(value->ctx, "%ld", value->v.lval);
-            break;
-        case HANDLEBARS_VALUE_TYPE_FLOAT:
-            ret = handlebars_talloc_asprintf(value->ctx, "%g", value->v.dval);
-            break;
-        case HANDLEBARS_VALUE_TYPE_TRUE:
-            ret = handlebars_talloc_strdup(value->ctx, "true");
-            break;
-        case HANDLEBARS_VALUE_TYPE_FALSE:
-            ret = handlebars_talloc_strdup(value->ctx, "false");
-            break;
-        default:
-            ret = handlebars_talloc_strdup(value->ctx, "");
-            break;
+    if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
+        return value->v.string->val;
+    } else {
+        return NULL;
     }
-
-    MEMCHK(ret);
-
-    return ret;
 }
 
 size_t handlebars_value_get_strlen(struct handlebars_value * value)
@@ -454,12 +432,17 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
     assert(value != NULL);
 
     switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            new_value = handlebars_value_ctor(CONTEXT);
+            handlebars_value_str(new_value, value->v.string);
+            new_value->flags = (value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING);
+            break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             new_value = handlebars_value_ctor(CONTEXT);
             handlebars_value_array_init(new_value);
             handlebars_value_iterator_init(&it, value);
             for( ; it.current != NULL; it.next(&it) ) {
-                handlebars_stack_set(new_value->v.stack, it.index, it.current);
+                handlebars_stack_set(new_value->v.stack, it.index, handlebars_value_copy(it.current));
             }
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
@@ -467,13 +450,12 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             handlebars_value_map_init(new_value);
             handlebars_value_iterator_init(&it, value);
             for( ; it.current != NULL; it.next(&it) ) {
-                handlebars_map_update(new_value->v.map, it.key, it.current);
+                handlebars_map_update(new_value->v.map, it.key, handlebars_value_copy(it.current));
             }
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
             new_value = handlebars_value_get_handlers(value)->copy(value);
             break;
-
         default:
             new_value = handlebars_value_ctor(CONTEXT);
             memcpy(&new_value->v, &value->v, sizeof(value->v));

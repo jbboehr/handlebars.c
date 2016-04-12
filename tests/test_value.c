@@ -133,9 +133,8 @@ START_TEST(test_string)
 	struct handlebars_value * value = handlebars_value_from_json_string(context, "\"test\"");
 	ck_assert_ptr_ne(value, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_STRING);
-    char * tmp = handlebars_value_get_strval(value);
+    const char * tmp = handlebars_value_get_strval(value);
 	ck_assert_str_eq(tmp, "test");
-    handlebars_talloc_free(tmp);
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
 #ifndef HANDLEBARS_NO_REFCOUNT
     ck_assert_int_eq(0, handlebars_value_delref(value));
@@ -302,9 +301,8 @@ START_TEST(test_array_find)
 	value2 = handlebars_value_array_find(value, 1);
 	ck_assert_ptr_ne(value2, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value2), HANDLEBARS_VALUE_TYPE_STRING);
-    char * tmp = handlebars_value_get_strval(value2);
+    const char * tmp = handlebars_value_get_strval(value2);
 	ck_assert_str_eq(tmp, "test");
-    handlebars_talloc_free(tmp);
 	ck_assert_int_eq(handlebars_value_get_strlen(value2), 4);
     handlebars_value_delref(value2);
 
@@ -334,9 +332,8 @@ START_TEST(test_map_find)
 	value2 = handlebars_value_map_str_find(value, HBS_STRL("b"));
 	ck_assert_ptr_ne(value2, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value2), HANDLEBARS_VALUE_TYPE_STRING);
-    char * tmp = handlebars_value_get_strval(value2);
+    const char * tmp = handlebars_value_get_strval(value2);
 	ck_assert_str_eq(tmp, "test");
-    handlebars_talloc_free(tmp);
 	ck_assert_int_eq(handlebars_value_get_strlen(value2), 4);
     handlebars_value_delref(value2);
 
@@ -388,9 +385,8 @@ START_TEST(test_complex)
     do {
         value3 = handlebars_value_map_str_find(value2, HBS_STRL("d"));
         ck_assert_int_eq(handlebars_value_get_type(value3), HANDLEBARS_VALUE_TYPE_STRING);
-        char * tmp = handlebars_value_get_strval(value3);
+        const char * tmp = handlebars_value_get_strval(value3);
         ck_assert_str_eq(tmp, "test");
-        handlebars_talloc_free(tmp);
         ck_assert_int_eq(handlebars_value_get_strlen(value3), 4);
         handlebars_value_delref(value3);
     } while(0);

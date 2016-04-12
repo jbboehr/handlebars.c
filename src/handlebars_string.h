@@ -27,8 +27,7 @@ struct handlebars_string {
 #define HBS_STR_STRL(string) string->val, string->len
 #define HBS_STR_HASH_EX(str, len, hash) (hash ?: handlebars_string_hash(str, len))
 #define HBS_STR_HASH(string) (string->hash ?: (string->hash = handlebars_string_hash(string->val, string->len)))
-
-#define HANDLEBARS_STRING_SIZE(size) (offsetof(struct handlebars_string, val) + (size) + 1)
+#define HBS_STR_SIZE(length) (offsetof(struct handlebars_string, val) + (length) + 1)
 
 HBS_ATTR_NONNULL(1)
 static inline unsigned long handlebars_string_hash_cont(const char * str, size_t len, unsigned long hash)
@@ -52,7 +51,7 @@ static inline unsigned long handlebars_string_hash(const char * str, size_t len)
 HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t size)
 {
-    struct handlebars_string * st = handlebars_talloc_size(context, HANDLEBARS_STRING_SIZE(size));
+    struct handlebars_string * st = handlebars_talloc_size(context, HBS_STR_SIZE(size));
     HANDLEBARS_MEMCHECK(st, context);
     st->len = 0;
     st->val[0] = 0;
@@ -86,7 +85,7 @@ static inline struct handlebars_string * handlebars_string_copy_ctor(
     struct handlebars_context * context,
     struct handlebars_string * string
 ) {
-    size_t size = HANDLEBARS_STRING_SIZE(string->len);
+    size_t size = HBS_STR_SIZE(string->len);
     struct handlebars_string * st = handlebars_talloc_size(context, size);
     HANDLEBARS_MEMCHECK(st, context);
     memcpy(st, string, size);
@@ -103,7 +102,7 @@ static inline struct handlebars_string * handlebars_string_extend(
     if( string == NULL ) {
         return handlebars_string_init(context, len);
     }
-    size = HANDLEBARS_STRING_SIZE(len);
+    size = HBS_STR_SIZE(len);
     if( size > talloc_get_size(string) ) {
         string = (struct handlebars_string *) handlebars_talloc_realloc_size(context, string, size);
         HANDLEBARS_MEMCHECK(string, context);
@@ -136,7 +135,7 @@ static inline struct handlebars_string * handlebars_string_append(
 
 HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_compact(struct handlebars_string * string) {
-    size_t size = HANDLEBARS_STRING_SIZE(string->len);
+    size_t size = HBS_STR_SIZE(string->len);
     if( talloc_get_size(string) > size ) {
         return (struct handlebars_string *) handlebars_talloc_realloc_size(NULL, string, size);
     } else {

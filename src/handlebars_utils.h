@@ -23,7 +23,7 @@ union YYSTYPE;
 
 /**
  * @brief Handle an error in the parser. Prints message to stderr
- * 
+ *
  * @param[in] lloc The parser location info
  * @param[in] parser The handlebars parser
  * @param[in] err The error message
@@ -33,7 +33,7 @@ void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_par
 
 /**
  * @brief Handle a fatal error in the parser. Prints message to stderr and exits with code 2.
- * 
+ *
  * @param[in] msg An error message
  * @param[in] yyscanner The scanner object
  * @return void
@@ -42,7 +42,7 @@ void handlebars_yy_fatal_error(const char * msg, void * yyscanner) HBS_ATTR_NORE
 
 /**
  * @brief Reads input for the lexer. Reads input from the tmpl field of the context object
- * 
+ *
  * @param[out] buffer The buffer to store input into
  * @param[out] numBytesRead The number of bytes read
  * @param[in] maxBytesToRead The maximum number of bytes to read
@@ -53,7 +53,7 @@ void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, s
 
 /**
  * @brief Print a parser value
- * 
+ *
  * @param[in] file The file handle to which to write
  * @param[in] type The parser node type
  * @param[in] value The parser node value
@@ -64,7 +64,7 @@ void handlebars_yy_print(FILE *file, int type, union YYSTYPE value);
 /**
  * @brief Custom alloc for use with flex/bison. Uses talloc with
  *        handlebars_context as a talloc context.
- * 
+ *
  * @param[in] bytes The number of bytes to allocate
  * @param[in] yyscanner The scanner context. NULL if allocating the yyscanner itself.
  * @return A pointer to the newly allocated memory, or NULL on failure
