@@ -115,6 +115,7 @@ AC_EXEEXT
 AX_PTHREAD
 AC_CHECK_LIB([lmdb], [mdb_version])
 AC_CHECK_LIB([pcre], [pcre_version])
+AC_CHECK_LIB([subunit], [subunit_test_start])
 AC_CHECK_LIB([talloc], [talloc_version_major], , [
     AC_MSG_FAILURE([talloc test failed, talloc is required])
 ])
