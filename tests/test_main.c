@@ -100,7 +100,7 @@ END_TEST
 
 START_TEST(test_context_get_errmsg)
 {
-    struct YYLTYPE loc;
+    struct handlebars_locinfo loc;
     char * actual;
     loc.last_line = 1;
     loc.last_column = 2;
@@ -119,7 +119,7 @@ END_TEST
 START_TEST(test_context_get_errmsg_failed_alloc)
 {
 #if HANDLEBARS_MEMORY
-    struct YYLTYPE loc;
+    struct handlebars_locinfo loc;
     char * actual;
     loc.last_line = 1;
     loc.last_column = 2;
@@ -141,7 +141,7 @@ END_TEST
 
 START_TEST(test_context_get_errmsg_js)
 {
-    struct YYLTYPE loc;
+    struct handlebars_locinfo loc;
     char * actual;
     loc.last_line = 1;
     loc.last_column = 2;
@@ -161,7 +161,7 @@ END_TEST
 START_TEST(test_context_get_errmsg_js_failed_alloc)
 {
 #if HANDLEBARS_MEMORY
-    struct YYLTYPE loc;
+    struct handlebars_locinfo loc;
     char * actual;
     loc.last_line = 1;
     loc.last_column = 2;

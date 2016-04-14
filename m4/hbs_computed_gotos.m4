@@ -1,5 +1,5 @@
 
-AC_DEFUN([AX_COMPUTED_GOTOS],[dnl
+AC_DEFUN([HBS_COMPUTED_GOTOS],[dnl
 AC_MSG_CHECKING([if ${CC-gcc} supports computed gotos])
 AC_COMPILE_IFELSE(
   [AC_LANG_PROGRAM(

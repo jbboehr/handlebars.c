@@ -77,17 +77,14 @@ TESTS_ENVIRONMENT = \
 	handlebars_tokenizer_spec=@HANDLEBARS_SPEC_DIR@/spec/tokenizer.json \
 	handlebars_parser_spec=@HANDLEBARS_SPEC_DIR@/spec/parser.json \
 	mustache_spec_dir=@MUSTACHE_SPEC_DIR@/specs \
-	CK_VERBOSITY=normal
+	CK_VERBOSITY=normal \
+	CK_TAP_LOG_FILE_NAME=-
 
-if CHECK_HAS_TAP
-TESTS_ENVIRONMENT += CK_TAP_LOG_FILE_NAME=-
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
                   $(top_srcdir)/build/tap-driver.sh
-else
-LOG_DRIVER = $(SHELL) $(top_srcdir)/build/test-driver
-endif
 
 AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_LDFLAGS = -static  # for speed and Valgrind
 AM_CFLAGS = @CHECK_CFLAGS@
-LDADD = $(top_builddir)/src/libhandlebars.la @LIBCHECK_LIBS@
+LDADD = $(top_builddir)/src/libhandlebars.la @CHECK_LIBS@
+

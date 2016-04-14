@@ -79,6 +79,7 @@
 %option warn
 %option 8bit
 %option noyyalloc
+%option noyymore
 %option noyyrealloc
 %option noyyfree
 %option never-interactive

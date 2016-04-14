@@ -19,7 +19,7 @@
 
 START_TEST(test_yy_error)
 {
-    struct YYLTYPE loc;
+    struct handlebars_locinfo loc;
     const char * err = "sample error message";
     jmp_buf buf;
 

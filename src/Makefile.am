@@ -1,44 +1,39 @@
 
 EXTRA_DIST = handlebars.l handlebars.y
+GENSOURCE = handlebars_config.h
+GENSOURCE2 =
 
-if YYDEBUG
-	BISONFLAGS = -d -Wall # --debug --warnings=all
-	FLEXFLAGS = -d -Cem # --debug --ecs --meta-ecs
-else
-	BISONFLAGS = -Wnone # --warnings=none
-	FLEXFLAGS = -Cfra # --align --full
-endif
-
-# flex/bison
 if BISON
 handlebars.tab.h: handlebars.tab.c
 handlebars.tab.c: handlebars.lex.c handlebars.y
-	${BISON} $(BISONFLAGS) -b handlebars handlebars.y
+	${BISON} ${BISONFLAGS} -b handlebars handlebars.y
+GENSOURCE += handlebars.tab.h handlebars.tab.c
 endif
+
 if FLEX
 handlebars.lex.h: handlebars.lex.c
 handlebars.lex.c: handlebars.l
-	${FLEX} $(FLEXFLAGS) -o handlebars.lex.c handlebars.l
+	${FLEX} ${FLEXFLAGS} -o handlebars.lex.c handlebars.l
+GENSOURCE += handlebars.lex.h handlebars.lex.c
 endif
 
-# gperf
 if GPERF
 handlebars_helpers_ht.h: handlebars_helpers_ht.gperf
-	$(GPERF) --struct-type --readonly-tables --pic --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf
+	$(GPERF) ${GPERFFLAGS} --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf
+GENSOURCE2 += handlebars_helpers_ht.h
 endif
 
-# re2c
 if RE2C
-MAINTAINERCLEANFILES = handlebars_scanners.c
 handlebars_scanners.c: handlebars_scanners.re
-	$(RE2C) -s8 -o handlebars_scanners.c handlebars_scanners.re
+	$(RE2C) ${RE2CFLAGS} -o handlebars_scanners.c handlebars_scanners.re
+GENSOURCE2 += handlebars_scanners.c
 endif
 
 # Main
 include_HEADERS = \
 	handlebars.h \
-    handlebars.lex.h \
-    handlebars.tab.h \
+	handlebars.lex.h \
+	handlebars.tab.h \
 	handlebars_ast.h \
 	handlebars_ast_helpers.h \
 	handlebars_ast_list.h \
@@ -63,15 +58,13 @@ include_HEADERS = \
 	handlebars_vm.h \
 	handlebars_whitespace.h
 
-GENSOURCE = handlebars.tab.h handlebars.tab.c handlebars.lex.h handlebars.lex.c handlebars_helpers_ht.h
-CLEANFILES = $(GENSOURCE)
-BUILT_SOURCES = $(GENSOURCE)
+CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
+BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)
 
 lib_LTLIBRARIES=libhandlebars.la
 
 libhandlebars_la_SOURCES = \
 	$(GENSOURCE) \
-	handlebars_config.h \
 	handlebars_memory.h \
 	handlebars.h \
 	handlebars.c \
@@ -100,8 +93,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_opcodes.h \
 	handlebars_opcodes.c \
 	handlebars_private.h \
-	handlebars_scanners.h \
 	handlebars_scanners.c \
+	handlebars_scanners.h \
 	handlebars_stack.h \
 	handlebars_stack.c \
 	handlebars_string.h \

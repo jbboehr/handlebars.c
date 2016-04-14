@@ -132,7 +132,6 @@ struct handlebars_locinfo
     int last_line;
     int last_column;
 };
-#define YYLTYPE handlebars_locinfo
 
 struct handlebars_error
 {

@@ -20,6 +20,9 @@ struct handlebars_context;
 #define MEMCHKF(ptr) (HBS_TYPEOF(ptr)) handlebars_check(CONTEXT, (void *) (ptr), MEMCHK_MSG)
 #define MC(ptr) MEMCHKF(ptr)
 
+#define YY_NO_UNISTD_H 1
+#define YYLTYPE handlebars_locinfo
+
 #ifdef	__cplusplus
 }
 #endif
