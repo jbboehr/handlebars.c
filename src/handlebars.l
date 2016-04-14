@@ -112,8 +112,10 @@ BLOCKPARAM [\x7C]
 %%
 
 
-{CONTENT}\\\\/{MU}             	    {
-										yytext[--yyleng] = 0;
+{CONTENT}\\\\{MU}             	    {
+										int n = yytext[yyleng - 3] == '{' ? 3 : 2;
+										handlebars_yy_unput_n(n);
+										yytext[yyleng -= n + 1] = 0;
 										yy_push_state(mu, yyscanner);
 										handlebars_yy_copy_lval();
 										return CONTENT;
