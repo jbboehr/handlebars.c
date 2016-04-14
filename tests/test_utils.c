@@ -45,19 +45,16 @@ END_TEST
 
 START_TEST(test_yy_fatal_error)
 {
-#if HANDLEBARS_MEMORY
     const char * err = "sample error message";
-    int exit_code;
-    
-    handlebars_memory_fail_enable();
-    handlebars_yy_fatal_error(err, NULL);
-    exit_code = handlebars_memory_get_last_exit_code();
-    handlebars_memory_fail_disable();
-    
-    ck_assert_int_eq(exit_code, 2);
-#else
-    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
-#endif
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(parser, &buf) ) {
+        ck_assert_str_eq(err, handlebars_error_msg(parser));
+        return;
+    }
+
+    handlebars_yy_fatal_error(err, parser);
+    ck_assert(0);
 }
 END_TEST
 
@@ -129,7 +126,7 @@ Suite * parser_suite(void)
     Suite * s = suite_create("Utils");
 
     REGISTER_TEST_FIXTURE(s, test_yy_error, "yy_error");
-    //REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
+    REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
     REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");
     REGISTER_TEST_FIXTURE(s, test_yy_print, "yy_print");
     REGISTER_TEST_FIXTURE(s, test_yy_realloc, "yy_realloc");

@@ -267,6 +267,10 @@ static inline void _set_err(struct handlebars_context * context, enum handlebars
     struct handlebars_error * e = context->e;
     e->num = num;
     e->msg = talloc_vasprintf(context, msg, ap);
+    if( unlikely(e->msg == NULL) ) {
+        e->num = HANDLEBARS_NOMEM;
+        e->msg = HANDLEBARS_MEMCHECK_MSG;
+    }
     if( loc ) {
         e->loc = *loc;
     } else {

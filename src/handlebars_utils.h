@@ -38,7 +38,7 @@ void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_par
  * @param[in] yyscanner The scanner object
  * @return void
  */
-void handlebars_yy_fatal_error(const char * msg, void * yyscanner) HBS_ATTR_NORETURN;
+void handlebars_yy_fatal_error(const char * msg, struct handlebars_parser * parser) HBS_ATTR_NORETURN;
 
 /**
  * @brief Reads input for the lexer. Reads input from the tmpl field of the context object

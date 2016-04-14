@@ -49,18 +49,22 @@ void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_par
 {
     assert(parser != NULL);
 
-#if defined(YYDEBUG) && YYDEBUG
+#if YYDEBUG
     fprintf(stderr, "%d : %s\n", lloc->first_line, err);
 #endif
 
     handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, lloc, "%s", err);
 }
 
-void handlebars_yy_fatal_error(const char * msg, HANDLEBARS_ATTR_UNUSED void * yyscanner)
+void handlebars_yy_fatal_error(const char * msg, struct handlebars_parser * parser)
 {
-    // Exit
-    fprintf(stderr, "%s\n", msg);
-    handlebars_exit(2);
+    assert(parser != NULL);
+
+#if YYDEBUG
+    fprintf(stderr, "%s\n", err);
+#endif
+
+    handlebars_throw(CONTEXT, HANDLEBARS_PARSEERR, "%s", msg);
 }
 
 void handlebars_yy_print(FILE *file, int type, HANDLEBARS_ATTR_UNUSED YYSTYPE value)

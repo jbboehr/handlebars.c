@@ -22,7 +22,7 @@
 #define ECHO
 
 #ifndef YY_FATAL_ERROR
-#define YY_FATAL_ERROR(msg) handlebars_yy_fatal_error(msg, yyscanner)
+#define YY_FATAL_ERROR(msg) handlebars_yy_fatal_error(msg, handlebars_yy_get_extra(yyscanner))
 #endif
 
 #undef YY_INPUT
