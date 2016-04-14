@@ -4,8 +4,12 @@
 [![Coverage Status](https://coveralls.io/repos/jbboehr/handlebars.c/badge.svg?branch=master&service=github)](https://coveralls.io/github/jbboehr/handlebars.c?branch=master)
 [![License](https://img.shields.io/badge/license-LGPLv3-brightgreen.svg)](LICENSE.md)
 
-C implementation of the [handlebars.js](https://github.com/wycats/handlebars.js/)
-lexer, parser, and compiler. Use with [php-handlebars](https://github.com/jbboehr/php-handlebars) and [handlebars.php](https://github.com/jbboehr/handlebars.php).
+C implementation of [handlebars.js](https://github.com/wycats/handlebars.js/),
+developed in conjunction with [php-handlebars](https://github.com/jbboehr/php-handlebars)
+and [handlebars.php](https://github.com/jbboehr/handlebars.php).
+
+The opcode compiler is fully featured, however the VM currently does not implement decorators, and therefore inline 
+partials.
 
 
 ## Installation
@@ -16,7 +20,7 @@ lexer, parser, and compiler. Use with [php-handlebars](https://github.com/jbboeh
 ```bash
 sudo apt-add-repository ppa:jbboehr/handlebars
 sudo apt-get update
-sudo apt-get install handlebarsc libhandlebars-dev
+sudo apt-get install handlebars libhandlebars-dev
 ```
 
 
@@ -28,9 +32,8 @@ Note: >= gcc 4.9 is required for `returns_nonnull`
 
 ```bash
 # Install dependencies
-sudo apt-get install autoconf automake bison flex gawk gcc git-core \
-                     libjson0-dev liblmdb-dev libtalloc-dev libyaml-dev \
-                     libtool m4 make pkg-config
+sudo apt-get install autoconf automake bison flex gcc libjson-c-dev liblmdb-dev \
+                     libtalloc-dev libyaml-dev libtool m4 make pkg-config
 
 # Install testing dependencies
 sudo apt-get install check gdb lcov libpcre3-dev
