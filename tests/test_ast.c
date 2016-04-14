@@ -1,32 +1,22 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <check.h>
 #include <talloc.h>
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
-#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars.tab.h"
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    talloc_free(ctx);
-    ctx = NULL;
-}
 
 START_TEST(test_ast_node_ctor)
 {
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     
     ck_assert_ptr_ne(NULL, node);
     ck_assert_int_eq(HANDLEBARS_AST_NODE_PROGRAM, node->type);
@@ -37,26 +27,38 @@ END_TEST
 
 START_TEST(test_ast_node_ctor_failed_alloc)
 {
-    struct handlebars_ast_node * node;
-    
+#if HANDLEBARS_MEMORY
+    jmp_buf buf;
+
+    context->e->jmp = &buf;
+    if( setjmp(buf) ) {
+        // Should get here
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+    handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, node);
+
+    ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
 START_TEST(test_ast_node_dtor)
 {
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     handlebars_ast_node_dtor(node);
 }
 END_TEST
 
 START_TEST(test_ast_node_dtor_failed_alloc)
 {
-    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, ctx);
+#if HANDLEBARS_MEMORY
+    struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     int call_count;
     
     handlebars_memory_fail_enable();
@@ -67,6 +69,9 @@ START_TEST(test_ast_node_dtor_failed_alloc)
     ck_assert_int_eq(1, call_count);
     
     handlebars_talloc_free(node);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
     
@@ -125,6 +130,8 @@ int main(void)
     int number_failed;
     int memdebug;
     int error;
+
+    talloc_set_log_stderr();
     
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;

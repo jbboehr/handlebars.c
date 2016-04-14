@@ -1,5 +1,8 @@
 
-#include <assert.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdarg.h>
 #include <stdlib.h>
 #include <talloc.h>
@@ -401,6 +404,15 @@ void handlebars_memory_fail_counter(int count)
 int handlebars_memory_fail_get_counter(void)
 {
     return _handlebars_memory_fail_counter;
+}
+
+int handlebars_memory_fail_counter_incr(void)
+{
+    if( _handlebars_memory_fail_enabled && _handlebars_memory_fail_counter > -1 ) {
+        return ++_handlebars_memory_fail_counter;
+    } else {
+        return -1;
+    }
 }
 
 int handlebars_memory_get_last_exit_code(void)

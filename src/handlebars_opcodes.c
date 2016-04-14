@@ -7,86 +7,20 @@
 #include <string.h>
 
 #include "handlebars.h"
+#include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_private.h"
+#include "handlebars_string.h"
+
+
+
 
 struct handlebars_opcode * handlebars_opcode_ctor(
-        void * ctx, enum handlebars_opcode_type type)
+        struct handlebars_context * context, enum handlebars_opcode_type type)
 {
-    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
-    if( likely(opcode != NULL) ) {
-        opcode->type = type;
-    }
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_boolean(
-        void * ctx, enum handlebars_opcode_type type, short arg)
-{
-    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
-    if( likely(opcode != NULL) ) {
-        opcode->type = type;
-        handlebars_operand_set_boolval(&opcode->op1, arg);
-    }
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_long(
-        void * ctx, enum handlebars_opcode_type type, long arg)
-{
-    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
-    if( likely(opcode != NULL) ) {
-        opcode->type = type;
-        handlebars_operand_set_longval(&opcode->op1, arg);
-    }
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_long_string(
-        void * ctx, enum handlebars_opcode_type type, long arg1, const char * arg2)
-{
-    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
-    if( likely(opcode != NULL) ) {
-        opcode->type = type;
-        handlebars_operand_set_longval(&opcode->op1, arg1);
-        handlebars_operand_set_stringval(ctx, &opcode->op2, arg2);
-    }
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_string(
-        void * ctx, enum handlebars_opcode_type type, const char * arg)
-{
-    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
-    if( likely(opcode != NULL) ) {
-        opcode->type = type;
-        handlebars_operand_set_stringval(ctx, &opcode->op1, arg);
-    }
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_string2(
-        void * ctx, enum handlebars_opcode_type type, const char * arg1, const char * arg2)
-{
-    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
-    if( likely(opcode != NULL) ) {
-        opcode->type = type;
-        handlebars_operand_set_stringval(ctx, &opcode->op1, arg1);
-        handlebars_operand_set_stringval(ctx, &opcode->op2, arg2);
-    }
-    return opcode;
-}
-
-struct handlebars_opcode * handlebars_opcode_ctor_string_long(
-        void * ctx, enum handlebars_opcode_type type, const char * arg1, long arg2)
-{
-    struct handlebars_opcode * opcode = handlebars_talloc_zero(ctx, struct handlebars_opcode);
-    if( likely(opcode != NULL) ) {
-        opcode->type = type;
-        handlebars_operand_set_stringval(ctx, &opcode->op1, arg1);
-        handlebars_operand_set_longval(&opcode->op2, arg2);
-    }
+    struct handlebars_opcode * opcode = MC(handlebars_talloc_zero(context, struct handlebars_opcode));
+    opcode->type = type;
     return opcode;
 }
 
@@ -98,7 +32,7 @@ void handlebars_operand_set_null(struct handlebars_operand * operand)
     memset(&operand->data, 0, sizeof(union handlebars_operand_internals));
 }
 
-void handlebars_operand_set_boolval(struct handlebars_operand * operand, short arg)
+void handlebars_operand_set_boolval(struct handlebars_operand * operand, bool arg)
 {
     assert(operand != NULL);
 
@@ -114,25 +48,25 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
     operand->data.longval = arg;
 }
 
-int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg)
-{
+void handlebars_operand_set_stringval(
+    struct handlebars_context * context,
+    struct handlebars_opcode * opcode,
+    struct handlebars_operand * operand,
+    struct handlebars_string * string
+) {
     assert(operand != NULL);
 
     operand->type = handlebars_operand_type_string;
-    operand->data.stringval = handlebars_talloc_strdup(ctx, arg);
-    
-    if( unlikely(operand->data.stringval == NULL) ) {
-        operand->type = handlebars_operand_type_null;
-        return HANDLEBARS_NOMEM;
-    }
-    
-    return HANDLEBARS_SUCCESS;
+    operand->data.string.string = talloc_steal(opcode, string);
 }
 
-int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * operand, const char ** arg)
-{
-    char ** arr;
-    char ** arrptr;
+void handlebars_operand_set_arrayval(
+    struct handlebars_context * context,
+    struct handlebars_opcode * opcode,
+    struct handlebars_operand * operand,
+    const char ** arg
+) {
+    struct handlebars_operand_string * arrptr;
     const char ** ptr;
     size_t num = 0;
 
@@ -140,34 +74,44 @@ int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * oper
     
     // Get number of items
     for( ptr = arg; *ptr; ++ptr, ++num );
-    
-    // Allocate array
-    arrptr = arr = handlebars_talloc_array(ctx, char *, num + 1);
-    if( unlikely(arr == NULL) ) {
-        goto error;
-    }
+
+    // Allocate
+    operand->data.array.array = MC(handlebars_talloc_array(opcode, struct handlebars_operand_string, num + 1));
+    operand->type = handlebars_operand_type_array;
+    operand->data.array.count = num;
     
     // Copy each item
-    for( ptr = arg; *ptr; ++ptr ) {
-        *arrptr = handlebars_talloc_strdup(arr, *ptr);
-        if( unlikely(*arrptr == NULL) ) {
-            goto error;
-        }
-        ++arrptr;
+    ptr = arg;
+    arrptr = operand->data.array.array;
+    for( ; *ptr; ++ptr, ++arrptr ) {
+        arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_ctor(context, *ptr, strlen(*ptr)));
     }
-    *arrptr++ = NULL;
-    
-    // Assign to operand
+}
+
+void handlebars_operand_set_arrayval_string(
+    struct handlebars_context * context,
+    struct handlebars_opcode * opcode,
+    struct handlebars_operand * operand,
+    struct handlebars_string ** arg
+) {
+    struct handlebars_operand_string * arrptr;
+    struct handlebars_string ** ptr;
+    size_t num = 0;
+
+    // Get number of items
+    for( ptr = arg; *ptr; ++ptr, ++num );
+
+    // Allocate
+    operand->data.array.array = MC(handlebars_talloc_array(opcode, struct handlebars_operand_string, num + 1));
     operand->type = handlebars_operand_type_array;
-    operand->data.arrayval = arr;
-    
-    return HANDLEBARS_SUCCESS;
-    
-error:
-    if( arr ) {
-        handlebars_talloc_free(arr);
+    operand->data.array.count = num;
+
+    // Copy each item
+    ptr = arg;
+    arrptr = operand->data.array.array;
+    for( ; *ptr; ++ptr, ++arrptr ) {
+        arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_ctor(context, (*ptr)->val, (*ptr)->len));
     }
-    return HANDLEBARS_NOMEM;
 }
 
 const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
@@ -219,6 +163,9 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
 
         // Added in v4
         _RTYPE_CASE(register_decorator, registerDecorator);
+
+        // Special
+        _RTYPE_CASE(return, return);
     }
     
     return "invalid";

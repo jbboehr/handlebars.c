@@ -10,7 +10,7 @@
 
 #define YYCTYPE unsigned char
 
-short handlebars_scanner_next_whitespace(const char * s, short def)
+bool handlebars_scanner_next_whitespace(const char * s, bool def)
 {
     const YYCTYPE * YYCURSOR = (const unsigned char *) s;
     
@@ -31,7 +31,7 @@ short handlebars_scanner_next_whitespace(const char * s, short def)
     return def;
 }
 
-short handlebars_scanner_prev_whitespace(const char * s, short def)
+bool handlebars_scanner_prev_whitespace(const char * s, bool def)
 {
     const YYCTYPE * YYCURSOR = (const unsigned char *) s;
     short match = def;

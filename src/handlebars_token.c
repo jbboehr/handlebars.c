@@ -10,38 +10,19 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
 
 
-struct handlebars_token * handlebars_token_ctor(int token_int, const char * text, size_t length, void * ctx)
+#undef CONTEXT
+#define CONTEXT context
+
+struct handlebars_token * handlebars_token_ctor(struct handlebars_context * context, int token_int, struct handlebars_string * string)
 {
-    struct handlebars_token * token;
-    char * textdup;
-    
-    // Allocate token
-    token = handlebars_talloc_zero(ctx, struct handlebars_token);
-    if( unlikely(token == NULL) ) {
-        goto error;
-    }
-    
-    // Assign int token and length
+    struct handlebars_token * token = MC(handlebars_talloc_zero(context, struct handlebars_token));
     token->token = token_int;
-    
-    // Copy string and null terminate
-    textdup = handlebars_talloc_strndup(token, text, length);
-    if( unlikely(textdup == NULL) ) {
-        goto error;
-    }
-    token->text = textdup;
-    token->length = length;
-    
-    return token;
-error:
-    if( token ) {
-        handlebars_talloc_free(token);
-        token = NULL;
-    }
+    token->string = talloc_steal(token, string); // probably safe
     return token;
 }
 
@@ -54,31 +35,12 @@ void handlebars_token_dtor(struct handlebars_token * token)
 
 int handlebars_token_get_type(struct handlebars_token * token)
 {
-    if( likely(token != NULL) ) {
-        return token->token;
-    } else {
-        return -1;
-    }
+    return token->token;
 }
 
-const char * handlebars_token_get_text(struct handlebars_token * token)
+struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token)
 {
-    if( likely(token != NULL) ) {
-        return (const char *) token->text;
-    } else {
-        return NULL;
-    }
-}
-
-void handlebars_token_get_text_ex(struct handlebars_token * token, const char ** text, size_t * length)
-{
-    if( likely(token != NULL) ) {
-        *text = (const char *) token->text;
-        *length = (const size_t) token->length;
-    } else {
-        *text = NULL;
-        *length = 0;
-    }
+    return token->string;
 }
 
 const char * handlebars_token_readable_type(int type)
@@ -192,4 +154,32 @@ int handlebars_token_reverse_readable_type(const char * type)
     
     // Unknown :(
     return -1;
+}
+
+struct handlebars_string * handlebars_token_print_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    struct handlebars_token * token,
+    int flags
+) {
+    const char * name = handlebars_token_readable_type(token->token);
+    size_t name_len = strlen(name);
+    const char * sep = flags & handlebars_token_print_flag_newlines ? "\n" : " ";
+    struct handlebars_string * text = handlebars_string_addcslashes(context, token->string, HBS_STRL("\r\n\t\v"));
+    string = handlebars_string_append(context, string, name, name_len);
+    string = handlebars_string_append(context, string, HBS_STRL(" ["));
+    string = handlebars_string_append(context, string, text->val, text->len);
+    string = handlebars_string_append(context, string, HBS_STRL("]"));
+    string = handlebars_string_append(context, string, sep, 1);
+    handlebars_talloc_free(text);
+    return string;
+}
+
+struct handlebars_string * handlebars_token_print(
+    struct handlebars_context * context,
+    struct handlebars_token * token,
+    int flags
+) {
+    struct handlebars_string * ret = handlebars_string_init(context, 128);
+    return handlebars_token_print_append(context, ret, token, flags);
 }

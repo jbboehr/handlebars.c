@@ -7,5 +7,5 @@ Name: @PACKAGE_NAME@
 Description: @PACKAGE_DESCRIPTION@
 URL: @PACKAGE_URL@
 Version: @VERSION@
-Libs: -L${libdir} -lhandlebars
+Libs: -L${libdir} -lhandlebars -ltalloc -lpthread
 Cflags: -I${includedir}

@@ -1,35 +1,24 @@
 
-#include <check.h>
-#include <string.h>
-#include <talloc.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
+#include <check.h>
+#include <string.h>
+#include <talloc.h>
+
 #include "handlebars.h"
+#include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
+#include "handlebars_string.h"
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    talloc_free(ctx);
-    ctx = NULL;
-}
 
 START_TEST(test_opcode_ctor)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_append);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_append);
     
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append, opcode->type);
@@ -40,156 +29,22 @@ END_TEST
 
 START_TEST(test_opcode_ctor_failed_alloc)
 {
-    struct handlebars_opcode * opcode;
-    
+#if HANDLEBARS_MEMORY
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_append);
+    handlebars_opcode_ctor(compiler, handlebars_opcode_type_append);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
-}
-END_TEST
 
-START_TEST(test_opcode_ctor_long)
-{
-    struct handlebars_opcode * opcode;
-    
-    opcode = handlebars_opcode_ctor_long(ctx, handlebars_opcode_type_get_context, 1);
-    ck_assert_ptr_ne(NULL, opcode);
-    ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
-    ck_assert_int_eq(1, opcode->op1.data.longval);
-    
-    handlebars_talloc_free(opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_long_failed_alloc)
-{
-    struct handlebars_opcode * opcode;
-    
-    handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_long(ctx, handlebars_opcode_type_get_context, 1);
-    handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_long_string)
-{
-    struct handlebars_opcode * opcode;
-    const char * str = "blah";
-    
-    opcode = handlebars_opcode_ctor_long_string(ctx, handlebars_opcode_type_get_context, 1, str);
-    ck_assert_ptr_ne(NULL, opcode);
-    ck_assert_int_eq(handlebars_opcode_type_get_context, opcode->type);
-    ck_assert_int_eq(1, opcode->op1.data.longval);
-    ck_assert_ptr_ne(NULL, opcode->op2.data.stringval);
-    ck_assert_str_eq(str, opcode->op2.data.stringval);
-    
-    handlebars_talloc_free(opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_long_string_failed_alloc)
-{
-    struct handlebars_opcode * opcode;
-    const char * str = "blah";
-    
-    handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_long_string(ctx, handlebars_opcode_type_get_context, 1, str);
-    handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_string)
-{
-    struct handlebars_opcode * opcode;
-    const char * str = "foo";
-    
-    opcode = handlebars_opcode_ctor_string(ctx, handlebars_opcode_type_append_content, str);
-    ck_assert_ptr_ne(NULL, opcode);
-    ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
-    ck_assert_str_eq(str, opcode->op1.data.stringval);
-    ck_assert_ptr_ne(str, opcode->op1.data.stringval);
-    
-    handlebars_talloc_free(opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_string_failed_alloc)
-{
-    struct handlebars_opcode * opcode;
-    const char * str = "foo";
-    
-    handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_string(ctx, handlebars_opcode_type_append_content, str);
-    handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_string2)
-{
-    struct handlebars_opcode * opcode;
-    const char * str1 = "foo";
-    const char * str2 = "bar";
-    
-    opcode = handlebars_opcode_ctor_string2(ctx, handlebars_opcode_type_append_content, str1, str2);
-    ck_assert_ptr_ne(NULL, opcode);
-    ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
-    ck_assert_str_eq(str1, opcode->op1.data.stringval);
-    ck_assert_ptr_ne(str1, opcode->op1.data.stringval);
-    ck_assert_str_eq(str2, opcode->op2.data.stringval);
-    ck_assert_ptr_ne(str2, opcode->op2.data.stringval);
-    
-    handlebars_talloc_free(opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_string2_failed_alloc)
-{
-    struct handlebars_opcode * opcode;
-    const char * str1 = "foo";
-    const char * str2 = "bar";
-    
-    handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_string2(ctx, handlebars_opcode_type_append_content, str1, str2);
-    handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_string_long)
-{
-    struct handlebars_opcode * opcode;
-    const char * str = "foo";
-    
-    opcode = handlebars_opcode_ctor_string_long(ctx, handlebars_opcode_type_append_content, str, 3);
-    ck_assert_ptr_ne(NULL, opcode);
-    ck_assert_int_eq(handlebars_opcode_type_append_content, opcode->type);
-    ck_assert_str_eq(str, opcode->op1.data.stringval);
-    ck_assert_ptr_ne(str, opcode->op1.data.stringval);
-    ck_assert_int_eq(3, opcode->op2.data.longval);
-    
-    handlebars_talloc_free(opcode);
-}
-END_TEST
-
-START_TEST(test_opcode_ctor_string_long_failed_alloc)
-{
-    struct handlebars_opcode * opcode;
-    const char * str = "foo";
-    
-    handlebars_memory_fail_enable();
-    opcode = handlebars_opcode_ctor_string_long(ctx, handlebars_opcode_type_append_content, str, 3);
-    handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(NULL, opcode);
+    ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -252,7 +107,7 @@ START_TEST(test_operand_set_null)
     ck_assert_int_eq(handlebars_operand_type_null, op.type);
     ck_assert_int_eq(0, op.data.boolval);
     ck_assert_int_eq(0, op.data.longval);
-    ck_assert_ptr_eq(NULL, op.data.stringval);
+    ck_assert_ptr_eq(NULL, op.data.string.string);
 }
 END_TEST
 
@@ -283,57 +138,82 @@ END_TEST
 START_TEST(test_operand_set_stringval)
 {
     struct handlebars_operand op;
-    const char * str = "bar";
-    int ret;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("bar"));
     
-    ret = handlebars_operand_set_stringval(ctx, &op, str);
-    
-    ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
+    handlebars_operand_set_stringval(context, opcode, &op, string);
+
     ck_assert_int_eq(handlebars_operand_type_string, op.type);
-    ck_assert_ptr_ne(NULL, op.data.stringval);
-    ck_assert_str_eq(str, op.data.stringval);
-    ck_assert_ptr_ne(str, op.data.stringval);
+    ck_assert_ptr_ne(NULL, op.data.string.string);
+    ck_assert_str_eq(string->val, op.data.string.string->val);
+    //ck_assert_ptr_ne(str, op.data.stringval);
 }
 END_TEST
 
+/*
 START_TEST(test_operand_set_stringval_failed_alloc)
 {
     struct handlebars_operand op;
-    const char * str = "bar";
-    int ret;
-    
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("bar"));
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
+        ck_assert(1);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    ret = handlebars_operand_set_stringval(ctx, &op, str);
+    handlebars_operand_set_stringval(compiler, &op, string);
     handlebars_memory_fail_disable();
-    
-    ck_assert_int_eq(HANDLEBARS_NOMEM, ret);
-    ck_assert_int_eq(handlebars_operand_type_null, op.type);
-    ck_assert_ptr_eq(NULL, op.data.stringval);
+
+    ck_assert(0);
 }
 END_TEST
+*/
 
 START_TEST(test_operand_set_arrayval)
-{
     struct handlebars_operand op;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
     const char * strs[] = {
-        "foo", "bar", "baz", "helicopter", NULL
+            "foo", "bar", "baz", "helicopter", NULL
     };
     int ret;
     const char ** ptr1;
-    char ** ptr2;
-    
-    ret = handlebars_operand_set_arrayval(ctx, &op, strs);
-    
-    ck_assert_int_eq(HANDLEBARS_SUCCESS, ret);
+    struct handlebars_operand_string * ptr2;
+
+    handlebars_operand_set_arrayval(context, opcode, &op, strs);
+
     ck_assert_int_eq(handlebars_operand_type_array, op.type);
-    ck_assert_ptr_ne(NULL, op.data.arrayval);
-    
+    ck_assert_ptr_ne(NULL, op.data.array.array);
+
     // Compare arrays
-    for( ptr1 = strs, ptr2 = op.data.arrayval; *ptr1 || *ptr2; ptr1++, ptr2++ ) {
-        ck_assert_ptr_ne(*ptr1, *ptr2);
-        ck_assert_str_eq(*ptr1, *ptr2);
+    for( ptr1 = strs, ptr2 = op.data.array.array; *ptr1 /*|| *ptr2*/; ptr1++, ptr2++ ) {
+        ck_assert_str_eq(*ptr1, ptr2->string->val);
     }
-}
+END_TEST
+
+START_TEST(test_operand_set_arrayval_string)
+    struct handlebars_string * strings[5];
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_invalid);
+
+    strings[0] = handlebars_string_ctor(context, HBS_STRL("foo"));
+    strings[1] = handlebars_string_ctor(context, HBS_STRL("bar"));
+    strings[2] = handlebars_string_ctor(context, HBS_STRL("baz"));
+    strings[3] = handlebars_string_ctor(context, HBS_STRL("helicopter"));
+    strings[4] = NULL;
+
+    struct handlebars_string ** ptr1;
+    struct handlebars_operand_string * ptr2;
+
+    handlebars_operand_set_arrayval_string(context, opcode, &opcode->op1, strings);
+
+    ck_assert_int_eq(handlebars_operand_type_array, opcode->op1.type);
+    ck_assert_ptr_ne(NULL, opcode->op1.data.array.array);
+
+    // Compare arrays
+    for( ptr1 = strings, ptr2 = opcode->op1.data.array.array; *ptr1 /* || *ptr2*/; ptr1++, ptr2++ ) {
+        ck_assert_str_eq((*ptr1)->val, ptr2->string->val);
+    }
 END_TEST
 
 Suite * parser_suite(void)
@@ -342,24 +222,15 @@ Suite * parser_suite(void)
     
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor, "Constructor");
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_failed_alloc, "Constructor (failed alloc)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_long, "Constructor (long) ");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_long_failed_alloc, "Constructor (long) (failed alloc)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_long_string, "Constructor (long/string) ");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_long_string_failed_alloc, "Constructor (long/string) (failed alloc)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string, "Constructor (string) ");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string_failed_alloc, "Constructor (string) (failed alloc)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string2, "Constructor (string) ");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string2_failed_alloc, "Constructor (string) (failed alloc)");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string_long, "Constructor (string/long) ");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_string_long_failed_alloc, "Constructor (string/long) (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_opcode_readable_type, "Readable Type");
 	
 	REGISTER_TEST_FIXTURE(s, test_operand_set_null, "Set operand null");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_boolval, "Set operand boolval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_longval, "Set operand longval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_stringval, "Set operand stringval");
-	REGISTER_TEST_FIXTURE(s, test_operand_set_stringval_failed_alloc, "Set operand stringval (failed alloc)");
-	REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval, "Set operand arrayval");
+	//REGISTER_TEST_FIXTURE(s, test_operand_set_stringval_failed_alloc, "Set operand stringval (failed alloc)");
+    REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval, "Set operand arrayval");
+    REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval_string, "operand_set_arrayval_string");
 	
 	
     return s;
@@ -370,6 +241,8 @@ int main(void)
     int number_failed;
     int memdebug;
     int error;
+
+    talloc_set_log_stderr();
     
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;

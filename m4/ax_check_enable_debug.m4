@@ -104,9 +104,9 @@ AC_DEFUN([AX_CHECK_ENABLE_DEBUG],[
 	dnl Ensure AC_PROG_CC/CXX/F77/FC/OBJC will not enable debug flags
 	dnl by setting any unset environment flag variables
 	AS_IF([test "x${CFLAGS+set}" != "xset"],
-	  [CFLAGS=""])
+	  [CFLAGS="-O3"])
 	AS_IF([test "x${CXXFLAGS+set}" != "xset"],
-	  [CXXFLAGS=""])
+	  [CXXFLAGS="-O3"])
 	AS_IF([test "x${FFLAGS+set}" != "xset"],
 	  [FFLAGS=""])
 	AS_IF([test "x${FCFLAGS+set}" != "xset"],

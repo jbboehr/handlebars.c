@@ -11,20 +11,7 @@
 #include "handlebars_scanners.h"
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    talloc_free(ctx);
-    ctx = NULL;
-}
 
 START_TEST(test_scanner_next_whitespace)
 {
@@ -64,6 +51,8 @@ int main(void)
     int number_failed;
     int memdebug;
     int error;
+
+    talloc_set_log_stderr();
     
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;

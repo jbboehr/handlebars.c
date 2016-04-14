@@ -22,14 +22,15 @@ sudo apt-get install handlebarsc libhandlebars-dev
 
 ### Source
 
+Note: >= gcc 4.9 is required for `returns_nonnull`
 
 #### Ubuntu 
 
 ```bash
 # Install dependencies
 sudo apt-get install autoconf automake bison flex gawk gcc git-core \
-                     libjson0-dev libtalloc-dev libtool \
-                     m4 make pkg-config
+                     libjson0-dev liblmdb-dev libtalloc-dev libyaml-dev \
+                     libtool m4 make pkg-config
 
 # Install testing dependencies
 sudo apt-get install check gdb lcov libpcre3-dev
@@ -48,7 +49,7 @@ cd handlebars.c
 
 ```bash
 # Install dependencies
-brew install autoconf automake bison flex gcc json-c libtool pkg-config talloc
+brew install autoconf automake bison flex gcc json-c libtool libyaml pkg-config talloc
 
 # Install testing dependencies
 brew install check lcov pcre

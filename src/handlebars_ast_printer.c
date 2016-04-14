@@ -4,32 +4,24 @@
 #endif
 
 #include <assert.h>
-#include <errno.h>
-#include <stdarg.h>
 #include <string.h>
+
+#include "handlebars.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
 
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_ast_printer.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#include "handlebars_string.h"
 #include "handlebars_utils.h"
-
-
-
-static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
-void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx);
 
 
 
 #define __APPEND(ptr) \
     do { \
         if( likely(ptr != NULL) ) { \
-            ctx->output = _handlebars_talloc_strdup_append_buffer(ctx->output, ptr); \
-            if( unlikely(ctx->output == NULL) ) { \
-                ctx->error = errno = ENOMEM; \
-                return; \
-            } \
+            ctx->output = handlebars_string_append(ctx->ctx, ctx->output, ptr, strlen(ptr)); \
         } \
     } while(0)
 
@@ -52,6 +44,27 @@ void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context
 
 #define __PRINT(node) \
     _handlebars_ast_print(node, ctx)
+
+/**
+ * @brief AST printer context object
+ */
+struct handlebars_ast_printer_context {
+    struct handlebars_context * ctx;
+    int padding;
+    int error;
+    struct handlebars_string * output;
+    bool in_partial;
+};
+
+
+
+static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
+void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx);
+
+
+
+#undef CONTEXT
+#define CONTEXT HBSCTX(ctx->ctx)
 
 void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx)
 {
@@ -112,10 +125,10 @@ static void _handlebars_ast_print_program(struct handlebars_ast_node * ast_node,
     if( ast_node->node.program.block_param1 ) {
         __PAD_HEAD();
         __APPEND("BLOCK PARAMS: [ ");
-        __APPEND(ast_node->node.program.block_param1);
+        __APPEND(ast_node->node.program.block_param1->val);
         if( ast_node->node.program.block_param2 ) {
             __APPEND(" ");
-            __APPEND(ast_node->node.program.block_param2);
+            __APPEND(ast_node->node.program.block_param2->val);
         }
         __APPEND(" ]");
         __PAD_FOOT();
@@ -191,9 +204,9 @@ static void _handlebars_ast_print_partial(struct handlebars_ast_node * ast_node,
     __PAD_HEAD();
     __APPEND("{{> PARTIAL:");
     
-    ctx->in_partial = 1;
+    ctx->in_partial = true;
     __PRINT(ast_node->node.partial.name);
-    ctx->in_partial = 0;
+    ctx->in_partial = false;
     //__APPEND(ast_node->node.partial.name->node.path.original);
     
    if( ast_node->node.partial.params != NULL && 
@@ -218,7 +231,7 @@ static void _handlebars_ast_print_partial_block(struct handlebars_ast_node * ast
     __APPEND("{{> PARTIAL BLOCK:");
 
     ctx->padding++;
-    ctx->in_partial = 1;
+    ctx->in_partial = true;
 
     // Sexpr
     _handlebars_ast_print(ast_node->node.partial_block.path, ctx);
@@ -241,7 +254,7 @@ static void _handlebars_ast_print_partial_block(struct handlebars_ast_node * ast
         //ctx->padding--;
     }
 
-    ctx->in_partial = 0;
+    ctx->in_partial = false;
     ctx->padding--;
 
     __APPEND(" }}");
@@ -252,7 +265,7 @@ static void _handlebars_ast_print_content(struct handlebars_ast_node * ast_node,
 {
     __PAD_HEAD();
     __APPEND("CONTENT[ '");
-    __APPEND(ast_node->node.content.value);
+    __APPEND(ast_node->node.content.value->val);
     __APPEND("' ]");
     __PAD_FOOT();
 }
@@ -261,7 +274,7 @@ static void _handlebars_ast_print_comment(struct handlebars_ast_node * ast_node,
 {
     __PAD_HEAD();
     __APPEND("{{! '");
-    __APPEND(ast_node->node.comment.value);
+    __APPEND(ast_node->node.comment.value->val);
     __APPEND("' }}");
     __PAD_FOOT();
 }
@@ -278,7 +291,7 @@ static void _handlebars_ast_print_string(struct handlebars_ast_node * ast_node, 
     if( !ctx->in_partial ) {
         __APPEND("\"");
     }
-    __APPEND(ast_node->node.string.value);
+    __APPEND(ast_node->node.string.value->val);
     if( !ctx->in_partial ) {
         __APPEND("\"");
     }
@@ -289,7 +302,7 @@ static void _handlebars_ast_print_number(struct handlebars_ast_node * ast_node, 
     if( !ctx->in_partial ) {
         __APPEND("NUMBER{");
     }
-    __APPEND(ast_node->node.number.value);
+    __APPEND(ast_node->node.number.value->val);
     if( !ctx->in_partial ) {
         __APPEND("}");
     }
@@ -298,16 +311,16 @@ static void _handlebars_ast_print_number(struct handlebars_ast_node * ast_node, 
 static void _handlebars_ast_print_boolean(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPEND("BOOLEAN{");
-    __APPEND(ast_node->node.boolean.value);
+    __APPEND(ast_node->node.boolean.value->val);
     __APPEND("}");
 }
 
-static void _handlebars_ast_print_undefined(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_print_undefined(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPEND("UNDEFINED");
 }
 
-static void _handlebars_ast_print_null(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_print_null(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPEND("NULL");
 }
@@ -317,13 +330,13 @@ static void _handlebars_ast_print_hash(struct handlebars_ast_node * ast_node, st
     struct handlebars_ast_list * ast_list = ast_node->node.hash.pairs;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
-    short prev_in_partial = ctx->in_partial;
-    ctx->in_partial = 0;
+    bool prev_in_partial = ctx->in_partial;
+    ctx->in_partial = false;
     
     __APPEND("HASH{");
     
     handlebars_ast_list_foreach(ast_list, item, tmp) {
-        __APPEND(item->data->node.hash_pair.key);
+        __APPEND(item->data->node.hash_pair.key->val);
         __APPEND("=");
         __PRINT(item->data->node.hash_pair.value);
         if( item->next ) {
@@ -355,16 +368,14 @@ static void _handlebars_ast_print_path(struct handlebars_ast_node * ast_node, st
     }
     
     handlebars_ast_list_foreach(ast_list, item, tmp) {
-        __APPEND(item->data->node.path_segment.part);
+        __APPEND(item->data->node.path_segment.part->val);
         //__PRINT(item->data);
         if( item->next ) {
-            __APPEND(item->next->data->node.path_segment.separator);
+            __APPEND(item->next->data->node.path_segment.separator->val);
             //__APPEND("/");
         }
     }
 }
-
-
 
 static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
@@ -419,41 +430,17 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
     }
 }
 
-struct handlebars_ast_printer_context handlebars_ast_print2(struct handlebars_ast_node * ast_node, int flags)
-{
-    struct handlebars_ast_printer_context ctx;
-    
-    // Setup print context
-    ctx.error = 0;
-    ctx.length = 0;
-    ctx.padding = 0;
-    ctx.flags = flags;
-    ctx.in_partial = 0;
-    
-    // Allocate initial string
-    ctx.output = handlebars_talloc_strdup(NULL, "");
-    if( unlikely(ctx.output == NULL) ) {
-        ctx.error = errno = ENOMEM;
-        goto error;
-    }
-    
-    // Main print
-    _handlebars_ast_print(ast_node, &ctx);
-    
-    // Trim whitespace off right end of output
-    handlebars_rtrim(ctx.output, " \t\r\n");
-    
-    // Check for error and free
-    if( unlikely(ctx.error && ctx.output != NULL) )  {
-        handlebars_talloc_free(ctx.output);
-        ctx.output = NULL;
-    }
+#undef CONTEXT
+#define CONTEXT context
 
-error:
-    return ctx;
-}
-
-char * handlebars_ast_print(struct handlebars_ast_node * ast_node, int flags)
+struct handlebars_string * handlebars_ast_print(struct handlebars_context * context, struct handlebars_ast_node * ast_node)
 {
-    return handlebars_ast_print2(ast_node, flags).output;
+    struct handlebars_string * output;
+    struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(context, struct handlebars_ast_printer_context));
+    ctx->ctx = context;
+    ctx->output = handlebars_string_ctor(context, "", 0);
+    _handlebars_ast_print(ast_node, ctx);
+    output = talloc_steal(context, ctx->output);
+    handlebars_talloc_free(ctx);
+    return handlebars_string_rtrim(output, HBS_STRL(" \t\r\n"));
 }

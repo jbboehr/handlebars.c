@@ -7,6 +7,8 @@
 #ifndef HANDLEBARS_SCANNERS_H
 #define HANDLEBARS_SCANNERS_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -20,7 +22,7 @@ extern "C" {
  * @param[in] def The default return value
  * @return zero if not match, otherwise non-zero
  */
-short handlebars_scanner_next_whitespace(const char * s, short def);
+bool handlebars_scanner_next_whitespace(const char * s, bool def) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Implement the following regexes, def returned if end hit:
@@ -31,7 +33,7 @@ short handlebars_scanner_next_whitespace(const char * s, short def);
  * @param[in] def The default return value
  * @return zero if not match, otherwise non-zero
  */
-short handlebars_scanner_prev_whitespace(const char * s, short def);
+bool handlebars_scanner_prev_whitespace(const char * s, bool def) HBS_ATTR_NONNULL_ALL;
 
 #ifdef	__cplusplus
 }

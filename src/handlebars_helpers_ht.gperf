@@ -1,0 +1,10 @@
+struct handlebars_builtin_pair { const char * name; int pos; };
+%%
+blockHelperMissing,0
+helperMissing,1
+each,2
+if,3
+unless,4
+with,5
+log,6
+lookup,7

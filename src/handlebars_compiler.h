@@ -7,22 +7,19 @@
 #ifndef HANDLEBARS_COMPILER_H
 #define HANDLEBARS_COMPILER_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
-#include <stddef.h>
 
 #define HANDLEBARS_COMPILER_STACK_SIZE 64
 
 struct handlebars_ast_node;
 struct handlebars_compiler;
+struct handlebars_context;
 struct handlebars_opcode;
-
-/**
- * @brief Array of built-in helpers
- */
-extern const char * handlebars_builtins[];
+struct handlebars_parser;
 
 /**
  * @brief Flags to control compiler behaviour
@@ -97,46 +94,16 @@ enum handlebars_compiler_result_flag {
     handlebars_compiler_result_flag_all = ((1 << 4) - 1)
 };
 
-/**
- * @brief Compiler error codes
- */
-enum handlebars_compiler_error {
-    handlebars_compiler_error_none = 0,
-
-    /**
-     * @brief The compiler encountered a memory allocation failure
-     */
-    handlebars_compiler_error_nomem = 1,
-
-    /**
-     * @brief The compiler encountered an unknown helper in known helpers only mode
-     */
-    handlebars_compiler_error_unknown_helper = 2,
-
-    handlebars_compiler_error_unsupported_partial_args = 3,
-    
-    handlebars_compiler_error_block_param_stack_blown = 4,
-    
-    handlebars_compiler_error_source_node_stack_blown = 5
-};
-
-/**
- * @brief Sexpr types
- */
-enum handlebars_compiler_sexpr_type {
-    handlebars_compiler_sexpr_type_ambiguous = 0,
-    handlebars_compiler_sexpr_type_helper = 1,
-    handlebars_compiler_sexpr_type_simple = 2
+struct handlebars_block_param_pair {
+    struct handlebars_string * block_param1;
+    struct handlebars_string * block_param2;
 };
 
 struct handlebars_block_param_stack {
     /**
      * @brief Block param stack
      */
-    struct {
-        char * block_param1;
-        char * block_param2;
-    } s[HANDLEBARS_COMPILER_STACK_SIZE];
+    struct handlebars_block_param_pair s[HANDLEBARS_COMPILER_STACK_SIZE];
     
     /**
      * @brief Block param stack index
@@ -156,25 +123,49 @@ struct handlebars_source_node_stack {
     int i;
 };
 
+struct handlebars_program {
+    struct handlebars_program * main;
+
+    long guid;
+
+    /**
+     * @brief Compiler flags
+     */
+    unsigned long flags;
+
+    /**
+     * @brief Result flags
+     */
+    int result_flags;
+
+    /**
+     * @brief Number of block params used
+     */
+    int block_params;
+
+    struct handlebars_opcode ** opcodes;
+    size_t opcodes_length;
+    size_t opcodes_size;
+
+    struct handlebars_program ** children;
+    size_t children_length;
+    size_t children_size;
+
+    struct handlebars_program ** decorators;
+    size_t decorators_length;
+    size_t decorators_size;
+
+    struct handlebars_program ** programs;
+    size_t programs_index;
+};
+
 /**
  * @brief Main compiler state struct
  */
 struct handlebars_compiler {
-    enum handlebars_compiler_error errnum;
-    char * error;
-    
-    struct handlebars_opcode ** opcodes;
-    size_t opcodes_length;
-    size_t opcodes_size;
-    
-    struct handlebars_compiler ** children;
-    size_t children_length;
-    size_t children_size;
-    
-    struct handlebars_compiler ** decorators;
-    size_t decorators_length;
-    size_t decorators_size;
-    
+    struct handlebars_context ctx;
+    struct handlebars_parser * parser;
+    struct handlebars_program * program;
     struct handlebars_block_param_stack * bps;
     struct handlebars_source_node_stack sns;
     
@@ -191,29 +182,19 @@ struct handlebars_compiler {
     /**
      * @brief Compiler flags
      */
-    int flags;
+    unsigned long flags;
     
     // Option flags
-    short string_params;
-    short track_ids;
-    short use_depths;
-    short no_escape;
-    short known_helpers_only;
-    short prevent_indent;
-    short use_data;
-    short explicit_partial_context;
-    short ignore_standalone;
-    short alternate_decorators;
-    
-    /**
-     * @brief Result flags
-     */
-    int result_flags;
-    
-    /**
-     * @brief Number of block params used
-     */
-    int block_params;
+    bool string_params;
+    bool track_ids;
+    bool use_depths;
+    bool no_escape;
+    bool known_helpers_only;
+    bool prevent_indent;
+    bool use_data;
+    bool explicit_partial_context;
+    bool ignore_standalone;
+    bool alternate_decorators;
 };
 
 /**
@@ -223,15 +204,19 @@ struct handlebars_compiler {
  * @param[in] node The AST node to compile
  */
 void handlebars_compiler_compile(
-        struct handlebars_compiler * compiler, struct handlebars_ast_node * node);
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Construct a compiler context object.
  * 
- * @param[in] ctx The memory context
+ * @param[in] context The handlebars context
  * @return the compiler context pointer
  */
-struct handlebars_compiler * handlebars_compiler_ctor(void * ctx);
+struct handlebars_compiler * handlebars_compiler_ctor(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Free a compiler context and it's resources.
@@ -239,7 +224,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(void * ctx);
  * @param[in] compiler
  * @return void
  */
-void handlebars_compiler_dtor(struct handlebars_compiler * compiler);
+void handlebars_compiler_dtor(struct handlebars_compiler * compiler) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the compiler flags.
@@ -247,17 +232,28 @@ void handlebars_compiler_dtor(struct handlebars_compiler * compiler);
  * @param[in] compiler
  * @return the compiler flags
  */
-int handlebars_compiler_get_flags(struct handlebars_compiler * compiler);
+unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compiler) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Set the compiler flags, with handlebars_compiler_flag_all as a 
- *        mask.
+ * @brief Set the compiler flags, with handlebars_compiler_flag_all as a mask.
  * 
  * @param[in] compiler
  * @param[in] flags
  * @return void
  */
-void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, int flags);
+void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsigned long flags) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Get an array of parts of an ID AST node.
+ *
+ * @param[in] compiler The handlebars compiler
+ * @param[in] ast_node The AST node
+ * @return The string array
+ */
+struct handlebars_string ** handlebars_ast_node_get_id_parts(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL;
 
 #ifdef	__cplusplus
 }

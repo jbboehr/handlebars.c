@@ -1,4 +1,8 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <check.h>
 #include <talloc.h>
 
@@ -8,24 +12,9 @@
 #include "handlebars_memory.h"
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
-
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    talloc_free(ctx);
-    ctx = NULL;
-}
-
 START_TEST(test_ast_list_append)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
@@ -43,19 +32,25 @@ END_TEST
 
 START_TEST(test_ast_list_append_failed_alloc)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+#if HANDLEBARS_MEMORY
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
-    int retval;
-    
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(parser, &buf) ) {
+        ck_assert(1);
+        handlebars_ast_list_dtor(list);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    retval = handlebars_ast_list_append(list, node1);
+    handlebars_ast_list_append(list, node1);
     handlebars_memory_fail_disable();
-    
-    ck_assert_int_eq(retval, HANDLEBARS_NOMEM);
-    ck_assert_ptr_eq(list->first, NULL);
-    ck_assert_ptr_eq(list->last, NULL);
-    
-    handlebars_ast_list_dtor(list);
+
+    ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -67,7 +62,7 @@ END_TEST
 
 START_TEST(test_ast_list_ctor)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     
     ck_assert_ptr_ne(list, NULL);
     
@@ -77,19 +72,28 @@ END_TEST
 
 START_TEST(test_ast_list_ctor_failed_alloc)
 {
-    struct handlebars_ast_list * list;
+#if HANDLEBARS_MEMORY
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(parser, &buf) ) {
+        ck_assert(1);
+        return;
+    }
     
     handlebars_memory_fail_enable();
-    list = handlebars_ast_list_ctor(NULL);
+    handlebars_ast_list_ctor(parser);
     handlebars_memory_fail_disable();
-    
-    ck_assert_ptr_eq(list, NULL);
+
+    ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
 START_TEST(test_ast_list_prepend)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_prepend(list, node1);
@@ -107,19 +111,25 @@ END_TEST
 
 START_TEST(test_ast_list_prepend_failed_alloc)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+#if HANDLEBARS_MEMORY
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
-    int retval;
-    
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(parser, &buf) ) {
+        ck_assert(1);
+        handlebars_ast_list_dtor(list);
+        return;
+    }
+
     handlebars_memory_fail_enable();
-    retval = handlebars_ast_list_prepend(list, node1);
+    handlebars_ast_list_prepend(list, node1);
     handlebars_memory_fail_disable();
-    
-    ck_assert_int_eq(retval, HANDLEBARS_NOMEM);
-    ck_assert_ptr_eq(list->first, NULL);
-    ck_assert_ptr_eq(list->last, NULL);
-    
-    handlebars_ast_list_dtor(list);
+
+    ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -132,7 +142,7 @@ END_TEST
 START_TEST(test_ast_list_remove_single)
 {
     // Only item
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
     
@@ -149,7 +159,7 @@ END_TEST
 START_TEST(test_ast_list_remove_first)
 {
     // Not only item
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
@@ -169,7 +179,7 @@ END_TEST
 
 START_TEST(test_ast_list_remove_middle)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node3 = handlebars_talloc(list, struct handlebars_ast_node);
@@ -191,7 +201,7 @@ END_TEST
 
 START_TEST(test_ast_list_remove_last)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
@@ -211,7 +221,7 @@ END_TEST
 
 START_TEST(test_ast_list_remove_empty)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(ctx);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     
     ck_assert_int_eq(0, handlebars_ast_list_remove(list, node1));
@@ -226,12 +236,12 @@ Suite * parser_suite(void)
     
     REGISTER_TEST_FIXTURE(s, test_ast_list_append, "Append");
     REGISTER_TEST_FIXTURE(s, test_ast_list_append_failed_alloc, "Append with failed alloc");
-    REGISTER_TEST_FIXTURE(s, test_ast_list_append_null, "Append with null argument");
+    //REGISTER_TEST_FIXTURE(s, test_ast_list_append_null, "Append with null argument");
     REGISTER_TEST_FIXTURE(s, test_ast_list_ctor, "Constructor");
     REGISTER_TEST_FIXTURE(s, test_ast_list_ctor_failed_alloc, "Constructor with failed alloc");
     REGISTER_TEST_FIXTURE(s, test_ast_list_prepend, "Prepend");
     REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_failed_alloc, "Prepend with failed alloc");
-    REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_null, "Prepend with null argument");
+    //REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_null, "Prepend with null argument");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_single, "Remove (single)");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_first, "Remove (first)");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_middle, "Remove (middle)");
@@ -246,6 +256,8 @@ int main(void)
     int number_failed;
     int memdebug;
     int error;
+
+    talloc_set_log_stderr();
     
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;

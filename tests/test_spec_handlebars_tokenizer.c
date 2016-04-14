@@ -8,41 +8,36 @@
 #include <talloc.h>
 
 #if defined(HAVE_JSON_C_JSON_H)
-#include "json-c/json.h"
-#include "json-c/json_object.h"
-#include "json-c/json_tokener.h"
+#include <json-c/json.h>
+#include <json-c/json_object.h>
+#include <json-c/json_tokener.h>
 #elif defined(HAVE_JSON_JSON_H)
-#include "json/json.h"
-#include "json/json_object.h"
-#include "json/json_tokener.h"
+#include <json/json.h>
+#include <json/json_object.h>
+#include <json/json_tokener.h>
 #endif
 
 #include "handlebars.h"
-#include "handlebars_ast.h"
-#include "handlebars_context.h"
 #include "handlebars_memory.h"
+
+#include "handlebars_ast.h"
+#include "handlebars_string.h"
 #include "handlebars_token.h"
-#include "handlebars_token_list.h"
-#include "handlebars_token_printer.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
+
 #include "utils.h"
 
-struct tokenizer_test_tokens {
-    char * name;
-    char * text;
-};
+
 
 struct tokenizer_test {
     char * description;
     char * it;
     char * tmpl;
-    struct handlebars_token_list * expected;
-    size_t expected_len;
-    TALLOC_CTX * mem_ctx;
+    struct handlebars_string * expected;
+    struct handlebars_context * ctx;
 };
-
 
 static TALLOC_CTX * rootctx;
 static struct tokenizer_test * tests;
@@ -58,12 +53,13 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
     const char * name = NULL;
     const char * text = NULL;
     struct handlebars_token * token = NULL;
+    struct handlebars_string * string;
     
     // Get number of tokens cases
     array_len = json_object_array_length(object);
     
     // Allocate token list
-    test->expected = handlebars_token_list_ctor(rootctx);
+    test->expected = handlebars_string_init(test->ctx, 256);
     
     // Iterate over array
     for( int i = 0; i < array_len; i++ ) {
@@ -99,16 +95,20 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
         }
         
         // Make token object
-        token = handlebars_token_ctor(token_int, text, strlen(text), test->expected);
+        string = handlebars_string_ctor(test->ctx, text, strlen(text));
+        token = handlebars_token_ctor(test->ctx, token_int, string);
         if( token == NULL ) {
             fprintf(stderr, "Warning: failed to allocate token struct\n");
             continue;
         }
         
         // Append
-        handlebars_token_list_append(test->expected, token);
-        test->expected_len++;
+        struct handlebars_string * tmp = handlebars_token_print(test->ctx, token, 1);
+        test->expected = handlebars_string_append(context, test->expected, tmp->val, tmp->len);
+        handlebars_talloc_free(tmp);
     }
+
+    test->expected = handlebars_string_rtrim(test->expected, HBS_STRL(" \t\r\n"));
 }
 
 static void loadSpecTest(json_object * object)
@@ -117,6 +117,7 @@ static void loadSpecTest(json_object * object)
     
     // Get test
     struct tokenizer_test * test = &(tests[tests_len++]);
+    test->ctx = handlebars_context_ctor_ex(rootctx);
     
     // Get description
     cur = json_object_object_get(object, "description");
@@ -206,37 +207,36 @@ START_TEST(handlebars_spec_tokenizer)
 {
     struct tokenizer_test * test = &tests[_i];
     struct handlebars_context * ctx = handlebars_context_ctor();
-    
-    ctx->tmpl = test->tmpl;
+    struct handlebars_parser * parser;
+
+    parser = handlebars_parser_ctor(ctx);
+    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
     
     // Prepare token list
-    struct handlebars_token_list * actual = handlebars_token_list_ctor(ctx);
-    size_t actual_len = 0;
     struct handlebars_token * token = NULL;
     
     // Run
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
     int token_int = 0;
+    struct handlebars_string * actual = handlebars_string_init(ctx, 256);
     do {
-        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, ctx->scanner);
+        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
         if( token_int == END || token_int == INVALID ) break;
-        YYSTYPE * lval = handlebars_yy_get_lval(ctx->scanner);
+        YYSTYPE * lval = handlebars_yy_get_lval(parser->scanner);
         
         // Make token object
-        char * text = (lval->text == NULL ? "" : lval->text);
-        token = handlebars_token_ctor(token_int, text, strlen(text), actual);
+        token = handlebars_token_ctor(test->ctx, token_int, lval->string);
         
         // Append
-        handlebars_token_list_append(actual, token);
-        actual_len++;
+        struct handlebars_string * tmp = handlebars_token_print(ctx, token, 1);
+        actual = handlebars_string_append(ctx, actual, tmp->val, tmp->len);
+        handlebars_talloc_free(tmp);
     } while( token );
-    
-    // Convert to string
-    char * expected_str = handlebars_token_list_print(test->expected, 1);
-    char * actual_str = handlebars_token_list_print(actual, 1);
-    
-    ck_assert_str_eq_msg(expected_str, actual_str, test->tmpl);
+
+    actual = handlebars_string_rtrim(actual, HBS_STRL(" \t\r\n"));
+
+    ck_assert_str_eq_msg(test->expected->val, actual->val, test->tmpl);
     
     handlebars_context_dtor(ctx);
 }
@@ -263,6 +263,8 @@ int main(void)
     int memdebug = 0;
     int iswin = 0;
     int error = 0;
+
+    talloc_set_log_stderr();
     
 #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
     iswin = 1;

@@ -7,12 +7,17 @@
 #ifndef HANDLEBARS_AST_LIST_H
 #define HANDLEBARS_AST_LIST_H
 
+#include <stddef.h>
+
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
 // Declarations
 struct handlebars_ast_node;
+struct handlebars_parser;
 
 /**
  * @brief AST node linked list item
@@ -27,6 +32,7 @@ struct handlebars_ast_list_item {
  * @brief AST node linked list root
  */
 struct handlebars_ast_list {
+    struct handlebars_context * ctx;
     struct handlebars_ast_list_item * first;
     struct handlebars_ast_list_item * last;
     size_t count;
@@ -47,9 +53,11 @@ struct handlebars_ast_list {
  * 
  * @param[in] list The list to which to append
  * @param[in] ast_node The AST node to append
- * @return A return code from the handlebars_error_type enum. Success is zero.
  */
-int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+void handlebars_ast_list_append(
+    struct handlebars_ast_list * list,
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Count the number of items in an AST list
@@ -57,15 +65,17 @@ int handlebars_ast_list_append(struct handlebars_ast_list * list, struct handleb
  * @param[in] list The list to count
  * @return The number of items in the list
  */
-int handlebars_ast_list_count(struct handlebars_ast_list * list);
+size_t handlebars_ast_list_count(struct handlebars_ast_list * list);
 
 /**
  * @brief Contruct a new AST node list
  * 
- * @param[in] ctx The talloc memory context
+ * @param[in] context The handlebars context
  * @return The newly constructed list
  */
-struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx);
+struct handlebars_ast_list * handlebars_ast_list_ctor(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct an AST node list
@@ -73,7 +83,7 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(void * ctx);
  * @param[in] list The list to destruct
  * @return void
  */
-void handlebars_ast_list_dtor(struct handlebars_ast_list * list);
+void handlebars_ast_list_dtor(struct handlebars_ast_list * list) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Find a linked list node by its AST node
@@ -83,7 +93,9 @@ void handlebars_ast_list_dtor(struct handlebars_ast_list * list);
  * @return The linked list node, or NULL if not found
  */
 struct handlebars_ast_list_item * handlebars_ast_list_find(
-        struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+    struct handlebars_ast_list * list,
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Insert a list node after the specified node
@@ -93,9 +105,11 @@ struct handlebars_ast_list_item * handlebars_ast_list_find(
  * @param[in] new_item The new AST list item
  * @return void
  */
-void handlebars_ast_list_insert_after(struct handlebars_ast_list * list, 
-        struct handlebars_ast_list_item * item,
-        struct handlebars_ast_list_item * new_item);
+void handlebars_ast_list_insert_after(
+    struct handlebars_ast_list * list,
+    struct handlebars_ast_list_item * item,
+    struct handlebars_ast_list_item * new_item
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Insert a list node before the specified node
@@ -105,18 +119,23 @@ void handlebars_ast_list_insert_after(struct handlebars_ast_list * list,
  * @param[in] new_item The new AST list item
  * @return void
  */
-void handlebars_ast_list_insert_before(struct handlebars_ast_list * list, 
-        struct handlebars_ast_list_item * item,
-        struct handlebars_ast_list_item * new_item);
+void handlebars_ast_list_insert_before(
+    struct handlebars_ast_list * list,
+    struct handlebars_ast_list_item * item,
+    struct handlebars_ast_list_item * new_item
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Remove an AST node from a list
  * 
  * @param[in] list The list from which to remove
  * @param[in] ast_node The node to remove
- * @return The number of items removed (zero or one)
+ * @return If the item was removed from the list
  */
-int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+bool handlebars_ast_list_remove(
+    struct handlebars_ast_list * list,
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Prepend an AST node to a list
@@ -125,7 +144,10 @@ int handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handleb
  * @param[in] ast_node The node to prepend
  * @return A return code from the handlebars_error_type enum. Success is zero.
  */
-int handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node);
+void handlebars_ast_list_prepend(
+    struct handlebars_ast_list * list,
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL;
 
 #ifdef	__cplusplus
 }

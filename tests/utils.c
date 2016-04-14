@@ -1,4 +1,8 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +16,62 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#if defined(HAVE_JSON_C_JSON_H)
+#include <json-c/json.h>
+#include <json-c/json_object.h>
+#include <json-c/json_tokener.h>
+#elif defined(HAVE_JSON_JSON_H)
+#include <json/json.h>
+#include <json/json_object.h>
+#include <json/json_tokener.h>
+#endif
+
 #include "utils.h"
+#include "handlebars.h"
+#include "handlebars_compiler.h"
+#include "handlebars_helpers.h"
+#include "handlebars_value.h"
+#include "handlebars_vm.h"
+
+const int MOD_ADLER = 65521;
+
+
+
+TALLOC_CTX * root;
+struct handlebars_context * context;
+struct handlebars_parser * parser;
+struct handlebars_compiler * compiler;
+struct handlebars_vm * vm;
+int init_blocks;
+
+void default_setup(void)
+{
+#ifdef HANDLEBARS_MEMORY
+    handlebars_memory_fail_disable();
+#endif
+    context = handlebars_context_ctor_ex(root);
+    parser = handlebars_parser_ctor(context);
+    compiler = handlebars_compiler_ctor(context);
+    vm = handlebars_vm_ctor(context);
+    init_blocks = talloc_total_blocks(context);
+}
+
+void default_teardown(void)
+{
+#ifdef HANDLEBARS_MEMORY
+    handlebars_memory_fail_disable();
+#endif
+    handlebars_vm_dtor(vm);
+    handlebars_compiler_dtor(compiler);
+    handlebars_parser_dtor(parser);
+    handlebars_context_dtor(context);
+    vm = NULL;
+    compiler = NULL;
+    parser = NULL;
+    context = NULL;
+}
+
+
 
 int file_get_contents(const char * filename, char ** buf, size_t * len)
 {
@@ -82,7 +141,7 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 int regex_compare(const char * regex, const char * string, char ** error)
 {
     pcre * re;
-    char * errmsg = NULL;
+    const char * errmsg = NULL;
     int erroffset;
     int ovector[30];
     int rc, i, ret;
@@ -110,3 +169,83 @@ error:
     pcre_free(re);
     return ret;
 }
+
+// https://en.wikipedia.org/wiki/Adler-32
+uint32_t adler32(unsigned char *data, size_t len)
+{
+	uint32_t a = 1, b = 0;
+	size_t index;
+
+	/* Process each byte of the data in order */
+	for (index = 0; index < len; ++index)
+	{
+		a = (a + data[index]) % MOD_ADLER;
+		b = (b + a) % MOD_ADLER;
+	}
+
+	return (b << 16) | a;
+}
+
+
+
+/* Loaders */
+
+long json_load_compile_flags(struct json_object * object)
+{
+    long flags = 0;
+    json_object * cur = NULL;
+
+    if( (cur = json_object_object_get(object, "compat")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_compat;
+    }
+    if( (cur = json_object_object_get(object, "data")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_compat; // @todo correct?
+    }
+    if( (cur = json_object_object_get(object, "knownHelpersOnly")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_known_helpers_only;
+    }
+    if( (cur = json_object_object_get(object, "stringParams")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_string_params;
+    }
+    if( (cur = json_object_object_get(object, "trackIds")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_track_ids;
+    }
+    if( (cur = json_object_object_get(object, "preventIndent")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_prevent_indent;
+    }
+    if( (cur = json_object_object_get(object, "explicitPartialContext")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_explicit_partial_context;
+    }
+    if( (cur = json_object_object_get(object, "ignoreStandalone")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_ignore_standalone;
+    }
+
+    return flags;
+}
+
+char ** json_load_known_helpers(void * ctx, struct json_object * object)
+{
+    struct json_object * array_item = NULL;
+    int array_len = 0;
+    // Let's just allocate a nice fat array >.>
+    char ** known_helpers = talloc_zero_array(ctx, char *, 32);
+    char ** ptr = known_helpers;
+    const char ** ptr2 = handlebars_builtins_names();
+
+    for( ; *ptr2 ; ++ptr2 ) {
+        *ptr = handlebars_talloc_strdup(ctx, *ptr2);
+        ptr++;
+    }
+
+    json_object_object_foreach(object, key, value) {
+        *ptr = handlebars_talloc_strdup(ctx, key);
+        ptr++;
+    }
+
+    *ptr++ = NULL;
+
+    return known_helpers;
+}
+
+
+/* Helpers/Lambdas */

@@ -2,28 +2,26 @@
 #ifndef HANDLEBARS_PRIVATE_H
 #define HANDLEBARS_PRIVATE_H
 
+#include "handlebars.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-#define HANDLEBARS_PACKI(i, n) ((i & (0xff << n)) >> n)
-#define HANDLEBARS_UNPACKI(i, n) (i << n)
+struct handlebars_context;
 
-// Builtin expect
-#ifdef HAVE___BUILTIN_EXPECT
-#  define likely(x)   __builtin_expect(!!(x), 1)
-#  define unlikely(x) __builtin_expect(!!(x), 0)
-#else
-#  define likely(x) (x)
-#  define unlikely(x) (x)
-#endif
+#define likely handlebars_likely
+#define unlikely handlebars_unlikely
 
-// Unused attribute
-#ifdef HAVE_VAR_ATTRIBUTE_UNUSED
-#  define HANDLEBARS_ATTR_UNUSED __attribute__((__unused__))
-#else
-#  define HANDLEBARS_ATTR_UNUSED
-#endif
+#define CONTEXT context
+#define MEMCHK_MSG HANDLEBARS_MEMCHECK_MSG
+#define MEMCHKEX(cond, ctx) HANDLEBARS_MEMCHECK(cond, ctx)
+#define MEMCHK(cond) MEMCHKEX(cond, CONTEXT)
+#define MEMCHKF(ptr) (HBS_TYPEOF(ptr)) handlebars_check(CONTEXT, (void *) (ptr), MEMCHK_MSG)
+#define MC(ptr) MEMCHKF(ptr)
+
+#define YY_NO_UNISTD_H 1
+#define YYLTYPE handlebars_locinfo
 
 #ifdef	__cplusplus
 }

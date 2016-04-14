@@ -9,13 +9,13 @@
 
 #include "handlebars.h"
 #include "handlebars_compiler.h"
-#include "handlebars_context.h"
 #include "handlebars_memory.h"
+#include "handlebars_value.h"
+#include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 #include "utils.h"
 
-static TALLOC_CTX * rootctx;
 
 // @todo try to get this to include every language feature
 static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} "
@@ -23,31 +23,21 @@ static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} 
         "{{#unless}}{{else}}{{/unless}} {{&unescaped}} {{~strip~}}  "
         "{{!-- comment --}} {{! coment }} {{blah (a (b)}}";
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-}
-
 START_TEST(test_random_alloc_fail_tokenizer)
 {
     size_t i;
     int retval;
-    struct handlebars_token_list * list;
+    struct handlebars_token ** tokens;
 
     for( i = 1; i < 300; i++ ) {
-        struct handlebars_context * ctx = handlebars_context_ctor();
-        talloc_steal(rootctx, ctx);
-        ctx->tmpl = tmpl;
+        struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+        struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+        parser->tmpl = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
-        list = handlebars_lex(ctx);
+        tokens = handlebars_lex(parser);
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);
@@ -62,14 +52,14 @@ START_TEST(test_random_alloc_fail_parser)
     int retval;
 
     for( i = 1; i < 300; i++ ) {
-        struct handlebars_context * ctx = handlebars_context_ctor();
-        talloc_steal(rootctx, ctx);
-        ctx->tmpl = tmpl;
+        struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+        struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+        parser->tmpl = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
-        retval = handlebars_yy_parse(ctx);
+        handlebars_parse(parser);
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);
@@ -79,26 +69,54 @@ START_TEST(test_random_alloc_fail_parser)
 END_TEST
 
 START_TEST(test_random_alloc_fail_compiler)
-{
-    size_t i;
-    int retval;
-    
-    for( i = 1; i < 300; i++ ) {
-        struct handlebars_context * ctx = handlebars_context_ctor();
-        struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
-        talloc_steal(rootctx, ctx);
-        ctx->tmpl = tmpl;
-        retval = handlebars_yy_parse(ctx);
+    {
+        size_t i;
+        int retval;
 
-        // For now, don't do yy alloc
-        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
-        handlebars_memory_fail_counter(i);
-        handlebars_compiler_compile(compiler, ctx->program);
-        handlebars_memory_fail_disable();
+        for( i = 1; i < 300; i++ ) {
+            struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+            struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
+            parser->tmpl = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
+            handlebars_parse(parser);
 
-        handlebars_context_dtor(ctx);
+            // For now, don't do yy alloc
+            handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+            handlebars_memory_fail_counter(i);
+            handlebars_compiler_compile(compiler, parser->program);
+            handlebars_memory_fail_disable();
+
+            handlebars_context_dtor(ctx);
+        }
     }
-}
+END_TEST
+
+START_TEST(test_random_alloc_fail_vm)
+    {
+        size_t i;
+        int retval;
+
+        for( i = 1; i < 300; i++ ) {
+            struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+            struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
+            struct handlebars_vm * vm = handlebars_vm_ctor(ctx);
+            struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"foo\": {\"bar\": 2}}");
+            handlebars_value_convert(value);
+
+            parser->tmpl = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
+            handlebars_parse(parser);
+            handlebars_compiler_compile(compiler, parser->program);
+
+            // For now, don't do yy alloc
+            handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+            handlebars_memory_fail_counter(i);
+            handlebars_vm_execute(vm, compiler->program, value);
+            handlebars_memory_fail_disable();
+
+            handlebars_context_dtor(ctx);
+        }
+    }
 END_TEST
 
 Suite * parser_suite(void)
@@ -108,6 +126,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_tokenizer, "Random Memory Allocation Failures (Tokenizer)");
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_parser, "Random Memory Allocation Failures (Parser)");
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_compiler, "Random Memory Allocation Failures (Compiler)");
+    REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_vm, "Random Memory Allocation Failures (VM)");
     
     return s;
 }
@@ -120,6 +139,8 @@ int main(void)
     int memdebug = 0;
     int iswin = 0;
     int error = 0;
+
+    talloc_set_log_stderr();
     
 #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
     iswin = 1;
@@ -129,7 +150,6 @@ int main(void)
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    rootctx = talloc_new(NULL);
     
     s = parser_suite();
     sr = srunner_create(s);
@@ -142,7 +162,6 @@ int main(void)
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
     
 error:
-    talloc_free(rootctx);
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }

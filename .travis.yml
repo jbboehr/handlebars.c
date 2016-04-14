@@ -3,40 +3,37 @@ language: c
 compiler:
   - gcc
 
+sudo: required
+
+dist: trusty
+
+env:
+  global:
+    - PREFIX="$HOME/build"
+    - PATH="$PREFIX/bin:$PATH"
+    - CFLAGS="-L$PREFIX/lib"
+    - CPPFLAGS="-I$PREFIX/include"
+    - PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+    - CC="gcc-4.9"
+
+cache: false
+
 branches:
   only:
     - master
     - travis
 
-sudo: false
-
-# autoconf automake gawk gcc git-core libtool m4 make
-addons:
-  apt:
-    packages:
-      - bison
-      - flex
-      - lcov
-      - libjson0-dev
-      - libpcre3-dev
-      - libtalloc-dev
-      - pkg-config
-
-cache:
-  directories:
-    - $HOME/build
-
 before_install:
+  - travis_retry sudo apt-add-repository -y ppa:ubuntu-toolchain-r/test
+  - travis_retry sudo apt-add-repository -y ppa:jbboehr/ppa
+  - travis_retry sudo apt-add-repository -y ppa:jbboehr/handlebars
+  - travis_retry sudo apt-get update -y
+  - travis_retry sudo apt-get install -y automake bison check flex gcc-4.9 gperf lcov libjson-c-dev liblmdb-dev libpcre3-dev libtalloc-dev libyaml-dev pkg-config re2c
   - travis_retry gem install coveralls-lcov
 
 install:
-  - ./.travis.sh
-  - export PATH="$HOME/build/bin:$PATH"
-  - export CFLAGS="-L$HOME/build/lib"
-  - export CPPFLAGS="-I$HOME/build/include"
-  - export PKG_CONFIG_PATH="$HOME/build/lib/pkgconfig"
   - ./bootstrap
-  - ./configure --prefix=$HOME/build  CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
+  - ./configure --prefix="$PREFIX" --enable-handlebars-memory CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
   - make clean all
 
 before_script:
@@ -48,7 +45,7 @@ script:
 
 after_success:
   - lcov --no-checksum --directory . --capture --compat-libtool --output-file coverage.info
-  - lcov --remove coverage.info "/usr*" --remove coverage.info "*/tests/*" --compat-libtool --output-file coverage.info
+  - lcov --remove coverage.info "/usr*" --remove coverage.info "*/tests/*" --remove coverage.info "handlebars.tab.c" --remove coverage.info "handlebars.lex.c" --remove coverage.info "handlebars_scanners.c" --compat-libtool --output-file coverage.info
   - coveralls-lcov coverage.info
 
 after_failure:

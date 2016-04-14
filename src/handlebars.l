@@ -8,18 +8,21 @@
 #include <stdint.h>
 
 #include "handlebars.h"
-#include "handlebars_ast.h"
-#include "handlebars_context.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_ast.h"
+#include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
+
+#undef CONTEXT
+#define CONTEXT HBSCTX(yyextra)
 
 // Make sure nothing goes to stdout
 #define ECHO
 
 #ifndef YY_FATAL_ERROR
-#define YY_FATAL_ERROR(msg) handlebars_yy_fatal_error(msg, yyscanner)
+#define YY_FATAL_ERROR(msg) handlebars_yy_fatal_error(msg, handlebars_yy_get_extra(yyscanner))
 #endif
 
 #undef YY_INPUT
@@ -41,23 +44,13 @@
      	fprintf( stderr, "--initializing yylval\n" ); \
 	}
 
-#define __MEMCHECK(cond) \
-  do { \
-    if( unlikely(!cond) ) { \
-      struct handlebars_context * context = yyextra; \
-      context->errnum = HANDLEBARS_NOMEM; \
-      yyterminate(); \
-    } \
-  } while(0)
-
 #define handlebars_yy_unput_all \
 	handlebars_yy_unput_n(yyleng)
  		
 #define handlebars_yy_unput_n(n) \
 	do { \
 		int i; \
- 		char * yycopy = handlebars_talloc_strdup(yyextra, yytext); \
- 		__MEMCHECK(yycopy); \
+ 		char * yycopy = MC(handlebars_talloc_strndup(yyextra, yytext, yyleng)); \
 		for ( i = yyleng - 1; i >= yyleng - n && i >= 0; --i ) { \
 			unput( yycopy[i] ); \
 		} \
@@ -65,9 +58,7 @@
     } while(0)
 
 #define handlebars_yy_copy_lval() \
-	yylval->text = handlebars_talloc_strndup(yyextra, yytext, yyleng); \
-    __MEMCHECK(yylval->text); \
-	yylval->length = yyleng
+    yylval->string = handlebars_string_ctor(HBSCTX(yyextra), yytext, yyleng);
 
 #define YY_USER_ACTION \
     yylloc->first_line = yylloc->last_line = yylineno; \
@@ -88,6 +79,7 @@
 %option warn
 %option 8bit
 %option noyyalloc
+%option noyymore
 %option noyyrealloc
 %option noyyfree
 %option never-interactive
@@ -108,7 +100,7 @@ MU \{\{\{?
 CMU \}\}\}?
 EMU \\\{\{\{?
 EEMU \\\\\{\{\{?
-CONTENT [^\x00\{\\]
+CONTENT [^\x00\{\\\r\n]*[\r\n]*
 
 WHITESPACE [ \r\n\t]
 
@@ -120,14 +112,16 @@ BLOCKPARAM [\x7C]
 %%
 
 
-{CONTENT}+\\\\/{MU}             	{
-										yytext[--yyleng] = 0;
+{CONTENT}\\\\{MU}             	    {
+										int n = yytext[yyleng - 3] == '{' ? 3 : 2;
+										handlebars_yy_unput_n(n);
+										yytext[yyleng -= n + 1] = 0;
 										yy_push_state(mu, yyscanner);
 										handlebars_yy_copy_lval();
 										return CONTENT;
 									}
 
-{CONTENT}+                         	{
+{CONTENT}                           {
 										// v2.0.0 handlebars.l line 31
 										handlebars_yy_copy_lval();
 										return CONTENT;
@@ -143,7 +137,7 @@ BLOCKPARAM [\x7C]
 										return CONTENT;
 									}
 									
-{EMU}{CONTENT}+ 					{		
+{EMU}{CONTENT} 					    {
 										// v2.0.0 handlebars.l line 35
 										yy_push_state(emu, yyscanner);
 										yytext++, yyleng--;
@@ -371,7 +365,7 @@ BLOCKPARAM [\x7C]
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes_ex(yylval->text, &yylval->length);
+										yylval->string = handlebars_string_stripcslashes(yylval->string);
                                    		return STRING;
                                  	}
 
@@ -380,7 +374,7 @@ BLOCKPARAM [\x7C]
 										yytext[--yyleng] = 0;
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_stripcslashes_ex(yylval->text, &yylval->length);
+										yylval->string = handlebars_string_stripcslashes(yylval->string);
 										return STRING;
                                 	}
                                  
@@ -445,7 +439,7 @@ BLOCKPARAM [\x7C]
 										//yytext[--yyleng] = 0;
 										//yytext++, yyleng--;
 										handlebars_yy_copy_lval();
-										handlebars_str_reduce(yylval->text, "\\]", "]");
+										yylval->string = handlebars_str_reduce(yylval->string, HBS_STRL("\\]"), HBS_STRL("]"));
 										return ID;
 									}
 

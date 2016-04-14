@@ -1,0 +1,15 @@
+
+#ifndef HANDLEBARS_CONFIG_H
+#define HANDLEBARS_CONFIG_H
+
+/* Disable refcounting of handlebars values */
+#ifndef HANDLEBARS_NO_REFCOUNT
+#undef HANDLEBARS_NO_REFCOUNT
+#endif
+
+/* Enable handlebars memory testing functions */
+#ifndef HANDLEBARS_MEMORY
+#undef HANDLEBARS_MEMORY
+#endif
+
+#endif

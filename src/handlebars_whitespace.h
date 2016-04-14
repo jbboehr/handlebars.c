@@ -7,32 +7,46 @@
 #ifndef HANDLEBARS_WHITESPACE_H
 #define HANDLEBARS_WHITESPACE_H
 
-#include <stddef.h>
+#include "handlebars.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
 // Declarations
-struct handlebars_context;
 struct handlebars_ast_list;
 struct handlebars_ast_node;
 struct handlebars_locinfo;
+struct handlebars_parser;
 
-int handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root);
+bool handlebars_whitespace_is_next_whitespace(
+    struct handlebars_ast_list * statements,
+    struct handlebars_ast_node * statement,
+    bool is_root
+);
 
-int handlebars_whitespace_is_prev_whitespace(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short is_root);
+bool handlebars_whitespace_is_prev_whitespace(
+    struct handlebars_ast_list * statements,
+    struct handlebars_ast_node * statement,
+    bool is_root
+);
 
-int handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple);
+bool handlebars_whitespace_omit_left(
+    struct handlebars_ast_list * statements,
+    struct handlebars_ast_node * statement,
+    bool multiple
+) HBS_ATTR_NONNULL(1);
 
-int handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
-        struct handlebars_ast_node * statement, short multiple);
+bool handlebars_whitespace_omit_right(
+    struct handlebars_ast_list * statements,
+    struct handlebars_ast_node * statement,
+    bool multiple
+) HBS_ATTR_NONNULL(1);
 
-void handlebars_whitespace_accept(struct handlebars_context * context,
-        struct handlebars_ast_node * node);
+void handlebars_whitespace_accept(
+    struct handlebars_parser * parser,
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL(1);
 
 #ifdef	__cplusplus
 }

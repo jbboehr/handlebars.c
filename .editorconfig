@@ -7,3 +7,19 @@ indent_style = space
 indent_size = 4
 insert_final_newline = true
 trim_trailing_whitespace = true
+
+[*.ac]
+indent_style = tab
+
+[*.am]
+indent_style = tab
+
+[*.m4]
+indent_style = tab
+
+[*.sh]
+indent_style = tab
+
+[Makefile]
+indent_style = tab
+

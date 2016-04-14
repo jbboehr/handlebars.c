@@ -1,161 +1,120 @@
 
-#include <check.h>
-#include <string.h>
-#include <talloc.h>
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
+#include <check.h>
+#include <string.h>
+#include <talloc.h>
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
+
+#include "handlebars_compiler.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcodes.h"
+#include "handlebars_string.h"
+
 #include "utils.h"
 
-static TALLOC_CTX * ctx;
 
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    talloc_free(ctx);
-    ctx = NULL;
-}
 
 START_TEST(test_operand_print_append_null)
-{
     struct handlebars_operand op;
-    char * str = handlebars_talloc_strdup(ctx, "");
-    
+    struct handlebars_string * string;
     handlebars_operand_set_null(&op);
-    str = handlebars_operand_print_append(str, &op);
-    ck_assert_ptr_ne(NULL, str);
-    ck_assert_str_eq("[NULL]", str);
-    
-    handlebars_talloc_free(str);
-}
+    string = handlebars_operand_print(context, &op);
+    ck_assert_ptr_ne(NULL, string);
+    ck_assert_str_eq("[NULL]", string->val);
+    handlebars_talloc_free(string);
 END_TEST
 
 START_TEST(test_operand_print_append_boolean)
-{
     struct handlebars_operand op;
-    char * str = handlebars_talloc_strdup(ctx, "");
-    
+    struct handlebars_string * string;
     handlebars_operand_set_boolval(&op, 1);
-    str = handlebars_operand_print_append(str, &op);
-    ck_assert_ptr_ne(NULL, str);
-    ck_assert_str_eq("[BOOLEAN:1]", str);
-    
-    handlebars_talloc_free(str);
-}
+    string = handlebars_operand_print(context, &op);
+    ck_assert_ptr_ne(NULL, string);
+    ck_assert_str_eq("[BOOLEAN:1]", string->val);
+    handlebars_talloc_free(string);
 END_TEST
 
 START_TEST(test_operand_print_append_long)
-{
     struct handlebars_operand op;
-    char * str = handlebars_talloc_strdup(ctx, "");
-    
+    struct handlebars_string * string;
     handlebars_operand_set_longval(&op, 2358);
-    str = handlebars_operand_print_append(str, &op);
-    ck_assert_ptr_ne(NULL, str);
-    ck_assert_str_eq("[LONG:2358]", str);
-    
-    handlebars_talloc_free(str);
-}
+    string = handlebars_operand_print(context, &op);
+    ck_assert_ptr_ne(NULL, string);
+    ck_assert_str_eq("[LONG:2358]", string->val);
+    handlebars_talloc_free(string);
 END_TEST
 
 START_TEST(test_operand_print_append_string)
-{
     struct handlebars_operand op;
-    char * str = handlebars_talloc_strdup(ctx, "");
-    
-    handlebars_operand_set_stringval(ctx, &op, "baz");
-    str = handlebars_operand_print_append(str, &op);
-    ck_assert_ptr_ne(NULL, str);
-    ck_assert_str_eq("[STRING:baz]", str);
-    
-    handlebars_talloc_free(str);
-}
+    struct handlebars_string * string;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
+    handlebars_operand_set_stringval(context, opcode, &op, handlebars_string_ctor(context, HBS_STRL("baz")));
+    string = handlebars_operand_print(context, &op);
+    ck_assert_ptr_ne(NULL, string);
+    ck_assert_str_eq("[STRING:baz]", string->val);
+    handlebars_talloc_free(string);
 END_TEST
 
 START_TEST(test_operand_print_append_array)
-{
     // @todo
-}
 END_TEST
 
 START_TEST(test_opcode_print_1)
 {
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_ambiguous_block_value);
-    char * str;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_ambiguous_block_value);
     char * expected = "ambiguousBlockValue";
-    
-    str = handlebars_opcode_print(ctx, opcode);
-    
-    ck_assert_str_eq(expected, str);
-    
+    struct handlebars_string * string = handlebars_opcode_print(context, opcode, 0);
+    ck_assert_str_eq(expected, string->val);
     handlebars_talloc_free(opcode);
-    handlebars_talloc_free(str);
+    handlebars_talloc_free(string);
 }
 END_TEST
 
 START_TEST(test_opcode_print_2)
-{
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_get_context);
-    char * str;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_get_context);
     char * expected = "getContext[LONG:2358]";
-    
+    struct handlebars_string * string;
     handlebars_operand_set_longval(&opcode->op1, 2358);
-    str = handlebars_opcode_print(ctx, opcode);
-    
-    ck_assert_str_eq(expected, str);
-    
+    string = handlebars_opcode_print(context, opcode, 0);
+    ck_assert_str_eq(expected, string->val);
     handlebars_talloc_free(opcode);
-    handlebars_talloc_free(str);
-}
+    handlebars_talloc_free(string);
 END_TEST
 
 START_TEST(test_opcode_print_3)
-{
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_invoke_helper);
-    char * str;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_invoke_helper);
     char * expected = "invokeHelper[LONG:123][STRING:baz][LONG:456]";
-    
+    struct handlebars_string * string;
+
     handlebars_operand_set_longval(&opcode->op1, 123);
-    handlebars_operand_set_stringval(opcode, &opcode->op2, "baz");
+    handlebars_operand_set_stringval(context, opcode, &opcode->op2, handlebars_string_ctor(context, HBS_STRL("baz")));
     handlebars_operand_set_longval(&opcode->op3, 456);
-    str = handlebars_opcode_print(ctx, opcode);
-    
-    ck_assert_str_eq(expected, str);
-    
+
+    string = handlebars_opcode_print(context, opcode, 0);
+    ck_assert_str_eq(expected, string->val);
     handlebars_talloc_free(opcode);
-    handlebars_talloc_free(str);
-}
+    handlebars_talloc_free(string);
 END_TEST
 
 START_TEST(test_opcode_print_4)
-{
-    struct handlebars_opcode * opcode = handlebars_opcode_ctor(ctx, handlebars_opcode_type_lookup_on_context);
-    char * str;
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_lookup_on_context);
     char * expected = "lookupOnContext[LONG:123][STRING:baz][LONG:456][STRING:bat]";
+    struct handlebars_string * string;
 
     handlebars_operand_set_longval(&opcode->op1, 123);
-    handlebars_operand_set_stringval(opcode, &opcode->op2, "baz");
+    handlebars_operand_set_stringval(context, opcode, &opcode->op2, handlebars_string_ctor(context, HBS_STRL("baz")));
     handlebars_operand_set_longval(&opcode->op3, 456);
-    handlebars_operand_set_stringval(opcode, &opcode->op4, "bat");
-    str = handlebars_opcode_print(ctx, opcode);
+    handlebars_operand_set_stringval(context, opcode, &opcode->op4, handlebars_string_ctor(context, HBS_STRL("bat")));
 
-    ck_assert_str_eq(expected, str);
-
+    string = handlebars_opcode_print(context, opcode, 0);
+    ck_assert_str_eq(expected, string->val);
     handlebars_talloc_free(opcode);
-    handlebars_talloc_free(str);
-}
+    handlebars_talloc_free(string);
 END_TEST
 
 
@@ -181,6 +140,8 @@ int main(void)
     int number_failed;
     int memdebug;
     int error;
+
+    talloc_set_log_stderr();
     
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;

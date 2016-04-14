@@ -13,6 +13,9 @@
 extern "C" {
 #endif
 
+struct handlebars_compiler;
+struct handlebars_string;
+
 /**
  * @brief Opcode types
  */
@@ -66,7 +69,10 @@ enum handlebars_opcode_type {
     handlebars_opcode_type_lookup_block_param = 25,
 
     // Added in v4
-    handlebars_opcode_type_register_decorator = 26
+    handlebars_opcode_type_register_decorator = 26,
+
+    // Special opcode
+    handlebars_opcode_type_return = 27
 };
 
 /**
@@ -80,11 +86,20 @@ enum handlebars_operand_type {
     handlebars_operand_type_array = 4
 };
 
+struct handlebars_operand_string {
+    struct handlebars_string * string;
+};
+
+struct handlebars_operand_array {
+    size_t count;
+    struct handlebars_operand_string * array;
+};
+
 union handlebars_operand_internals {
-    short boolval;
+    bool boolval;
     long longval;
-    char * stringval;
-    char ** arrayval;
+    struct handlebars_operand_string string;
+    struct handlebars_operand_array array;
 };
 
 struct handlebars_operand {
@@ -101,84 +116,29 @@ struct handlebars_opcode {
     struct handlebars_locinfo loc;
 };
 
+/*
+struct handlebars_opcode_get_context {
+    struct handlebars_opcode o;
+    union {
+        struct {
+            long depth;
+        } v;
+        char padding[8];
+    } u;
+};
+*/
+
 /**
  * @brief Construct an opcode
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] context The handlebars context
  * @param[in] type The opcode type
  * @return The new opcode
  */
 struct handlebars_opcode * handlebars_opcode_ctor(
-        void * ctx, enum handlebars_opcode_type type);
-
-/**
- * @brief Construct an opcode with a boolean operand
- *
- * @param[in] ctx The parent talloc memory context
- * @param[in] type The opcode type
- * @param[in] arg The boolean value
- * @return The new opcode
- */
-struct handlebars_opcode * handlebars_opcode_ctor_boolean(
-        void * ctx, enum handlebars_opcode_type type, short arg);
-
-/**
- * @brief Construct an opcode with a long operand
- *
- * @param[in] ctx The parent talloc memory context
- * @param[in] type The opcode type
- * @param[in] arg The long value
- * @return The new opcode
- */
-struct handlebars_opcode * handlebars_opcode_ctor_long(
-        void * ctx, enum handlebars_opcode_type type, long arg);
-
-/**
- * @brief Construct an opcode with a long and a string operand
- *
- * @param[in] ctx The parent talloc memory context
- * @param[in] type The opcode type
- * @param[in] arg1 The long value
- * @param[in] arg2 The string value
- * @return The new opcode
- */
-struct handlebars_opcode * handlebars_opcode_ctor_long_string(
-        void * ctx, enum handlebars_opcode_type type, long arg1, const char * arg2);
-
-/**
- * @brief Construct an opcode with a string operand
- *
- * @param[in] ctx The parent talloc memory context
- * @param[in] type The opcode type
- * @param[in] arg The string value
- * @return The new opcode
- */
-struct handlebars_opcode * handlebars_opcode_ctor_string(
-        void * ctx, enum handlebars_opcode_type type, const char * arg);
-
-/**
- * @brief Construct an opcode with two string operands
- *
- * @param[in] ctx The parent talloc memory context
- * @param[in] type The opcode type
- * @param[in] arg1 The first string value
- * @param[in] arg2 The second string value
- * @return The new opcode
- */
-struct handlebars_opcode * handlebars_opcode_ctor_string2(
-        void * ctx, enum handlebars_opcode_type type, const char * arg1, const char * arg2);
-
-/**
- * @brief Construct an opcode with a string and a long operand
- *
- * @param[in] ctx The parent talloc memory context
- * @param[in] type The opcode type
- * @param[in] arg1 The string value
- * @param[in] arg2 The long value
- * @return The new opcode
- */
-struct handlebars_opcode * handlebars_opcode_ctor_string_long(
-        void * ctx, enum handlebars_opcode_type type, const char * arg1, long arg2);
+    struct handlebars_context * context,
+    enum handlebars_opcode_type type
+) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Set the value of an operand to null
@@ -195,7 +155,7 @@ void handlebars_operand_set_null(struct handlebars_operand * operand);
  * @param[in] arg The boolean value
  * @return void
  */
-void handlebars_operand_set_boolval(struct handlebars_operand * operand, short arg);
+void handlebars_operand_set_boolval(struct handlebars_operand * operand, bool arg);
 
 /**
  * @brief Set the value of an operand to a long
@@ -209,22 +169,41 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
 /**
  * @brief Set the value of an operand to a string
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] context The handlebars context
+ * @param[in] opcode The opcode
  * @param[in] operand The operand of which to change the value
- * @param[in] arg The string value
+ * @param[in] string The string value
  * @return void
  */
-int handlebars_operand_set_stringval(void * ctx, struct handlebars_operand * operand, const char * arg);
+void handlebars_operand_set_stringval(
+    struct handlebars_context * context,
+    struct handlebars_opcode * opcode,
+    struct handlebars_operand * operand,
+    struct handlebars_string * string
+);
 
 /**
  * @brief Set the value of an operand to an array
  *
- * @param[in] ctx The parent talloc memory context
+ * @param[in] context The handlebars context
+ * @param[in] opcode The opcode
  * @param[in] operand The operand of which to change the value
  * @param[in] arg The array value
  * @return void
  */
-int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * operand, const char ** arg);
+void handlebars_operand_set_arrayval(
+    struct handlebars_context * context,
+    struct handlebars_opcode * opcode,
+    struct handlebars_operand * operand,
+    const char ** arg
+) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_operand_set_arrayval_string(
+    struct handlebars_context * context,
+    struct handlebars_opcode * opcode,
+    struct handlebars_operand * operand,
+    struct handlebars_string ** array
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get a string for the integral opcode type. Should match the 
@@ -233,7 +212,7 @@ int handlebars_operand_set_arrayval(void * ctx, struct handlebars_operand * oper
  * @param[in] type The integral opcode type
  * @return The string name of the opcode
  */
-const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type);
+const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Get the integral type of an opcode given a string of its type name
@@ -241,7 +220,7 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type);
  * @param[in] type The string type name
  * @return The integral type
  */
-enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char * type);
+enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char * type) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the number of operands a particular opcode type should have

@@ -7,12 +7,41 @@
 #ifndef HANDLEBARS_MEMORY_H
 #define HANDLEBARS_MEMORY_H
 
-#include <stddef.h>
 #include <talloc.h>
+#include "handlebars_config.h"
+#include "handlebars.h"
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
+
+#ifndef HANDLEBARS_MEMORY
+
+#define handlebars_talloc talloc
+#define handlebars_talloc_array talloc_array
+#define handlebars_talloc_asprintf talloc_asprintf
+#define handlebars_talloc_asprintf_append talloc_asprintf_append
+#define handlebars_talloc_asprintf_append_buffer talloc_asprintf_append_buffer
+#define handlebars_talloc_free talloc_free
+#define handlebars_talloc_named_const talloc_named_const
+#define handlebars_talloc_realloc talloc_realloc
+#define handlebars_talloc_realloc_size talloc_realloc_size
+#define handlebars_talloc_size talloc_size
+#define handlebars_talloc_strdup talloc_strdup
+#define handlebars_talloc_strdup_append talloc_strdup_append
+#define handlebars_talloc_strdup_append_buffer talloc_strdup_append_buffer
+#define handlebars_talloc_strndup talloc_strndup
+#define handlebars_talloc_strndup_append_buffer talloc_strndup_append_buffer
+#define handlebars_talloc_zero talloc_zero
+#define handlebars_talloc_zero_size talloc_zero_size
+
+#define handlebars_exit exit
+
+#define _handlebars_yy_alloc talloc_size
+#define _handlebars_yy_realloc talloc_realloc_size
+#define _handlebars_yy_free talloc_free
+
+#else /* HANDLEBARS_MEMORY */
 
 // Note: a little concerned this naughty stuff may cause problems with
 // different talloc versions, but let's see how it works for now
@@ -37,6 +66,9 @@ extern "C" {
 #define handlebars_talloc_realloc(ctx, p, type, count) \
     (type *) _handlebars_talloc_realloc_array(ctx, p, sizeof(type), count, #type)
 
+#define handlebars_talloc_realloc_size(ctx, p, s) \
+    _handlebars_talloc_realloc_array(ctx, p, 1, s, __location__)
+
 #define handlebars_talloc_size(ctx, size) \
     handlebars_talloc_named_const(ctx, size, __location__)
 
@@ -54,9 +86,9 @@ extern "C" {
 
 // Typedefs for memory function pointers
 typedef void * (*handlebars_talloc_array_func)(const void * ctx, size_t el_size, unsigned count, const char * name);
-typedef char * (*handlebars_talloc_asprintf_func)(const void *t, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
-typedef char * (*handlebars_talloc_asprintf_append_func)(char *s, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
-typedef char * (*handlebars_talloc_asprintf_append_buffer_func)(char *s, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
+typedef char * (*handlebars_talloc_asprintf_func)(const void *t, const char *fmt, ...) HBS_ATTR_PRINTF(2,3);
+typedef char * (*handlebars_talloc_asprintf_append_func)(char *s, const char *fmt, ...) HBS_ATTR_PRINTF(2,3);
+typedef char * (*handlebars_talloc_asprintf_append_buffer_func)(char *s, const char *fmt, ...) HBS_ATTR_PRINTF(2,3);
 typedef int    (*handlebars_talloc_free_func)(void *ptr, const char *location);
 typedef void * (*handlebars_talloc_named_const_func)(const void * context, size_t size, const char * name);
 typedef void * (*handlebars_talloc_realloc_array_func)(const void *ctx, void *ptr, size_t el_size, unsigned count, const char *name);
@@ -86,9 +118,9 @@ extern handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_a
 extern handlebars_talloc_zero_func _handlebars_talloc_zero;
 
 // Memory function pointers for scanner
-extern handlebars_talloc_named_const_func _handlebars_yy_alloc;
-extern handlebars_talloc_realloc_array_func _handlebars_yy_realloc;
-extern handlebars_talloc_free_func _handlebars_yy_free;
+#define _handlebars_yy_alloc handlebars_talloc_size
+#define _handlebars_yy_realloc handlebars_talloc_realloc_size
+#define _handlebars_yy_free handlebars_talloc_free
 
 // Other function pointers
 extern handlebars_exit_func handlebars_exit;
@@ -143,6 +175,8 @@ void handlebars_memory_fail_counter(int count);
  */
 int handlebars_memory_fail_get_counter(void);
 
+int handlebars_memory_fail_counter_incr(void);
+
 /**
  * @brief Get the last exit code when memory fail was enabled
  *
@@ -156,6 +190,8 @@ int handlebars_memory_get_last_exit_code(void);
  * @return The number of allocations
  */
 int handlebars_memory_get_call_counter(void);
+
+#endif /* HANDLEBARS_MEMORY */
 
 #ifdef	__cplusplus
 }

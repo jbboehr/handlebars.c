@@ -26,6 +26,7 @@ tests/test_*
 *.lo
 *.la
 *.log
+*.out
 *.pyc
 *.pc
 *.exe
@@ -54,6 +55,7 @@ config.status
 configure
 libtool
 stamp-h1
+stamp-h2
 
 # distros
 *.tar.gz
@@ -68,3 +70,4 @@ stamp-h1
 .settings
 .c9
 .idea
+CMakeLists.txt

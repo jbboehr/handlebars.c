@@ -5,29 +5,29 @@
 %error-verbose
 
 %lex-param {
-  void * scanner
+    void * scanner
 }
 %parse-param {
-  struct handlebars_context * context
+    struct handlebars_parser * parser
 }
 %locations
 
 %code requires {
-  struct handlebars_context; /* needed for bison 2.7 */
-  #define YY_END_OF_BUFFER_CHAR 0
-  #define YY_EXTRA_TYPE struct handlebars_context *
-  typedef struct handlebars_locinfo YYLTYPE;
-  #define YYLTYPE_IS_DECLARED 1
-  #define YYLTYPE_IS_TRIVIAL 1
-  
-  struct handlebars_yy_block_params {
-    char * block_param1;
-    char * block_param2;
-  };
-  struct handlebars_yy_block_intermediate {
-      struct handlebars_ast_node * program;
-      struct handlebars_ast_node * inverse_chain;
-  };
+    struct handlebars_parser; /* needed for bison 2.7 */
+    #define YY_END_OF_BUFFER_CHAR 0
+    #define YY_EXTRA_TYPE struct handlebars_parser *
+    typedef struct handlebars_locinfo YYLTYPE;
+    #define YYLTYPE_IS_DECLARED 1
+    #define YYLTYPE_IS_TRIVIAL 1
+
+    struct handlebars_yy_block_params {
+        struct handlebars_string * block_param1;
+        struct handlebars_string * block_param2;
+    };
+    struct handlebars_yy_block_intermediate {
+        struct handlebars_ast_node * program;
+        struct handlebars_ast_node * inverse_chain;
+    };
 }
 
 %start  start
@@ -45,12 +45,13 @@
 #include <string.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
+
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
 #include "handlebars_ast_list.h"
-#include "handlebars_context.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars_whitespace.h"
 #include "handlebars.tab.h"
@@ -63,70 +64,55 @@ int handlebars_yy_debug = 1;
 int handlebars_yy_debug = 0;
 #endif
 
-#define __S1(x) #x
-#define __S2(x) __S1(x)
-#define __MEMCHECK(cond) \
-  do { \
-    if( unlikely(!cond) ) { \
-      if( !context->errnum ) { \
-        context->errnum = HANDLEBARS_NOMEM; \
-        context->error = "Out of memory  [" __S2(__FILE__) ":" __S2(__LINE__) "]"; \
-      } \
-      YYABORT; \
-    } \
-  } while(0)
-
-#define scanner context->scanner
+#undef CONTEXT
+#define CONTEXT HBSCTX(parser)
+#define scanner parser->scanner
 %}
 
 %union {
-  struct {
-	  char * text;
-	  size_t length;
-  };
+    struct handlebars_string * string;
+    struct handlebars_ast_node * ast_node;
+    struct handlebars_ast_list * ast_list;
   
-  struct handlebars_ast_node * ast_node;
-  struct handlebars_ast_list * ast_list;
-  
-  struct handlebars_yy_block_intermediate block_intermediate;
-  struct handlebars_yy_block_params block_params;
+    struct handlebars_yy_block_intermediate block_intermediate;
+    struct handlebars_yy_block_params block_params;
 }
 
 %token END 0 "end of file"
-%token <text> BOOLEAN
-%token <text> CLOSE "}}"
-%token <text> CLOSE_RAW_BLOCK "}}}}"
-%token <text> CLOSE_SEXPR ")"
-%token <text> CLOSE_UNESCAPED "}}}"
-%token <text> COMMENT
-%token <text> CONTENT
-%token <text> DATA
-%token <text> END_RAW_BLOCK // meh
-%token <text> EQUALS "="
-%token <text> ID
-%token <text> INVALID
-%token <text> INVERSE
-%token <text> NUMBER
-%token <text> OPEN "{{"
-%token <text> OPEN_BLOCK "{{#"
-%token <text> OPEN_ENDBLOCK
-%token <text> OPEN_INVERSE "{{^"
-%token <text> OPEN_PARTIAL "{{>"
-%token <text> OPEN_RAW_BLOCK "{{{{"
-%token <text> OPEN_SEXPR "("
-%token <text> OPEN_UNESCAPED "{{{"
-%token <text> SEP
-%token <text> STRING
+%token <string> BOOLEAN
+%token <string> CLOSE "}}"
+%token <string> CLOSE_RAW_BLOCK "}}}}"
+%token <string> CLOSE_SEXPR ")"
+%token <string> CLOSE_UNESCAPED "}}}"
+%token <string> COMMENT
+%token <string> CONTENT
+%token <string> DATA
+%token <string> END_RAW_BLOCK // meh
+%token <string> EQUALS "="
+%token <string> ID
+%token <string> INVALID
+%token <string> INVERSE
+%token <string> NUMBER
+%token <string> OPEN "{{"
+%token <string> OPEN_BLOCK "{{#"
+%token <string> OPEN_ENDBLOCK
+%token <string> OPEN_INVERSE "{{^"
+%token <string> OPEN_PARTIAL "{{>"
+%token <string> OPEN_RAW_BLOCK "{{{{"
+%token <string> OPEN_SEXPR "("
+%token <string> OPEN_UNESCAPED "{{{"
+%token <string> SEP
+%token <string> STRING
 
 // Added in v3
-%token <text> CLOSE_BLOCK_PARAMS
-%token <text> NUL "NULL"
-%token <text> OPEN_BLOCK_PARAMS
-%token <text> OPEN_INVERSE_CHAIN
-%token <text> UNDEFINED "undefined"
+%token <string> CLOSE_BLOCK_PARAMS
+%token <string> NUL "NULL"
+%token <string> OPEN_BLOCK_PARAMS
+%token <string> OPEN_INVERSE_CHAIN
+%token <string> UNDEFINED "undefined"
 
 // Added in v4
-%token <text> OPEN_PARTIAL_BLOCK "{{#>"
+%token <string> OPEN_PARTIAL_BLOCK "{{#>"
 
 %type <ast_node> program
 %type <ast_list> statements
@@ -150,7 +136,7 @@ int handlebars_yy_debug = 0;
 %type <ast_list> hash_pairs
 %type <ast_node> hash_pair
 %type <ast_list> path_segments
-%type <text> content
+%type <string> content
 
 // Added in v3
 %type <block_params> block_params
@@ -173,29 +159,25 @@ int handlebars_yy_debug = 0;
 
 start : 
     program END {
-      context->program = $1;
-      handlebars_whitespace_accept(context, context->program);
+      parser->program = $1;
+      handlebars_whitespace_accept(parser, parser->program);
       return 1;
     }
   ;
 
 program :
     statements {
-      $$ = handlebars_ast_node_ctor_program(context, $1, NULL, NULL, 0, 0, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_program(parser, $1, NULL, NULL, 0, 0, &@$);
     }
   | "" {
-      struct handlebars_ast_list * list = handlebars_ast_list_ctor(context);
-      __MEMCHECK(list);
-      $$ = handlebars_ast_node_ctor_program(context, list, NULL, NULL, 0, 0, &@$);
-      __MEMCHECK($$);
+      struct handlebars_ast_list * list = handlebars_ast_list_ctor(CONTEXT);
+      $$ = handlebars_ast_node_ctor_program(parser, list, NULL, NULL, 0, 0, &@$);
     }
   ;
 
 statements
   : statement {
-      $$ = handlebars_ast_list_ctor(context);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, $1);
     }
   | statements statement {
@@ -221,25 +203,21 @@ statement
       $$ = $1;
     }
   | content {
-      $$ = handlebars_ast_node_ctor_content(context, $1, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_content(parser, $1, &@$);
     }
   | COMMENT {
       // Strip comment strips in place
       unsigned strip = handlebars_ast_helper_strip_flags($1, $1);
-      $$ = handlebars_ast_node_ctor_comment(context, 
+      $$ = handlebars_ast_node_ctor_comment(parser, 
       			handlebars_ast_helper_strip_comment($1), &@$);
-      __MEMCHECK($$);
       $$->strip = strip;
     }
   ;
 
 content
   : CONTENT content {
-      $$ = handlebars_talloc_strdup_append($1, $2);
-      __MEMCHECK($$);
-      $$ = talloc_steal(context, $$);
-      __MEMCHECK($$);
+      $$ = handlebars_string_append(CONTEXT, $1, $2->val, $2->len);
+      $$ = talloc_steal(parser, $$);
     }
   | CONTENT {
       $$ = $1;
@@ -248,8 +226,7 @@ content
 
 raw_block
   : open_raw_block content END_RAW_BLOCK {
-      $$ = handlebars_ast_helper_prepare_raw_block(context, $1, $2, $3, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_raw_block(parser, $1, $2, $3, &@$);
     }
   ;
 
@@ -261,20 +238,16 @@ open_raw_block
 
 block
   : open_block block_intermediate close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, $2.program, $2.inverse_chain, $3, 0, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_block(parser, $1, $2.program, $2.inverse_chain, $3, 0, &@$);
     }
   | open_block close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, NULL, NULL, $2, 0, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_block(parser, $1, NULL, NULL, $2, 0, &@$);
     }
   | open_inverse block_intermediate close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, $2.program, $2.inverse_chain, $3, 1, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_block(parser, $1, $2.program, $2.inverse_chain, $3, 1, &@$);
     }
   | open_inverse close_block {
-      $$ = handlebars_ast_helper_prepare_block(context, $1, NULL, NULL, $2, 1, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_block(parser, $1, NULL, NULL, $2, 1, &@$);
     }
   ;
   
@@ -297,7 +270,7 @@ open_block
   : OPEN_BLOCK intermediate4 CLOSE {
       $$ = $2;
       $$->strip = handlebars_ast_helper_strip_flags($1, $3);
-      $$->node.intermediate.open = handlebars_talloc_strdup($$, $1);
+      $$->node.intermediate.open = talloc_steal($$, handlebars_string_copy_ctor(CONTEXT, $1));
     }
   ;
 
@@ -317,125 +290,103 @@ open_inverse_chain
 
 inverse_chain
   : open_inverse_chain program inverse_chain {
-      $$ = handlebars_ast_helper_prepare_inverse_chain(context, $1, $2, $3, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_inverse_chain(parser, $1, $2, $3, &@$);
   	}
   | open_inverse_chain inverse_chain {
-      $$ = handlebars_ast_helper_prepare_inverse_chain(context, $1, NULL, $2, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_inverse_chain(parser, $1, NULL, $2, &@$);
   	}
   | open_inverse_chain program {
-      $$ = handlebars_ast_helper_prepare_inverse_chain(context, $1, $2, NULL, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_inverse_chain(parser, $1, $2, NULL, &@$);
     }
   | open_inverse_chain {
-      $$ = handlebars_ast_helper_prepare_inverse_chain(context, $1, NULL, NULL, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_inverse_chain(parser, $1, NULL, NULL, &@$);
     }
   | inverse_and_program {
       $$ = $1;
-  	}
+    }
   ;
 
 inverse_and_program
   : INVERSE program {
-      $$ = handlebars_ast_node_ctor_inverse(context, $2, 0, 
+      $$ = handlebars_ast_node_ctor_inverse(parser, $2, 0, 
               handlebars_ast_helper_strip_flags($1, $1), &@$);
-      __MEMCHECK($$);
     }
   | INVERSE {
       struct handlebars_ast_node * program_node;
-      program_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
-      __MEMCHECK(program_node);
-      $$ = handlebars_ast_node_ctor_inverse(context, program_node, 0, 
+      program_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PROGRAM);
+      $$ = handlebars_ast_node_ctor_inverse(parser, program_node, 0, 
               handlebars_ast_helper_strip_flags($1, $1), &@$);
-      __MEMCHECK($$);
     }
   ;
 
 close_block
   : OPEN_ENDBLOCK helper_name CLOSE {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $2, NULL, NULL, 
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $2, NULL, NULL, 
               handlebars_ast_helper_strip_flags($1, $3), &@$);
-      __MEMCHECK($$);
     }
   ;
 
 mustache
   : OPEN intermediate3 CLOSE {
-      $$ = handlebars_ast_helper_prepare_mustache(context, $2, NULL, $1,
+      $$ = handlebars_ast_helper_prepare_mustache(parser, $2, $1,
         			handlebars_ast_helper_strip_flags($1, $3), &@$);
-      __MEMCHECK($$);
     }
   | OPEN_UNESCAPED intermediate3 CLOSE_UNESCAPED {
-      $$ = handlebars_ast_helper_prepare_mustache(context, $2, NULL, $1,
+      $$ = handlebars_ast_helper_prepare_mustache(parser, $2, $1,
         			handlebars_ast_helper_strip_flags($1, $3), &@$);
-      __MEMCHECK($$);
     }
   ;
 
 partial
   : OPEN_PARTIAL partial_name params hash CLOSE {
-      $$ = handlebars_ast_node_ctor_partial(context, $2, $3, $4,
+      $$ = handlebars_ast_node_ctor_partial(parser, $2, $3, $4,
               handlebars_ast_helper_strip_flags($1, $5), &@$);
-      __MEMCHECK($$);
     }
   | OPEN_PARTIAL partial_name params CLOSE {
-      $$ = handlebars_ast_node_ctor_partial(context, $2, $3, NULL,
+      $$ = handlebars_ast_node_ctor_partial(parser, $2, $3, NULL,
               handlebars_ast_helper_strip_flags($1, $4), &@$);
-      __MEMCHECK($$);
     }
   | OPEN_PARTIAL partial_name hash CLOSE {
-      $$ = handlebars_ast_node_ctor_partial(context, $2, NULL, $3,
+      $$ = handlebars_ast_node_ctor_partial(parser, $2, NULL, $3,
               handlebars_ast_helper_strip_flags($1, $4), &@$);
-      __MEMCHECK($$);
     }
   | OPEN_PARTIAL partial_name CLOSE {
-      $$ = handlebars_ast_node_ctor_partial(context, $2, NULL, NULL,
+      $$ = handlebars_ast_node_ctor_partial(parser, $2, NULL, NULL,
               handlebars_ast_helper_strip_flags($1, $3), &@$);
-      __MEMCHECK($$);
     }
   ;
 
 partial_block
   : open_partial_block program close_block {
-      $$ = handlebars_ast_helper_prepare_partial_block(context, $1, $2, $3, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_partial_block(parser, $1, $2, $3, &@$);
   }
   | open_partial_block close_block {
-      struct handlebars_ast_node * program = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_PROGRAM, context);
-      __MEMCHECK(program);
-      $$ = handlebars_ast_helper_prepare_partial_block(context, $1, program, $2, &@$);
-      __MEMCHECK($$);
+      struct handlebars_ast_node * program = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PROGRAM);
+      $$ = handlebars_ast_helper_prepare_partial_block(parser, $1, program, $2, &@$);
   }
 
 open_partial_block
   : OPEN_PARTIAL_BLOCK partial_name params hash CLOSE {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $2, $3, $4,
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $2, $3, $4,
       			handlebars_ast_helper_strip_flags($1, $5), &@$);
-      __MEMCHECK($$);
     }
   | OPEN_PARTIAL_BLOCK partial_name params CLOSE {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $2, $3, NULL,
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $2, $3, NULL,
       			handlebars_ast_helper_strip_flags($1, $4), &@$);
-      __MEMCHECK($$);
     }
   | OPEN_PARTIAL_BLOCK partial_name hash CLOSE {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $2, NULL, $3,
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $2, NULL, $3,
               handlebars_ast_helper_strip_flags($1, $4), &@$);
-      __MEMCHECK($$);
     }
   | OPEN_PARTIAL_BLOCK partial_name CLOSE {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $2, NULL, NULL,
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $2, NULL, NULL,
               handlebars_ast_helper_strip_flags($1, $3), &@$);
-      __MEMCHECK($$);
     }
   ;
 
 params
   : param {
-      $$ = handlebars_ast_list_ctor(context);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, $1);
     }
   | params param {
@@ -455,8 +406,7 @@ param
 
 sexpr
   : OPEN_SEXPR intermediate3 CLOSE_SEXPR {
-      $$ = handlebars_ast_node_ctor_sexpr(context, $2, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_sexpr(parser, $2, &@$);
     }
   ;
 
@@ -471,27 +421,22 @@ intermediate4
 
 intermediate3
   : helper_name params hash {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $1, $2, $3, 0, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $1, $2, $3, 0, &@$);
     }
   | helper_name hash {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $1, NULL, $2, 0, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $1, NULL, $2, 0, &@$);
     }
   | helper_name params {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $1, $2, NULL, 0, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $1, $2, NULL, 0, &@$);
     }
   | helper_name {
-      $$ = handlebars_ast_node_ctor_intermediate(context, $1, NULL, NULL, 0, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $1, NULL, NULL, 0, &@$);
     }
   ;
 
 hash
   : hash_pairs {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HANDLEBARS_AST_NODE_HASH, context);
-      __MEMCHECK(ast_node);
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_HASH);
       ast_node->node.hash.pairs = $1;
       $$ = ast_node;
     }
@@ -503,29 +448,24 @@ hash_pairs
       $$ = $1;
     }
   | hash_pair {
-      $$ = handlebars_ast_list_ctor(context);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, $1);
     }
   ;
 
 hash_pair
   : ID EQUALS param {
-      $$ = handlebars_ast_node_ctor_hash_pair(context, $1, $3, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_hash_pair(parser, $1, $3, &@$);
     }
   ;
 
 block_params
   : OPEN_BLOCK_PARAMS ID ID CLOSE_BLOCK_PARAMS {
-      $$.block_param1 = handlebars_talloc_strdup(context, $2);
-      __MEMCHECK($$.block_param1);
-      $$.block_param2 = handlebars_talloc_strdup(context, $3);
-      __MEMCHECK($$.block_param2);
+      $$.block_param1 = handlebars_string_copy_ctor(CONTEXT, $2);
+      $$.block_param2 = handlebars_string_copy_ctor(CONTEXT, $3);
     }
   | OPEN_BLOCK_PARAMS ID CLOSE_BLOCK_PARAMS {
-      $$.block_param1 = handlebars_talloc_strdup(context, $2);
-      __MEMCHECK($$.block_param1);
+      $$.block_param1 = handlebars_string_copy_ctor(CONTEXT, $2);
       $$.block_param2 = NULL;
     }
   ;
@@ -538,24 +478,19 @@ helper_name
       $$ = $1;
     }
   | STRING {
-      $$ = handlebars_ast_node_ctor_string(context, $1, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_string(parser, $1, &@$);
     }
   | NUMBER {
-      $$ = handlebars_ast_node_ctor_number(context, $1, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_number(parser, $1, &@$);
     }
   | BOOLEAN {
-      $$ = handlebars_ast_node_ctor_boolean(context, $1, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_boolean(parser, $1, &@$);
     }
   | UNDEFINED {
-      $$ = handlebars_ast_node_ctor_undefined(context, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_undefined(parser, $1, &@$);
     }
   | NUL {
-      $$ = handlebars_ast_node_ctor_null(context, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_node_ctor_null(parser, $1, &@$);
     }
   ;
   
@@ -570,35 +505,31 @@ partial_name
 
 data_name
   : DATA path_segments {
-      $$ = handlebars_ast_helper_prepare_path(context, $2, 1, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_path(parser, $2, 1, &@$);
     }
   ;
 
 path
   : path_segments {
-      $$ = handlebars_ast_helper_prepare_path(context, $1, 0, &@$);
-      __MEMCHECK($$);
+      $$ = handlebars_ast_helper_prepare_path(parser, $1, 0, &@$);
     }
   ;
 
 path_segments
   : path_segments SEP ID {
-      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor_path_segment(context, $3, $2, &@$);
-  	  __MEMCHECK(ast_node);
+      struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor_path_segment(parser, $3, $2, &@$);
       
       handlebars_ast_list_append($1, ast_node);
       $$ = $1;
     }
   | ID {
       struct handlebars_ast_node * ast_node;
-  	  __MEMCHECK($1); // this is weird
+      MEMCHK($1); // this is weird
   	  
-      ast_node = handlebars_ast_node_ctor_path_segment(context, $1, NULL, &@$);
-  	  __MEMCHECK(ast_node); // this is weird
+      ast_node = handlebars_ast_node_ctor_path_segment(parser, $1, NULL, &@$);
+      MEMCHK(ast_node); // this is weird
       
-      $$ = handlebars_ast_list_ctor(context);
-  	  __MEMCHECK($$);
+      $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, ast_node);
     }
   ;

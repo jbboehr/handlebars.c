@@ -1,39 +1,30 @@
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <check.h>
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
-#include "handlebars_context.h"
-#include "handlebars_memory.h"
+#include "handlebars_string.h"
 #include "handlebars.tab.h"
 #include "utils.h"
 
 
-static TALLOC_CTX * ctx;
-
-static void setup(void)
-{
-    handlebars_memory_fail_disable();
-    ctx = talloc_new(NULL);
-}
-
-static void teardown(void)
-{
-    handlebars_memory_fail_disable();
-    talloc_free(ctx);
-    ctx = NULL;
-}
 
 START_TEST(test_ast_helper_set_strip_flags)
 {
     struct handlebars_ast_node node;
-    const char * str1 = "{{";
-    const char * str2 = "{{~";
-    const char * str3 = "}}";
-    const char * str4 = "~}}";
-    
+    struct handlebars_string * str1 = handlebars_string_ctor(context, HBS_STRL("{{"));
+    struct handlebars_string * str2 = handlebars_string_ctor(context, HBS_STRL("{{~"));
+    struct handlebars_string * str3 = handlebars_string_ctor(context, HBS_STRL("}}"));
+    struct handlebars_string * str4 = handlebars_string_ctor(context, HBS_STRL("~}}"));
+
     memset(&node, 0, sizeof(struct handlebars_ast_node));
     
     handlebars_ast_helper_set_strip_flags(&node, str1, str3);
@@ -49,55 +40,55 @@ END_TEST
 
 START_TEST(test_ast_helper_strip_comment)
 {
-    char * tmp;
+    struct handlebars_string * tmp;
 
-    tmp = handlebars_talloc_strdup(ctx, "");
+    tmp = handlebars_string_ctor(context, HBS_STRL(""));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, "");
+    ck_assert_str_eq(tmp->val, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "blah");
+    tmp = handlebars_string_ctor(context, HBS_STRL("blah1"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, "blah");
+    ck_assert_str_eq(tmp->val, "blah1");
 
-    tmp = handlebars_talloc_strdup(ctx, "{");
+    tmp = handlebars_string_ctor(context, HBS_STRL("{"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, "{");
+    ck_assert_str_eq(tmp->val, "{");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{!");
+    tmp = handlebars_string_ctor(context, HBS_STRL("{{!"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, "");
+    ck_assert_str_eq(tmp->val, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{~!--");
+    tmp = handlebars_string_ctor(context, HBS_STRL("{{~!--"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, "");
+    ck_assert_str_eq(tmp->val, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{!-- blah");
+    tmp = handlebars_string_ctor(context, HBS_STRL("{{!-- blah"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, " blah");
+    ck_assert_str_eq(tmp->val, " blah");
 
-    tmp = handlebars_talloc_strdup(ctx, "}}");
+    tmp = handlebars_string_ctor(context, HBS_STRL("}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, "");
+    ck_assert_str_eq(tmp->val, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "--}}");
+    tmp = handlebars_string_ctor(context, HBS_STRL("--}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, "");
+    ck_assert_str_eq(tmp->val, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{!}}");
+    tmp = handlebars_string_ctor(context, HBS_STRL("{{!}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, "");
+    ck_assert_str_eq(tmp->val, "");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{! foo }}");
+    tmp = handlebars_string_ctor(context, HBS_STRL("{{! foo }}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, " foo ");
+    ck_assert_str_eq(tmp->val, " foo ");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{!-- bar --}}");
+    tmp = handlebars_string_ctor(context, HBS_STRL("{{!-- bar --}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, " bar ");
+    ck_assert_str_eq(tmp->val, " bar ");
 
-    tmp = handlebars_talloc_strdup(ctx, "{{~!-- baz --~}}");
+    tmp = handlebars_string_ctor(context, HBS_STRL("{{~!-- baz --~}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp, " baz ");
+    ck_assert_str_eq(tmp->val, " baz ");
 }
 END_TEST
 
@@ -116,6 +107,8 @@ int main(void)
     int number_failed;
     int memdebug;
     int error;
+
+    talloc_set_log_stderr();
     
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
