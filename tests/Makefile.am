@@ -22,25 +22,27 @@ check_PROGRAMS = \
 	test_spec_handlebars \
 	test_spec_mustache
 
-test_main_SOURCES = utils.h utils.c fixtures.c test_main.c
-test_ast_SOURCES = utils.h utils.c fixtures.c test_ast.c
-test_ast_helpers_SOURCES = utils.h utils.c fixtures.c test_ast_helpers.c
-test_ast_list_SOURCES = utils.h utils.c fixtures.c test_ast_list.c
-test_cache_SOURCES = utils.h utils.c fixtures.c test_cache.c
-test_compiler_SOURCES = utils.h utils.c fixtures.c test_compiler.c
-test_map_SOURCES = utils.h utils.c fixtures.c test_map.c
-test_opcode_printer_SOURCES = utils.h utils.c fixtures.c test_opcode_printer.c
-test_opcodes_SOURCES = utils.h utils.c fixtures.c test_opcodes.c
-test_scanners_SOURCES = utils.h utils.c fixtures.c test_scanners.c
-test_string_SOURCES = utils.h utils.c fixtures.c test_string.c
-test_token_SOURCES = utils.h utils.c fixtures.c test_token.c
-test_utils_SOURCES = utils.h utils.c fixtures.c test_utils.c
-test_value_SOURCES = utils.h utils.c fixtures.c test_value.c
-test_spec_handlebars_parser_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_parser.c
-test_spec_handlebars_tokenizer_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_tokenizer.c
-test_spec_handlebars_compiler_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars_compiler.c
-test_spec_handlebars_SOURCES = utils.h utils.c fixtures.c test_spec_handlebars.c
-test_spec_mustache_SOURCES = utils.h utils.c fixtures.c test_spec_mustache.c
+COMMONFILES = utils.h utils.c fixtures.c adler32.c
+
+test_main_SOURCES = $(COMMONFILES) test_main.c
+test_ast_SOURCES = $(COMMONFILES) test_ast.c
+test_ast_helpers_SOURCES = $(COMMONFILES) test_ast_helpers.c
+test_ast_list_SOURCES = $(COMMONFILES) test_ast_list.c
+test_cache_SOURCES = $(COMMONFILES) test_cache.c
+test_compiler_SOURCES = $(COMMONFILES) test_compiler.c
+test_map_SOURCES = $(COMMONFILES) test_map.c
+test_opcode_printer_SOURCES = $(COMMONFILES) test_opcode_printer.c
+test_opcodes_SOURCES = $(COMMONFILES) test_opcodes.c
+test_scanners_SOURCES = $(COMMONFILES) test_scanners.c
+test_string_SOURCES = $(COMMONFILES) test_string.c
+test_token_SOURCES = $(COMMONFILES) test_token.c
+test_utils_SOURCES = $(COMMONFILES) test_utils.c
+test_value_SOURCES = $(COMMONFILES) test_value.c
+test_spec_handlebars_parser_SOURCES = $(COMMONFILES) test_spec_handlebars_parser.c
+test_spec_handlebars_tokenizer_SOURCES = $(COMMONFILES) test_spec_handlebars_tokenizer.c
+test_spec_handlebars_compiler_SOURCES = $(COMMONFILES) test_spec_handlebars_compiler.c
+test_spec_handlebars_SOURCES = $(COMMONFILES) test_spec_handlebars.c
+test_spec_mustache_SOURCES = $(COMMONFILES) test_spec_mustache.c
 
 TESTS = \
 	test_main \
@@ -65,7 +67,7 @@ TESTS = \
 
 if HANDLEBARS_MEMORY
 check_PROGRAMS += test_random_alloc_fail
-test_random_alloc_fail_SOURCES = utils.h utils.c fixtures.c test_random_alloc_fail.c
+test_random_alloc_fail_SOURCES = $(COMMONFILES) test_random_alloc_fail.c
 TESTS += test_random_alloc_fail
 endif
 

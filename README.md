@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/jbboehr/handlebars.c.svg?branch=master)](https://travis-ci.org/jbboehr/handlebars.c)
 [![Coverage Status](https://coveralls.io/repos/jbboehr/handlebars.c/badge.svg?branch=master&service=github)](https://coveralls.io/github/jbboehr/handlebars.c?branch=master)
-[![License](https://img.shields.io/badge/license-LGPLv3-brightgreen.svg)](LICENSE.md)
+[![License](https://img.shields.io/badge/license-LGPLv2.1-brightgreen.svg)](LICENSE.md)
 
 C implementation of [handlebars.js](https://github.com/wycats/handlebars.js/),
 developed in conjunction with [php-handlebars](https://github.com/jbboehr/php-handlebars)
@@ -69,5 +69,5 @@ cd handlebars.c
 
 ## License
 
-This project is licensed under the [LGPLv3](http://www.gnu.org/licenses/lgpl-3.0.txt).
+This project is licensed under the [LGPLv2.1 or later](LICENSE.md).
 handlebars.js is licensed under the [MIT license](http://opensource.org/licenses/MIT).
