@@ -1,3 +1,21 @@
+/**
+ * Copyright (C) 2016 John Boehr
+ *
+ * This file is part of handlebars.c.
+ *
+ * handlebars.c is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 2.1 of the License, or
+ * (at your option) any later version.
+ *
+ * handlebars.c is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -32,8 +50,6 @@
 #include "handlebars_helpers.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
-
-const int MOD_ADLER = 65521;
 
 
 
@@ -170,22 +186,6 @@ error:
     return ret;
 }
 
-// https://en.wikipedia.org/wiki/Adler-32
-uint32_t adler32(unsigned char *data, size_t len)
-{
-	uint32_t a = 1, b = 0;
-	size_t index;
-
-	/* Process each byte of the data in order */
-	for (index = 0; index < len; ++index)
-	{
-		a = (a + data[index]) % MOD_ADLER;
-		b = (b + a) % MOD_ADLER;
-	}
-
-	return (b << 16) | a;
-}
-
 
 
 /* Loaders */
@@ -246,6 +246,3 @@ char ** json_load_known_helpers(void * ctx, struct json_object * object)
 
     return known_helpers;
 }
-
-
-/* Helpers/Lambdas */
