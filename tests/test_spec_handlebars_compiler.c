@@ -65,6 +65,8 @@ struct compiler_test {
     bool opt_prevent_indent;
     bool opt_explicit_partial_context;
     bool opt_ignore_standalone;
+    bool strict;
+    bool assume_objects;
     long flags;
 
     struct handlebars_context * ctx;
@@ -72,7 +74,7 @@ struct compiler_test {
 
 static const char * suite_names[] = {
   "basic", "blocks", "builtins", "data", "helpers", "partials",
-  "regressions", "string-params", "subexpressions", "track-ids",
+  "regressions", "strict", "string-params", "subexpressions", "track-ids",
   "whitespace-control", NULL
 };
 
@@ -459,13 +461,31 @@ static int loadSpecTestCompileOptions(struct compiler_test * test, json_object *
             test->flags |= handlebars_compiler_flag_explicit_partial_context;
         }
     }
-    
+
     // Get explicit partial context
     cur = json_object_object_get(object, "ignoreStandalone");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->opt_ignore_standalone = json_object_get_boolean(cur);
         if( test->opt_ignore_standalone ) {
             test->flags |= handlebars_compiler_flag_ignore_standalone;
+        }
+    }
+
+    // Get explicit partial context
+    cur = json_object_object_get(object, "strict");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->strict = json_object_get_boolean(cur);
+        if( test->strict ) {
+            test->flags |= handlebars_compiler_flag_strict;
+        }
+    }
+
+    // Get explicit partial context
+    cur = json_object_object_get(object, "assumeObjects");
+    if( cur && json_object_get_type(cur) == json_type_boolean ) {
+        test->assume_objects = json_object_get_boolean(cur);
+        if( test->assume_objects ) {
+            test->flags |= handlebars_compiler_flag_assume_objects;
         }
     }
 

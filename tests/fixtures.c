@@ -1229,6 +1229,12 @@ FIXTURE_FN(3407223629)
     return result;
 }
 
+FIXTURE_FN(3477736473)
+{
+    // "function () {return this.world; }"
+    return handlebars_value_map_str_find(options->scope, HBS_STRL("world"));
+}
+
 FIXTURE_FN(3578728160)
 {
     // "function () {\n            return 'undefined!';\n          }"
@@ -1344,6 +1350,11 @@ FIXTURE_FN(3878511480)
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string_steal(result, tmp);
     return result;
+}
+
+FIXTURE_FN(3963629287)
+{
+    FIXTURE_STRING("success");
 }
 
 FIXTURE_FN(4005129518)
@@ -1539,6 +1550,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(3328314220);
         FIXTURE_CASE(3379432388);
         FIXTURE_CASE(3407223629);
+        FIXTURE_CASE(3477736473);
         FIXTURE_CASE(3578728160);
         FIXTURE_CASE(3659403207);
         FIXTURE_CASE(3691188061);
@@ -1547,6 +1559,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(3728875550);
         FIXTURE_CASE(3781305181);
         FIXTURE_CASE(3878511480);
+        FIXTURE_CASE(3963629287);
         FIXTURE_CASE(4005129518);
         FIXTURE_CASE(4112130635);
         FIXTURE_CASE(4158918668);
@@ -1560,6 +1573,9 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE_ALIAS(2836204191, 739773491);
         FIXTURE_CASE_ALIAS(3153085867, 2919388099);
         FIXTURE_CASE_ALIAS(3584035731, 3697740723);
+        FIXTURE_CASE_ALIAS(2852917582, 1872958178);
+        FIXTURE_CASE_ALIAS(2337343947, 126946175);
+        FIXTURE_CASE_ALIAS(2443446763, 126946175);
 
         default:
             fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, handlebars_value_to_string(jsvalue)->val);

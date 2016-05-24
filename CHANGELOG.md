@@ -6,6 +6,9 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+### Added
+- `strict` and `assumeObjects` flags
+
 ## [0.5.1] - 2016-05-05
 
 ### Changed

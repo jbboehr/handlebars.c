@@ -97,6 +97,8 @@ static void readOpts(int argc, char * argv[])
         {"no-escape", no_argument,              0,  'U' },
         {"ignore-standalone", no_argument,      0,  'G' },
         {"alternate-decorators", no_argument,   0,  'A' },
+        {"strict",    no_argument,              0,  's' },
+        {"assume-objects", no_argument,         0,  'a' },
         {0,           0,                        0,  0   }
     };
     
@@ -151,6 +153,12 @@ start:
             break;
         case 'A':
             compiler_flags |= handlebars_compiler_flag_alternate_decorators;
+            break;
+        case 's':
+            compiler_flags |= handlebars_compiler_flag_strict;
+            break;
+        case 'a':
+            compiler_flags |= handlebars_compiler_flag_assume_objects;
             break;
         
         // input

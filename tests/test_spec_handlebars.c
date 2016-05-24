@@ -294,8 +294,6 @@ int shouldnt_skip(struct generic_test * test)
 #undef MYCCHECK
 }
 
-#define NDEBUG
-
 static inline void run_test(struct generic_test * test, int _i)
 {
     struct handlebars_context * ctx;
@@ -420,12 +418,13 @@ static inline void run_test(struct generic_test * test, int _i)
     handlebars_vm_execute(vm, module, context);
 
 #ifndef NDEBUG
+    fprintf(stderr, "TMPL %s\n", test->tmpl);
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
         fprintf(stderr, "ACTUAL: %s\n", vm->buffer->val);
         fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer->val, test->expected) ? "PASS" : "FAIL");
-    } else if( ctx->msg ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->msg);
+    } else if( ctx->e->msg ) {
+        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
     }
 #endif
 
@@ -559,6 +558,7 @@ int main(void)
     loadSpec("helpers");
     loadSpec("partials");
     loadSpec("regressions");
+    loadSpec("strict");
     //loadSpec("string-params");
     loadSpec("subexpressions");
     //loadSpec("track-ids");

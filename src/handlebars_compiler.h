@@ -47,7 +47,7 @@ enum handlebars_compiler_flag {
      * @brief No flags
      */
     handlebars_compiler_flag_none = 0,
-    
+
     // Option flags
 
     /**
@@ -74,7 +74,7 @@ enum handlebars_compiler_flag {
      * @brief Only allow known helpers
      */
     handlebars_compiler_flag_known_helpers_only = (1 << 4),
-    
+
     /**
      * @brief Prevent partial indent
      */
@@ -83,10 +83,16 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_use_data = (1 << 6),
 
     handlebars_compiler_flag_explicit_partial_context = (1 << 7),
-    
+
     handlebars_compiler_flag_ignore_standalone = (1 << 8),
-    
+
     handlebars_compiler_flag_alternate_decorators = (1 << 9),
+
+    handlebars_compiler_flag_strict = (1 << 10),
+#define handlebars_compiler_flag_strict handlebars_compiler_flag_strict
+
+    handlebars_compiler_flag_assume_objects = (1 << 11),
+#define handlebars_compiler_flag_assume_objects handlebars_compiler_flag_assume_objects
 
     // Composite option flags
 
@@ -98,7 +104,7 @@ enum handlebars_compiler_flag {
     /**
      * @brief All flags
      */
-    handlebars_compiler_flag_all = ((1 << 10) - 1)
+    handlebars_compiler_flag_all = ((1 << 12) - 1)
 };
 
 enum handlebars_compiler_result_flag {
@@ -122,7 +128,7 @@ struct handlebars_block_param_stack {
      * @brief Block param stack
      */
     struct handlebars_block_param_pair s[HANDLEBARS_COMPILER_STACK_SIZE];
-    
+
     /**
      * @brief Block param stack index
      */
@@ -134,7 +140,7 @@ struct handlebars_source_node_stack {
      * @brief Source node stack
      */
     struct handlebars_ast_node * s[HANDLEBARS_COMPILER_STACK_SIZE];
-    
+
     /**
      * @brief Source node stack index
      */
@@ -186,22 +192,22 @@ struct handlebars_compiler {
     struct handlebars_program * program;
     struct handlebars_block_param_stack * bps;
     struct handlebars_source_node_stack sns;
-    
+
     /**
      * @brief Array of known helpers
      */
     const char ** known_helpers;
-    
+
     /**
      * @brief Symbol index counter
      */
     long guid;
-    
+
     /**
      * @brief Compiler flags
      */
     unsigned long flags;
-    
+
     // Option flags
     bool string_params;
     bool track_ids;
@@ -213,6 +219,8 @@ struct handlebars_compiler {
     bool explicit_partial_context;
     bool ignore_standalone;
     bool alternate_decorators;
+    bool strict;
+    bool assume_objects;
 };
 
 /**
@@ -228,7 +236,7 @@ void handlebars_compiler_compile(
 
 /**
  * @brief Construct a compiler context object.
- * 
+ *
  * @param[in] context The handlebars context
  * @return the compiler context pointer
  */
@@ -238,7 +246,7 @@ struct handlebars_compiler * handlebars_compiler_ctor(
 
 /**
  * @brief Free a compiler context and it's resources.
- * 
+ *
  * @param[in] compiler
  * @return void
  */
@@ -246,7 +254,7 @@ void handlebars_compiler_dtor(struct handlebars_compiler * compiler) HBS_ATTR_NO
 
 /**
  * @brief Get the compiler flags.
- * 
+ *
  * @param[in] compiler
  * @return the compiler flags
  */
@@ -254,7 +262,7 @@ unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compile
 
 /**
  * @brief Set the compiler flags, with handlebars_compiler_flag_all as a mask.
- * 
+ *
  * @param[in] compiler
  * @param[in] flags
  * @return void

@@ -173,6 +173,8 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsign
     compiler->explicit_partial_context = (compiler->flags & handlebars_compiler_flag_explicit_partial_context) != 0;
     compiler->ignore_standalone = (compiler->flags & handlebars_compiler_flag_ignore_standalone) != 0;
     compiler->alternate_decorators = (compiler->flags & handlebars_compiler_flag_alternate_decorators) != 0;
+    compiler->strict = (compiler->flags & handlebars_compiler_flag_strict) != 0;
+    compiler->assume_objects = (compiler->flags & handlebars_compiler_flag_assume_objects) != 0;
 }
 
 
@@ -976,7 +978,7 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
     __OPL(get_context, path->node.path.depth);
     push_program_pair(compiler, programGuid, inverseGuid);
 
-	path->node.path.strict = 1;
+	path->node.path.strict = true;
     handlebars_compiler_accept/*_id*/(compiler, path);
     
     do {
@@ -1000,7 +1002,7 @@ static inline void handlebars_compiler_accept_sexpr_simple(
     path = handlebars_ast_node_get_path(sexpr);
     
     if( path ) {
-    	path->node.path.strict = 1;
+    	path->node.path.strict = true;
         handlebars_compiler_accept/*_data*/(compiler, path);
     }
     

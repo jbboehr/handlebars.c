@@ -652,6 +652,8 @@ ACCEPT_FUNCTION(lookup_data)
     assert(opcode->op1.type == handlebars_operand_type_long);
     assert(opcode->op2.type == handlebars_operand_type_array);
     assert(opcode->op3.type == handlebars_operand_type_boolean || opcode->op3.type == handlebars_operand_type_null);
+    bool is_strict = (vm->flags & handlebars_compiler_flag_strict) || (vm->flags & handlebars_compiler_flag_assume_objects);
+    bool require_terminal = (vm->flags & handlebars_compiler_flag_strict) && opcode->op3.data.boolval;
 
     long depth = opcode->op1.data.longval;
     size_t arr_len = opcode->op2.data.array.count;
@@ -672,6 +674,8 @@ ACCEPT_FUNCTION(lookup_data)
         val = tmp;
     } else if( 0 == strcmp(first->string->val, "root") ) {
         val = BOTTOM(vm->contextStack);
+    } else if( vm->flags & handlebars_compiler_flag_assume_objects ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
     } else {
         goto done_and_null;
     }
@@ -680,17 +684,24 @@ ACCEPT_FUNCTION(lookup_data)
 
     for( i = 1 ; i < arr_len; i++ ) {
         struct handlebars_operand_string * part = arr + i;
-        if( val == NULL || handlebars_value_get_type(val) != HANDLEBARS_VALUE_TYPE_MAP ) {
+        if( val && handlebars_value_get_type(val) == HANDLEBARS_VALUE_TYPE_MAP ) {
+            tmp = handlebars_value_map_find(val, part->string);
+            handlebars_value_delref(val);
+            val = tmp;
+        } else if( is_strict ) {
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+        } else {
             goto done_and_null;
         }
-        tmp = handlebars_value_map_find(val, part->string);
-        handlebars_value_delref(val);
-        val = tmp;
     }
 
     if( !val ) {
         done_and_null:
-        val = handlebars_value_ctor(CONTEXT);
+        if( require_terminal ) {
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+        } else {
+            val = handlebars_value_ctor(CONTEXT);
+        }
     }
 
     PUSH(vm->stack, val);
@@ -707,6 +718,8 @@ ACCEPT_FUNCTION(lookup_on_context)
     struct handlebars_operand_string * arr = opcode->op1.data.array.array;
     struct handlebars_operand_string * arr_end = arr + arr_len;
     long index = -1;
+    bool is_strict = (vm->flags & handlebars_compiler_flag_strict) || (vm->flags & handlebars_compiler_flag_assume_objects);
+    bool require_terminal = (vm->flags & handlebars_compiler_flag_strict) && opcode->op3.data.boolval;
 
     if( !opcode->op4.data.boolval && (vm->flags & handlebars_compiler_flag_compat) ) {
         depthed_lookup(vm, arr->string);
@@ -720,29 +733,39 @@ ACCEPT_FUNCTION(lookup_on_context)
     assert(value != NULL);
 
     do {
+        bool is_last = arr == arr_end - 1;
         if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
             tmp = handlebars_value_map_find(value, arr->string);
             handlebars_value_try_delref(value);
             value = tmp;
         } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-            if( sscanf(arr->string->val, "%ld", &index) ) {
+            if (sscanf(arr->string->val, "%ld", &index)) {
                 tmp = handlebars_value_array_find(value, index);
             } else {
                 tmp = NULL;
             }
             handlebars_value_try_delref(value);
             value = tmp;
+        } else if( vm->flags & handlebars_compiler_flag_assume_objects && is_last ) {
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
         } else {
             goto done_and_null;
         }
         if( !value ) {
+            if( is_strict && !is_last ) {
+                handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+            }
             goto done_and_null;
         }
     } while( ++arr < arr_end );
 
     if( value == NULL ) {
         done_and_null:
-        value = handlebars_value_ctor(CONTEXT);
+        if( require_terminal ) {
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+        } else {
+            value = handlebars_value_ctor(CONTEXT);
+        }
     }
 
     handlebars_value_delref(POP(vm->stack));
