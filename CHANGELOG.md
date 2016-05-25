@@ -6,6 +6,10 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+### Fixed
+- `MAP_ANONYMOUS` undefined on OS X
+- pthread spinlocks unavailable on OS X
+
 ## [0.5.1] - 2016-05-05
 
 ### Changed
