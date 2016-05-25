@@ -41,12 +41,19 @@
 #include "handlebars_value.h"
 #include "handlebars_opcode_serializer.h"
 
-
 #undef CONTEXT
 #define CONTEXT HBSCTX(cache)
 
 #if defined(__ATOMIC_SEQ_CST) && !defined(INTELLIJ)
 #define HAVE_ATOMIC_BUILTINS 1
+#endif
+
+#if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+
+#ifndef __APPLE__
+#define USE_SPINLOCK 1
 #endif
 
 static const char head[] = "handlebars shared opcode cache";
@@ -95,7 +102,11 @@ struct handlebars_cache_mmap {
 
     bool in_reset;
 
+#if USE_SPINLOCK
     pthread_spinlock_t write_lock;
+#else
+    pthread_mutex_t write_lock;
+#endif
 
     long refcount;
 };
@@ -145,7 +156,11 @@ static inline void lock(struct handlebars_cache * cache)
     int rc;
 
     // Lock
+#if USE_SPINLOCK
     rc = pthread_spin_lock(&intern->write_lock);
+#else
+    rc = pthread_mutex_lock(&intern->write_lock);
+#endif
     if( rc != 0 ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "pthread lock error: %s (%d)", strerror(rc), rc);
     }
@@ -157,7 +172,11 @@ static inline void unlock(struct handlebars_cache * cache)
     int rc;
 
     // Unlock
+#if USE_SPINLOCK
     rc = pthread_spin_unlock(&intern->write_lock);
+#else
+    rc = pthread_mutex_unlock(&intern->write_lock);
+#endif
     if( rc != 0 ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "pthread unlock error: %s (%d)", strerror(rc), rc);
     }
@@ -437,9 +456,16 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
     cache_reset(cache);
 
+#if USE_SPINLOCK
     int rc = pthread_spin_init(&intern->write_lock, PTHREAD_PROCESS_SHARED);
+#else
+    pthread_mutexattr_t mattr;
+    pthread_mutexattr_init(&mattr);
+    pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
+    int rc = pthread_mutex_init(&intern->write_lock, &mattr);
+#endif
     if( rc != 0 ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to init spin lock: %s (%d)", strerror(rc), rc);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to init lock: %s (%d)", strerror(rc), rc);
     }
 
 
