@@ -114,7 +114,7 @@ START_TEST(test_cache_gc_entries)
 }
 END_TEST
 
-static void execute_for_cache(struct handlebars_cache * cache)
+static void execute_gc_test(struct handlebars_cache * cache)
 {
     //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
     struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
@@ -159,23 +159,93 @@ static void execute_for_cache(struct handlebars_cache * cache)
     //ck_assert_int_eq(0, handlebars_cache_stat(cache).current_entries);
 }
 
-START_TEST(test_simple_cache)
+static void execute_reset_test(struct handlebars_cache * cache)
+{
+    //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
+    handlebars_value_convert(value);
+
+    struct handlebars_value * partial = handlebars_value_ctor(context);
+    handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
+
+    struct handlebars_value * partials = handlebars_value_ctor(context);
+    handlebars_value_map_init(partials);
+    handlebars_map_str_add(partials->v.map, HBS_STRL("foo"), partial);
+
+    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{>foo}}"));
+    handlebars_parse(parser);
+    handlebars_compiler_compile(compiler, parser->program);
+
+    struct handlebars_module * module = handlebars_program_serialize(context, compiler->program);
+
+    vm->helpers = handlebars_value_ctor(context);
+    handlebars_value_map_init(vm->helpers);
+    vm->partials = partials;
+
+    vm->cache = cache;
+
+    // This shouldn't use the cache
+    handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(vm->buffer->val, "baz");
+
+    ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
+    ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
+
+    // This should use the cache
+    handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(vm->buffer->val, "baz");
+
+    ck_assert_int_ge(handlebars_cache_stat(cache).hits, 1);
+    ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
+
+    // Reset
+    handlebars_cache_reset(cache);
+
+    // This shouldn't use the cache
+    handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(vm->buffer->val, "baz");
+
+    ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
+    ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
+}
+
+START_TEST(test_simple_cache_gc)
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
-    execute_for_cache(cache);
+    execute_gc_test(cache);
     handlebars_cache_dtor(cache);
 END_TEST
 
-START_TEST(test_lmdb_cache)
+START_TEST(test_simple_cache_reset)
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    execute_reset_test(cache);
+    handlebars_cache_dtor(cache);
+END_TEST
+
+START_TEST(test_lmdb_cache_gc)
     char tmp[256];
     snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
     struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
-    execute_for_cache(cache);
+    execute_gc_test(cache);
     handlebars_cache_dtor(cache);
 END_TEST
 
-START_TEST(test_mmap_cache)
+START_TEST(test_lmdb_cache_reset)
+    char tmp[256];
+    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
+    execute_reset_test(cache);
+    handlebars_cache_dtor(cache);
+END_TEST
+
+START_TEST(test_mmap_cache_gc)
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
-    execute_for_cache(cache);
+    execute_gc_test(cache);
+    handlebars_cache_dtor(cache);
+END_TEST
+
+START_TEST(test_mmap_cache_reset)
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
+    execute_gc_test(cache);
     handlebars_cache_dtor(cache);
 END_TEST
 
@@ -185,9 +255,12 @@ Suite * parser_suite(void)
     Suite * s = suite_create(title);
 
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
-    REGISTER_TEST_FIXTURE(s, test_simple_cache, "Simple Cache");
-    REGISTER_TEST_FIXTURE(s, test_lmdb_cache, "LMDB Cache");
-    REGISTER_TEST_FIXTURE(s, test_mmap_cache, "MMAP Cache");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_gc, "Simple Cache (GC)");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_reset, "Simple Cache (Reset)");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
 
     return s;
 }

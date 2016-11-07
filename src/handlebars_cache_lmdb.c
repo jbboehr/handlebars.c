@@ -250,6 +250,28 @@ error:
     return intern->stat;
 }
 
+static void cache_reset(struct handlebars_cache * cache)
+{
+    struct handlebars_cache_lmdb * intern = (struct handlebars_cache_lmdb *) cache->internal;
+    int err;
+    MDB_txn *txn;
+    MDB_dbi dbi;
+    MDB_stat stat;
+
+    err = mdb_txn_begin(intern->env, NULL, 0, &txn);
+    HANDLE_RC(err);
+
+    err = mdb_dbi_open(txn, NULL, MDB_CREATE, &dbi);
+    if( err != 0 ) goto error;
+
+    err = mdb_drop(txn, dbi, 0);
+    if( err != 0 ) goto error;
+
+    error:
+    mdb_txn_abort(txn);
+    HANDLE_RC(err);
+}
+
 #undef CONTEXT
 #define CONTEXT context
 
@@ -266,6 +288,7 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     cache->gc = &cache_gc;
     cache->release = &cache_release;
     cache->stat = &cache_stat;
+    cache->reset = &cache_reset;
 
     struct handlebars_cache_lmdb * intern = MC(handlebars_talloc_zero(context, struct handlebars_cache_lmdb));
     cache->internal = intern;

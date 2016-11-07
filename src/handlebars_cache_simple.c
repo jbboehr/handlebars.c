@@ -174,6 +174,17 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
     return stat;
 }
 
+static void cache_reset(struct handlebars_cache * cache)
+{
+    struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
+    handlebars_talloc_free(intern->map);
+    struct handlebars_map * map = talloc_steal(cache, handlebars_map_ctor(HBSCTX(cache)));
+    intern->map = map;
+    map->ctx = HBSCTX(cache);
+
+    memset(&intern->stat, 0, sizeof(intern->stat));
+}
+
 #undef CONTEXT
 #define CONTEXT context
 
@@ -188,6 +199,7 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     cache->gc = &cache_gc;
     cache->release = &cache_release;
     cache->stat = &cache_stat;
+    cache->reset = &cache_reset;
 
     struct handlebars_cache_simple * intern = MC(handlebars_talloc_zero(cache, struct handlebars_cache_simple));
     cache->internal = intern;

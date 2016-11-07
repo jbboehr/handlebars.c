@@ -244,12 +244,20 @@ static void cache_reset(struct handlebars_cache * cache)
         goto error;
     }
 
+    // Unprotect/Lock
+    protect(cache, false);
+    lock(cache);
+
     // Initialize header
     intern->table_entries = 0;
     intern->data_length = 0;
 
     // Zero out the hash table
     memset(intern->table, 0, intern->table_size);
+
+    // Protect/Unlock
+    unlock(cache);
+    protect(cache, true);
 
 error:
     // Unlock
@@ -354,8 +362,10 @@ static void cache_add(
 
     // Check for failure
     if( unlikely(!entry.key || !entry.data) ) {
+        unlock(cache);
+        protect(cache, true);
         cache_reset(cache);
-        goto error;
+        return;
     }
 
     // Pre-patch pointers
@@ -414,6 +424,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     cache->gc = &cache_gc;
     cache->release = &cache_release;
     cache->stat = &cache_stat;
+    cache->reset = &cache_reset;
 
     talloc_set_destructor(cache, cache_dtor);
 
@@ -454,8 +465,6 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     intern->table = ((void *) intern) + intern_size;
     intern->data = ((void *) intern) + intern_size + table_size;
 
-    cache_reset(cache);
-
 #if USE_SPINLOCK
     int rc = pthread_spin_init(&intern->write_lock, PTHREAD_PROCESS_SHARED);
 #else
@@ -468,6 +477,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to init lock: %s (%d)", strerror(rc), rc);
     }
 
+    cache_reset(cache);
 
     return cache;
 }
