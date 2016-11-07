@@ -63,6 +63,10 @@ typedef struct handlebars_cache_stat (*handlebars_cache_stat_func)(
     struct handlebars_cache * cache
 );
 
+typedef void (*handlebars_cache_reset_func)(
+    struct handlebars_cache * cache
+);
+
 struct handlebars_cache_stat {
     const char * name;
 
@@ -122,6 +126,8 @@ struct handlebars_cache {
     handlebars_cache_release_func release;
 
     handlebars_cache_stat_func stat;
+
+    handlebars_cache_reset_func reset;
 
     //! The max amount of time to keep an entry, in seconds, or zero to disable
     double max_age;
@@ -197,6 +203,13 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
  * @return The number of entries removed
  */
 #define handlebars_cache_gc(cache) (cache->gc(cache))
+
+/**
+ * @brief Reset the cache
+ * @param[in] cache The cache
+ * @return void
+ */
+#define handlebars_cache_reset(cache) (cache->reset(cache))
 
 /**
  * @brief Fetch cache statistics

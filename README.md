@@ -52,7 +52,7 @@ cd handlebars.c
 
 ```bash
 # Install dependencies
-brew install autoconf automake bison flex gcc json-c libtool libyaml pkg-config talloc
+brew install autoconf automake bison flex gcc json-c libtool libyaml lmdb pkg-config talloc
 
 # Install testing dependencies
 brew install check lcov pcre
