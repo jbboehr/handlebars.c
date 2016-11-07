@@ -414,6 +414,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     cache->gc = &cache_gc;
     cache->release = &cache_release;
     cache->stat = &cache_stat;
+    cache->reset = &cache_reset;
 
     talloc_set_destructor(cache, cache_dtor);
 
