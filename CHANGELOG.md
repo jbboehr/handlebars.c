@@ -7,7 +7,7 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 ## [Unreleased]
 
 ### Added
-- handlebars_cache_reset to completely flush the cache
+- `handlebars_cache_reset()` to completely flush the cache
 
 ## [0.5.2] - 2016-08-12
 
