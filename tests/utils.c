@@ -52,7 +52,6 @@
 #include "handlebars_vm.h"
 
 
-
 TALLOC_CTX * root;
 struct handlebars_context * context;
 struct handlebars_parser * parser;
@@ -218,6 +217,12 @@ long json_load_compile_flags(struct json_object * object)
     }
     if( (cur = json_object_object_get(object, "ignoreStandalone")) && json_object_get_boolean(cur) ) {
         flags |= handlebars_compiler_flag_ignore_standalone;
+    }
+    if( (cur = json_object_object_get(object, "strict")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_strict;
+    }
+    if( (cur = json_object_object_get(object, "assumeObjects")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_assume_objects;
     }
 
     return flags;
