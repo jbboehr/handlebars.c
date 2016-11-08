@@ -24,6 +24,6 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 - Changed the license from `LGPLv3` to `LGPLv2.1 or later`
 
 [Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.6.0...HEAD
-[0.6.0]: https://github.com/jbboehr/handlebars.c/compare/v0.6.0...HEAD
-[0.5.2]: https://github.com/jbboehr/handlebars.c/compare/v0.5.1...v0.6.0
+[0.6.0]: https://github.com/jbboehr/handlebars.c/compare/v0.5.2...v0.6.0
+[0.5.2]: https://github.com/jbboehr/handlebars.c/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/jbboehr/handlebars.c/compare/v0.5.0...v0.5.1
