@@ -1,8 +1,5 @@
 language: c
 
-compiler:
-  - gcc
-
 sudo: required
 
 dist: trusty
@@ -14,7 +11,11 @@ env:
     - CFLAGS="-L$PREFIX/lib"
     - CPPFLAGS="-I$PREFIX/include"
     - PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
-    - CC="gcc-4.9"
+  matrix:
+    - MYCC="gcc-4.9"
+    - MYCC="gcc-5"
+    - MYCC="gcc-6"
+    - MYCC="gcc-7"
 
 cache: false
 
@@ -24,16 +25,18 @@ branches:
     - travis
 
 before_install:
+  - "CC=$MYCC"
   - travis_retry sudo apt-add-repository -y ppa:ubuntu-toolchain-r/test
   - travis_retry sudo apt-add-repository -y ppa:jbboehr/build-deps
   - travis_retry sudo apt-add-repository -y ppa:jbboehr/handlebars
   - travis_retry sudo apt-get update -y
-  - travis_retry sudo apt-get install -y automake bison check flex gcc-4.9 gperf lcov libjson-c-dev liblmdb-dev libpcre3-dev libtalloc-dev libyaml-dev pkg-config re2c
+  - travis_retry sudo apt-get install -y $CC
+  - travis_retry sudo apt-get install -y automake bison check flex gperf lcov libjson-c-dev liblmdb-dev libpcre3-dev libtalloc-dev libyaml-dev pkg-config re2c
   - travis_retry gem install coveralls-lcov
 
 install:
   - ./bootstrap
-  - ./configure --prefix="$PREFIX" --enable-handlebars-memory CFLAGS="--coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
+  - ./configure --prefix="$PREFIX" --enable-handlebars-memory CFLAGS="-g -O3 --coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
   - make clean all
 
 before_script:
