@@ -32,7 +32,8 @@ before_install:
   - travis_retry sudo apt-add-repository -y ppa:jbboehr/build-deps
   - travis_retry sudo apt-add-repository -y ppa:jbboehr/handlebars
   - travis_retry sudo apt-get update -y
-  - travis_retry sudo apt-get install -y automake bison check flex gcc-4.9 gperf lcov libjson-c-dev liblmdb-dev libpcre3-dev libtalloc-dev libyaml-dev pkg-config re2c
+  - travis_retry sudo apt-get install -y $CC
+  - travis_retry sudo apt-get install -y automake bison check flex gperf lcov libjson-c-dev liblmdb-dev libpcre3-dev libtalloc-dev libyaml-dev pkg-config re2c
   - travis_retry gem install coveralls-lcov
 
 install:
