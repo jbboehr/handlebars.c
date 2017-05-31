@@ -76,8 +76,8 @@ struct handlebars_string * handlebars_str_reduce(
     }
 
     while( NULL != (tok = (char *) handlebars_strnstr(tok, string->len - (tok - string->val), search, search_len)) ) {
-        memcpy(tok, replacement, replacement_len);
-        memcpy(tok + replacement_len, tok + search_len, string->len - search_len - (tok - string->val));
+        memmove(tok, replacement, replacement_len);
+        memmove(tok + replacement_len, tok + search_len, string->len - search_len - (tok - string->val));
         memset(string->val + string->len - search_len + replacement_len, 0, 1);
         string->len -= search_len - replacement_len;
 
