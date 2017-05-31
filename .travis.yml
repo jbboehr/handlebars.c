@@ -14,7 +14,11 @@ env:
     - CFLAGS="-L$PREFIX/lib"
     - CPPFLAGS="-I$PREFIX/include"
     - PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+  matrix:
     - CC="gcc-4.9"
+    - CC="gcc-5"
+    - CC="gcc-6"
+    - CC="gcc-7"
 
 cache: false
 
