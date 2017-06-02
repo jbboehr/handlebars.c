@@ -16,6 +16,7 @@ env:
     - MYCC="gcc-5"
     - MYCC="gcc-6"
     - MYCC="gcc-7"
+    - MYCC="clang-3.8"
 
 cache: false
 
