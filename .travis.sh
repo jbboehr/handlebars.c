@@ -20,6 +20,7 @@ case $1 in
 		apt-add-repository -y ppa:jbboehr/build-deps
 		apt-add-repository -y ppa:jbboehr/handlebars
 		apt-get update -y
+		apt-get install $MYCC
 		apt-get install -y automake bison flex gperf pkg-config re2c gcc-multilib
 		# install arch-specific packages
 		apt-get install -y check:$ARCH libjson-c-dev:$ARCH liblmdb-dev:$ARCH libpcre3-dev:$ARCH libtalloc-dev:$ARCH libyaml-dev:$ARCH libsubunit-dev:$ARCH
