@@ -13,7 +13,7 @@ env:
     - MYCC="gcc-5"
     - MYCC="gcc-6"
     - MYCC="gcc-7"
-    - MYCC="gcc-7"
+    - MYCC="gcc-4.9"
       ARCH="i386"
       CFLAGS="-m32"
       COVERAGE="false"
@@ -33,4 +33,3 @@ before_script: sudo ./.travis.sh before_script
 script: sudo ./.travis.sh script
 after_success: travis_retry sudo ./.travis.sh after_success
 after_failure: travis_retry sudo ./.travis.sh after_failure
-
