@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ex
+set -exE
 
 export CC="$MYCC"
 export PREFIX="$HOME/build"
@@ -30,6 +30,7 @@ case $1 in
 		;;
 
 	install)
+		trap "cat config.log" ERR
 		./bootstrap
 		./configure --build="$ARCH" --prefix="$PREFIX" --enable-handlebars-memory
 		make clean all
