@@ -6,6 +6,9 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+### Fixed
+= Test failure on 32-bit systems
+
 ## [0.6.1] - 2017-05-31
 
 ### Fixed
