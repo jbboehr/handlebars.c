@@ -6,12 +6,8 @@ dist: trusty
 
 env:
   global:
-    - PREFIX="$HOME/build"
-    - PATH="$PREFIX/bin:$PATH"
-    - CFLAGS="-L$PREFIX/lib"
-    - CPPFLAGS="-I$PREFIX/include"
-    - PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
     - ARCH="amd64"
+    - COVERAGE="true"
   matrix:
     - MYCC="gcc-4.9"
     - MYCC="gcc-5"
@@ -19,7 +15,9 @@ env:
     - MYCC="gcc-7"
     - MYCC="gcc-7
       ARCH="i386"
-      CFLAGS="-m32 -L$PREFIX/lib"
+      CFLAGS="-m32"
+    - MYCC="clang-3.8"
+      COVERAGE="false"
 
 cache: false
 
@@ -28,35 +26,10 @@ branches:
     - master
     - travis
 
-before_install:
-  - "CC=$MYCC"
-  - 'PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/usr/lib/$ARCH-linux-gnu/pkgconfig"'
-  - travis_retry sudo apt-add-repository -y ppa:ubuntu-toolchain-r/test
-  - travis_retry sudo apt-add-repository -y ppa:jbboehr/build-deps
-  - travis_retry sudo apt-add-repository -y ppa:jbboehr/handlebars
-  - travis_retry sudo apt-get update -y
-  - travis_retry sudo apt-get install -y $CC
-  - travis_retry sudo apt-get install -y automake bison flex gperf lcov pkg-config re2c gcc-multilib
-  - travis_retry sudo apt-get install -y check:$ARCH libjson-c-dev:$ARCH liblmdb-dev:$ARCH libpcre3-dev:$ARCH libtalloc-dev:$ARCH libyaml-dev:$ARCH libsubunit-dev:$ARCH
-  - travis_retry gem install coveralls-lcov
-
-install:
-  - ./bootstrap
-  - ./configure --build="$ARCH" --prefix="$PREFIX" --enable-handlebars-memory CFLAGS="-g -O3 --coverage -fprofile-arcs -ftest-coverage $CFLAGS" LDFLAGS="--coverage"
-  - make clean all
-
-before_script:
-  - lcov --directory . --zerocounters
-  - lcov --directory . --capture --compat-libtool --initial --output-file coverage.info
-
-script:
-  - make check install
-
-after_success:
-  - lcov --no-checksum --directory . --capture --compat-libtool --output-file coverage.info
-  - lcov --remove coverage.info "/usr*" --remove coverage.info "*/tests/*" --remove coverage.info "handlebars.tab.c" --remove coverage.info "handlebars.lex.c" --remove coverage.info "handlebars_scanners.c" --compat-libtool --output-file coverage.info
-  - coveralls-lcov coverage.info
-
-after_failure:
-  - for i in `find tests -name "*.log" 2>/dev/null`; do echo "-- START ${i}"; cat $i; echo "-- END"; done
+before_install: travis_retry ./.travis.sh before_install
+install: travis_retry ./.travis.sh install
+before_script: ./.travis.sh before_script
+script: ./.travis.sh before_install
+after_success: travis_retry ./.travis.sh after_success
+after_failure: travis_retry ./.travis.sh after_failure
 
