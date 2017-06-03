@@ -13,7 +13,7 @@ env:
     - MYCC="gcc-5"
     - MYCC="gcc-6"
     - MYCC="gcc-7"
-    - MYCC="gcc-7
+    - MYCC="gcc-7"
       ARCH="i386"
       CFLAGS="-m32"
     - MYCC="clang-3.8"
