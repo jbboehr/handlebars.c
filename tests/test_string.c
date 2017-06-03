@@ -23,17 +23,21 @@
 
 #include <check.h>
 #include <talloc.h>
+#include <limits.h>
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
-
 #include "handlebars_string.h"
 
 #include "utils.h"
 
 
 START_TEST(test_handlebars_string_hash)
+#if ULONG_MAX <= 4294967295
+    ck_assert_uint_eq(3127933309, handlebars_string_hash(HBS_STRL("foobar\xFF")));
+#else
     ck_assert_uint_eq(229466050689405, handlebars_string_hash(HBS_STRL("foobar\xFF")));
+#endif
 END_TEST
 
 START_TEST(test_handlebars_strnstr_1)
