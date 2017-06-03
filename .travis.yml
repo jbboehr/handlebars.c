@@ -11,11 +11,14 @@ env:
     - CFLAGS="-L$PREFIX/lib"
     - CPPFLAGS="-I$PREFIX/include"
     - PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+    - ARCH="amd64"
   matrix:
     - MYCC="gcc-4.9"
     - MYCC="gcc-5"
     - MYCC="gcc-6"
     - MYCC="gcc-7"
+    - MYCC="gcc-7
+      ARCH="i386"
 
 cache: false
 
@@ -31,7 +34,8 @@ before_install:
   - travis_retry sudo apt-add-repository -y ppa:jbboehr/handlebars
   - travis_retry sudo apt-get update -y
   - travis_retry sudo apt-get install -y $CC
-  - travis_retry sudo apt-get install -y automake bison check flex gperf lcov libjson-c-dev liblmdb-dev libpcre3-dev libtalloc-dev libyaml-dev pkg-config re2c
+  - travis_retry sudo apt-get install -y automake bison flex gperf lcov pkg-config re2c gcc-multilib
+  - travis_retry sudo apt-get install -y check:$ARCH libjson-c-dev:$ARCH liblmdb-dev:$ARCH libpcre3-dev:$ARCH libtalloc-dev:$ARCH libyaml-dev:$ARCH libsubunit-dev:$ARCH
   - travis_retry gem install coveralls-lcov
 
 install:
