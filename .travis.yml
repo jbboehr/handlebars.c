@@ -30,7 +30,7 @@ branches:
 
 before_install:
   - "CC=$MYCC"
-  - "PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/usr/lib/$ARCH-linux-gnu/pkgconfig"
+  - 'PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/usr/lib/$ARCH-linux-gnu/pkgconfig"'
   - travis_retry sudo apt-add-repository -y ppa:ubuntu-toolchain-r/test
   - travis_retry sudo apt-add-repository -y ppa:jbboehr/build-deps
   - travis_retry sudo apt-add-repository -y ppa:jbboehr/handlebars
