@@ -257,8 +257,10 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_gc, "Simple Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset, "Simple Cache (Reset)");
+#ifdef HAVE_LIBLMDB
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
+#endif
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
 
