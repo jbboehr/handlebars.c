@@ -221,6 +221,7 @@ START_TEST(test_simple_cache_reset)
     handlebars_cache_dtor(cache);
 END_TEST
 
+#ifdef HAVE_LIBLMDB
 START_TEST(test_lmdb_cache_gc)
     char tmp[256];
     snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
@@ -236,6 +237,21 @@ START_TEST(test_lmdb_cache_reset)
     execute_reset_test(cache);
     handlebars_cache_dtor(cache);
 END_TEST
+#else
+START_TEST(test_lmdb_cache_error)
+    jmp_buf buf;
+    char tmp[256];
+    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        ck_assert(1);
+        return;
+    }
+
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
+    ck_assert(0);
+END_TEST
+#endif
 
 START_TEST(test_mmap_cache_gc)
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
@@ -257,8 +273,12 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_gc, "Simple Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset, "Simple Cache (Reset)");
+#ifdef HAVE_LIBLMDB
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
+#else
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_error, "LMDB Cache (Error)");
+#endif
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
 
