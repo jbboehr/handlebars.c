@@ -119,7 +119,7 @@ AC_CHECK_LIB([pcre], [pcre_version])
 AC_CHECK_LIB([rt], [timer_create])
 AC_CHECK_LIB([subunit], [subunit_test_start])
 AC_CHECK_LIB([talloc], [talloc_version_major], [], [AC_MSG_FAILURE([talloc is required])])
-PKG_CHECK_MODULES(CHECK, [check >= 0.9.10], [], [AC_MSG_FAILURE([check >= 0.9.10 required])])
+PKG_CHECK_MODULES(CHECK, [check >= 0.9.9], [], [AC_MSG_FAILURE([check >= 0.9.9 required])])
 PKG_CHECK_MODULES(CHECK0912, [check >= 0.9.12], [
 	AM_CONDITIONAL([CHECK_HAS_TAP], [true])
 ], [

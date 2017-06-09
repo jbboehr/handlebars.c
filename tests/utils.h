@@ -53,6 +53,19 @@
 #define ck_assert_str_gt_msg(X, Y, msg) _ck_assert_str_msg(X, >, Y, msg)
 #define ck_assert_str_ge_msg(X, Y, msg) _ck_assert_str_msg(X, >=, Y, msg)
 
+#if !defined(ck_assert_ptr_eq)
+#define ck_assert_ptr_eq(a, b) ck_assert_int_eq(a, b)
+#endif
+#if !defined(ck_assert_ptr_ne)
+#define ck_assert_ptr_ne(a, b) ck_assert_int_ne(a, b)
+#endif
+#if !defined(ck_assert_uint_eq)
+#define ck_assert_uint_eq(a, b) ck_assert_int_eq(a, b)
+#endif
+#if !defined(ck_assert_uint_ne)
+#define ck_assert_uint_ne(a, b) ck_assert_int_ne(a, b)
+#endif
+
 struct handlebars_value;
 const int MOD_ADLER;
 
