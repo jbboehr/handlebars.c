@@ -1,6 +1,13 @@
 
 EXTRA_DIST = utils.h
 
+if CHECK_HAS_TAP
+LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
+                  $(top_srcdir)/build/tap-driver.sh
+else
+LOG_DRIVER = $(TEST_LOG_DRIVER)
+endif
+
 check_PROGRAMS = \
 	test_main \
 	test_ast \
@@ -79,11 +86,11 @@ TESTS_ENVIRONMENT = \
 	handlebars_tokenizer_spec=@HANDLEBARS_SPEC_DIR@/spec/tokenizer.json \
 	handlebars_parser_spec=@HANDLEBARS_SPEC_DIR@/spec/parser.json \
 	mustache_spec_dir=@MUSTACHE_SPEC_DIR@/specs \
-	CK_VERBOSITY=normal \
-	CK_TAP_LOG_FILE_NAME=-
+	CK_VERBOSITY=normal
 
-LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
-                  $(top_srcdir)/build/tap-driver.sh
+if CHECK_HAS_TAP
+TESTS_ENVIRONMENT += CK_TAP_LOG_FILE_NAME=-
+endif
 
 AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_LDFLAGS = -static  # for speed and Valgrind
