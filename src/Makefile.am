@@ -1,5 +1,5 @@
 
-EXTRA_DIST = handlebars.l handlebars.y
+EXTRA_DIST = handlebars.l handlebars.y handlebars_scanners.re handlebars_helpers_ht.gperf
 GENSOURCE = handlebars_config.h
 GENSOURCE2 =
 

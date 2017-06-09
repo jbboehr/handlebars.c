@@ -1,7 +1,7 @@
 
 SUBDIRS = src . doc bin tests
 
-EXTRA_DIST = LICENSE.md LICENSE.GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec
+EXTRA_DIST = LICENSE.md LICENSE.GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs
 
 ACLOCAL_AMFLAGS = -I m4 --install
 
@@ -24,7 +24,7 @@ maintainer-clean-local:
 if GCOV
 clean-local: gcov-clean lcov-clean
 
-coverage-init: 
+coverage-init:
 	$(LCOV) --directory . --zerocounters -q
 
 coverage-main:
