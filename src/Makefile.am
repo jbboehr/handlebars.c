@@ -64,7 +64,11 @@ BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)
 lib_LTLIBRARIES=libhandlebars.la
 
 libhandlebars_la_SOURCES = \
-	$(GENSOURCE) \
+	handlebars.tab.h \
+	handlebars.tab.c \
+	handlebars.lex.h \
+	handlebars.lex.c \
+	handlebars_helpers_ht.h \
 	handlebars_memory.h \
 	handlebars.h \
 	handlebars.c \
@@ -120,6 +124,4 @@ endif
 libhandlebars_la_LDFLAGS = \
 	-no-undefined \
 	-version-info $(HANDLEBARS_LT_CURRENT):$(HANDLEBARS_LT_REVISION):$(HANDLEBARS_LT_AGE)
-#	-export-symbols-regex '^_?handlebars' \
-#	-release $(HANDLEBARS_LT_RELEASE)
 
