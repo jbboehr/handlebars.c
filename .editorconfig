@@ -23,3 +23,6 @@ indent_style = tab
 [Makefile]
 indent_style = tab
 
+[.gitattributes]
+indent_style = tab
+indent_size = 8
