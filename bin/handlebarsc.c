@@ -68,7 +68,7 @@ enum handlebarsc_mode {
 static enum handlebarsc_mode mode;
 
 /**
- * http://linux.die.net/man/3/getopt_long 
+ * http://linux.die.net/man/3/getopt_long
  */
 static void readOpts(int argc, char * argv[])
 {
@@ -76,7 +76,7 @@ static void readOpts(int argc, char * argv[])
     //int digit_optind = 0;
     //int this_option_optind = optind ? optind : 1;
     int option_index = 0;
-    
+
     static struct option long_options[] = {
         // modes
         {"help",      no_argument,              0,  'h' },
@@ -101,13 +101,13 @@ static void readOpts(int argc, char * argv[])
         {"assume-objects", no_argument,         0,  'a' },
         {0,           0,                        0,  0   }
     };
-    
+
 start:
     c = getopt_long(argc, argv, "hlpcVt:", long_options, &option_index);
     if( c == -1 ) {
         return;
     }
-    
+
     switch( c ) {
         // modes
         case 'h':
@@ -131,7 +131,7 @@ start:
         case 'd':
             mode = handlebarsc_mode_debug;
             break;
-        
+
         // compiler flags
         case 'C':
             compiler_flags |= handlebars_compiler_flag_compat;
@@ -160,7 +160,7 @@ start:
         case 'a':
             compiler_flags |= handlebars_compiler_flag_assume_objects;
             break;
-        
+
         // input
         case 't':
             input_name = optarg;
@@ -168,7 +168,7 @@ start:
         case 'D':
             input_data_name = optarg;
     }
-    
+
     goto start;
 }
 
@@ -260,7 +260,7 @@ static int do_lex(void)
     int token_int = 0;
     struct handlebars_string * output;
     jmp_buf jmp;
-    
+
     readInput();
 
     ctx = handlebars_context_ctor();
@@ -271,24 +271,30 @@ static int do_lex(void)
         goto error;
     }
 
+    struct handlebars_string * tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
+
+    if( true ) {
+        tmpl = handlebars_preprocess_delimiters(tmpl);
+    }
+
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
-    
+    parser->tmpl =
+
     // Run
     do {
         YYSTYPE yylval_param;
         YYLTYPE yylloc_param;
         YYSTYPE * lval;
-        
+
         token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
         if( token_int == END || token_int == INVALID ) {
             break;
         }
         lval = handlebars_yy_get_lval(parser->scanner);
-        
+
         // Make token object
         token = handlebars_token_ctor(ctx, token_int, lval->string);
-        
+
         // Print token
         output = handlebars_token_print(ctx, token, 0);
         fprintf(stdout, "%s\n", output->val);
@@ -307,7 +313,7 @@ static int do_parse(void)
     struct handlebars_parser * parser;
     int error = 0;
     jmp_buf jmp;
-    
+
     readInput();
 
     ctx = handlebars_context_ctor();
@@ -320,7 +326,7 @@ static int do_parse(void)
 
     parser = handlebars_parser_ctor(ctx);
     parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
-    
+
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
         parser->ignore_standalone = 1;
     }
@@ -343,7 +349,7 @@ static int do_compile(void)
     struct handlebars_string * output;
     int error = 0;
     jmp_buf jmp;
-    
+
     ctx = handlebars_context_ctor();
 
     // Save jump buffer
@@ -354,20 +360,20 @@ static int do_compile(void)
 
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
-    
+
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
         parser->ignore_standalone = 1;
     }
-    
+
     handlebars_compiler_set_flags(compiler, compiler_flags);
-    
+
     // Read
     readInput();
     parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
-    
+
     // Parse
     handlebars_parse(parser);
-    
+
     // Compile
     handlebars_compiler_compile(compiler, parser->program);
 
@@ -451,16 +457,16 @@ int main(int argc, char * argv[])
     if( argc <= 1 ) {
         return do_usage();
     }
-    
+
     readOpts(argc, argv);
-    
+
     if( optind < argc ) {
         while( optind < argc ) {
             input_name = argv[optind++];
             break;
         }
     }
-    
+
     switch( mode ) {
         case handlebarsc_mode_version: return do_version();
         case handlebarsc_mode_lex: return do_lex();
