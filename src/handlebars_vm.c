@@ -526,7 +526,11 @@ ACCEPT_FUNCTION(invoke_partial)
 
         // Parse
         struct handlebars_parser * parser = handlebars_parser_ctor(context);
-        parser->tmpl = tmpl;
+        if( vm->flags & handlebars_compiler_flag_compat ) {
+            parser->tmpl = handlebars_preprocess_delimiters(HBSCTX(parser), tmpl, NULL, NULL);
+        } else {
+            parser->tmpl = tmpl;
+        }
         handlebars_parse(parser); // @todo fix setjmp
 
         // Compile

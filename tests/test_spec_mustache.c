@@ -221,6 +221,7 @@ START_TEST(test_mustache_spec)
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
     struct handlebars_value_iterator it;
+    struct handlebars_string * tmpl;
     TALLOC_CTX * memctx = talloc_new(rootctx);
 
 #ifndef NDEBUG
@@ -245,9 +246,11 @@ START_TEST(test_mustache_spec)
     parser = handlebars_parser_ctor(ctx);
     //ctx->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
+    tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
+    tmpl = handlebars_preprocess_delimiters(ctx, tmpl, NULL, NULL);
 
     // Parse
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
+    parser->tmpl = tmpl;
     handlebars_parse(parser);
 
     // Check error
@@ -357,7 +360,7 @@ int main(void)
         spec_dir = "./spec/mustache/specs";
     }
     loadSpec("comments");
-    //loadSpec("delimiters");
+    loadSpec("delimiters");
     loadSpec("interpolation");
     loadSpec("inverted");
     //loadSpec("~lambdas");

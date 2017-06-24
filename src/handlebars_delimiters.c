@@ -44,7 +44,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     struct handlebars_string * open,
     struct handlebars_string * close
 ) {
-    register size_t i = tmpl->len;
+    register long i = tmpl->len;
     register const char *p = tmpl->val;
 
     struct handlebars_string * new_open = NULL;
@@ -53,16 +53,25 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     int state = 0;
     const char *po = NULL;
     const char *pc = NULL;
+    const char *pce = NULL;
 
-    // Duplicate open/close
-    open = handlebars_string_copy_ctor(ctx, open);
-    close = handlebars_string_copy_ctor(ctx, close);
+    // Initialize/duplicate open/close
+    if( open == NULL ) {
+        open = handlebars_string_ctor(ctx, HBS_STRL("{{"));
+    } else {
+        open = handlebars_string_copy_ctor(ctx, open);
+    }
+    if( close == NULL ) {
+        close = handlebars_string_ctor(ctx, HBS_STRL("}}"));
+    } else {
+        close = handlebars_string_copy_ctor(ctx, close);
+    }
 
     for( ; i > 0; i--, p++ ) {
         switch( state ) {
             default: // Default
             case 0: state0:
-                // If next character is a slash, skip one character
+                // If current character is a slash, skip one character
                 if( *p == '\\' ) {
                     handlebars_string_append(ctx, new_tmpl, p, 1);
                     move_forward(1);
@@ -91,6 +100,13 @@ struct handlebars_string * handlebars_preprocess_delimiters(
             case 1: state1: // In delimiter switch
                 // Scan past open tag and equals
                 move_forward(open->len + 1);
+
+                // Scan past any whitespace
+                for( ; i > 0; i--, p++ ) {
+                    if( *p != ' ' ) {
+                        break;
+                    }
+                }
 
                 // Mark beginning of open tag
                 po = p;
@@ -126,8 +142,14 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                     handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must contain two equals");
                 }
 
+                // Scan backwards while whitespace
+                pce = p;
+                while( *pce == ' ' ) {
+                    pce--;
+                }
+
                 // Save new close tag
-                new_close = handlebars_string_ctor(ctx, pc, p - pc);
+                new_close = handlebars_string_ctor(ctx, pc, pce - pc);
 
                 // Skip over equals
                 move_forward(1);
@@ -137,7 +159,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                     handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must end with an equals");
                 }
 
-                // Skip over close tag - minus one to cancel out the loop
+                // Skip over close tag
                 move_forward(close->len);
 
                 // Swap
@@ -147,13 +169,19 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 close = new_close;
 
                 // Goto new state
-                state = 0; goto state0;
+                if( i > 0 ) {
+                    state = 0;
+                    goto state0;
+                }
             case 2: state2: // In regular tag
                 if( i >= close->len && strncmp(p, close->val, close->len) == 0 ) {
                     // Ending
                     handlebars_string_append(ctx, new_tmpl, "}}", 2);
                     move_forward(close->len);
-                    state = 0; goto state0;
+                    if( i > 0 ) {
+                        state = 0;
+                        goto state0;
+                    }
                 } else {
                     handlebars_string_append(ctx, new_tmpl, p, 1);
                 }
@@ -165,5 +193,6 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     handlebars_talloc_free(open);
     handlebars_talloc_free(close);
 
+    HANDLEBARS_MEMCHECK(new_tmpl, ctx);
     return new_tmpl;
 }
