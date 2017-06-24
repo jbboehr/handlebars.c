@@ -126,8 +126,12 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 // Save new open tag
                 new_open = handlebars_string_ctor(ctx, po, p - po);
 
-                // Skip over space
-                move_forward(1);
+                // Scan past any whitespace
+                for( ; i > 0; i--, p++ ) {
+                    if (*p != ' ') {
+                        break;
+                    }
+                }
                 pc = p;
 
                 // Look for another equals
@@ -143,6 +147,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 }
 
                 // Scan backwards while whitespace
+                //pce = p - 1;
                 pce = p;
                 while( *pce == ' ' ) {
                     pce--;
