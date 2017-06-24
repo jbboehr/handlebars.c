@@ -29,10 +29,14 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_string.h"
 
-struct delimiter_scanner {
-
-};
+#define move_forward(x) \
+    if( x > i ) { \
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %ld", x); \
+    } \
+    p += x; \
+    i -= x
 
 struct handlebars_string * handlebars_preprocess_delimiters(
     struct handlebars_context * ctx,
@@ -42,57 +46,124 @@ struct handlebars_string * handlebars_preprocess_delimiters(
 ) {
     register size_t i = tmpl->len;
     register const char *p = tmpl->val;
-    register const char *end = tmpl->val + tmpl->len;
-    register short is_delim = 0;
+
+    struct handlebars_string * new_open = NULL;
+    struct handlebars_string * new_close = NULL;
+    struct handlebars_string * new_tmpl = handlebars_string_init(ctx, tmpl->len);
+    int state = 0;
+    const char *po = NULL;
+    const char *pc = NULL;
+
+    // Duplicate open/close
+    open = handlebars_string_copy_ctor(ctx, open);
+    close = handlebars_string_copy_ctor(ctx, close);
 
     for( ; i > 0; i--, p++ ) {
-        // Remaining size needs to be at least:
-        // open->len + close->len + 2 (for equals) + 1 (minimum delimiter size) + 1 (space in the middle)
-        if( i >= open->len + close->len + 4 && strncmp(p, open->val, open->len) == 0 ) {
-            // Found open
+        switch( state ) {
+            default: // Default
+            case 0: state0:
+                // If next character is a slash, skip one character
+                if( *p == '\\' ) {
+                    handlebars_string_append(ctx, new_tmpl, p, 1);
+                    move_forward(1);
+                    handlebars_string_append(ctx, new_tmpl, p, 1);
+                    continue;
+                }
 
-            // Scan past open tag
-            p += open->len;
-            i -= open->len;
+                // Remaining size needs to be at least:
+                // open->len + close->len + 2 (for equals) + 1 (minimum delimiter size) + 1 (space in the middle)
+                if( i >= open->len + close->len + 4 && strncmp(p, open->val, open->len) == 0 && *(p + open->len) == '=' ) {
+                    // We are going into a delimiter switch
+                    state = 1; goto state1;
+                }
 
-            // If the next character is an equals
-            if( *p == '=' ) {
+                // Remaining size needs to be at least:
+                // open->len + close->len + 1
+                if( i >= open->len + close->len + 1 && strncmp(p, open->val, open->len) == 0 ) {
+                    // We are going into a regular tag
+                    handlebars_string_append(ctx, new_tmpl, "{{", 2);
+                    move_forward(open->len);
+                    state = 2; goto state2;
+                }
+
+                handlebars_string_append(ctx, new_tmpl, p, 1);
+                break;
+            case 1: state1: // In delimiter switch
+                // Scan past open tag and equals
+                move_forward(open->len + 1);
+
+                // Mark beginning of open tag
+                po = p;
+
                 // Look for a space
                 for( ; i > 0; i--, p++ ) {
                     if( *p == ' ' ) {
-                        // @todo
                         break;
                     }
                 }
+
+                // Not found
+                if( i == 0 ) {
+                    handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must contain a space");
+                }
+
+                // Save new open tag
+                new_open = handlebars_string_ctor(ctx, po, p - po);
+
+                // Skip over space
+                move_forward(1);
+                pc = p;
 
                 // Look for another equals
                 for( ; i > 0; i--, p++ ) {
                     if( *p == '=' ) {
-                        // @todo
                         break;
                     }
                 }
+
+                // Not found
+                if( i == 0 ) {
+                    handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must contain two equals");
+                }
+
+                // Save new close tag
+                new_close = handlebars_string_ctor(ctx, pc, p - pc);
+
+                // Skip over equals
+                move_forward(1);
 
                 // The next sequence must be the closing delimiter, or error
                 if( i < close->len || strncmp(p, close->val, close->len) ) {
-                    // @todo error
+                    handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must end with an equals");
                 }
-            } else {
-                // Look for close
-                for( ; i > 0; i--, p++ ) {
-                    // Remaining size needs to be at least close->len
-                    if( i < close->len ) {
-                        break;
-                    } else if( strncmp(p, close->val, close->len) == 0 ) {
-                        // Scan past close
-                        p += close->len;
-                        i -= close->len;
-                        break;
-                    }
 
+                // Skip over close tag - minus one to cancel out the loop
+                move_forward(close->len);
+
+                // Swap
+                handlebars_talloc_free(open);
+                handlebars_talloc_free(close);
+                open = new_open;
+                close = new_close;
+
+                // Goto new state
+                state = 0; goto state0;
+            case 2: state2: // In regular tag
+                if( i >= close->len && strncmp(p, close->val, close->len) == 0 ) {
+                    // Ending
+                    handlebars_string_append(ctx, new_tmpl, "}}", 2);
+                    move_forward(close->len);
+                    state = 0; goto state0;
+                } else {
+                    handlebars_string_append(ctx, new_tmpl, p, 1);
                 }
-            }
-
+                break;
         }
     }
+
+    // Free open/close
+    handlebars_talloc_free(open);
+    handlebars_talloc_free(close);
+
+    return new_tmpl;
 }

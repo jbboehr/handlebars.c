@@ -54,6 +54,7 @@ char * input_data_name = NULL;
 char * input_buf = NULL;
 size_t input_buf_length = 0;
 unsigned long compiler_flags = 0;
+short mustache_compat = 0;
 
 enum handlebarsc_mode {
     handlebarsc_mode_usage = 0,
@@ -86,6 +87,7 @@ static void readOpts(int argc, char * argv[])
         {"execute",   no_argument,              0,  'e' },
         {"version",   no_argument,              0,  'V' },
         {"debug",     no_argument,              0,  'd' },
+        {"mustache-compat", no_argument,        0,  'M' },
         // input
         {"template",  required_argument,        0,  't' },
         {"data",      required_argument,        0,  'D' },
@@ -130,6 +132,9 @@ start:
             break;
         case 'd':
             mode = handlebarsc_mode_debug;
+            break;
+        case 'M':
+            mustache_compat = 1;
             break;
 
         // compiler flags
@@ -257,11 +262,11 @@ static int do_lex(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_token * token = NULL;
+    struct handlebars_string * tmpl;
     int token_int = 0;
     struct handlebars_string * output;
     jmp_buf jmp;
 
-    readInput();
 
     ctx = handlebars_context_ctor();
 
@@ -271,14 +276,17 @@ static int do_lex(void)
         goto error;
     }
 
-    struct handlebars_string * tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
+    // Read
+    readInput();
+    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, strlen(input_buf));
 
-    if( true ) {
-        tmpl = handlebars_preprocess_delimiters(tmpl);
+    // Preprocess
+    if( mustache_compat ) {
+        tmpl = handlebars_preprocess_delimiters(ctx, tmpl, handlebars_string_ctor(ctx, HBS_STRL("{{")), handlebars_string_ctor(ctx, HBS_STRL("}}")));
     }
 
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl =
+    parser->tmpl = tmpl;
 
     // Run
     do {
@@ -311,10 +319,9 @@ static int do_parse(void)
 {
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
+    struct handlebars_string * tmpl;
     int error = 0;
     jmp_buf jmp;
-
-    readInput();
 
     ctx = handlebars_context_ctor();
 
@@ -324,8 +331,18 @@ static int do_parse(void)
         goto error;
     }
 
+    // Read
+    readInput();
+    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, strlen(input_buf));
+
+    // Preprocess
+    if( mustache_compat ) {
+        tmpl = handlebars_preprocess_delimiters(ctx, tmpl, handlebars_string_ctor(ctx, HBS_STRL("{{")), handlebars_string_ctor(ctx, HBS_STRL("}}")));
+    }
+
+    // Parse
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
+    parser->tmpl = tmpl;
 
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
         parser->ignore_standalone = 1;
@@ -347,6 +364,7 @@ static int do_compile(void)
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_string * output;
+    struct handlebars_string * tmpl;
     int error = 0;
     jmp_buf jmp;
 
@@ -369,9 +387,15 @@ static int do_compile(void)
 
     // Read
     readInput();
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
+    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, strlen(input_buf));
+
+    // Preprocess
+    if( mustache_compat ) {
+        tmpl = handlebars_preprocess_delimiters(ctx, tmpl, handlebars_string_ctor(ctx, HBS_STRL("{{")), handlebars_string_ctor(ctx, HBS_STRL("}}")));
+    }
 
     // Parse
+    parser->tmpl = tmpl;
     handlebars_parse(parser);
 
     // Compile
@@ -392,6 +416,7 @@ static int do_execute(void)
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
+    struct handlebars_string * tmpl;
     int error = 0;
     jmp_buf jmp;
 
@@ -417,7 +442,12 @@ static int do_execute(void)
 
     // Read
     readInput();
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
+    tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
+
+    // Preprocess
+    if( mustache_compat ) {
+        tmpl = handlebars_preprocess_delimiters(ctx, tmpl, handlebars_string_ctor(ctx, HBS_STRL("{{")), handlebars_string_ctor(ctx, HBS_STRL("}}")));
+    }
 
     // Read context
     struct handlebars_value * context = NULL;
@@ -432,6 +462,7 @@ static int do_execute(void)
     }
 
     // Parse
+    parser->tmpl = tmpl;
     handlebars_parse(parser);
 
     // Compile
