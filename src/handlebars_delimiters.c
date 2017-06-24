@@ -73,9 +73,9 @@ struct handlebars_string * handlebars_preprocess_delimiters(
             case 0: state0:
                 // If current character is a slash, skip one character
                 if( *p == '\\' ) {
-                    handlebars_string_append(ctx, new_tmpl, p, 1);
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
                     move_forward(1);
-                    handlebars_string_append(ctx, new_tmpl, p, 1);
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
                     continue;
                 }
 
@@ -90,12 +90,12 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 // open->len + close->len + 1
                 if( i >= open->len + close->len + 1 && strncmp(p, open->val, open->len) == 0 ) {
                     // We are going into a regular tag
-                    handlebars_string_append(ctx, new_tmpl, "{{", 2);
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, "{{", 2);
                     move_forward(open->len);
                     state = 2; goto state2;
                 }
 
-                handlebars_string_append(ctx, new_tmpl, p, 1);
+                new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
                 break;
             case 1: state1: // In delimiter switch
                 // Scan past open tag and equals
@@ -168,6 +168,9 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 open = new_open;
                 close = new_close;
 
+                // Append a comment - may trick whitespace rules into working
+                new_tmpl = handlebars_string_append(ctx, new_tmpl, HBS_STRL("{{! delimiter placeholder }}"));
+
                 // Goto new state
                 if( i > 0 ) {
                     state = 0;
@@ -176,14 +179,14 @@ struct handlebars_string * handlebars_preprocess_delimiters(
             case 2: state2: // In regular tag
                 if( i >= close->len && strncmp(p, close->val, close->len) == 0 ) {
                     // Ending
-                    handlebars_string_append(ctx, new_tmpl, "}}", 2);
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, "}}", 2);
                     move_forward(close->len);
                     if( i > 0 ) {
                         state = 0;
                         goto state0;
                     }
                 } else {
-                    handlebars_string_append(ctx, new_tmpl, p, 1);
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
                 }
                 break;
         }
