@@ -54,12 +54,14 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     const char *po = NULL;
     const char *pc = NULL;
     const char *pce = NULL;
+    int starts_with_bracket = 0;
 
     // Initialize/duplicate open/close
     if( open == NULL ) {
         open = handlebars_string_ctor(ctx, HBS_STRL("{{"));
     } else {
         open = handlebars_string_copy_ctor(ctx, open);
+        starts_with_bracket = open->val[0] == '{';
     }
     if( close == NULL ) {
         close = handlebars_string_ctor(ctx, HBS_STRL("}}"));
@@ -95,6 +97,12 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                     state = 2; goto state2;
                 }
 
+                // Escape the bracket if our current custom delims aren't brackets
+                if( *p == '{' && !starts_with_bracket ) {
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, "\\", 1);
+                }
+
+                // This is an escape
                 new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
                 break;
             case 1: state1: // In delimiter switch
@@ -172,6 +180,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 handlebars_talloc_free(close);
                 open = new_open;
                 close = new_close;
+                starts_with_bracket = open->val[0] == '{';
 
                 // Append a comment - may trick whitespace rules into working
                 new_tmpl = handlebars_string_append(ctx, new_tmpl, HBS_STRL("{{! delimiter placeholder }}"));
