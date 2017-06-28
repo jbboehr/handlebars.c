@@ -31,12 +31,27 @@
 #include "handlebars_private.h"
 #include "handlebars_string.h"
 
+#if defined(YYDEBUG)
+#define append(str, len) fprintf(stderr, "Delimiter preprocessor: appending: \"%.*s\"\n", len, str); \
+    new_tmpl = handlebars_string_append(ctx, new_tmpl, str, len)
+#define move_forward(x) \
+    if( x > i ) { \
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %ld", x); \
+    } \
+    fprintf(stderr, "Delimiter preprocessor: moving forward %ld characters, new position: \"%c\"\n", x, *(p + x)); \
+    p += x; \
+    i -= x
+#else
+#define append(str, len) new_tmpl = handlebars_string_append(ctx, new_tmpl, str, len)
 #define move_forward(x) \
     if( x > i ) { \
         handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %ld", x); \
     } \
     p += x; \
     i -= x
+#endif
+
+static const char placeholder[] = "{{! delimiter placeholder }}";
 
 struct handlebars_string * handlebars_preprocess_delimiters(
     struct handlebars_context * ctx,
@@ -75,9 +90,9 @@ struct handlebars_string * handlebars_preprocess_delimiters(
             case 0: state0:
                 // If current character is a slash, skip one character
                 if( *p == '\\' ) {
-                    new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
+                    append(p, 1);
                     move_forward(1);
-                    new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
+                    append(p, 1);
                     continue;
                 }
 
@@ -92,18 +107,18 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 // open->len + close->len + 1
                 if( i >= open->len + close->len + 1 && strncmp(p, open->val, open->len) == 0 ) {
                     // We are going into a regular tag
-                    new_tmpl = handlebars_string_append(ctx, new_tmpl, "{{", 2);
+                    append("{{", 2);
                     move_forward(open->len);
                     state = 2; goto state2;
                 }
 
                 // Escape the bracket if our current custom delims aren't brackets
-                if( *p == '{' && !starts_with_bracket ) {
-                    new_tmpl = handlebars_string_append(ctx, new_tmpl, "\\", 1);
+                if( i >= 2 && *p == '{' && *(p + 1) == '{' && !starts_with_bracket ) {
+                    append("\\", 1);
                 }
 
                 // This is an escape
-                new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
+                append(p, 1);
                 break;
             case 1: state1: // In delimiter switch
                 // Scan past open tag and equals
@@ -155,14 +170,13 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 }
 
                 // Scan backwards while whitespace
-                //pce = p - 1;
-                pce = p;
+                pce = p - 1;
                 while( *pce == ' ' ) {
                     pce--;
                 }
 
                 // Save new close tag
-                new_close = handlebars_string_ctor(ctx, pc, pce - pc);
+                new_close = handlebars_string_ctor(ctx, pc, pce - pc + 1);
 
                 // Skip over equals
                 move_forward(1);
@@ -182,8 +196,12 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 close = new_close;
                 starts_with_bracket = open->val[0] == '{';
 
-                // Append a comment - may trick whitespace rules into working
-                new_tmpl = handlebars_string_append(ctx, new_tmpl, HBS_STRL("{{! delimiter placeholder }}"));
+#if defined(YYDEBUG)
+                fprintf(stderr, "Delimiter preprocessor: New delimiters: \"%.*s\", \"%.*s\"\n", (int) open->len, open->val, (int) close->len, close->val);
+#endif
+
+                // Append a comment - tricks whitespace rules into working
+                append(placeholder, (int) sizeof(placeholder) - 1);
 
                 // Goto new state
                 if( i > 0 ) {
@@ -193,14 +211,14 @@ struct handlebars_string * handlebars_preprocess_delimiters(
             case 2: state2: // In regular tag
                 if( i >= close->len && strncmp(p, close->val, close->len) == 0 ) {
                     // Ending
-                    new_tmpl = handlebars_string_append(ctx, new_tmpl, "}}", 2);
+                    append("}}", 2);
                     move_forward(close->len);
                     if( i > 0 ) {
                         state = 0;
                         goto state0;
                     }
                 } else {
-                    new_tmpl = handlebars_string_append(ctx, new_tmpl, p, 1);
+                    append(p, 1);
                 }
                 break;
         }
