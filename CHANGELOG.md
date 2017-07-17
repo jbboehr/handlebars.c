@@ -6,6 +6,10 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+### Added
+- Mustache delimiter preprocessing support - implementing libraries will need to run `handlebars_preprocess_delimiters`
+function to receive a new template with converted delimiters
+
 ### Fixed
 - Segmentation fault when lookup built-in used with a non-string parameter
 

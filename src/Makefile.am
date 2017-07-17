@@ -86,6 +86,7 @@ libhandlebars_la_SOURCES = \
 	handlebars_cache_simple.c \
 	handlebars_compiler.h \
 	handlebars_compiler.c \
+	handlebars_delimiters.c \
 	handlebars_helpers.h \
 	handlebars_helpers.c \
 	handlebars_map.h \

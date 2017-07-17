@@ -19,7 +19,7 @@
 
 /**
  * @file
- * @brief General 
+ * @brief General
  */
 
 #ifndef HANDLEBARS_H
@@ -256,6 +256,13 @@ struct handlebars_parser * handlebars_parser_ctor(
  * @return void
  */
 void handlebars_parser_dtor(struct handlebars_parser * parser) HBS_ATTR_NONNULL_ALL;
+
+struct handlebars_string * handlebars_preprocess_delimiters(
+    struct handlebars_context * ctx,
+    struct handlebars_string * tmpl,
+    struct handlebars_string * open,
+    struct handlebars_string * close
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Convenience function for lexing to a token list
