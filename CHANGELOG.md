@@ -6,6 +6,9 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+### Fixed
+- Segmentation fault when lookup built-in used with a non-string parameter
+
 ## [0.6.3] - 2017-06-07
 
 ### Fixed
