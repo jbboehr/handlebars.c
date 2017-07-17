@@ -20,6 +20,8 @@ case $1 in
 		apt-add-repository -y ppa:jbboehr/build-deps
 		apt-add-repository -y ppa:jbboehr/handlebars
 		apt-get update -y
+		apt-get purge -y oracle-java9-installer
+		apt-get install -y oracle-java8-installer
 		apt-get install $MYCC
 		apt-get install -y automake bison flex gperf pkg-config re2c gcc-multilib
 		# install arch-specific packages
