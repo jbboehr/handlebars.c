@@ -265,8 +265,9 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
     enum handlebars_value_type type = handlebars_value_get_type(context);
 
     if( type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        struct handlebars_string * key = field->v.string;
+        struct handlebars_string * key = handlebars_value_to_string(field);
         result = handlebars_value_map_find(context, key);
+        handlebars_talloc_free(key);
     } else if( type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
         // @todo sscanf?
         if( field->type == HANDLEBARS_VALUE_TYPE_INTEGER ) {
