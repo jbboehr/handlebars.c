@@ -6,6 +6,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+## [0.6.4] - 2017-07-17
+
 ### Added
 - Mustache delimiter preprocessing support - implementing libraries will need to run `handlebars_preprocess_delimiters`
 function to receive a new template with converted delimiters
@@ -45,7 +47,8 @@ function to receive a new template with converted delimiters
 ### Changed
 - Changed the license from `LGPLv3` to `LGPLv2.1 or later`
 
-[Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.6.4...HEAD
+[0.6.4]: https://github.com/jbboehr/handlebars.c/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/jbboehr/handlebars.c/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jbboehr/handlebars.c/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jbboehr/handlebars.c/compare/v0.6.0...v0.6.1
