@@ -25,7 +25,7 @@
 #ifndef HANDLEBARS_H
 #define HANDLEBARS_H
 
-#include "handlebars_config.h"
+//#include "handlebars_config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -50,7 +50,7 @@ struct handlebars_string;
 #define HBS_ATTR_NORETURN
 #define HBS_ATTR_PRINTF(a1, a2)
 #define HBS_ATTR_UNUSED
-#define HBS_ATTR_NONNULL
+#define HBS_ATTR_NONNULL(...)
 #define HBS_ATTR_NONNULL_ALL
 #endif
 
