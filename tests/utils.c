@@ -21,6 +21,8 @@
 #include "config.h"
 #endif
 
+#define PCRE_STATIC
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

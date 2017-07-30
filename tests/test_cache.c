@@ -24,19 +24,17 @@
 #include <check.h>
 #include <stdio.h>
 #include <talloc.h>
-#include <unistd.h>
+//#include <unistd.h>
 
-#if defined(HAVE_JSON_C_JSON_H)
+//#if defined(HAVE_JSON_C_JSON_H)
 #include <json-c/json.h>
 #include <json-c/json_object.h>
 #include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H)
-#include <json/json.h>
-#include <json/json_object.h>
-#include <json/json_tokener.h>
-#include <src/handlebars_value.h>
-
-#endif
+//#elif defined(HAVE_JSON_JSON_H)
+//#include <json/json.h>
+//#include <json/json_object.h>
+//#include <json/json_tokener.h>
+//#endif
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
@@ -241,7 +239,8 @@ END_TEST
 START_TEST(test_lmdb_cache_error)
     jmp_buf buf;
     char tmp[256];
-    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
+    const char *tmpdir = getenv("TMPDIR");
+    snprintf(tmp, 256, "%s/%s", tmpdir ? tmpdir : "/tmp", "handlebars-lmdb-cache-test.mdb");
 
     if( handlebars_setjmp_ex(context, &buf) ) {
         ck_assert(1);

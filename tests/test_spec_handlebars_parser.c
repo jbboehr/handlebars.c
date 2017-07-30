@@ -27,15 +27,15 @@
 #include <pcre.h>
 #include <talloc.h>
 
-#if defined(HAVE_JSON_C_JSON_H)
+//#if defined(HAVE_JSON_C_JSON_H)
 #include "json-c/json.h"
 #include "json-c/json_object.h"
 #include "json-c/json_tokener.h"
-#elif defined(HAVE_JSON_JSON_H)
-#include "json/json.h"
-#include "json/json_object.h"
-#include "json/json_tokener.h"
-#endif
+//#elif defined(HAVE_JSON_JSON_H)
+//#include "json/json.h"
+//#include "json/json_object.h"
+//#include "json/json_tokener.h"
+//#endif
 
 #include "handlebars.h"
 #include "handlebars_memory.h"

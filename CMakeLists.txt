@@ -14,9 +14,14 @@ add_definitions(-DHANDLEBARS_VERSION_STRING="${HANDLEBARS_VERSION_MAJOR}.${HANDL
 add_definitions(-DHANDLEBARS_SPEC_VERSION_STRING="4.0.5")
 add_definitions(-DMUSTACHE_SPEC_VERSION_STRING="1.1.3")
 add_definitions(-DYY_NO_UNISTD_H=1)
+add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE_STATIC=1)
 
 option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
+
+find_library(LIBCOMPAT
+        NAME compat
+        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 
 find_library(LIBCHECK
         NAME check
@@ -26,7 +31,11 @@ find_library(LIBJSONC
         NAME json-c
         HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 
-find_library(LIBPCRE
+find_library(LIBPCRED
+        NAME pcred
+        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+
+find_library(LIBPCREPOSIXD
         NAME pcreposixd
         HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 
@@ -35,7 +44,7 @@ find_library(LIBTALLOC
         HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 
 find_library(LIBYAML
-        NAME yaml
+        NAME yaml_static
         HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../output/include)
@@ -45,6 +54,30 @@ add_subdirectory(bin)
 
 # Unit tests
 if (HANDLEBARS_ENABLE_TESTS)
+    set(ENV{handlebars_export_dir} ${CMAKE_CURRENT_SOURCE_DIR}/spec/handlebars/export)
+    set(ENV{handlebars_spec_dir} ${CMAKE_CURRENT_SOURCE_DIR}/spec/handlebars/spec)
+    set(ENV{handlebars_tokenizer_spec} ${CMAKE_CURRENT_SOURCE_DIR}/spec/handlebars/spec/tokenizer.json)
+    set(ENV{handlebars_parser_spec} ${CMAKE_CURRENT_SOURCE_DIR}/spec/handlebars/spec/parser.json)
+    set(ENV{mustache_spec_dir} ${CMAKE_CURRENT_SOURCE_DIR}/spec/mustache/specs)
     add_subdirectory(tests)
     enable_testing()
+    add_test(NAME test_ast COMMAND tests/test_ast)
+    add_test(NAME test_ast_helpers COMMAND tests/test_ast_helpers)
+    add_test(NAME test_ast_list COMMAND tests/test_ast_list)
+    add_test(NAME test_cache COMMAND tests/test_cache)
+    add_test(NAME test_compiler COMMAND tests/test_compiler)
+    add_test(NAME test_main COMMAND tests/test_main)
+    add_test(NAME test_map COMMAND tests/test_map)
+    add_test(NAME test_opcode_printer COMMAND tests/test_opcode_printer)
+    add_test(NAME test_opcodes COMMAND tests/test_opcodes)
+    add_test(NAME test_scanners COMMAND tests/test_scanners)
+    add_test(NAME test_spec_handlebars COMMAND tests/test_spec_handlebars)
+    add_test(NAME test_spec_handlebars_compiler COMMAND tests/test_spec_handlebars_compiler)
+    add_test(NAME test_spec_handlebars_parser COMMAND tests/test_spec_handlebars_parser)
+    add_test(NAME test_spec_handlebars_tokenizer COMMAND tests/test_spec_handlebars_tokenizer)
+    add_test(NAME test_spec_mustache COMMAND tests/test_spec_mustache)
+    add_test(NAME test_string COMMAND tests/test_string)
+    add_test(NAME test_token COMMAND tests/test_token)
+    add_test(NAME test_utils COMMAND tests/test_utils)
+    add_test(NAME test_value COMMAND tests/test_value)
 endif()

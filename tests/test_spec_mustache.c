@@ -21,6 +21,8 @@
 #include "config.h"
 #endif
 
+#define YAML_DECLARE_STATIC
+
 #include <assert.h>
 #include <check.h>
 #include <stdio.h>

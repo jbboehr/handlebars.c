@@ -19,7 +19,7 @@ SET(COMMON_TEST_FILES
         utils.c
         utils.h)
 
-link_libraries(${LIBJSONC} ${LIBTALLOC} ${LIBYAML} ${LIBPCRE} ${LIBCHECK} handlebars)
+link_libraries(winmm.lib ${LIBCOMPAT} ${LIBJSONC} ${LIBTALLOC} ${LIBYAML} ${LIBPCREPOSIXD} ${LIBPCRED} ${LIBCHECK} handlebars)
 
 add_executable(test_ast ${COMMON_TEST_FILES} test_ast.c)
 add_executable(test_ast_helpers ${COMMON_TEST_FILES} test_ast_helpers.c)
@@ -30,7 +30,7 @@ add_executable(test_main ${COMMON_TEST_FILES} test_main.c)
 add_executable(test_map ${COMMON_TEST_FILES} test_map.c)
 add_executable(test_opcode_printer ${COMMON_TEST_FILES} test_opcode_printer.c)
 add_executable(test_opcodes ${COMMON_TEST_FILES} test_opcodes.c)
-add_executable(test_random_alloc_fail ${COMMON_TEST_FILES} test_random_alloc_fail.c)
+#add_executable(test_random_alloc_fail ${COMMON_TEST_FILES} test_random_alloc_fail.c)
 add_executable(test_scanners ${COMMON_TEST_FILES} test_scanners.c)
 add_executable(test_spec_handlebars ${COMMON_TEST_FILES} test_spec_handlebars.c)
 add_executable(test_spec_handlebars_compiler ${COMMON_TEST_FILES} test_spec_handlebars_compiler.c)
