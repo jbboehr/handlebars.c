@@ -20,6 +20,8 @@
 #ifndef HANDLEBARS_VALUE_H
 #define HANDLEBARS_VALUE_H
 
+#include <string.h>
+
 #include "handlebars.h"
 #include "handlebars_helpers.h"
 #include "handlebars_map.h"

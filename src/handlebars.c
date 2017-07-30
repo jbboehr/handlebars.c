@@ -328,16 +328,33 @@ void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_er
 
 struct handlebars_context * handlebars_get_context(void * ctx, const char * loc)
 {
-    struct handlebars_context * r = (
-            talloc_get_type(ctx, struct handlebars_context) ?:
-            (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_parser) ?:
-            (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_compiler) ?:
-            (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_vm) ?:
-            (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_cache)
-    );
-    if( !r ) {
-        fprintf(stderr, "Not a context at %s\n", loc);
-        abort();
+    struct handlebars_context * r;
+
+    r = talloc_get_type(ctx, struct handlebars_context);
+    if( r ) {
+        return r;
     }
-    return r;
+
+    r = (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_parser);
+    if( r ) {
+        return r;
+    }
+
+    r = (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_compiler);
+    if( r ) {
+        return r;
+    }
+
+    r = (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_vm);
+    if( r ) {
+        return r;
+    }
+
+    r = (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_cache);
+    if( r ) {
+        return r;
+    }
+
+    fprintf(stderr, "Not a context at %s\n", loc);
+    abort();
 }

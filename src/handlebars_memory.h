@@ -26,7 +26,7 @@
 #define HANDLEBARS_MEMORY_H
 
 #include <talloc.h>
-#include "handlebars_config.h"
+//#include "handlebars_config.h"
 #include "handlebars.h"
 
 #ifdef	__cplusplus

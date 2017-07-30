@@ -30,9 +30,9 @@
 
 static void * append(struct handlebars_module * module, void * source, size_t size)
 {
-    void * addr = module->data + module->data_size;
+    void * addr = (char *) module->data + module->data_size;
 #ifndef NDEBUG
-    size_t data_offset = module->data - ((void *) module);
+    size_t data_offset = (char *) module->data - (char *) module;
     //fprintf(stderr, "Data offset: %ld, Data size: %ld, Append size: %ld, Buffer size: %ld\n", data_offset, module->data_size, size, module->size);
     assert(data_offset + module->data_size + size <= module->size);
 #endif
@@ -165,7 +165,8 @@ static struct handlebars_module_table_entry * serialize_program_shallow(struct h
 static void serialize_program2(struct handlebars_module * module, struct handlebars_program * program, struct handlebars_module_table_entry * entry)
 {
     size_t i;
-    struct handlebars_module_table_entry * children[program->children_length];
+    //struct handlebars_module_table_entry * children[program->children_length];
+    struct handlebars_module_table_entry ** children = alloca(sizeof(struct handlebars_module_table_entry *) * program->children_length);
 
     // Serialize children (shallow)
     for( i = 0; i < program->children_length; i++ ) {
@@ -218,9 +219,9 @@ struct handlebars_module * handlebars_program_serialize(
     talloc_set_type(module, struct handlebars_module);
 
     // Setup pointers
-    module->programs = ((void *) module) + sizeof(struct handlebars_module);
-    module->opcodes = ((void *) module->programs) + (sizeof(struct handlebars_module_table_entry) * module->program_count);
-    module->data = ((void *) module->opcodes) + (sizeof(struct handlebars_opcode) * module->opcode_count);
+    module->programs = ((char *) module) + sizeof(struct handlebars_module);
+    module->opcodes = ((char *) module->programs) + (sizeof(struct handlebars_module_table_entry) * module->program_count);
+    module->data = ((char *) module->opcodes) + (sizeof(struct handlebars_opcode) * module->opcode_count);
 
     // Reset counts - use as index
     size_t program_count = module->program_count;
@@ -239,7 +240,7 @@ struct handlebars_module * handlebars_program_serialize(
 }
 
 
-#define PATCH(ptr) ptr = ((void *) ptr) - module->addr + (void *) module
+#define PATCH(ptr) ptr = ((char *) ptr) - module->addr + (char *) module
 
 
 static inline void patch_operand(struct handlebars_module * module, struct handlebars_operand * operand)

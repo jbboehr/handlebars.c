@@ -31,6 +31,10 @@
 #include <stdint.h>
 #include <setjmp.h>
 
+#ifdef _MSC_VER
+#include <malloc.h>
+#endif
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

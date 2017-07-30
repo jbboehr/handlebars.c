@@ -43,8 +43,8 @@ struct handlebars_string {
 };
 
 #define HBS_STR_STRL(string) string->val, string->len
-#define HBS_STR_HASH_EX(str, len, hash) (hash ?: handlebars_string_hash(str, len))
-#define HBS_STR_HASH(string) (string->hash ?: (string->hash = handlebars_string_hash(string->val, string->len)))
+#define HBS_STR_HASH_EX(str, len, hash) (hash ? hash : handlebars_string_hash(str, len))
+#define HBS_STR_HASH(string) (string->hash ? string->hash : (string->hash = handlebars_string_hash(string->val, string->len)))
 #define HBS_STR_SIZE(length) (offsetof(struct handlebars_string, val) + (length) + 1)
 
 HBS_ATTR_NONNULL(1)

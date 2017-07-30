@@ -324,7 +324,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     struct handlebars_value * value = POP(vm->stack);
     struct handlebars_value * result;
     struct handlebars_options options = {0};
-    struct handlebars_value * argv[0];
+    struct handlebars_value * argv[1];
 
     ACCEPT_FN(empty_hash)(vm, opcode);
 
@@ -361,7 +361,8 @@ ACCEPT_FUNCTION(invoke_helper)
     assert(opcode->op3.type == handlebars_operand_type_boolean);
 
     int argc = (int) opcode->op1.data.longval;
-    struct handlebars_value * argv[argc];
+    //struct handlebars_value * argv[argc];
+    struct handlebars_value ** argv = alloca(sizeof(struct handlebars_value *) * argc);
     options.name = opcode->op2.data.string.string;
     setup_options(vm, argc, argv, &options);
 
@@ -396,7 +397,8 @@ ACCEPT_FUNCTION(invoke_known_helper)
     assert(opcode->op2.type == handlebars_operand_type_string);
 
     int argc = (int) opcode->op1.data.longval;
-    struct handlebars_value * argv[argc];
+    //struct handlebars_value * argv[argc];
+    struct handlebars_value ** argv = alloca(sizeof(struct handlebars_value *) * argc);
     options.name = opcode->op2.data.string.string;
     setup_options(vm, argc, argv, &options);
 
@@ -446,7 +448,7 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_value * partial = NULL;
     jmp_buf buf;
     int argc = 1;
-    struct handlebars_value * argv[argc];
+    struct handlebars_value * argv[1];
 
     assert(opcode->op1.type == handlebars_operand_type_boolean);
     assert(opcode->op2.type == handlebars_operand_type_string || opcode->op2.type == handlebars_operand_type_null || opcode->op2.type == handlebars_operand_type_long);
@@ -868,7 +870,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     if( handlebars_value_is_callable(top) ) {
         struct handlebars_options options = {0};
         int argc = 1;
-        struct handlebars_value * argv[argc];
+        struct handlebars_value * argv[1/*argc*/];
         argv[0] = TOPCONTEXT;
         options.vm = vm;
         options.scope = TOPCONTEXT;
