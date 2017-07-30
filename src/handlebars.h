@@ -25,15 +25,19 @@
 #ifndef HANDLEBARS_H
 #define HANDLEBARS_H
 
+#ifdef _MSC_VER
+#define BOOLEAN MSBOOLEAN
+#include <windows.h>
+#include <malloc.h>
+#undef BOOLEAN
+#endif
+
 //#include "handlebars_config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <setjmp.h>
 
-#ifdef _MSC_VER
-#include <malloc.h>
-#endif
 
 #ifdef	__cplusplus
 extern "C" {

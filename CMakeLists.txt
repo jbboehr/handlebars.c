@@ -18,19 +18,23 @@ add_definitions(-DYY_NO_UNISTD_H=1)
 option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
 
-find_library(check
+find_library(LIBCHECK
         NAME check
         HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 
-find_library(json-c
+find_library(LIBJSONC
         NAME json-c
         HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 
-find_library(talloc
+find_library(LIBPCRE
+        NAME pcreposixd
+        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+
+find_library(LIBTALLOC
         NAME talloc
         HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 
-find_library(yaml
+find_library(LIBYAML
         NAME yaml
         HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
 

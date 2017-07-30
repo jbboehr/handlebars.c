@@ -19,7 +19,7 @@ SET(COMMON_TEST_FILES
         utils.c
         utils.h)
 
-link_libraries(json-c talloc yaml handlebars)
+link_libraries(${LIBJSONC} ${LIBTALLOC} ${LIBYAML} ${LIBPCRE} ${LIBCHECK} handlebars)
 
 add_executable(test_ast ${COMMON_TEST_FILES} test_ast.c)
 add_executable(test_ast_helpers ${COMMON_TEST_FILES} test_ast_helpers.c)

@@ -21,6 +21,8 @@
 #include "config.h"
 #endif
 
+#include "handlebars.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -29,7 +31,6 @@
 #include <assert.h>
 #include <getopt.h>
 
-#include "handlebars.h"
 #include "handlebars_memory.h"
 
 #include "handlebars_ast.h"
