@@ -264,7 +264,7 @@ Suite * parser_suite(void)
     return s;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     int number_failed;
     Suite * s;
@@ -287,6 +287,9 @@ int main(void)
     
     // Load the spec
     spec_filename = getenv("handlebars_parser_spec");
+    if( spec_filename == NULL && argc >= 2 ) {
+        spec_filename = argv[1];
+    }
     if( spec_filename == NULL ) {
         spec_filename = "./spec/handlebars/spec/parser.json";
     }

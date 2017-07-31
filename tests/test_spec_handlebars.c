@@ -525,7 +525,7 @@ Suite * parser_suite(void)
     return s;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     int number_failed;
     int error;
@@ -547,6 +547,9 @@ int main(void)
     // Load specs
     // Load the spec
     spec_dir = getenv("handlebars_spec_dir");
+    if( spec_dir == NULL && argc >= 2 ) {
+        spec_dir = argv[1];
+    }
     if( spec_dir == NULL ) {
         spec_dir = "./spec/handlebars/spec";
     }

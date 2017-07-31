@@ -342,7 +342,7 @@ Suite * parser_suite(void)
     return s;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     int number_failed;
     int memdebug;
@@ -356,8 +356,10 @@ int main(void)
     rootctx = talloc_new(NULL);
 
     // Load specs
-    // Load the spec
     spec_dir = getenv("mustache_spec_dir");
+    if( spec_dir == NULL && argc >= 2 ) {
+        spec_dir = argv[1];
+    }
     if( spec_dir == NULL ) {
         spec_dir = "./spec/mustache/specs";
     }
