@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(handlebars C)
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_MODULE_PATH}")
 
 set(HANDLEBARS_VERSION_MAJOR 0)
 set(HANDLEBARS_VERSION_MINOR 6)
@@ -13,41 +13,49 @@ add_definitions(-DHANDLEBARS_VERSION_PATCH=${HANDLEBARS_VERSION_PATCH})
 add_definitions(-DHANDLEBARS_VERSION_STRING="${HANDLEBARS_VERSION_MAJOR}.${HANDLEBARS_VERSION_MINOR}.${HANDLEBARS_VERSION_PATCH}")
 add_definitions(-DHANDLEBARS_SPEC_VERSION_STRING="4.0.5")
 add_definitions(-DMUSTACHE_SPEC_VERSION_STRING="1.1.3")
-add_definitions(-DYY_NO_UNISTD_H=1)
-add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE_STATIC=1)
+
+if(WIN32)
+    add_definitions(-DYY_NO_UNISTD_H=1)
+    add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE_STATIC=1)
+ENDIF(WIN32)
 
 option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
 
-find_library(LIBCOMPAT
+IF(WIN32)
+    find_library(LIBCOMPAT
         NAME compat
-        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+        HINTS ${CMAKE_SOURCE_DIR}/deps ENV LIBCOMPAT_PATH)
+ENDIF(WIN32)
 
-find_library(LIBCHECK
-        NAME check
-        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+find_package(Check REQUIRED)
+include_directories(${CHECK_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${CHECK_LIBRARIES})
 
-find_library(LIBJSONC
-        NAME json-c
-        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+find_package(Libjsonc REQUIRED)
+include_directories(${LIBJSONC_INCLUDE_DIR})
+set(LIBS ${LIBS} ${LIBJSONC_LIBRARY})
 
-find_library(LIBPCRED
-        NAME pcred
-        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+find_package(PCRE REQUIRED)
+include_directories(${PCRE_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${PCRE_LIBRARIES})
 
-find_library(LIBPCREPOSIXD
-        NAME pcreposixd
-        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+find_package(Talloc REQUIRED)
+include_directories(${TALLOC_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${TALLOC_LIBRARIES})
 
-find_library(LIBTALLOC
-        NAME talloc
-        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+find_package(Threads)
+set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
+if(CMAKE_USE_PTHREADS_INIT)
+    add_definitions(-DHAVE_PTHREAD)
+endif()
 
-find_library(LIBYAML
-        NAME yaml_static
-        HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../output/lib)
+find_package(LibYaml REQUIRED)
+include_directories(${LibYaml_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${LibYaml_LIBRARIES})
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../output/include)
+# generate handlebars_config.h
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/handlebars_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/src/mustache_config.h)
 
 add_subdirectory(src)
 add_subdirectory(bin)

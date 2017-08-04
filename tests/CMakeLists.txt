@@ -1,6 +1,7 @@
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../src)
+include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/../)
 
 set(srcdir "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -19,7 +20,8 @@ SET(COMMON_TEST_FILES
         utils.c
         utils.h)
 
-link_libraries(winmm.lib ${LIBCOMPAT} ${LIBJSONC} ${LIBTALLOC} ${LIBYAML} ${LIBPCREPOSIXD} ${LIBPCRED} ${LIBCHECK} handlebars)
+# @todo winmm.lib
+link_libraries(${LIBS} handlebars)
 
 add_executable(test_ast ${COMMON_TEST_FILES} test_ast.c)
 add_executable(test_ast_helpers ${COMMON_TEST_FILES} test_ast_helpers.c)
