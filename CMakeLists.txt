@@ -51,8 +51,8 @@ if(CMAKE_USE_PTHREADS_INIT)
 endif()
 
 find_package(LibYaml REQUIRED)
-include_directories(${LibYaml_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${LibYaml_LIBRARIES})
+include_directories(${LIBYAML_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${LIBYAML_LIBRARIES})
 
 # generate handlebars_config.h
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/handlebars_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/src/mustache_config.h)

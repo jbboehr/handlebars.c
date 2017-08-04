@@ -1,22 +1,22 @@
-if (LibYaml_LIBRARIES AND LibYaml_INCLUDE_DIRS)
-    set (LibYaml_FIND_QUIETLY TRUE)
-endif (LibYaml_LIBRARIES AND LibYaml_INCLUDE_DIRS)
+if (LIBYAML_LIBRARIES AND LIBYAML_INCLUDE_DIRS)
+    set (LIBYAML_FIND_QUIETLY TRUE)
+endif (LIBYAML_LIBRARIES AND LIBYAML_INCLUDE_DIRS)
 
-find_path (LibYaml_INCLUDE_DIRS NAMES yaml.h)
+find_path (LIBYAML_INCLUDE_DIRS NAMES yaml.h)
 IF(MSVC)
     add_definitions(-DYAML_DECLARE_STATIC)
-    find_library (LibYaml_LIBRARIES NAMES yaml_static)
+    find_library (LIBYAML_LIBRARIES NAMES yaml_static)
 ELSE()
-    find_library (LibYaml_LIBRARIES NAMES yaml)
+    find_library (LIBYAML_LIBRARIES NAMES yaml)
 ENDIF()
 
-if (LibYaml_LIBRARIES)
+if (LIBYAML_LIBRARIES)
     add_definitions(-DHAVE_LIBYAML)
 endif()
 
 include (FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(LibYaml DEFAULT_MSG
-    LibYaml_LIBRARIES
-    LibYaml_INCLUDE_DIRS)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(LIBYAML DEFAULT_MSG
+    LIBYAML_LIBRARIES
+    LIBYAML_INCLUDE_DIRS)
 
-mark_as_advanced(LibYaml_INCLUDE_DIRS LibYaml_LIBRARIES)
+mark_as_advanced(LIBYAML_INCLUDE_DIRS LIBYAML_LIBRARIES)

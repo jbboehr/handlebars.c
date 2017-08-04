@@ -70,4 +70,4 @@ stamp-h2
 .settings
 .c9
 .idea
-CMakeLists.txt
+/cmake-build/
