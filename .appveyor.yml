@@ -18,6 +18,7 @@ install:
 - cmd: cinst wget
 - cmd: >-
     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
+- cmd: set ARTIFACT_DIR=%APPVEYOR_BUILD_FOLDER%\artifacts
 
 build_script:
 # check
@@ -26,7 +27,7 @@ build_script:
 
     set CHECK_BUILD_DIR=%CHECK_SRC_DIR%\build
 
-    set CHECK_DIR=\projects\output\check
+    set CHECK_DIR=%ARTIFACT_DIR%
 
     set CHECK_INCLUDE_DIR=%CHECK_DIR%\include
 
@@ -49,7 +50,7 @@ build_script:
 
     set LIBJSONC_BUILD_DIR=%LIBJSONC_SRC_DIR%\build
 
-    set LIBJSONC_DIR=\projects\output\json-c
+    set LIBJSONC_DIR=%ARTIFACT_DIR%
 
     set LIBJSONC_INCLUDE_DIR=%LIBJSONC_DIR%\include
 
@@ -72,7 +73,7 @@ build_script:
 
     set PCRE_BUILD_DIR=%PCRE_SRC_DIR%\build
 
-    set PCRE_DIR=\projects\output\json-c
+    set PCRE_DIR=%ARTIFACT_DIR%
 
     set PCRE_INCLUDE_DIR=%PCRE_DIR%\include
 
@@ -95,7 +96,7 @@ build_script:
 
     set TALLOC_BUILD_DIR=%TALLOC_SRC_DIR%\build
 
-    set TALLOC_DIR=\projects\output\talloc-win
+    set TALLOC_DIR=%ARTIFACT_DIR%
 
     set TALLOC_INCLUDE_DIR=%TALLOC_DIR%\include
 
@@ -118,7 +119,7 @@ build_script:
 
     set LIBYAML_BUILD_DIR=%LIBYAML_SRC_DIR%\build
 
-    set LIBYAML_DIR=\projects\output\yaml
+    set LIBYAML_DIR=%ARTIFACT_DIR%
 
     set LIBYAML_INCLUDE_DIR=%LIBYAML_DIR%\include
 
@@ -153,7 +154,7 @@ build_script:
 
     cd %HANDLEBARS_BUILD_DIR%
 
-    cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%HANDLEBARS_DIR% ..
+    cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%HANDLEBARS_DIR% -DCHECK_INCLUDE_DIRS=%CHECK_INCLUDE_DIR% -DCHECK_LIBRARIES=%CHECK_LIBRARY% -DLIBJSONC_INCLUDE_DIR=%LIBJSONC_INCLUDE_DIR% -DLIBJSONC_LIBRARY=%LIBJSONC_LIBRARY% -DLIBYAML_INCLUDE_DIRS=%LIBYAML_INCLUDE_DIR% -DLIBYAML_LIBRARIES=%LIBYAML_LIBRARY% -DPCRE_INCLUDE_DIRS=%PCRE_INCLUDE_DIR% -DPCRE_LIBRARIES=%PCRE_LIBRARY% -DTALLOC_INCLUDE_DIRS=%TALLOC_INCLUDE_DIR% -DTALLOC_LIBRARIES=%TALLOC_LIBRARY% ..
 
     nmake
 
