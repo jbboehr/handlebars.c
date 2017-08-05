@@ -21,6 +21,7 @@ install:
 - cmd: set ARTIFACT_DIR=%APPVEYOR_BUILD_FOLDER%\artifacts
 - cmd: mkdir %ARTIFACT_DIR%\include
 - cmd: mkdir %ARTIFACT_DIR%\lib
+- cmd: git submodule update --init
 
 build_script:
 # dirent.h
