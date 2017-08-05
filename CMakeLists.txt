@@ -23,7 +23,7 @@ option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
 
 IF(WIN32)
-    find_library(LIBCOMPAT NAME compat)
+    find_library(LIBCOMPAT NAME compat.lib)
     set(LIBS ${LIBS} ${LIBCOMPAT})
 ENDIF(WIN32)
 
