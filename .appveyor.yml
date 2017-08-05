@@ -133,6 +133,7 @@ build_script:
     cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%LIBYAML_DIR% ..
 
     nmake
+    
     mkdir %LIBYAML_INCLUDE_DIR%
 
     mkdir %LIBYAML_LIBRARY%
