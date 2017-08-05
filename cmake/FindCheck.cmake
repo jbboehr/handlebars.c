@@ -13,7 +13,8 @@
 #  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 
 
-IF(!WIN32)
+IF(WIN32)
+ELSE()
     INCLUDE( FindPkgConfig )
 
     IF ( Check_FIND_REQUIRED )
