@@ -147,7 +147,7 @@ build_script:
 
     set HANDLEBARS_BUILD_DIR=%HANDLEBARS_SRC_DIR%\cmake-build
 
-    set HANDLEBARS_DIR=\projects\handlebars.c\artifacts
+    set HANDLEBARS_DIR=%APPVEYOR_BUILD_FOLDER%\artifacts
 
     mkdir %HANDLEBARS_BUILD_DIR%
 
