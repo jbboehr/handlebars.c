@@ -13,19 +13,21 @@
 #  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 
 
-INCLUDE( FindPkgConfig )
+IF(!WIN32)
+    INCLUDE( FindPkgConfig )
 
-IF ( Check_FIND_REQUIRED )
-    SET( _pkgconfig_REQUIRED "REQUIRED" )
-ELSE( Check_FIND_REQUIRED )
-    SET( _pkgconfig_REQUIRED "" )
-ENDIF ( Check_FIND_REQUIRED )
+    IF ( Check_FIND_REQUIRED )
+        SET( _pkgconfig_REQUIRED "REQUIRED" )
+    ELSE( Check_FIND_REQUIRED )
+        SET( _pkgconfig_REQUIRED "" )
+    ENDIF ( Check_FIND_REQUIRED )
 
-IF ( CHECK_MIN_VERSION )
-    PKG_SEARCH_MODULE( CHECK ${_pkgconfig_REQUIRED} check>=${CHECK_MIN_VERSION} )
-ELSE ( CHECK_MIN_VERSION )
-    PKG_SEARCH_MODULE( CHECK ${_pkgconfig_REQUIRED} check )
-ENDIF ( CHECK_MIN_VERSION )
+    IF ( CHECK_MIN_VERSION )
+        PKG_SEARCH_MODULE( CHECK ${_pkgconfig_REQUIRED} check>=${CHECK_MIN_VERSION} )
+    ELSE ( CHECK_MIN_VERSION )
+        PKG_SEARCH_MODULE( CHECK ${_pkgconfig_REQUIRED} check )
+    ENDIF ( CHECK_MIN_VERSION )
+ENDIF()
 
 # Look for CHECK include dir and libraries
 IF( NOT CHECK_FOUND AND NOT PKG_CONFIG_FOUND )
