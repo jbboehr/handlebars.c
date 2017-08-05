@@ -23,9 +23,8 @@ option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
 
 IF(WIN32)
-    find_library(LIBCOMPAT
-        NAME compat
-        HINTS ${CMAKE_SOURCE_DIR}/deps ENV LIBCOMPAT_PATH)
+    find_library(LIBCOMPAT NAME compat)
+    set(LIBS ${LIBS} ${LIBCOMPAT})
 ENDIF(WIN32)
 
 find_package(Check REQUIRED)

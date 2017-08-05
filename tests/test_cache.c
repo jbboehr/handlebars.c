@@ -252,6 +252,7 @@ START_TEST(test_lmdb_cache_error)
 END_TEST
 #endif
 
+#if HAVE_PTHREAD
 START_TEST(test_mmap_cache_gc)
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
     execute_gc_test(cache);
@@ -263,6 +264,19 @@ START_TEST(test_mmap_cache_reset)
     execute_gc_test(cache);
     handlebars_cache_dtor(cache);
 END_TEST
+#else
+START_TEST(test_mmap_cache_error)
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        ck_assert(1);
+        return;
+    }
+
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
+    ck_assert(0);
+END_TEST
+#endif
 
 Suite * parser_suite(void)
 {
@@ -278,8 +292,12 @@ Suite * parser_suite(void)
 #else
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_error, "LMDB Cache (Error)");
 #endif
+#ifdef HAVE_PTHREAD
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
+#else
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache_error, "MMAP Cache (Error)");
+#endif
 
     return s;
 }

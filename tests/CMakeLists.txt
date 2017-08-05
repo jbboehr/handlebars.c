@@ -20,9 +20,6 @@ SET(COMMON_TEST_FILES
         utils.c
         utils.h)
 
-if(WIN32)
-    link_libraries(winmm.lib)
-endif()
 link_libraries(${LIBS} handlebars_static)
 
 add_executable(test_ast ${COMMON_TEST_FILES} test_ast.c)
