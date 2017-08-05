@@ -14,16 +14,14 @@ add_definitions(-DHANDLEBARS_VERSION_STRING="${HANDLEBARS_VERSION_MAJOR}.${HANDL
 add_definitions(-DHANDLEBARS_SPEC_VERSION_STRING="4.0.5")
 add_definitions(-DMUSTACHE_SPEC_VERSION_STRING="1.1.3")
 
-if(WIN32)
-    add_definitions(-DYY_NO_UNISTD_H=1)
-    add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE_STATIC=1)
-ENDIF(WIN32)
-
 option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
 
-IF(WIN32)
-    find_library(LIBCOMPAT NAME compat.lib)
+if(WIN32)
+    add_definitions(-DYY_NO_UNISTD_H=1)
+    add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE_STATIC=1)
+	
+    find_package(Libcompat REQUIRED)
     set(LIBS ${LIBS} ${LIBCOMPAT})
 ENDIF(WIN32)
 
