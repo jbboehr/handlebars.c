@@ -1,6 +1,7 @@
 # handlebars.c
 
 [![Build Status](https://travis-ci.org/jbboehr/handlebars.c.svg?branch=master)](https://travis-ci.org/jbboehr/handlebars.c)
+[![Build status](https://ci.appveyor.com/api/projects/status/d6faygdtk5ekroti?svg=true)](https://ci.appveyor.com/project/jbboehr/handlebars-c)
 [![Coverage Status](https://coveralls.io/repos/jbboehr/handlebars.c/badge.svg?branch=master&service=github)](https://coveralls.io/github/jbboehr/handlebars.c?branch=master)
 [![License](https://img.shields.io/badge/license-LGPLv2.1-brightgreen.svg)](LICENSE.md)
 [![Doxygen](https://img.shields.io/badge/doxygen-0.6.0-blue.svg)](https://jbboehr.github.io/handlebars.c/doxygen/index.html)
