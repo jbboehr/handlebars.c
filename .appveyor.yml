@@ -19,6 +19,8 @@ install:
 - cmd: >-
     "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
 - cmd: set ARTIFACT_DIR=%APPVEYOR_BUILD_FOLDER%\artifacts
+- cmd: mkdir %ARTIFACT_DIR%\include
+- cmd: mkdir %ARTIFACT_DIR%\lib
 
 build_script:
 # dirent.h
