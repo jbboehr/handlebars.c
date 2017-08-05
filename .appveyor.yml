@@ -32,7 +32,7 @@ build_script:
 
     set CHECK_LIBRARY=%CHECK_DIR%\lib
 
-    git clone -b 0.11.0 https://github.com/libcheck/check.git %CHECK_SRC_DIR%
+    git clone -b master https://github.com/libcheck/check.git %CHECK_SRC_DIR%
 
     mkdir %CHECK_BUILD_DIR%
 
