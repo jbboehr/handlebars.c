@@ -24,17 +24,10 @@
 #include <check.h>
 #include <stdio.h>
 #include <talloc.h>
-//#include <unistd.h>
 
-//#if defined(HAVE_JSON_C_JSON_H)
-#include <json-c/json.h>
-#include <json-c/json_object.h>
-#include <json-c/json_tokener.h>
-//#elif defined(HAVE_JSON_JSON_H)
-//#include <json/json.h>
-//#include <json/json_object.h>
-//#include <json/json_tokener.h>
-//#endif
+#ifndef YY_NO_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include "handlebars.h"
 #include "handlebars_memory.h"

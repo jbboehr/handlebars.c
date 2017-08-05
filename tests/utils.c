@@ -21,8 +21,6 @@
 #include "config.h"
 #endif
 
-// #define PCRE_STATIC
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -32,7 +30,9 @@
 
 #include <errno.h>
 #include <dirent.h>
-//#include <unistd.h>
+#ifndef YY_NO_UNISTD_H
+#include <unistd.h>
+#endif
 #include <sys/stat.h>
 #include <sys/types.h>
 

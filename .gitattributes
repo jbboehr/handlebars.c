@@ -15,4 +15,5 @@ doc/*				linguist-documentation=true
 doc/Doxyfile.in			linguist-documentation=false
 doc/Makefile.am			linguist-documentation=false
 build/*				linguist-vendored=true
+cmake/*				linguist-vendored=true
 m4/*				linguist-vendored=true
