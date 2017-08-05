@@ -49,7 +49,7 @@ build_script:
 
     set CHECK_LIBRARY=%CHECK_DIR%\lib
 
-    git clone -b master https://github.com/libcheck/check.git %CHECK_SRC_DIR%
+    git clone -b windows https://github.com/jbboehr/check.git %CHECK_SRC_DIR%
 
     mkdir %CHECK_BUILD_DIR%
 
