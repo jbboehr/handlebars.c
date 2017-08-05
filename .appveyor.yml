@@ -101,7 +101,7 @@ build_script:
 
     set TALLOC_LIBRARY=%TALLOC_DIR%\lib
 
-    git clone https://github.com/jbboehr/talloc-win.git
+    git clone https://github.com/jbboehr/talloc-win.git %TALLOC_SRC_DIR%
 
     mkdir %TALLOC_BUILD_DIR%
 
