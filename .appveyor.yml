@@ -135,9 +135,9 @@ build_script:
 
     nmake
 
-    copy /Y *.lib %LIBYAML_INCLUDE_DIR%
+    copy /Y *.lib %LIBYAML_LIBRARY%
 
-    copy /Y ..\include\yaml.h %LIBYAML_LIBRARY%
+    copy /Y ..\include\yaml.h %LIBYAML_INCLUDE_DIR%
 # handlebars
 - cmd: >-
     set HANDLEBARS_SRC_DIR=%APPVEYOR_BUILD_FOLDER%
