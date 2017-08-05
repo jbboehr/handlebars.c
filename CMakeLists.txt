@@ -22,7 +22,7 @@ if(WIN32)
     add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE_STATIC=1)
 	
     find_package(Libcompat REQUIRED)
-    set(LIBS ${LIBS} ${LIBCOMPAT})
+    set(LIBS ${LIBS} ${LIBCOMPAT_LIBRARIES})
 ENDIF(WIN32)
 
 find_package(Check REQUIRED)
