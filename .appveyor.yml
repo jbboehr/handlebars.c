@@ -135,10 +135,6 @@ build_script:
 
     nmake
 
-    mkdir %LIBYAML_INCLUDE_DIR%
-
-    mkdir %LIBYAML_LIBRARY%
-
     copy /Y *.lib %LIBYAML_INCLUDE_DIR%
 
     copy /Y ..\include\yaml.h %LIBYAML_LIBRARY%
