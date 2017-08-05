@@ -133,7 +133,7 @@ build_script:
     cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%LIBYAML_DIR% ..
 
     nmake
-    
+
     mkdir %LIBYAML_INCLUDE_DIR%
 
     mkdir %LIBYAML_LIBRARY%
@@ -143,7 +143,7 @@ build_script:
     copy /Y ..\include\yaml.h %LIBYAML_LIBRARY%
 # handlebars
 - cmd: >-
-    set HANDLEBARS_SRC_DIR=\projects\handlebars.c
+    set HANDLEBARS_SRC_DIR=%APPVEYOR_BUILD_FOLDER%
 
     set HANDLEBARS_BUILD_DIR=%HANDLEBARS_SRC_DIR%\cmake-build
 
