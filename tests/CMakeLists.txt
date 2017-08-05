@@ -1,18 +1,25 @@
+#
+# Copyright (C) 2016 John Boehr
+#
+# This file is part of handlebars.c.
+#
+# handlebars.c is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 2.1 of the License, or
+# (at your option) any later version.
+#
+# handlebars.c is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
+#
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../src)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/..)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../src)
-include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/../)
-
-set(srcdir "${CMAKE_CURRENT_SOURCE_DIR}")
-
-if(WIN32)
-    # CMake uses Unix slashes for everything, but the tests that
-    # read srcdir expect platform specific slashes. There are two
-    # slashes because the shell scripts will consume srcdir.
-    string(REPLACE "/" "\\\\" srcdir "${srcdir}")
-    set(EXEEXT ".exe")
-    set(IS_MSVC "1")
-endif(WIN32)
 
 SET(COMMON_TEST_FILES
         adler32.c

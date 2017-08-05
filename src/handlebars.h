@@ -32,12 +32,12 @@
 #undef BOOLEAN
 #endif
 
-//#include "handlebars_config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <setjmp.h>
 
+#include "handlebars_config.h"
 
 #ifdef	__cplusplus
 extern "C" {
