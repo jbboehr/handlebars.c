@@ -99,6 +99,7 @@ END_TEST
 START_TEST(test_yy_print)
 {
     union YYSTYPE t;
+    memset(&t, 0, sizeof(union YYSTYPE));
     handlebars_yy_print(stderr, 1, t);
 }
 END_TEST

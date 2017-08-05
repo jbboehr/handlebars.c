@@ -1,4 +1,5 @@
 *				text=auto eol=lf
+.appveyor.yml			text=auto eol=crlf
 .gitattributes			export-ignore
 .gitignore			export-ignore
 .gitmodules			export-ignore
@@ -14,4 +15,5 @@ doc/*				linguist-documentation=true
 doc/Doxyfile.in			linguist-documentation=false
 doc/Makefile.am			linguist-documentation=false
 build/*				linguist-vendored=true
+cmake/*				linguist-vendored=true
 m4/*				linguist-vendored=true

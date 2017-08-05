@@ -25,11 +25,19 @@
 #ifndef HANDLEBARS_H
 #define HANDLEBARS_H
 
-#include "handlebars_config.h"
+#ifdef _MSC_VER
+#define BOOLEAN MSBOOLEAN
+#include <windows.h>
+#include <malloc.h>
+#undef BOOLEAN
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <setjmp.h>
+
+#include "handlebars_config.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -50,7 +58,7 @@ struct handlebars_string;
 #define HBS_ATTR_NORETURN
 #define HBS_ATTR_PRINTF(a1, a2)
 #define HBS_ATTR_UNUSED
-#define HBS_ATTR_NONNULL
+#define HBS_ATTR_NONNULL(...)
 #define HBS_ATTR_NONNULL_ALL
 #endif
 

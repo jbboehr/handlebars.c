@@ -24,13 +24,16 @@
 #include <assert.h>
 #include <string.h>
 #include <talloc.h>
-#include <yaml.h>
 
-#if defined(HAVE_JSON_C_JSON_H)
+#if defined(HAVE_LIBYAML)
+#include <yaml.h>
+#endif
+
+#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
 #include <json-c/json.h>
 #include <json-c/json_object.h>
 #include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H)
+#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
 #include <json/json.h>
 #include <json/json_object.h>
 #include <json/json_tokener.h>

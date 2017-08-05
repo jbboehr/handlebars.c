@@ -21,6 +21,10 @@
 #include "config.h"
 #endif
 
+#include "handlebars.h"
+
+#ifdef HAVE_PTHREAD
+
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
@@ -31,7 +35,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 
@@ -481,3 +484,14 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
     return cache;
 }
+
+#else
+
+struct handlebars_cache * handlebars_cache_mmap_ctor(
+        struct handlebars_context * context,
+        const char * path
+) {
+    handlebars_throw(context, HANDLEBARS_ERROR, "pthread not available");
+}
+
+#endif

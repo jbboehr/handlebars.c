@@ -96,7 +96,8 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     if( handlebars_value_is_callable(context) ) {
         struct handlebars_options options2 = {0};
         int argc2 = 1;
-        struct handlebars_value * argv2[argc2];
+        //struct handlebars_value * argv2[argc2];
+        struct handlebars_value ** argv2 = alloca(sizeof(struct handlebars_value *) * argc2);
         options2.vm = options->vm;
         options2.scope = options->scope;
         argv2[0] = options->scope;
@@ -296,7 +297,8 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
     if( handlebars_value_is_callable(conditional) ) {
         struct handlebars_options options2 = {0};
         int argc2 = 1;
-        struct handlebars_value * argv2[argc];
+        //struct handlebars_value * argv2[argc2];
+        struct handlebars_value ** argv2 = alloca(sizeof(struct handlebars_value *) * argc2);
         options2.vm = options->vm;
         options2.scope = options->scope;
         argv2[0] = options->scope;
@@ -359,7 +361,8 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
     if( handlebars_value_is_callable(context) ) {
         struct handlebars_options options2 = {0};
         int argc2 = 1;
-        struct handlebars_value * argv2[argc];
+        //struct handlebars_value * argv2[argc2];
+        struct handlebars_value ** argv2 = alloca(sizeof(struct handlebars_value *) * argc2);
         argv2[0] = options->scope;
         ret = handlebars_value_call(context, argc2, argv2, options);
         if( !ret ) {

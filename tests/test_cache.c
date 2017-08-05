@@ -24,18 +24,9 @@
 #include <check.h>
 #include <stdio.h>
 #include <talloc.h>
+
+#ifndef YY_NO_UNISTD_H
 #include <unistd.h>
-
-#if defined(HAVE_JSON_C_JSON_H)
-#include <json-c/json.h>
-#include <json-c/json_object.h>
-#include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H)
-#include <json/json.h>
-#include <json/json_object.h>
-#include <json/json_tokener.h>
-#include <src/handlebars_value.h>
-
 #endif
 
 #include "handlebars.h"
@@ -241,7 +232,8 @@ END_TEST
 START_TEST(test_lmdb_cache_error)
     jmp_buf buf;
     char tmp[256];
-    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
+    const char *tmpdir = getenv("TMPDIR");
+    snprintf(tmp, 256, "%s/%s", tmpdir ? tmpdir : "/tmp", "handlebars-lmdb-cache-test.mdb");
 
     if( handlebars_setjmp_ex(context, &buf) ) {
         ck_assert(1);
@@ -253,6 +245,7 @@ START_TEST(test_lmdb_cache_error)
 END_TEST
 #endif
 
+#if HAVE_PTHREAD
 START_TEST(test_mmap_cache_gc)
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
     execute_gc_test(cache);
@@ -264,6 +257,19 @@ START_TEST(test_mmap_cache_reset)
     execute_gc_test(cache);
     handlebars_cache_dtor(cache);
 END_TEST
+#else
+START_TEST(test_mmap_cache_error)
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        ck_assert(1);
+        return;
+    }
+
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
+    ck_assert(0);
+END_TEST
+#endif
 
 Suite * parser_suite(void)
 {
@@ -279,8 +285,12 @@ Suite * parser_suite(void)
 #else
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_error, "LMDB Cache (Error)");
 #endif
+#ifdef HAVE_PTHREAD
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
+#else
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache_error, "MMAP Cache (Error)");
+#endif
 
     return s;
 }

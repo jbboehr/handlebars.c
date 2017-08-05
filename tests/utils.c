@@ -30,15 +30,21 @@
 
 #include <errno.h>
 #include <dirent.h>
+#ifndef YY_NO_UNISTD_H
 #include <unistd.h>
+#endif
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#if defined(HAVE_JSON_C_JSON_H)
+#if defined(HAVE_LIBYAML)
+#include <yaml.h>
+#endif
+
+#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
 #include <json-c/json.h>
 #include <json-c/json_object.h>
 #include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H)
+#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
 #include <json/json.h>
 #include <json/json_object.h>
 #include <json/json_tokener.h>
@@ -91,25 +97,25 @@ void default_teardown(void)
 int file_get_contents(const char * filename, char ** buf, size_t * len)
 {
 	FILE * f;
-	
+
 	// Open the file
 	f = fopen(filename, "rb");
 	if( f == NULL ) {
 		fprintf(stderr, "Error opening file %s: %s\n", filename, strerror(errno));
 		return -1;
 	}
-	
+
 	// Get length
 	fseek(f, 0, SEEK_END);
 	*len = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	
+
 	*buf = malloc((*len + 1) * sizeof(char));
 	if( *buf == NULL ) {
 		fclose(f);
 		return -2;
 	}
-	
+
 	if( fread(*buf, 1, *len, f) != *len ) {
 		free(*buf);
 		*buf = NULL;
@@ -117,7 +123,7 @@ int file_get_contents(const char * filename, char ** buf, size_t * len)
 		return -3;
 	}
 	(*buf)[*len] = '\0';
-	
+
 	fclose(f);
 	return 0;
 }
@@ -127,12 +133,12 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 	DIR * dir = NULL;
 	struct dirent * ent = NULL;
 	int error = 0;
-	
+
 	// Open the directory
 	if( (dir = opendir(dirname)) == NULL ) {
 		return -1;
 	}
-	
+
 	// Read the directory
 	while( (ent = readdir(dir)) != NULL ) {
 		if( ent->d_name[0] == '.' ) continue;
@@ -140,15 +146,15 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 		//if( strcmp(ent->d_name + strlen(ent->d_name) - 4, ".yml") != 0 ) continue;
 		//if( *(ent->d_name) == '~' ) continue; // Ignore lambdas
 		if( strlen(ent->d_name) + strlen(dirname) + 1 >= 128 ) continue; // fear
-		
+
 		// Make filename
 		char filename[128];
 		snprintf(filename, 128, "%s/%s", dirname, ent->d_name);
-		
+
 		// Callback
 		cb(filename);
 	}
-	
+
 	if( dir != NULL) closedir(dir);
 	return error;
 }
@@ -160,9 +166,9 @@ int regex_compare(const char * regex, const char * string, char ** error)
     int erroffset;
     int ovector[30];
     int rc, i, ret;
-    
+
     re = pcre_compile(regex, 0, &errmsg, &erroffset, NULL);
-    
+
     if( !re ) {
         *error = talloc_asprintf(NULL, "Regex '%s' compilation failed at offset %d: %s\n", regex, erroffset, errmsg);
         return 1;
@@ -171,7 +177,7 @@ int regex_compare(const char * regex, const char * string, char ** error)
         ret = 2;
         goto error;
     }
-    
+
     rc = pcre_exec(re, NULL, string, (int) strlen(string), 0, 0, ovector, 30);
     if( rc <= 0 ) {
         ret = 2;
@@ -179,7 +185,7 @@ int regex_compare(const char * regex, const char * string, char ** error)
     } else {
         ret = 0;
     }
-    
+
 error:
     pcre_free(re);
     return ret;

@@ -81,7 +81,8 @@ int cache_gc(struct handlebars_cache * cache)
     struct handlebars_map * map = intern->map;
     struct handlebars_cache_stat * stat = &intern->stat;
     int removed = 0;
-    struct handlebars_map_entry * arr[map->i];
+    // struct handlebars_map_entry * arr[map->i];
+    struct handlebars_map_entry ** arr = alloca(sizeof(struct handlebars_map_entry *) * map->i);
     struct handlebars_map_entry * item;
     struct handlebars_map_entry * tmp;
     size_t i = 0;

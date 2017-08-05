@@ -26,11 +26,11 @@
 #include <stdio.h>
 #include <talloc.h>
 
-#if defined(HAVE_JSON_C_JSON_H)
+#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
 #include <json-c/json.h>
 #include <json-c/json_object.h>
 #include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H)
+#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
 #include <json/json.h>
 #include <json/json_object.h>
 #include <json/json_tokener.h>
@@ -718,7 +718,7 @@ Suite * parser_suite(void)
     return s;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     int number_failed;
     Suite * s;
@@ -741,6 +741,9 @@ int main(void)
     
     // Get the export dir
     export_dir = getenv("handlebars_export_dir");
+    if( export_dir == NULL && argc >= 2 ) {
+        export_dir = argv[1];
+    }
     if( export_dir == NULL ) {
         export_dir = "./spec/handlebars/export";
     }

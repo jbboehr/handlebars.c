@@ -21,6 +21,20 @@
 #include "config.h"
 #endif
 
+#if defined(HAVE_LIBYAML)
+#include <yaml.h>
+#endif
+
+#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
+#include <json-c/json.h>
+#include <json-c/json_object.h>
+#include <json-c/json_tokener.h>
+#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
+#include <json/json.h>
+#include <json/json_object.h>
+#include <json/json_tokener.h>
+#endif
+
 #include <assert.h>
 #include <check.h>
 #include <stdio.h>
@@ -340,7 +354,7 @@ Suite * parser_suite(void)
     return s;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     int number_failed;
     int memdebug;
@@ -354,8 +368,10 @@ int main(void)
     rootctx = talloc_new(NULL);
 
     // Load specs
-    // Load the spec
     spec_dir = getenv("mustache_spec_dir");
+    if( spec_dir == NULL && argc >= 2 ) {
+        spec_dir = argv[1];
+    }
     if( spec_dir == NULL ) {
         spec_dir = "./spec/mustache/specs";
     }
