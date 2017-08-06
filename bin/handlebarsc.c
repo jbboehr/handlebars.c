@@ -44,6 +44,10 @@
 #include "handlebars_utils.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
+
+#ifdef _MSC_VER
+#define BOOLEAN HBS_BOOLEAN
+#endif
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 

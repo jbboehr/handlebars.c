@@ -26,10 +26,7 @@
 #define HANDLEBARS_H
 
 #ifdef _MSC_VER
-#define BOOLEAN MSBOOLEAN
-#include <windows.h>
 #include <malloc.h>
-#undef BOOLEAN
 #endif
 
 #include <stdbool.h>

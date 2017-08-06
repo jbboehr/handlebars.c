@@ -49,6 +49,7 @@ set(SOURCE_FILES
     handlebars_whitespace.c)
 
 set(HEADERS
+    ${CMAKE_CURRENT_BINARY_DIR}/handlebars_config.h
     handlebars.h
     handlebars.lex.h
     handlebars.tab.h
@@ -65,6 +66,7 @@ set(HEADERS
     handlebars_opcode_printer.h
     handlebars_opcode_serializer.h
     handlebars_opcodes.h
+    handlebars_private.h
     handlebars_scanners.h
     handlebars_stack.h
     handlebars_string.h
