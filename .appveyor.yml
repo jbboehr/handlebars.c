@@ -37,7 +37,7 @@ install:
 - cmd: mkdir %ARTIFACT_DIR%\bin
 - cmd: mkdir %ARTIFACT_DIR%\include
 - cmd: mkdir %ARTIFACT_DIR%\lib
-- cmd: set PATH="%ARTIFACT_DIR%\lib;%ARTIFACT_DIR%\bin;%PATH%"
+- cmd: set PATH=%ARTIFACT_DIR%\lib;%ARTIFACT_DIR%\bin;%PATH%
 - cmd: git submodule update --init
 - .appveyor.bat install
 
