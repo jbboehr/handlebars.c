@@ -15,17 +15,15 @@ cache:
   - c:\build-cache
 
 platform:
-#- x86
+- x86
 - x64
 
 environment:
-  REPORT_EXIT_STATUS: 1
-  PHP_SDK_BINARY_TOOLS_VER: php-sdk-2.0.9
   BUILD_CACHE_DIR: C:\build-cache
   matrix:
-#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-#      VC_VER: vc14
-#      VS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      VC_VER: vc14
+      VS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       VC_VER: vc15
       VS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
