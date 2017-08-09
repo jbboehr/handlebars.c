@@ -6,172 +6,43 @@ branches:
   - w32
   - windows
 
-image:
-#- Visual Studio 2015
-- Visual Studio 2017
+skip_commits:
+  files:
+    - "*.md"
+    - ".travis*"
+
+cache:
+  - c:\build-cache
 
 platform:
-- x86
+#- x86
 - x64
+
+environment:
+  REPORT_EXIT_STATUS: 1
+  PHP_SDK_BINARY_TOOLS_VER: php-sdk-2.0.9
+  BUILD_CACHE_DIR: C:\build-cache
+  matrix:
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      VC_VER: vc14
+      VS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      VC_VER: vc15
+      VS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
 
 install:
 - cmd: cinst wget
-- cmd: >-
-    "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
+- if defined VS call "%VS%" %PLATFORM%
 - cmd: set ARTIFACT_DIR=%APPVEYOR_BUILD_FOLDER%\artifacts
+- cmd: mkdir %ARTIFACT_DIR%\bin
 - cmd: mkdir %ARTIFACT_DIR%\include
 - cmd: mkdir %ARTIFACT_DIR%\lib
 - cmd: git submodule update --init
+- .appveyor.bat install
 
 build_script:
-# dirent.h
-- cmd: >-
-    cd C:\projects
-
-    git clone https://github.com/jbboehr/dirent.git
-
-    copy /Y dirent\include\dirent.h %ARTIFACT_DIR%\include
-# getopt.h
-- cmd: >-
-    cd C:\projects
-
-    git clone https://github.com/jbboehr/Getopt-for-Visual-Studio.git
-
-    copy /Y Getopt-for-Visual-Studio\getopt.h %ARTIFACT_DIR%\include
-# check
-- cmd: >-
-    set CHECK_SRC_DIR=\projects\check
-
-    set CHECK_BUILD_DIR=%CHECK_SRC_DIR%\build
-
-    set CHECK_DIR=%ARTIFACT_DIR%
-
-    set CHECK_INCLUDE_DIR=%CHECK_DIR%\include
-
-    set CHECK_LIBRARY=%CHECK_DIR%\lib
-
-    git clone -b windows https://github.com/jbboehr/check.git %CHECK_SRC_DIR%
-
-    mkdir %CHECK_BUILD_DIR%
-
-    cd %CHECK_BUILD_DIR%
-
-    cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%CHECK_DIR% ..
-
-    nmake
-
-    nmake install
-# json-c
-- cmd: >-
-    set LIBJSONC_SRC_DIR=\projects\json-c
-
-    set LIBJSONC_BUILD_DIR=%LIBJSONC_SRC_DIR%\build
-
-    set LIBJSONC_DIR=%ARTIFACT_DIR%
-
-    set LIBJSONC_INCLUDE_DIR=%LIBJSONC_DIR%\include
-
-    set LIBJSONC_LIBRARY=%LIBJSONC_DIR%\lib
-
-    git clone -b windows https://github.com/jbboehr/json-c.git %LIBJSONC_SRC_DIR%
-
-    mkdir %LIBJSONC_BUILD_DIR%
-
-    cd %LIBJSONC_BUILD_DIR%
-
-    cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%LIBJSONC_DIR% ..
-
-    nmake
-
-    nmake install
-# pcre
-- cmd: >-
-    set PCRE_SRC_DIR=\projects\pcre
-
-    set PCRE_BUILD_DIR=%PCRE_SRC_DIR%\build
-
-    set PCRE_DIR=%ARTIFACT_DIR%
-
-    set PCRE_INCLUDE_DIR=%PCRE_DIR%\include
-
-    set PCRE_LIBRARY=%PCRE_DIR%\lib
-
-    git clone https://github.com/jbboehr/pcre.git %PCRE_SRC_DIR%
-
-    mkdir %PCRE_BUILD_DIR%
-
-    cd %PCRE_BUILD_DIR%
-
-    cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%PCRE_DIR% ..
-
-    nmake
-
-    nmake install
-# talloc
-- cmd: >-
-    set TALLOC_SRC_DIR=\projects\talloc-win
-
-    set TALLOC_BUILD_DIR=%TALLOC_SRC_DIR%\build
-
-    set TALLOC_DIR=%ARTIFACT_DIR%
-
-    set TALLOC_INCLUDE_DIR=%TALLOC_DIR%\include
-
-    set TALLOC_LIBRARY=%TALLOC_DIR%\lib
-
-    git clone https://github.com/jbboehr/talloc-win.git %TALLOC_SRC_DIR%
-
-    mkdir %TALLOC_BUILD_DIR%
-
-    cd %TALLOC_BUILD_DIR%
-
-    cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%TALLOC_DIR% ..
-
-    nmake
-
-    nmake install
-# yaml
-- cmd: >-
-    set LIBYAML_SRC_DIR=\projects\yaml
-
-    set LIBYAML_BUILD_DIR=%LIBYAML_SRC_DIR%\build
-
-    set LIBYAML_DIR=%ARTIFACT_DIR%
-
-    set LIBYAML_INCLUDE_DIR=%LIBYAML_DIR%\include
-
-    set LIBYAML_LIBRARY=%LIBYAML_DIR%\lib
-
-    git clone https://github.com/yaml/libyaml %LIBYAML_SRC_DIR%
-
-    mkdir %LIBYAML_BUILD_DIR%
-
-    cd %LIBYAML_BUILD_DIR%
-
-    cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%LIBYAML_DIR% ..
-
-    nmake
-
-    copy /Y *.lib %LIBYAML_LIBRARY%
-
-    copy /Y ..\include\yaml.h %LIBYAML_INCLUDE_DIR%
-# handlebars
-- cmd: >-
-    set HANDLEBARS_SRC_DIR=%APPVEYOR_BUILD_FOLDER%
-
-    set HANDLEBARS_BUILD_DIR=%HANDLEBARS_SRC_DIR%\cmake-build
-
-    set HANDLEBARS_DIR=%APPVEYOR_BUILD_FOLDER%\artifacts
-
-    mkdir %HANDLEBARS_BUILD_DIR%
-
-    cd %HANDLEBARS_BUILD_DIR%
-
-    cmake -G "NMake Makefiles" -D_CRT_SECURE_NO_WARNINGS=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_LIBRARY_PATH=%ARTIFACT_DIR%\lib -DCMAKE_INCLUDE_PATH=%ARTIFACT_DIR%\include -DCMAKE_INSTALL_PREFIX=%ARTIFACT_DIR% ..
-
-    nmake
-
-    nmake install
+- .appveyor.bat build_script
+- cmd: cd %APPVEYOR_BUILD_FOLDER%\cmake-build
 
 test_script:
 - cmd: nmake test
