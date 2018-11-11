@@ -1,13 +1,19 @@
 { stdenv, fetchurl, pkgconfig, glib, autoconf, automake, json_c, lmdb,
-  talloc, libyaml, libtool, m4, pcre, check, handlebars_spec, mustache_spec, autoreconfHook }:
+  talloc, libyaml, libtool, m4, pcre, check, handlebars_spec, mustache_spec, autoreconfHook,
+  handlebarscVersion ? null, handlebarscSrc ? null, handlebarscSha256 ? null }:
+
+let
+  orDefault = x: y: (if (!isNull x) then x else y);
+in
 
 stdenv.mkDerivation rec {
-  name = "handlebars-0.6.4";
+  name = "handlebars.c-${version}";
+  version = orDefault handlebarscVersion "v0.6.4";
 
-  src = fetchurl {
-    url = https://github.com/jbboehr/handlebars.c/archive/v0.6.4.tar.gz;
-    sha256 = "18b5f5c197a782b518d931117dd4a15e80c42aabdd6e0bd4f2a3dff57a1bb86e";
-  };
+  src = orDefault handlebarscSrc (fetchurl {
+    url = "https://github.com/jbboehr/handlebars.c/archive/${version}.tar.gz";
+    sha256 = orDefault handlebarscSha256 "0vmq3dxgbpx3yba0nvnxmcmc902yl7a7s49iv4cbb0m7jz0zbd8q";
+  });
 
   outputs = [ "bin" "dev" "out" ];
 
@@ -30,3 +36,4 @@ stdenv.mkDerivation rec {
     maintainers = [ "John Boehr <jbboehr@gmail.com>" ];
   };
 }
+

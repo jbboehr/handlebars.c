@@ -1,43 +1,22 @@
-let
-  defaultPkgs = import <nixpkgs> {};
-  fetchurl = defaultPkgs.fetchurl;
-  stdenv = defaultPkgs.stdenv;
+{
+  pkgs ? import <nixpkgs> {},
 
-  defaultMustacheSpec = stdenv.mkDerivation rec {
-    name = "mustache-spec-1.1.2";
+  handlebarscVersion ? null,
+  handlebarscSrc ? ./.,
+  handlebarscSha256 ? null,
 
-    builder = defaultPkgs.writeText "builder.sh" ''
-        source $stdenv/setup
-        
-        buildPhase() {
-            echo do nothing
-        }
-        
-        installPhase() {
-            mkdir -p $out/share/mustache-spec
-            cp -prvd specs $out/share/mustache-spec/
-        }
-        
-        genericBuild
-      '';
+  mustache_spec ? pkgs.callPackage (import ((fetchTarball {
+    url = https://github.com/jbboehr/mustache-spec/archive/5b85c1b58309e241a6f7c09fa57bd1c7b16fa9be.tar.gz;
+    sha256 = "1h9zsnj4h8qdnzji5l9f9zmdy1nyxnf8by9869plyn7qlk71gdyv";
+  }))) {},
 
-    src = fetchurl {
-      url = https://github.com/mustache/spec/archive/v1.1.2.tar.gz;
-      sha256 = "477552869cf4a8d3cadb74f0d297988dfa9edddbc818ee8f56bae0a097dc657c";
-    };
+  handlebars_spec ? pkgs.callPackage (import ((fetchTarball {
+    url = https://github.com/jbboehr/handlebars-spec/archive/9306f3062b4b03d5179c33834bee7263a621639a.tar.gz;
+    sha256 = "0gn9v88fxdf0wwgd8ix1xfxvif89mgfhxkp316arv5ljbibx2x9h";
+  }))) {}
+}:
 
-    meta = {
-      description = "The mustache spec";
-      homepage = https://github.com/mustache/spec;
-      maintainers = [  ];
-    };
-  };
+pkgs.callPackage ./derivation.nix {
+  inherit mustache_spec handlebars_spec;
+}
 
-  handlebarsSpecTarball = builtins.fetchTarball "https://github.com/jbboehr/handlebars-spec/archive/b4f9deed481e370de8e8b8cef23cee30999c5c30.tar.gz";
-  defaultHandlebarsSpec = defaultPkgs.callPackage (handlebarsSpecTarball + "/default.nix") {};
-in
-  { pkgs ? import <nixpkgs> {}, handlebars_spec ? defaultHandlebarsSpec, mustache_spec ? defaultMustacheSpec }:
-
-  pkgs.callPackage ./derivation.nix {
-    inherit mustache_spec handlebars_spec;
-  }
