@@ -16,21 +16,28 @@ partials.
 
 ## Installation
 
-
-### PPA
+### Nix / NixOS
 
 ```bash
-sudo apt-add-repository ppa:jbboehr/handlebars
-sudo apt-get update
-sudo apt-get install handlebars libhandlebars-dev
+nix-env -i -f https://github.com/jbboehr/handlebars.c/archive/master.tar.gz
 ```
 
+or, in a `.nix` file:
 
-### Source
+```nix
+(import <nixpkgs> {}).callPackage (import (fetchTarball {
+  url = https://github.com/jbboehr/handlebars.c/archive/444272ab9503c5da7c06419ff38d61db70cf5b25.tar.gz;
+  sha256 = "01mg8rkl67c3hw82l0ijdsn9kk0cq6vmd510ljy5ljdph1q2b8wm";
+})) {}
+```
 
-Note: >= gcc 4.9 is required for `returns_nonnull`
+### Alpine Linux
 
-#### Ubuntu 
+```bash
+apk add handlebars handlebars-dev handlebars-utils
+```
+
+### Debian / Ubuntu
 
 ```bash
 # Install dependencies
@@ -49,8 +56,7 @@ cd handlebars.c
 ./bootstrap && ./configure && make && sudo make install && sudo ldconfig
 ```
 
-
-#### OS X
+### OSX via Homebrew
 
 ```bash
 # Install dependencies
@@ -68,8 +74,8 @@ cd handlebars.c
 ./bootstrap && ./configure && make install
 ```
 
-
 ## License
 
 This project is licensed under the [LGPLv2.1 or later](LICENSE.md).
 handlebars.js is licensed under the [MIT license](http://opensource.org/licenses/MIT).
+
