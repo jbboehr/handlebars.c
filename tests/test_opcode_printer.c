@@ -38,6 +38,7 @@
 
 
 START_TEST(test_operand_print_append_null)
+{
     struct handlebars_operand op;
     struct handlebars_string * string;
     handlebars_operand_set_null(&op);
@@ -45,9 +46,11 @@ START_TEST(test_operand_print_append_null)
     ck_assert_ptr_ne(NULL, string);
     ck_assert_str_eq("[NULL]", string->val);
     handlebars_talloc_free(string);
+}
 END_TEST
 
 START_TEST(test_operand_print_append_boolean)
+{
     struct handlebars_operand op;
     struct handlebars_string * string;
     handlebars_operand_set_boolval(&op, 1);
@@ -55,9 +58,11 @@ START_TEST(test_operand_print_append_boolean)
     ck_assert_ptr_ne(NULL, string);
     ck_assert_str_eq("[BOOLEAN:1]", string->val);
     handlebars_talloc_free(string);
+}
 END_TEST
 
 START_TEST(test_operand_print_append_long)
+{
     struct handlebars_operand op;
     struct handlebars_string * string;
     handlebars_operand_set_longval(&op, 2358);
@@ -65,9 +70,11 @@ START_TEST(test_operand_print_append_long)
     ck_assert_ptr_ne(NULL, string);
     ck_assert_str_eq("[LONG:2358]", string->val);
     handlebars_talloc_free(string);
+}
 END_TEST
 
 START_TEST(test_operand_print_append_string)
+{
     struct handlebars_operand op;
     struct handlebars_string * string;
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
@@ -76,10 +83,13 @@ START_TEST(test_operand_print_append_string)
     ck_assert_ptr_ne(NULL, string);
     ck_assert_str_eq("[STRING:baz]", string->val);
     handlebars_talloc_free(string);
+}
 END_TEST
 
 START_TEST(test_operand_print_append_array)
+{
     // @todo
+}
 END_TEST
 
 START_TEST(test_opcode_print_1)
@@ -94,6 +104,7 @@ START_TEST(test_opcode_print_1)
 END_TEST
 
 START_TEST(test_opcode_print_2)
+{
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_get_context);
     char * expected = "getContext[LONG:2358]";
     struct handlebars_string * string;
@@ -102,9 +113,11 @@ START_TEST(test_opcode_print_2)
     ck_assert_str_eq(expected, string->val);
     handlebars_talloc_free(opcode);
     handlebars_talloc_free(string);
+}
 END_TEST
 
 START_TEST(test_opcode_print_3)
+{
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_invoke_helper);
     char * expected = "invokeHelper[LONG:123][STRING:baz][LONG:456]";
     struct handlebars_string * string;
@@ -117,9 +130,11 @@ START_TEST(test_opcode_print_3)
     ck_assert_str_eq(expected, string->val);
     handlebars_talloc_free(opcode);
     handlebars_talloc_free(string);
+}
 END_TEST
 
 START_TEST(test_opcode_print_4)
+{
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_lookup_on_context);
     char * expected = "lookupOnContext[LONG:123][STRING:baz][LONG:456][STRING:bat]";
     struct handlebars_string * string;
@@ -133,13 +148,14 @@ START_TEST(test_opcode_print_4)
     ck_assert_str_eq(expected, string->val);
     handlebars_talloc_free(opcode);
     handlebars_talloc_free(string);
+}
 END_TEST
 
 
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("Opcode Printer");
-    
+
     REGISTER_TEST_FIXTURE(s, test_operand_print_append_null, "Operand Print Append (null)");
     REGISTER_TEST_FIXTURE(s, test_operand_print_append_boolean, "Operand Print Append (boolean)");
     REGISTER_TEST_FIXTURE(s, test_operand_print_append_long, "Operand Print Append (long)");
@@ -149,7 +165,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_opcode_print_2, "Opcode Print (2)");
     REGISTER_TEST_FIXTURE(s, test_opcode_print_3, "Opcode Print (3)");
     REGISTER_TEST_FIXTURE(s, test_opcode_print_4, "Opcode Print (4)");
-	
+
     return s;
 }
 
@@ -160,13 +176,13 @@ int main(void)
     int error;
 
     talloc_set_log_stderr();
-    
+
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     // Set up test suite
     Suite * s = parser_suite();
     SRunner * sr = srunner_create(s);
@@ -177,12 +193,12 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }
-    
+
     // Return
     return error;
 }

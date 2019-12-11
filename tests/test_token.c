@@ -38,13 +38,13 @@ START_TEST(test_token_ctor)
 {
 	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
     struct handlebars_token * token = handlebars_token_ctor(HBSCTX(parser), OPEN, string);
-    
+
     ck_assert_ptr_ne(NULL, token);
     ck_assert_ptr_ne(NULL, token->string);
     ck_assert_int_eq(OPEN, token->token);
     ck_assert_str_eq(token->string->val, "{{");
     ck_assert_uint_eq(sizeof("{{") - 1, token->string->len);
-    
+
     handlebars_token_dtor(token);
 }
 END_TEST
@@ -85,9 +85,9 @@ START_TEST(test_token_get_type)
 {
 	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
     struct handlebars_token * token = handlebars_token_ctor(context, OPEN, string);
-    
+
     ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
-    
+
     handlebars_token_dtor(token);
 }
 END_TEST
@@ -99,7 +99,7 @@ START_TEST(test_token_get_text)
 
     ck_assert_str_eq("{{", handlebars_token_get_text(token)->val);
     ck_assert_uint_eq(sizeof("{{") - 1, handlebars_token_get_text(token)->len);
-    
+
     handlebars_token_dtor(token);
 }
 END_TEST
@@ -113,7 +113,7 @@ START_TEST(test_token_readable_type)
 			const char * actual = handlebars_token_readable_type(str); \
 			ck_assert_str_eq(expected, actual); \
 		} while(0)
-	
+
 	_RTYPE_TEST(BOOLEAN);
 	_RTYPE_TEST(CLOSE);
 	_RTYPE_TEST(CLOSE_RAW_BLOCK);
@@ -140,7 +140,7 @@ START_TEST(test_token_readable_type)
 	_RTYPE_TEST(SEP);
 	_RTYPE_TEST(STRING);
 	ck_assert_str_eq("UNKNOWN", handlebars_token_readable_type(-1));
-	
+
 	// Added in v3
 	_RTYPE_TEST(CLOSE_BLOCK_PARAMS);
 	_RTYPE_TEST(OPEN_BLOCK_PARAMS);
@@ -163,7 +163,7 @@ START_TEST(test_token_reverse_readable_type)
     		int actual = handlebars_token_reverse_readable_type(actual_str); \
     		ck_assert_int_eq(expected, actual); \
     	} while(0)
-	
+
 	_RTYPE_REV_TEST(BOOLEAN);
 	_RTYPE_REV_TEST(CLOSE);
 	_RTYPE_REV_TEST(CLOSE_RAW_BLOCK);
@@ -190,7 +190,7 @@ START_TEST(test_token_reverse_readable_type)
 	_RTYPE_REV_TEST(SEP);
 	_RTYPE_REV_TEST(STRING);
 	ck_assert_int_eq(-1, handlebars_token_reverse_readable_type("UNKNOWN"));
-	
+
 	// Added in v3
 	_RTYPE_REV_TEST(CLOSE_BLOCK_PARAMS);
 	_RTYPE_REV_TEST(OPEN_BLOCK_PARAMS);
@@ -204,33 +204,40 @@ START_TEST(test_token_reverse_readable_type)
 END_TEST
 
 START_TEST(test_token_print)
+{
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
     struct handlebars_token * tok = handlebars_token_ctor(context, OPEN, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, 0);
     ck_assert_str_eq("OPEN [{{] ", actual->val);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
+}
 END_TEST
 
 START_TEST(test_token_print2)
+{
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, 0);
     ck_assert_str_eq("CONTENT [this\\nis\\ra\\ttest] ", actual->val);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
+}
 END_TEST
 
 START_TEST(test_token_print3)
+{
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, handlebars_token_print_flag_newlines);
     ck_assert_str_eq("CONTENT [this\\nis\\ra\\ttest]\n", actual->val);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
+}
 END_TEST
 
 START_TEST(test_token_print_failed_alloc)
+{
 #if HANDLEBARS_MEMORY
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("tok1"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
@@ -251,12 +258,13 @@ START_TEST(test_token_print_failed_alloc)
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
+}
 END_TEST
 
 Suite * parser_suite(void)
 {
 	Suite * s = suite_create("Token");
-	
+
 	REGISTER_TEST_FIXTURE(s, test_token_ctor, "Constructor");
 	REGISTER_TEST_FIXTURE(s, test_token_ctor_failed_alloc, "Constructor (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_token_dtor, "Destructor");
@@ -279,13 +287,13 @@ int main(void)
     int error;
 
 	talloc_set_log_stderr();
-    
+
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     // Set up test suite
     Suite * s = parser_suite();
     SRunner * sr = srunner_create(s);
@@ -296,12 +304,12 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }
-    
+
     // Return
     return error;
 }
