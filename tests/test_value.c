@@ -428,6 +428,7 @@ START_TEST(test_convert)
 END_TEST
 
 START_TEST(test_json_parse_error)
+{
     jmp_buf buf;
 
     if( handlebars_setjmp_ex(context, &buf) ) {
@@ -440,9 +441,11 @@ START_TEST(test_json_parse_error)
 
     handlebars_value_from_json_string(context, "{\"key\":1");
     ck_assert_msg(0, "Parse error should have longjmp'd");
+}
 END_TEST
 
 START_TEST(test_yaml_parse_error)
+{
     jmp_buf buf;
 
     if( handlebars_setjmp_ex(context, &buf) ) {
@@ -455,6 +458,7 @@ START_TEST(test_yaml_parse_error)
 
     handlebars_value_from_yaml_string(context, "---\n'");
     ck_assert_msg(0, "Parse error should have longjmp'd");
+}
 END_TEST
 
 Suite * parser_suite(void)

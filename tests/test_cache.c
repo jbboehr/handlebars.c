@@ -201,35 +201,44 @@ static void execute_reset_test(struct handlebars_cache * cache)
 }
 
 START_TEST(test_simple_cache_gc)
+{
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
     execute_gc_test(cache);
     handlebars_cache_dtor(cache);
+}
 END_TEST
 
 START_TEST(test_simple_cache_reset)
+{
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
     execute_reset_test(cache);
     handlebars_cache_dtor(cache);
+}
 END_TEST
 
 #ifdef HAVE_LIBLMDB
 START_TEST(test_lmdb_cache_gc)
+{
     char tmp[256];
     snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
     struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
     execute_gc_test(cache);
     handlebars_cache_dtor(cache);
+}
 END_TEST
 
 START_TEST(test_lmdb_cache_reset)
+{
     char tmp[256];
     snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
     struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
     execute_reset_test(cache);
     handlebars_cache_dtor(cache);
+}
 END_TEST
 #else
 START_TEST(test_lmdb_cache_error)
+{
     jmp_buf buf;
     char tmp[256];
     const char *tmpdir = getenv("TMPDIR");
@@ -242,23 +251,29 @@ START_TEST(test_lmdb_cache_error)
 
     struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
     ck_assert(0);
+}
 END_TEST
 #endif
 
 #if HAVE_PTHREAD
 START_TEST(test_mmap_cache_gc)
+{
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
     execute_gc_test(cache);
     handlebars_cache_dtor(cache);
+}
 END_TEST
 
 START_TEST(test_mmap_cache_reset)
+{
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
     execute_gc_test(cache);
     handlebars_cache_dtor(cache);
+}
 END_TEST
 #else
 START_TEST(test_mmap_cache_error)
+{
     jmp_buf buf;
 
     if( handlebars_setjmp_ex(context, &buf) ) {
@@ -268,6 +283,7 @@ START_TEST(test_mmap_cache_error)
 
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
     ck_assert(0);
+}
 END_TEST
 #endif
 

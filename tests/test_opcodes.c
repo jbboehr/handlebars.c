@@ -37,10 +37,10 @@
 START_TEST(test_opcode_ctor)
 {
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_append);
-    
+
     ck_assert_ptr_ne(NULL, opcode);
     ck_assert_int_eq(handlebars_opcode_type_append, opcode->type);
-    
+
     handlebars_talloc_free(opcode);
 }
 END_TEST
@@ -76,7 +76,7 @@ START_TEST(test_opcode_readable_type)
 			const char * actual = handlebars_opcode_readable_type(_RTYPE_MK(type)); \
 			ck_assert_str_eq(expected, actual); \
 		} while(0)
-		
+
     _RTYPE_TEST(nil, nil);
     _RTYPE_TEST(ambiguous_block_value, ambiguousBlockValue);
     _RTYPE_TEST(append, append);
@@ -86,33 +86,33 @@ START_TEST(test_opcode_readable_type)
     _RTYPE_TEST(push_context, pushContext);
     _RTYPE_TEST(push_hash, pushHash);
     _RTYPE_TEST(resolve_possible_lambda, resolvePossibleLambda);
-    
+
     _RTYPE_TEST(get_context, getContext);
     _RTYPE_TEST(push_program, pushProgram);
-    
+
     _RTYPE_TEST(append_content, appendContent);
     _RTYPE_TEST(assign_to_hash, assignToHash);
     _RTYPE_TEST(block_value, blockValue);
     _RTYPE_TEST(push, push);
     _RTYPE_TEST(push_literal, pushLiteral);
     _RTYPE_TEST(push_string, pushString);
-    
+
     _RTYPE_TEST(invoke_partial, invokePartial);
     _RTYPE_TEST(push_id, pushId);
     _RTYPE_TEST(push_string_param, pushStringParam);
-    
+
     _RTYPE_TEST(invoke_ambiguous, invokeAmbiguous);
-    
+
     _RTYPE_TEST(invoke_known_helper, invokeKnownHelper);
-    
+
     _RTYPE_TEST(invoke_helper, invokeHelper);
-    
+
     _RTYPE_TEST(lookup_on_context, lookupOnContext);
-    
+
     _RTYPE_TEST(lookup_data, lookupData);
-    
+
     _RTYPE_TEST(invalid, invalid);
-    
+
     ck_assert_str_eq("invalid", handlebars_opcode_readable_type(13434534));
 }
 END_TEST
@@ -120,7 +120,7 @@ END_TEST
 START_TEST(test_operand_set_null)
 {
     struct handlebars_operand op;
-    
+
     handlebars_operand_set_null(&op);
     ck_assert_int_eq(handlebars_operand_type_null, op.type);
     ck_assert_int_eq(0, op.data.boolval);
@@ -132,7 +132,7 @@ END_TEST
 START_TEST(test_operand_set_boolval)
 {
     struct handlebars_operand op;
-    
+
     handlebars_operand_set_boolval(&op, 1);
     ck_assert_int_eq(handlebars_operand_type_boolean, op.type);
     ck_assert_int_eq(1, op.data.boolval);
@@ -142,11 +142,11 @@ END_TEST
 START_TEST(test_operand_set_longval)
 {
     struct handlebars_operand op;
-    
+
     handlebars_operand_set_longval(&op, 12);
     ck_assert_int_eq(handlebars_operand_type_long, op.type);
     ck_assert_int_eq(12, op.data.longval);
-    
+
     handlebars_operand_set_longval(&op, -65);
     ck_assert_int_eq(handlebars_operand_type_long, op.type);
     ck_assert_int_eq(-65, op.data.longval);
@@ -158,7 +158,7 @@ START_TEST(test_operand_set_stringval)
     struct handlebars_operand op;
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("bar"));
-    
+
     handlebars_operand_set_stringval(context, opcode, &op, string);
 
     ck_assert_int_eq(handlebars_operand_type_string, op.type);
@@ -190,6 +190,7 @@ END_TEST
 */
 
 START_TEST(test_operand_set_arrayval)
+{
     struct handlebars_operand op;
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
     const char * strs[] = {
@@ -208,9 +209,11 @@ START_TEST(test_operand_set_arrayval)
     for( ptr1 = strs, ptr2 = op.data.array.array; *ptr1 /*|| *ptr2*/; ptr1++, ptr2++ ) {
         ck_assert_str_eq(*ptr1, ptr2->string->val);
     }
+}
 END_TEST
 
 START_TEST(test_operand_set_arrayval_string)
+{
     struct handlebars_string * strings[5];
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_invalid);
 
@@ -232,16 +235,17 @@ START_TEST(test_operand_set_arrayval_string)
     for( ptr1 = strings, ptr2 = opcode->op1.data.array.array; *ptr1 /* || *ptr2*/; ptr1++, ptr2++ ) {
         ck_assert_str_eq((*ptr1)->val, ptr2->string->val);
     }
+}
 END_TEST
 
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("Opcodes");
-    
+
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor, "Constructor");
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_failed_alloc, "Constructor (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_opcode_readable_type, "Readable Type");
-	
+
 	REGISTER_TEST_FIXTURE(s, test_operand_set_null, "Set operand null");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_boolval, "Set operand boolval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_longval, "Set operand longval");
@@ -249,8 +253,8 @@ Suite * parser_suite(void)
 	//REGISTER_TEST_FIXTURE(s, test_operand_set_stringval_failed_alloc, "Set operand stringval (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval, "Set operand arrayval");
     REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval_string, "operand_set_arrayval_string");
-	
-	
+
+
     return s;
 }
 
@@ -261,13 +265,13 @@ int main(void)
     int error;
 
     talloc_set_log_stderr();
-    
+
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     // Set up test suite
     Suite * s = parser_suite();
     SRunner * sr = srunner_create(s);
@@ -278,12 +282,12 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }
-    
+
     // Return
     return error;
 }
