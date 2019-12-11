@@ -17,6 +17,6 @@
 }:
 
 pkgs.callPackage ./derivation.nix {
-  inherit mustache_spec handlebars_spec;
+  inherit mustache_spec handlebars_spec handlebarscVersion handlebarscSrc handlebarscSha256;
 }
 
