@@ -67,7 +67,6 @@
 #endif
 
 struct handlebars_value;
-const int MOD_ADLER;
 
 typedef void (*scan_directory_cb)(char * filename);
 
