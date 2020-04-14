@@ -1433,6 +1433,108 @@ FIXTURE_FN(4207421535)
     return result;
 }
 
+// mustache lambda fixtures
+
+FIXTURE_FN(779421032)
+{
+    // return "world";
+    FIXTURE_STRING("world");
+}
+
+FIXTURE_FN(1396901812)
+{
+    // return "{{planet}}";
+    FIXTURE_STRING("{{planet}}");
+}
+
+FIXTURE_FN(3353742315)
+{
+    // return "|planet| => {{planet}}";
+    FIXTURE_STRING("|planet| => {{planet}}");
+}
+
+static int calls = 0;
+
+FIXTURE_FN(2925333156)
+{
+    // global $calls; return ++$calls;
+    calls++;
+    FIXTURE_INTEGER(calls);
+}
+
+FIXTURE_FN(414319486)
+{
+    // return ">";
+    FIXTURE_STRING(">");
+}
+
+FIXTURE_FN(401804363)
+{
+    // return ($text == "{{x}}") ? "yes" : "no";
+    struct handlebars_value * context = argv[0];
+    if (0 == strcmp(handlebars_value_to_string(argv[0])->val, "{{x}}")) {
+        FIXTURE_STRING("yes");
+    } else {
+        FIXTURE_STRING("no");
+    }
+}
+
+FIXTURE_FN(3964931170)
+{
+    // return $text . "{{planet}}" . $text;
+    char * tmp = handlebars_talloc_asprintf(
+            options->vm,
+            "%s%s%s",
+            handlebars_value_to_string(argv[0])->val,
+            "{{planet}}",
+            handlebars_value_to_string(argv[0])->val
+    );
+    struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+    handlebars_value_string(result, tmp);
+    handlebars_talloc_free(tmp);
+    return result;
+}
+
+FIXTURE_FN(2718175385)
+{
+    // return $text . "{{planet}} => |planet|" . $text;
+    char * tmp = handlebars_talloc_asprintf(
+            options->vm,
+            "%s%s%s",
+            handlebars_value_to_string(argv[0])->val,
+            "{{planet}} => |planet|",
+            handlebars_value_to_string(argv[0])->val
+    );
+    struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+    handlebars_value_string(result, tmp);
+    handlebars_talloc_free(tmp);
+    return result;
+}
+
+FIXTURE_FN(2000357317)
+{
+    // return "__" . $text . "__";
+    char * tmp = handlebars_talloc_asprintf(
+            options->vm,
+            "%s%s%s",
+            "__",
+            handlebars_value_to_string(argv[0])->val,
+            "__"
+    );
+    struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+    handlebars_value_string(result, tmp);
+    handlebars_talloc_free(tmp);
+    return result;
+}
+
+FIXTURE_FN(617219335)
+{
+    // return false;
+    struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+    handlebars_value_boolean(result, 0);
+    return result;
+}
+
 static void convert_value_to_fixture(struct handlebars_value * value)
 {
 #define FIXTURE_CASE(hash) \
@@ -1577,6 +1679,18 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE_ALIAS(2337343947, 126946175);
         FIXTURE_CASE_ALIAS(2443446763, 126946175);
 
+        // mustache lambda fixtures
+        FIXTURE_CASE(779421032);
+        FIXTURE_CASE(1396901812);
+        FIXTURE_CASE(3353742315);
+        FIXTURE_CASE(2925333156);
+        FIXTURE_CASE(414319486);
+        FIXTURE_CASE(401804363);
+        FIXTURE_CASE(3964931170);
+        FIXTURE_CASE(2718175385);
+        FIXTURE_CASE(2000357317);
+        FIXTURE_CASE(617219335);
+
         default:
             fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, handlebars_value_to_string(jsvalue)->val);
             return;
@@ -1603,6 +1717,10 @@ void load_fixtures(struct handlebars_value * value)
         case HANDLEBARS_VALUE_TYPE_MAP:
             // Check if it contains a "!code" key
             child = handlebars_value_map_str_find(value, HBS_STRL("!code"));
+            if (!child) {
+                // this is for mustache, getting at the tags is a pain, so assume any object with a "php" key is code
+                child = handlebars_value_map_str_find(value, HBS_STRL("php"));
+            }
             if( child ) {
                 // Convert to helper
                 convert_value_to_fixture(value);

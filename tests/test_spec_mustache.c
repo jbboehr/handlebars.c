@@ -298,6 +298,8 @@ START_TEST(test_mustache_spec)
         }
     }
 
+    load_fixtures(test->data);
+
     // Execute
     handlebars_vm_execute(vm, module, test->data);
 
@@ -379,7 +381,7 @@ int main(int argc, char *argv[])
     loadSpec("delimiters");
     loadSpec("interpolation");
     loadSpec("inverted");
-    //loadSpec("~lambdas");
+    loadSpec("~lambdas");
     loadSpec("partials");
     loadSpec("sections");
     fprintf(stderr, "Loaded %lu test cases\n", tests_len);
