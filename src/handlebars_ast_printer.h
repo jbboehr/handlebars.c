@@ -46,6 +46,11 @@ struct handlebars_string * handlebars_ast_print(
     struct handlebars_ast_node * ast_node
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+struct handlebars_string * handlebars_ast_to_string(
+    struct handlebars_context * context,
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
 #ifdef	__cplusplus
 }
 #endif

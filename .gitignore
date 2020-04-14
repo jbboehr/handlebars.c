@@ -37,6 +37,7 @@ tests/test_*
 *.stackdump
 *.trs
 *.c.*r.*
+*.swp
 
 # autotools
 .autotools
@@ -71,3 +72,6 @@ stamp-h2
 .c9
 .idea
 /cmake-build/
+
+# valgrind?
+vgcore.*

@@ -94,6 +94,9 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_assume_objects = (1 << 11),
 #define handlebars_compiler_flag_assume_objects handlebars_compiler_flag_assume_objects
 
+    handlebars_compiler_flag_mustache_style_lambdas = (1 << 12),
+#define handlebars_compiler_flag_mustache_style_lambdas handlebars_compiler_flag_mustache_style_lambdas
+
     // Composite option flags
 
     /**
@@ -104,7 +107,7 @@ enum handlebars_compiler_flag {
     /**
      * @brief All flags
      */
-    handlebars_compiler_flag_all = ((1 << 12) - 1)
+    handlebars_compiler_flag_all = ((1 << 13) - 1)
 };
 
 enum handlebars_compiler_result_flag {

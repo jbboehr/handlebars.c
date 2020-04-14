@@ -203,6 +203,141 @@ static inline char * dump_stack(struct handlebars_stack * stack)
     return str;
 }
 
+static inline void dump_vm_stack(struct handlebars_vm *vm)
+{
+    size_t i;
+    fprintf(stdout, "STACK[%d]\n", vm->stack.i);
+    for ( i = 0; i < vm->stack.i; i++ ) {
+        fprintf(stdout, "STACK[%d]: %s\n", i, handlebars_value_dump(vm->stack.v[i], 0));
+    }
+    fflush(stdout);
+}
+
+static inline struct handlebars_value * merge_hash(struct handlebars_context * context, struct handlebars_value * hash, struct handlebars_value * context1)
+{
+    struct handlebars_value * context2;
+    struct handlebars_value_iterator it;
+    if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
+        hash && hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        context2 = handlebars_value_ctor(context);
+        handlebars_value_map_init(context2);
+        handlebars_value_iterator_init(&it, context1);
+        for( ; it.current ; it.next(&it) ) {
+            handlebars_map_update(context2->v.map, it.key, it.current);
+        }
+        handlebars_value_iterator_init(&it, hash);
+        for( ; it.current ; it.next(&it) ) {
+            handlebars_map_update(context2->v.map, it.key, it.current);
+        }
+    } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+        context2 = hash;
+        if( context2 ) {
+            handlebars_value_addref(context2);
+        }
+    } else {
+        context2 = context1;
+        handlebars_value_addref(context1);
+    }
+    return context2;
+}
+
+static inline struct handlebars_value * execute_template(
+    struct handlebars_context * context,
+    struct handlebars_vm * vm,
+    struct handlebars_string * tmpl,
+    struct handlebars_value * data,
+    struct handlebars_string * indent,
+    int escape
+) {
+    jmp_buf buf;
+    struct handlebars_value *retval = handlebars_value_ctor(CONTEXT);
+
+    // Save jump buffer
+    if( setjmp(buf) ) {
+        handlebars_rethrow(CONTEXT, context);
+    }
+
+    // Get template
+    if( !tmpl || !tmpl->len ) {
+        goto done;
+    }
+
+    // Check for cached template, if available
+    struct handlebars_compiler * compiler;
+    struct handlebars_module * module = vm->cache ? handlebars_cache_find(vm->cache, tmpl) : NULL;
+    bool from_cache = module != NULL;
+    if( !from_cache ) {
+        // Recompile
+
+        // Parse
+        struct handlebars_parser * parser = handlebars_parser_ctor(context);
+        if( vm->flags & handlebars_compiler_flag_compat ) {
+            parser->tmpl = handlebars_preprocess_delimiters(HBSCTX(parser), tmpl, NULL, NULL);
+        } else {
+            parser->tmpl = tmpl;
+        }
+        handlebars_parse(parser); // @todo fix setjmp
+
+        // Compile
+        compiler = handlebars_compiler_ctor(context);
+        handlebars_compiler_set_flags(compiler, vm->flags);
+        handlebars_compiler_compile(compiler, parser->program);
+
+        // Serialize
+        module = handlebars_program_serialize(context, compiler->program);
+
+        // Save cache entry
+        if( vm->cache ) {
+            handlebars_cache_add(vm->cache, tmpl, module);
+        }
+
+        // Cleanup parser
+        handlebars_parser_dtor(parser);
+    }
+
+    // Construct child VM
+    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
+
+    // Save jump buffer
+    if( setjmp(buf) ) {
+        if( from_cache ) {
+            vm->cache->release(vm->cache, tmpl, module);
+        }
+        handlebars_rethrow(CONTEXT, HBSCTX(vm2));
+    }
+
+    // Setup new VM
+    vm2->depth = vm->depth + 1;
+    vm2->flags = vm->flags;
+    vm2->helpers = vm->helpers;
+    vm2->partials = vm->partials;
+
+    // Copy stacks
+    memcpy(&vm2->contextStack, &vm->contextStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->contextStack)));
+    memcpy(&vm2->blockParamStack, &vm->blockParamStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->blockParamStack)));
+
+    handlebars_vm_execute(vm2, module, data);
+
+    if( vm2->buffer ) {
+        struct handlebars_string * tmp2;
+        if (indent) {
+            tmp2 = handlebars_string_indent(HBSCTX(vm2), HBS_STR_STRL(vm2->buffer), HBS_STR_STRL(indent));
+        } else {
+            tmp2 = vm2->buffer;
+        }
+        handlebars_value_str_steal(retval, tmp2);
+    }
+
+    if( from_cache ) {
+        vm->cache->release(vm->cache, tmpl, module);
+    }
+
+done:
+    handlebars_vm_dtor(vm2);
+
+    return retval;
+}
+
 
 
 
@@ -228,9 +363,12 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     }
     argv[0] = current;
 
-    if( vm->last_helper == NULL ) {
+    if (vm->flags & handlebars_compiler_flag_mustache_style_lambdas) {
+        PUSH(vm->stack, current);
+    } else if( vm->last_helper == NULL ) {
         result = call_helper_str("blockHelperMissing", sizeof("blockHelperMissing") - 1, 1, argv, &options);
-        append_to_buffer(vm, result, 0);
+        PUSH(vm->stack, result);
+        // append_to_buffer(vm, result, 0);
     }
 
     handlebars_options_deinit(&options);
@@ -319,6 +457,37 @@ ACCEPT_FUNCTION(get_context)
     }
 }
 
+static inline struct handlebars_value * invoke_mustache_style_lambda(
+    struct handlebars_vm *vm,
+    struct handlebars_opcode *opcode,
+    struct handlebars_value *value,
+    struct handlebars_options *options
+) {
+    struct handlebars_value * argv[1];
+    struct handlebars_value * rv;
+
+    assert(opcode->op3.type == handlebars_operand_type_string);
+
+    argv[0] = handlebars_value_ctor(CONTEXT);
+    handlebars_value_str(argv[0], opcode->op3.data.string.string);
+
+    struct handlebars_value * lambda_result = handlebars_value_call(value, 1, argv, options);
+    if (handlebars_value_is_empty(lambda_result)) {
+        rv = handlebars_value_ctor(CONTEXT);
+        goto done;
+    }
+
+    struct handlebars_string * tmpl = handlebars_value_to_string(lambda_result);
+    struct handlebars_context * context = handlebars_context_ctor_ex(vm);
+    rv = execute_template(context, vm, tmpl, value, NULL, 0);
+    rv = talloc_steal(CONTEXT, rv);
+    handlebars_context_dtor(context);
+
+done:
+    handlebars_value_try_delref(lambda_result);
+    return rv;
+}
+
 ACCEPT_FUNCTION(invoke_ambiguous)
 {
     struct handlebars_value * value = POP(vm->stack);
@@ -335,7 +504,11 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     setup_options(vm, 0, NULL, &options);
     vm->last_helper = NULL;
 
-    if( NULL != (result = call_helper(options.name, 0, NULL, &options)) ) {
+    if (vm->flags & handlebars_compiler_flag_mustache_style_lambdas && handlebars_value_is_callable(value)) {
+        result = invoke_mustache_style_lambda(vm, opcode, value, &options);
+        PUSH(vm->stack, result);
+        // append_to_buffer(vm, result, 0);
+    } else if( NULL != (result = call_helper(options.name, 0, NULL, &options)) ) {
         append_to_buffer(vm, result, 0);
         vm->last_helper = options.name;
     } else if( value && handlebars_value_is_callable(value) ) {
@@ -412,34 +585,6 @@ ACCEPT_FUNCTION(invoke_known_helper)
     handlebars_options_deinit(&options);
 }
 
-static inline struct handlebars_value * merge_hash(struct handlebars_context * context, struct handlebars_value * hash, struct handlebars_value * context1)
-{
-    struct handlebars_value * context2;
-    struct handlebars_value_iterator it;
-    if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
-        hash && hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        context2 = handlebars_value_ctor(context);
-        handlebars_value_map_init(context2);
-        handlebars_value_iterator_init(&it, context1);
-        for( ; it.current ; it.next(&it) ) {
-            handlebars_map_update(context2->v.map, it.key, it.current);
-        }
-        handlebars_value_iterator_init(&it, hash);
-        for( ; it.current ; it.next(&it) ) {
-            handlebars_map_update(context2->v.map, it.key, it.current);
-        }
-    } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {
-        context2 = hash;
-        if( context2 ) {
-            handlebars_value_addref(context2);
-        }
-    } else {
-        context2 = context1;
-        handlebars_value_addref(context1);
-    }
-    return context2;
-}
-
 ACCEPT_FUNCTION(invoke_partial)
 {
     struct handlebars_options options = {0};
@@ -508,92 +653,11 @@ ACCEPT_FUNCTION(invoke_partial)
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s was not a string, was %d", name ? name->val : "(NULL)", partial ? partial->type : -1);
     }
 
-    // Save jump buffer
-    if( setjmp(buf) ) {
-        handlebars_rethrow(CONTEXT, context);
-    }
-
-    // Get template
-    struct handlebars_string * tmpl = partial->v.string;
-    if( !tmpl || !tmpl->len ) {
-        goto done;
-    }
-
-    // Check for cached template, if available
-    struct handlebars_compiler * compiler;
-    struct handlebars_module * module = vm->cache ? handlebars_cache_find(vm->cache, tmpl) : NULL;
-    bool from_cache = module != NULL;
-    if( !from_cache ) {
-        // Recompile
-
-        // Parse
-        struct handlebars_parser * parser = handlebars_parser_ctor(context);
-        if( vm->flags & handlebars_compiler_flag_compat ) {
-            parser->tmpl = handlebars_preprocess_delimiters(HBSCTX(parser), tmpl, NULL, NULL);
-        } else {
-            parser->tmpl = tmpl;
-        }
-        handlebars_parse(parser); // @todo fix setjmp
-
-        // Compile
-        compiler = handlebars_compiler_ctor(context);
-        handlebars_compiler_set_flags(compiler, vm->flags);
-        handlebars_compiler_compile(compiler, parser->program);
-
-        // Serialize
-        module = handlebars_program_serialize(context, compiler->program);
-
-        // Save cache entry
-        if( vm->cache ) {
-            handlebars_cache_add(vm->cache, tmpl, module);
-        }
-
-        // Cleanup parser
-        handlebars_parser_dtor(parser);
-    }
-
-    // Construct child VM
-    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
-
-    // Save jump buffer
-    if( setjmp(buf) ) {
-        if( from_cache ) {
-            vm->cache->release(vm->cache, tmpl, module);
-        }
-        handlebars_rethrow(CONTEXT, HBSCTX(vm2));
-    }
-
-    // Get context
     struct handlebars_value * context1 = argv[0];
-    struct handlebars_value * context2 = merge_hash(HBSCTX(vm2), options.hash, context1);
-
-    // Setup new VM
-    vm2->depth = vm->depth + 1;
-    vm2->flags = vm->flags;
-    vm2->helpers = vm->helpers;
-    vm2->partials = vm->partials;
-
-    // Copy stacks
-    memcpy(&vm2->contextStack, &vm->contextStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->contextStack)));
-    memcpy(&vm2->blockParamStack, &vm->blockParamStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->blockParamStack)));
-
-    handlebars_vm_execute(vm2, module, context2);
-
-    if( vm2->buffer ) {
-        struct handlebars_string * tmp2 = handlebars_string_indent(
-                HBSCTX(vm2), HBS_STR_STRL(vm2->buffer), HBS_STR_STRL(opcode->op3.data.string.string));
-        vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(tmp2));
-        handlebars_talloc_free(tmp2);
-    }
-
-    if( from_cache ) {
-        vm->cache->release(vm->cache, tmpl, module);
-    }
-
-    //handlebars_value_try_delref(context1); // @todo double-check
-    //handlebars_value_try_delref(context2); // @todo double-check
-    handlebars_value_try_delref(tmp);
-    handlebars_vm_dtor(vm2);
+    struct handlebars_value * context2 = merge_hash(HBSCTX(context), options.hash, context1);
+    struct handlebars_value *rv = execute_template(context, vm, partial->v.string, context2, opcode->op3.data.string.string, 0);
+    vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(handlebars_value_to_string(rv)));
+    handlebars_value_try_delref(rv);
 
 done:
     handlebars_context_dtor(context);

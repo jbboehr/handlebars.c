@@ -1471,8 +1471,12 @@ FIXTURE_FN(414319486)
 FIXTURE_FN(401804363)
 {
     // return ($text == "{{x}}") ? "yes" : "no";
+    if (argc < 1) {
+        FIXTURE_STRING("must be run with mustache style lambdas")
+    }
     struct handlebars_value * context = argv[0];
-    if (0 == strcmp(handlebars_value_to_string(argv[0])->val, "{{x}}")) {
+    struct handlebars_string * str = handlebars_value_to_string(argv[0]);
+    if (0 == strncmp(str->val, HBS_STRL("{{x}}"))) {
         FIXTURE_STRING("yes");
     } else {
         FIXTURE_STRING("no");
@@ -1482,6 +1486,9 @@ FIXTURE_FN(401804363)
 FIXTURE_FN(3964931170)
 {
     // return $text . "{{planet}}" . $text;
+    if (argc < 1) {
+        FIXTURE_STRING("must be run with mustache style lambdas")
+    }
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s%s%s",
@@ -1497,6 +1504,9 @@ FIXTURE_FN(3964931170)
 
 FIXTURE_FN(2718175385)
 {
+    if (argc < 1) {
+        FIXTURE_STRING("must be run with mustache style lambdas")
+    }
     // return $text . "{{planet}} => |planet|" . $text;
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
@@ -1513,6 +1523,9 @@ FIXTURE_FN(2718175385)
 
 FIXTURE_FN(2000357317)
 {
+    if (argc < 1) {
+        FIXTURE_STRING("must be run with mustache style lambdas")
+    }
     // return "__" . $text . "__";
     char * tmp = handlebars_talloc_asprintf(
             options->vm,

@@ -95,11 +95,11 @@ static void _handlebars_ast_print_list(struct handlebars_ast_list * ast_list, st
 {
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
-    
+
     if( unlikely(ast_list == NULL) ) {
         return;
     }
-    
+
     handlebars_ast_list_foreach(ast_list, item, tmp) {
         __PRINT(item->data);
     }
@@ -113,12 +113,12 @@ static void _handlebars_ast_print_path_params_hash(
         __PRINT(path);
     }
     __APPEND(" [");
-    
+
     if( params ) {
         struct handlebars_ast_list * ast_list = params;
         struct handlebars_ast_list_item * item;
         struct handlebars_ast_list_item * tmp;
-        
+
         handlebars_ast_list_foreach(ast_list, item, tmp) {
             __PRINT(item->data);
             if( item->next ) {
@@ -126,9 +126,9 @@ static void _handlebars_ast_print_path_params_hash(
             }
         }
     }
-    
+
     __APPEND("]");
-    
+
     if( hash ) {
         __APPEND(" ");
         __PRINT(hash);
@@ -153,7 +153,7 @@ static void _handlebars_ast_print_program(struct handlebars_ast_node * ast_node,
     }
 
     _handlebars_ast_print_list(ast_node->node.program.statements, ctx);
-    
+
     ctx->padding--;
 }
 
@@ -161,7 +161,7 @@ static void _handlebars_ast_print_mustache(struct handlebars_ast_node * ast_node
 {
     __PAD_HEAD();
     __APPEND("{{ ");
-    
+
     if( ast_node->node.mustache.is_decorator ) {
     	__APPEND("DIRECTIVE ");
     }
@@ -169,7 +169,7 @@ static void _handlebars_ast_print_mustache(struct handlebars_ast_node * ast_node
     // Sexpr
     _handlebars_ast_print_path_params_hash(ast_node->node.mustache.path,
             ast_node->node.mustache.params, ast_node->node.mustache.hash, ctx);
-    
+
     __APPEND(" }}");
     __PAD_FOOT();
 }
@@ -181,15 +181,15 @@ static void _handlebars_ast_print_block(struct handlebars_ast_node * ast_node, s
 	} else {
 		__PAD("BLOCK:");
 	}
-    
+
     ctx->padding++;
-    
+
     // Sexpr
     __PAD_HEAD();
     _handlebars_ast_print_path_params_hash(ast_node->node.block.path,
             ast_node->node.block.params, ast_node->node.block.hash, ctx);
     __PAD_FOOT();
-    
+
     // Program
     if( ast_node->node.block.program ) {
         __PAD("PROGRAM:");
@@ -197,7 +197,7 @@ static void _handlebars_ast_print_block(struct handlebars_ast_node * ast_node, s
         __PRINT(ast_node->node.block.program);
         ctx->padding--;
     }
-    
+
     // Inverse
     if( ast_node->node.block.inverse ) {
         if( ast_node->node.block.program ) {
@@ -211,33 +211,33 @@ static void _handlebars_ast_print_block(struct handlebars_ast_node * ast_node, s
             ctx->padding--;
         }
     }
-    
+
     ctx->padding--;
 }
 
 static void _handlebars_ast_print_partial(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     assert(ast_node->node.partial.name != NULL);
-    
+
     __PAD_HEAD();
     __APPEND("{{> PARTIAL:");
-    
+
     ctx->in_partial = true;
     __PRINT(ast_node->node.partial.name);
     ctx->in_partial = false;
     //__APPEND(ast_node->node.partial.name->node.path.original);
-    
-   if( ast_node->node.partial.params != NULL && 
+
+   if( ast_node->node.partial.params != NULL &&
             handlebars_ast_list_count(ast_node->node.partial.params) ) {
         __APPEND(" ");
         __PRINT(ast_node->node.partial.params->first->data);
     }
-    
+
     if( ast_node->node.partial.hash ) {
         __APPEND(" ");
         __PRINT(ast_node->node.partial.hash);
     }
-    
+
     __APPEND(" }}");
     __PAD_FOOT();
 }
@@ -350,9 +350,9 @@ static void _handlebars_ast_print_hash(struct handlebars_ast_node * ast_node, st
     struct handlebars_ast_list_item * tmp;
     bool prev_in_partial = ctx->in_partial;
     ctx->in_partial = false;
-    
+
     __APPEND("HASH{");
-    
+
     handlebars_ast_list_foreach(ast_list, item, tmp) {
         __APPEND(item->data->node.hash_pair.key->val);
         __APPEND("=");
@@ -361,7 +361,7 @@ static void _handlebars_ast_print_hash(struct handlebars_ast_node * ast_node, st
             __APPEND(", ");
         }
     }
-    
+
     __APPEND("}");
 
     ctx->in_partial = prev_in_partial;
@@ -375,16 +375,16 @@ static void _handlebars_ast_print_path(struct handlebars_ast_node * ast_node, st
     struct handlebars_ast_list * ast_list = ast_node->node.path.parts;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
-    
+
     assert(ast_node->node.path.data == 0 || ast_node->node.path.data == 1);
-    
+
     if( ast_node->node.path.data ) {
         __APPEND("@");
     }
     if( !ctx->in_partial ) {
         __APPEND("PATH:");
     }
-    
+
     handlebars_ast_list_foreach(ast_list, item, tmp) {
         __APPEND(item->data->node.path_segment.part->val);
         //__PRINT(item->data);
@@ -400,37 +400,37 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
     if( unlikely(ast_node == NULL) ) {
         return;
     }
-    
+
     switch( ast_node->type ) {
-        case HANDLEBARS_AST_NODE_BOOLEAN: 
+        case HANDLEBARS_AST_NODE_BOOLEAN:
             return _handlebars_ast_print_boolean(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_BLOCK: 
+        case HANDLEBARS_AST_NODE_BLOCK:
             return _handlebars_ast_print_block(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_COMMENT: 
+        case HANDLEBARS_AST_NODE_COMMENT:
             return _handlebars_ast_print_comment(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_CONTENT: 
+        case HANDLEBARS_AST_NODE_CONTENT:
             return _handlebars_ast_print_content(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_HASH: 
+        case HANDLEBARS_AST_NODE_HASH:
             return _handlebars_ast_print_hash(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_MUSTACHE: 
+        case HANDLEBARS_AST_NODE_MUSTACHE:
             return _handlebars_ast_print_mustache(ast_node, ctx);
         case HANDLEBARS_AST_NODE_NUL:
             return _handlebars_ast_print_null(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_NUMBER: 
+        case HANDLEBARS_AST_NODE_NUMBER:
             return _handlebars_ast_print_number(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_PARTIAL: 
+        case HANDLEBARS_AST_NODE_PARTIAL:
             return _handlebars_ast_print_partial(ast_node, ctx);
         case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
             return _handlebars_ast_print_partial_block(ast_node, ctx);
         case HANDLEBARS_AST_NODE_PATH:
             return _handlebars_ast_print_path(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_PROGRAM: 
+        case HANDLEBARS_AST_NODE_PROGRAM:
             return _handlebars_ast_print_program(ast_node, ctx);
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
             return _handlebars_ast_print_block(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_SEXPR: 
+        case HANDLEBARS_AST_NODE_SEXPR:
             return _handlebars_ast_print_sexpr(ast_node, ctx);
-        case HANDLEBARS_AST_NODE_STRING: 
+        case HANDLEBARS_AST_NODE_STRING:
             return _handlebars_ast_print_string(ast_node, ctx);
         case HANDLEBARS_AST_NODE_UNDEFINED:
             return _handlebars_ast_print_undefined(ast_node, ctx);
@@ -461,4 +461,341 @@ struct handlebars_string * handlebars_ast_print(struct handlebars_context * cont
     output = talloc_steal(context, ctx->output);
     handlebars_talloc_free(ctx);
     return handlebars_string_rtrim(output, HBS_STRL(" \t\r\n"));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#undef __PRINT
+#define __PRINT(node) \
+    _handlebars_ast_to_string(node, ctx)
+
+#undef CONTEXT
+#define CONTEXT HBSCTX(ctx->ctx)
+
+static void _handlebars_ast_to_string(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
+
+static void _handlebars_ast_to_string_list(struct handlebars_ast_list * ast_list, struct handlebars_ast_printer_context * ctx)
+{
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+
+    if( unlikely(ast_list == NULL) ) {
+        return;
+    }
+
+    handlebars_ast_list_foreach(ast_list, item, tmp) {
+        __PRINT(item->data);
+    }
+}
+
+static void _handlebars_ast_to_string_path_params_hash(
+    struct handlebars_ast_node * path, struct handlebars_ast_list * params,
+    struct handlebars_ast_node * hash, struct handlebars_ast_printer_context * ctx)
+{
+    if( path ) {
+        __PRINT(path);
+    }
+
+    if( params ) {
+        struct handlebars_ast_list * ast_list = params;
+        struct handlebars_ast_list_item * item;
+        struct handlebars_ast_list_item * tmp;
+
+        __APPEND(" ");
+
+        handlebars_ast_list_foreach(ast_list, item, tmp) {
+            __PRINT(item->data);
+            if( item->next ) {
+                __APPEND(" ");
+            }
+        }
+    }
+
+    if( hash ) {
+        __APPEND(" ");
+        __PRINT(hash);
+    }
+}
+
+
+
+
+static void _handlebars_ast_to_string_program(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    // if( ast_node->node.program.block_param1 ) {
+    //     __PAD_HEAD();
+    //     __APPEND("BLOCK PARAMS: [ ");
+    //     __APPEND(ast_node->node.program.block_param1->val);
+    //     if( ast_node->node.program.block_param2 ) {
+    //         __APPEND(" ");
+    //         __APPEND(ast_node->node.program.block_param2->val);
+    //     }
+    //     __APPEND(" ]");
+    //     __PAD_FOOT();
+    // }
+
+    _handlebars_ast_to_string_list(ast_node->node.program.statements, ctx);
+}
+
+static void _handlebars_ast_to_string_mustache(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    __APPEND("{{");
+    _handlebars_ast_to_string_path_params_hash(ast_node->node.mustache.path,
+            ast_node->node.mustache.params, ast_node->node.mustache.hash, ctx);
+    __APPEND("}}");
+}
+
+static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    // Sexpr
+    __APPEND("{{#");
+    _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path,
+            ast_node->node.block.params, ast_node->node.block.hash, ctx);
+    __APPEND("}}");
+
+    // Program
+    if( ast_node->node.block.program ) {
+        __PRINT(ast_node->node.block.program);
+    }
+
+    // Inverse
+    if( ast_node->node.block.inverse ) {
+        __PRINT("{{^}}");
+        __PRINT(ast_node->node.block.inverse);
+    }
+
+    // end
+    __APPEND("{{/");
+    _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path,
+            ast_node->node.block.params, ast_node->node.block.hash, ctx);
+    __APPEND("}}");
+}
+
+static void _handlebars_ast_to_string_partial(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    assert(ast_node->node.partial.name != NULL);
+
+    __APPEND("{{>");
+
+    __PRINT(ast_node->node.partial.name);
+
+   if( ast_node->node.partial.params != NULL &&
+            handlebars_ast_list_count(ast_node->node.partial.params) ) {
+        __APPEND(" ");
+        __PRINT(ast_node->node.partial.params->first->data);
+    }
+
+    if( ast_node->node.partial.hash ) {
+        __APPEND(" ");
+        __PRINT(ast_node->node.partial.hash);
+    }
+
+    __APPEND(" }}");
+}
+
+
+static void _handlebars_ast_to_string_partial_block(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    ctx->in_partial = true;
+
+    // Sexpr
+    __APPEND("{{#> ");
+    _handlebars_ast_to_string(ast_node->node.partial_block.path, ctx);
+    if( ast_node->node.partial_block.params ) {
+        _handlebars_ast_to_string_list(ast_node->node.partial_block.params, ctx);
+    }
+    if( ast_node->node.partial_block.hash ) {
+    	__APPEND(" ");
+        _handlebars_ast_to_string(ast_node->node.partial_block.hash, ctx);
+    }
+    __APPEND("}}");
+
+    // Program
+    if( ast_node->node.partial_block.program ) {
+        __PRINT(ast_node->node.partial_block.program);
+    }
+
+    // end
+    __APPEND("{{/");
+    _handlebars_ast_to_string(ast_node->node.partial_block.path, ctx);
+    __APPEND("}}");
+
+    ctx->in_partial = false;
+}
+
+static void _handlebars_ast_to_string_content(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    __APPEND(ast_node->node.content.value->val);
+}
+
+static void _handlebars_ast_to_string_comment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    __APPEND("{{!");
+    __APPEND(ast_node->node.comment.value->val);
+    __APPEND("}}");
+}
+
+static void _handlebars_ast_to_string_sexpr(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    // Sexpr
+    _handlebars_ast_to_string_path_params_hash(ast_node->node.sexpr.path,
+            ast_node->node.sexpr.params, ast_node->node.sexpr.hash, ctx);
+}
+
+static void _handlebars_ast_to_string_string(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    if( !ctx->in_partial ) {
+        __APPEND("\"");
+    }
+    __APPEND(ast_node->node.string.value->val);
+    if( !ctx->in_partial ) {
+        __APPEND("\"");
+    }
+}
+
+static void _handlebars_ast_to_string_number(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    __APPEND(ast_node->node.number.value->val);
+}
+
+static void _handlebars_ast_to_string_boolean(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    __APPEND(ast_node->node.boolean.value->val);
+}
+
+static void _handlebars_ast_to_string_undefined(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    __APPEND("undefined");
+}
+
+static void _handlebars_ast_to_string_null(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    __APPEND("null");
+}
+
+static void _handlebars_ast_to_string_hash(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    struct handlebars_ast_list * ast_list = ast_node->node.hash.pairs;
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+    bool prev_in_partial = ctx->in_partial;
+    ctx->in_partial = false;
+
+    handlebars_ast_list_foreach(ast_list, item, tmp) {
+        __APPEND(item->data->node.hash_pair.key->val);
+        __APPEND("=");
+        __PRINT(item->data->node.hash_pair.value);
+        if( item->next ) {
+            __APPEND(" ");
+        }
+    }
+
+    ctx->in_partial = prev_in_partial;
+}
+
+
+
+
+static void _handlebars_ast_to_string_path(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    struct handlebars_ast_list * ast_list = ast_node->node.path.parts;
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+
+    assert(ast_node->node.path.data == 0 || ast_node->node.path.data == 1);
+
+    if( ast_node->node.path.data ) {
+        __APPEND("@");
+    }
+
+    handlebars_ast_list_foreach(ast_list, item, tmp) {
+        __APPEND(item->data->node.path_segment.part->val);
+        if( item->next ) {
+            __APPEND(item->next->data->node.path_segment.separator->val);
+        }
+    }
+}
+
+static void _handlebars_ast_to_string(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+{
+    if( unlikely(ast_node == NULL) ) {
+        return;
+    }
+
+    switch( ast_node->type ) {
+        case HANDLEBARS_AST_NODE_BOOLEAN:
+            return _handlebars_ast_to_string_boolean(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_BLOCK:
+            return _handlebars_ast_to_string_block(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_COMMENT:
+            return _handlebars_ast_to_string_comment(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_CONTENT:
+            return _handlebars_ast_to_string_content(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_HASH:
+            return _handlebars_ast_to_string_hash(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_MUSTACHE:
+            return _handlebars_ast_to_string_mustache(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_NUL:
+            return _handlebars_ast_to_string_null(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_NUMBER:
+            return _handlebars_ast_to_string_number(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_PARTIAL:
+            return _handlebars_ast_to_string_partial(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
+            return _handlebars_ast_to_string_partial_block(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_PATH:
+            return _handlebars_ast_to_string_path(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_PROGRAM:
+            return _handlebars_ast_to_string_program(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_RAW_BLOCK:
+            return _handlebars_ast_to_string_block(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_SEXPR:
+            return _handlebars_ast_to_string_sexpr(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_STRING:
+            return _handlebars_ast_to_string_string(ast_node, ctx);
+        case HANDLEBARS_AST_NODE_UNDEFINED:
+            return _handlebars_ast_to_string_undefined(ast_node, ctx);
+        // LCOV_EXCL_START
+        // Note: these should never be printed, intermediate nodes
+        case HANDLEBARS_AST_NODE_INTERMEDIATE:
+        case HANDLEBARS_AST_NODE_INVERSE:
+        // Note: these are currently implemented within their parent
+        case HANDLEBARS_AST_NODE_HASH_PAIR:
+        case HANDLEBARS_AST_NODE_PATH_SEGMENT:
+        case HANDLEBARS_AST_NODE_NIL:
+            assert(0);
+            break;
+        // LCOV_EXCL_STOP
+    }
+}
+
+#undef CONTEXT
+#define CONTEXT context
+
+struct handlebars_string * handlebars_ast_to_string(
+    struct handlebars_context * context,
+    struct handlebars_ast_node * ast_node
+) {
+    return handlebars_string_ctor(context, "", 0);
+    // return handlebars_ast_print(context, ast_node);
+    // struct handlebars_string * output;
+    // struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(context, struct handlebars_ast_printer_context));
+    // ctx->ctx = context;
+    // ctx->output = handlebars_string_ctor(context, "", 0);
+    // _handlebars_ast_to_string(ast_node, ctx);
+    // output = talloc_steal(context, ctx->output);
+    // handlebars_talloc_free(ctx);
+    // return output;
 }

@@ -108,7 +108,7 @@ static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node)
     test = &(tests[tests_len++]);
     memset(test, 0, sizeof(struct mustache_test));
     test->ctx = handlebars_context_ctor_ex(rootctx);
-    test->flags = handlebars_compiler_flag_compat;
+    test->flags = handlebars_compiler_flag_compat | handlebars_compiler_flag_mustache_style_lambdas;
 
     for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
         yaml_node_t * key = yaml_document_get_node(document, pair->key);
@@ -381,9 +381,9 @@ int main(int argc, char *argv[])
     loadSpec("delimiters");
     loadSpec("interpolation");
     loadSpec("inverted");
-    loadSpec("~lambdas");
     loadSpec("partials");
     loadSpec("sections");
+    loadSpec("~lambdas");
     fprintf(stderr, "Loaded %lu test cases\n", tests_len);
 
     // Set up test suite
