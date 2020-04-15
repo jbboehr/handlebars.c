@@ -363,12 +363,13 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     }
     argv[0] = current;
 
-    if (vm->flags & handlebars_compiler_flag_mustache_style_lambdas) {
-        PUSH(vm->stack, current);
-    } else if( vm->last_helper == NULL ) {
+    if( vm->last_helper == NULL ) {
         result = call_helper_str("blockHelperMissing", sizeof("blockHelperMissing") - 1, 1, argv, &options);
         PUSH(vm->stack, result);
-        // append_to_buffer(vm, result, 0);
+    } else if (0 == strcmp(vm->last_helper->val, "lambda")) {
+        PUSH(vm->stack, current);
+        talloc_free(vm->last_helper);
+        vm->last_helper = NULL;
     }
 
     handlebars_options_deinit(&options);
@@ -507,7 +508,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     if (vm->flags & handlebars_compiler_flag_mustache_style_lambdas && handlebars_value_is_callable(value)) {
         result = invoke_mustache_style_lambda(vm, opcode, value, &options);
         PUSH(vm->stack, result);
-        // append_to_buffer(vm, result, 0);
+        vm->last_helper = handlebars_string_ctor(CONTEXT, HBS_STRL("lambda")); // hackey but it works
     } else if( NULL != (result = call_helper(options.name, 0, NULL, &options)) ) {
         append_to_buffer(vm, result, 0);
         vm->last_helper = options.name;

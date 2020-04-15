@@ -44,6 +44,7 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 
+#include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_opcode_serializer.h"
@@ -221,11 +222,59 @@ int shouldnt_skip(struct mustache_test * test)
     if( 0 == strcmp(d, test->name) && 0 == strcmp(i, test->desc) ) return 0;
 
     MYCHECK("Standalone Indentation", "Each line of the partial should be indented before rendering.");
+    MYCHECK("Section - Alternate Delimiters", "Lambdas used for sections should parse with the current delimiters.");
 
     return 1;
 
 #undef MYCCHECK
 }
+
+START_TEST(test_ast_to_string_on_mustache_spec)
+{
+    struct mustache_test * test = &tests[_i];
+    struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
+    struct handlebars_string * origtmpl;
+    struct handlebars_string * tmpl;
+    TALLOC_CTX * memctx = talloc_new(rootctx);
+
+    ctx = handlebars_context_ctor_ex(memctx);
+    parser = handlebars_parser_ctor(ctx);
+
+    origtmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
+    tmpl = handlebars_preprocess_delimiters(ctx, origtmpl, NULL, NULL);
+
+    // Won't work with custom delimters or with '{{&'
+    if (!handlebars_string_eq(origtmpl, tmpl) || NULL != strstr(origtmpl->val, "{{&")) {
+        fprintf(stderr, "SKIPPED #%d\n", _i);
+        goto done;
+    }
+
+    parser->tmpl = tmpl;
+    handlebars_parse(parser);
+
+    // Check error
+    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
+        ck_assert_msg(0, handlebars_error_msg(ctx));
+    }
+
+    struct handlebars_string *ast_str = handlebars_ast_to_string(ctx, parser->program);
+
+    const char *actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
+    const char *expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
+    if (strcmp(actual, expected) != 0) {
+        char *tmp = handlebars_talloc_asprintf(rootctx,
+                                               "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+                                               "" /*test->suite_name*/,
+                                               test->name, test->desc, test->flags,
+                                               test->tmpl, expected, actual);
+        ck_abort_msg(tmp);
+    }
+
+done:
+    talloc_free(memctx);
+}
+END_TEST
 
 START_TEST(test_mustache_spec)
 {
@@ -252,7 +301,7 @@ START_TEST(test_mustache_spec)
 
     if( !shouldnt_skip(test) ) {
         fprintf(stderr, "SKIPPED #%d\n", _i);
-        return;
+        goto done;
     }
 
     // Initialize
@@ -331,14 +380,15 @@ START_TEST(test_mustache_spec)
 
     handlebars_context_dtor(ctx);
     ck_assert_int_eq(1, talloc_total_blocks(memctx));
+
+done:
+    talloc_free(memctx);
 }
 END_TEST
 
 Suite * parser_suite(void)
 {
-    const char * title = "Mustache Spec";
-    TCase * tc_mustache_spec = tcase_create(title);
-    Suite * s = suite_create(title);
+    Suite * s = suite_create("Mustache Spec");
     int start = 0;
     int end = tests_len;
 
@@ -349,7 +399,11 @@ Suite * parser_suite(void)
         end++;
     }
 
-    // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
+    TCase * tc_ast_to_string_on_mustache_spec = tcase_create("AST to string on mustache spec");
+    tcase_add_loop_test(tc_ast_to_string_on_mustache_spec, test_ast_to_string_on_mustache_spec, start, end);
+    suite_add_tcase(s, tc_ast_to_string_on_mustache_spec);
+
+    TCase * tc_mustache_spec = tcase_create("Mustache Spec");
     tcase_add_loop_test(tc_mustache_spec, test_mustache_spec, start, end);
     suite_add_tcase(s, tc_mustache_spec);
 

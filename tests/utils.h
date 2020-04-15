@@ -33,7 +33,7 @@
 	TCase * tc_ ## name = tcase_create(title); \
 	tcase_add_test(tc_ ## name, name); \
 	suite_add_tcase(s, tc_ ## name);
-	
+
 #define REGISTER_TEST_FIXTURE(s, name, title) \
 	TCase * tc_ ## name = tcase_create(title); \
 	tcase_add_checked_fixture(tc_ ## name, default_setup, default_teardown); \
@@ -79,6 +79,8 @@ long json_load_compile_flags(struct json_object * object);
 char ** json_load_known_helpers(void * ctx, struct json_object * object);
 
 void load_fixtures(struct handlebars_value * value);
+
+char * normalize_template_whitespace(TALLOC_CTX *ctx, char *str, size_t len);
 
 
 // Common

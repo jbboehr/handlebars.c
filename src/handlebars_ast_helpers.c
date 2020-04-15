@@ -57,10 +57,10 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_string * open_str;
     struct handlebars_string * close_str;
     bool is_decorator = false;
-    
+
     assert(open_block != NULL && open_block->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
     assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
-    
+
     if( close && close->type == HANDLEBARS_AST_NODE_INTERMEDIATE ) {
         close_block_path = close->node.intermediate.path;
         open_str = handlebars_ast_node_get_string_mode_value(CONTEXT, open_block_path);
@@ -80,7 +80,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     }
     program->node.program.block_param1 = open_block->node.intermediate.block_param1;
     program->node.program.block_param2 = open_block->node.intermediate.block_param2;
-    
+
     if( inverse_and_program ) {
         assert(inverse_and_program->type == HANDLEBARS_AST_NODE_INVERSE);
 
@@ -98,11 +98,11 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
                 tmp->node.block.close_strip = close->strip;
             }
         }
-        
+
         inverse = inverse_and_program->node.inverse.program;
         inverse_strip = inverse_and_program->strip;
     }
-    
+
     if( program && program->type == 0 ) {
         // @todo this probably shouldn't happen
         program = NULL;
@@ -113,13 +113,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     }
     assert(!program || program->type == HANDLEBARS_AST_NODE_PROGRAM);
     assert(!inverse || inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
-    
+
     if( inverted ) {
         tmp = program;
         program = inverse;
         inverse = tmp;
     }
-    
+
     ast_node = handlebars_ast_node_ctor_block(parser, open_block, program, inverse,
                 open_block->strip, inverse_strip, close ? close->strip : 0, locinfo);
 
@@ -136,14 +136,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
     struct handlebars_ast_list * statements;
     struct handlebars_ast_node * program_node;
     struct handlebars_ast_node * ast_node;
-    
+
     block_node = handlebars_ast_helper_prepare_block(parser, open_inverse_chain, program, inverse_chain, inverse_chain, 0, locinfo);
     statements = handlebars_ast_list_ctor(HBSCTX(parser));
     handlebars_ast_list_append(statements, block_node);
     program_node = handlebars_ast_node_ctor_program(parser, statements, NULL, NULL, 0, 1, locinfo);
     ast_node = handlebars_ast_node_ctor_inverse(parser, program_node, 1,
                     (open_inverse_chain ? open_inverse_chain->strip : 0), locinfo);
-    
+
     return ast_node;
 }
 
@@ -159,13 +159,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     struct handlebars_ast_list * params = intermediate->node.intermediate.params;
     struct handlebars_ast_node * hash = intermediate->node.intermediate.hash;
     struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_MUSTACHE);
-    
+
     ast_node->loc = *locinfo;
     ast_node->strip = strip;
     ast_node->node.mustache.path = talloc_steal(ast_node, path);
     ast_node->node.mustache.params = talloc_steal(ast_node, params);
     ast_node->node.mustache.hash = talloc_steal(ast_node, hash);
-    
+
     // Check escaped
     if( open ) {
         if( open->len >= 4 ) {
@@ -178,7 +178,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
         }
     }
     ast_node->node.mustache.unescaped = (c == '{' || c == '&');
-    
+
     // Free the intermediate node
     handlebars_talloc_free(intermediate);
 
@@ -224,11 +224,11 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     bool is_literal;
     int depth = 0;
     int count = 0;
-    
+
     // Allocate the original strings
     original = handlebars_string_ctor(HBSCTX(parser), data ? "@" : "", data ? 1 : 0);
     //original = MC(handlebars_talloc_strdup(parser, data ? "@" : ""));
-    
+
     // Iterate over parts and process
     handlebars_ast_list_foreach(parts, item, tmp) {
         part = item->data->node.path_segment.part;
@@ -237,13 +237,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
         }
         separator = item->data->node.path_segment.separator;
         is_literal = !handlebars_string_eq(part, item->data->node.path_segment.original);
-        
+
         // Append to original
         if( separator ) {
             original = handlebars_string_append(HBSCTX(parser), original, separator->val, separator->len);
         }
         original = handlebars_string_append(HBSCTX(parser), original, part->val, part->len);
-        
+
         // Handle paths
         if( !is_literal && (strcmp(part->val, "..") == 0 || strcmp(part->val, ".") == 0 || strcmp(part->val, "this") == 0) ) {
             if( count > 0 ) {
@@ -257,7 +257,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
             count++;
         }
     }
-    
+
     return handlebars_ast_node_ctor_path(parser, parts, original, depth, data, locinfo);
 }
 
@@ -270,19 +270,19 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
 ) {
     struct handlebars_ast_node * content_node;
     struct handlebars_ast_node * open_block_path;
-    
+
     assert(open_raw_block != NULL);
     assert(open_raw_block->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
     assert(close != NULL);
-    
+
     open_block_path = open_raw_block->node.intermediate.path;
     if( !handlebars_string_eq(open_block_path->node.path.original, close) ) {
         handlebars_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "%s doesn't match %s", open_block_path->node.path.original->val, close->val);
     }
-    
+
     // Create the content node
     content_node = handlebars_ast_node_ctor_content(parser, content, locinfo);
-    
+
     // Create the raw block node
     return handlebars_ast_node_ctor_raw_block(parser, open_raw_block, content_node, locinfo);
 }
@@ -438,9 +438,9 @@ bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path)
 {
     return (
         path &&
-        path->node.path.parts && 
+        path->node.path.parts &&
         handlebars_ast_list_count(path->node.path.parts) == 1 &&
-        !handlebars_ast_helper_scoped_id(path) && 
+        !handlebars_ast_helper_scoped_id(path) &&
         !path->node.path.depth
     );
 }

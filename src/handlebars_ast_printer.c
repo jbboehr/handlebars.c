@@ -485,6 +485,7 @@ struct handlebars_string * handlebars_ast_print(struct handlebars_context * cont
 #define CONTEXT HBSCTX(ctx->ctx)
 
 static void _handlebars_ast_to_string(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
+static void _handlebars_ast_to_string_path(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx, bool first_only);
 
 static void _handlebars_ast_to_string_list(struct handlebars_ast_list * ast_list, struct handlebars_ast_printer_context * ctx)
 {
@@ -504,6 +505,12 @@ static void _handlebars_ast_to_string_path_params_hash(
     struct handlebars_ast_node * path, struct handlebars_ast_list * params,
     struct handlebars_ast_node * hash, struct handlebars_ast_printer_context * ctx)
 {
+    int depth = ctx->padding++;
+
+    if (depth > 0) {
+        __APPEND("(");
+    }
+
     if( path ) {
         __PRINT(path);
     }
@@ -527,6 +534,12 @@ static void _handlebars_ast_to_string_path_params_hash(
         __APPEND(" ");
         __PRINT(hash);
     }
+
+    if (depth > 0) {
+        __APPEND(")");
+    }
+
+    ctx->padding--;
 }
 
 
@@ -551,16 +564,48 @@ static void _handlebars_ast_to_string_program(struct handlebars_ast_node * ast_n
 
 static void _handlebars_ast_to_string_mustache(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
+    short unescaped = *((short *) &ast_node->node.mustache.unescaped); // @todo fixme
+
     __APPEND("{{");
+    if (unescaped == 1) {
+        __APPEND("{");
+    } /*else if (unescaped == 3) {
+        __APPEND("&");
+    } */
+	if( ast_node->node.mustache.is_decorator ) {
+		__APPEND("*");
+	}
     _handlebars_ast_to_string_path_params_hash(ast_node->node.mustache.path,
             ast_node->node.mustache.params, ast_node->node.mustache.hash, ctx);
+    if (unescaped == 1) {
+        __APPEND("}");
+    }
     __APPEND("}}");
 }
 
 static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
+    // Use an inverted section
+    if (ast_node->node.block.inverse && !ast_node->node.block.program) {
+        __APPEND("{{^");
+        _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path,
+                ast_node->node.block.params, ast_node->node.block.hash, ctx);
+        __APPEND("}}");
+
+        __PRINT(ast_node->node.block.inverse);
+
+        __APPEND("{{/");
+        _handlebars_ast_to_string_path(ast_node->node.block.path, ctx, 1);
+        __APPEND("}}");
+        return;
+    }
+
+
     // Sexpr
     __APPEND("{{#");
+	if( ast_node->node.block.is_decorator ) {
+		__APPEND("*");
+	}
     _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path,
             ast_node->node.block.params, ast_node->node.block.hash, ctx);
     __APPEND("}}");
@@ -572,14 +617,13 @@ static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_nod
 
     // Inverse
     if( ast_node->node.block.inverse ) {
-        __PRINT("{{^}}");
+        __APPEND("{{^}}");
         __PRINT(ast_node->node.block.inverse);
     }
 
     // end
     __APPEND("{{/");
-    _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path,
-            ast_node->node.block.params, ast_node->node.block.hash, ctx);
+    _handlebars_ast_to_string_path(ast_node->node.block.path, ctx, 1);
     __APPEND("}}");
 }
 
@@ -708,7 +752,7 @@ static void _handlebars_ast_to_string_hash(struct handlebars_ast_node * ast_node
 
 
 
-static void _handlebars_ast_to_string_path(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_to_string_path(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx, bool first_only)
 {
     struct handlebars_ast_list * ast_list = ast_node->node.path.parts;
     struct handlebars_ast_list_item * item;
@@ -720,8 +764,16 @@ static void _handlebars_ast_to_string_path(struct handlebars_ast_node * ast_node
         __APPEND("@");
     }
 
+    if( !ast_list || handlebars_ast_list_count(ast_list) <= 0 ) {
+        __APPEND(".");
+        return;
+    }
+
     handlebars_ast_list_foreach(ast_list, item, tmp) {
         __APPEND(item->data->node.path_segment.part->val);
+        // if (first_only) {
+        //     return;
+        // }
         if( item->next ) {
             __APPEND(item->next->data->node.path_segment.separator->val);
         }
@@ -756,7 +808,7 @@ static void _handlebars_ast_to_string(struct handlebars_ast_node * ast_node, str
         case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
             return _handlebars_ast_to_string_partial_block(ast_node, ctx);
         case HANDLEBARS_AST_NODE_PATH:
-            return _handlebars_ast_to_string_path(ast_node, ctx);
+            return _handlebars_ast_to_string_path(ast_node, ctx, 0);
         case HANDLEBARS_AST_NODE_PROGRAM:
             return _handlebars_ast_to_string_program(ast_node, ctx);
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
@@ -788,14 +840,14 @@ struct handlebars_string * handlebars_ast_to_string(
     struct handlebars_context * context,
     struct handlebars_ast_node * ast_node
 ) {
-    return handlebars_string_ctor(context, "", 0);
+    // return handlebars_string_ctor(context, "", 0);
     // return handlebars_ast_print(context, ast_node);
-    // struct handlebars_string * output;
-    // struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(context, struct handlebars_ast_printer_context));
-    // ctx->ctx = context;
-    // ctx->output = handlebars_string_ctor(context, "", 0);
-    // _handlebars_ast_to_string(ast_node, ctx);
-    // output = talloc_steal(context, ctx->output);
-    // handlebars_talloc_free(ctx);
-    // return output;
+    struct handlebars_string * output;
+    struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(context, struct handlebars_ast_printer_context));
+    ctx->ctx = context;
+    ctx->output = handlebars_string_ctor(context, "", 0);
+    _handlebars_ast_to_string(ast_node, ctx);
+    output = talloc_steal(context, ctx->output);
+    handlebars_talloc_free(ctx);
+    return output;
 }
