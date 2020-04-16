@@ -7,7 +7,7 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 ## [Unreleased]
 
 ### Added
-- Windows support
+- Mustache-style lambda support
 
 ## [0.6.4] - 2017-07-17
 

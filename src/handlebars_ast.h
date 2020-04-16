@@ -19,7 +19,7 @@
 
 /**
  * @file
- * @brief AST Node Tree 
+ * @brief AST Node Tree
  */
 
 #ifndef HANDLEBARS_AST_H
@@ -192,24 +192,24 @@ enum handlebars_ast_strip_flag {
 };
 
 /**
- * @brief The main AST node structure 
+ * @brief The main AST node structure
  */
 struct handlebars_ast_node {
   /**
    * @brief Enum describing the type of node
    */
   enum handlebars_ast_node_type type;
-  
+
   /**
-   * @brief Stores info about whitespace stripping 
+   * @brief Stores info about whitespace stripping
    */
   unsigned int strip;
-  
+
   /**
    * @brief Stores info about location
    */
   struct handlebars_locinfo loc;
-  
+
   /**
    * @brief A union with structs of the different node types
    */
@@ -230,14 +230,14 @@ struct handlebars_ast_node * handlebars_ast_node_ctor(
 
 /**
  * @brief Destruct an AST node
- * 
+ *
  * @param[in] ast_node The AST node to destruct
  * @return void
  */
 void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Get the first part of an ID name of an AST node. Returns NULL if not 
+ * @brief Get the first part of an ID name of an AST node. Returns NULL if not
  * applicable. Returns a pointer to the current buffer.
  *
  * @param[in] ast_node The AST node
@@ -246,7 +246,7 @@ void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node) HBS_ATTR_NO
 struct handlebars_string * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Get the string mode value of an AST node. Returns NULL if not 
+ * @brief Get the string mode value of an AST node. Returns NULL if not
  * applicable. Returns a pointer to the current buffer.
  *
  * @param[in] context The handlebars context
@@ -301,7 +301,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
     unsigned close_strip,
     struct handlebars_locinfo * locinfo
 ) HBS_ATTR_NONNULL(1, 8) HBS_ATTR_RETURNS_NONNULL;
-    
+
 struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
     struct handlebars_parser * parser,
     struct handlebars_string * boolean,
@@ -391,7 +391,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path(
     bool data,
     struct handlebars_locinfo * locinfo
 ) HBS_ATTR_NONNULL(1, 3, 6) HBS_ATTR_RETURNS_NONNULL;
-    
+
 struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     struct handlebars_parser * parser,
 	struct handlebars_string * part,

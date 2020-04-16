@@ -135,7 +135,12 @@ struct handlebars_string * handlebars_opcode_print_append(
         assert(opcode->op2.type == handlebars_operand_type_null);
     }
     if( num >= 3 ) {
-        string = handlebars_operand_print_append(context, string, &opcode->op3);
+        // hack for invoke_ambiguous
+        if (opcode->type == handlebars_opcode_type_invoke_ambiguous && opcode->op3.type == handlebars_operand_type_null) {
+            // ignore
+        } else {
+            string = handlebars_operand_print_append(context, string, &opcode->op3);
+        }
     } else {
         assert(opcode->op3.type == handlebars_operand_type_null);
     }
@@ -144,14 +149,14 @@ struct handlebars_string * handlebars_opcode_print_append(
     } else {
         assert(opcode->op4.type == handlebars_operand_type_null);
     }
-    
+
     // Add location
     if( flags & handlebars_opcode_printer_flag_locations ) {
         string = handlebars_string_asprintf_append(context, string, " [%d:%d-%d:%d]",
                 opcode->loc.first_line, opcode->loc.first_column,
                 opcode->loc.last_line, opcode->loc.last_column);
     }
-    
+
     return string;
 }
 
@@ -172,7 +177,7 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
     struct handlebars_opcode ** opcodes = printer->opcodes;
     size_t count = printer->opcodes_length;
     size_t i;
-    
+
     for( i = 0; i < count; i++, opcodes++ ) {
         printer->output = append_indent(CONTEXT, printer->output, printer->indent);
         printer->output = handlebars_opcode_print_append(CONTEXT, printer->output, *opcodes, printer->flags);
@@ -192,9 +197,9 @@ static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * p
     printer->opcodes = program->opcodes;
     printer->opcodes_length = program->opcodes_length;
     handlebars_opcode_printer_array_print(printer);
-    
+
     printer->indent++;
-    
+
     // Print decorators
     for( i = 0; i < program->decorators_length; i++ ) {
         printer->output = append_indent(CONTEXT, printer->output, (size_t) printer->indent);
@@ -202,13 +207,13 @@ static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * p
         child = *(program->decorators + i);
         handlebars_opcode_printer_print(printer, child);
     }
-    
+
     // Print children
     for( i = 0; i < program->children_length; i++ ) {
         child = *(program->children + i);
         handlebars_opcode_printer_print(printer, child);
     }
-    
+
     printer->indent--;
 }
 

@@ -89,7 +89,7 @@ void handlebars_operand_set_arrayval(
     size_t num = 0;
 
     assert(operand != NULL);
-    
+
     // Get number of items
     for( ptr = arg; *ptr; ++ptr, ++num );
 
@@ -97,7 +97,7 @@ void handlebars_operand_set_arrayval(
     operand->data.array.array = MC(handlebars_talloc_array(opcode, struct handlebars_operand_string, num + 1));
     operand->type = handlebars_operand_type_array;
     operand->data.array.count = num;
-    
+
     // Copy each item
     ptr = arg;
     arrptr = operand->data.array.array;
@@ -149,33 +149,33 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
         _RTYPE_CASE(push_context, pushContext);
         _RTYPE_CASE(push_hash, pushHash);
         _RTYPE_CASE(resolve_possible_lambda, resolvePossibleLambda);
-        
+
         _RTYPE_CASE(get_context, getContext);
         _RTYPE_CASE(push_program, pushProgram);
-        
+
         _RTYPE_CASE(append_content, appendContent);
         _RTYPE_CASE(assign_to_hash, assignToHash);
         _RTYPE_CASE(block_value, blockValue);
         _RTYPE_CASE(push, push);
         _RTYPE_CASE(push_literal, pushLiteral);
         _RTYPE_CASE(push_string, pushString);
-        
+
         _RTYPE_CASE(invoke_partial, invokePartial);
         _RTYPE_CASE(push_id, pushId);
         _RTYPE_CASE(push_string_param, pushStringParam);
-        
+
         _RTYPE_CASE(invoke_ambiguous, invokeAmbiguous);
-        
+
         _RTYPE_CASE(invoke_known_helper, invokeKnownHelper);
-        
+
         _RTYPE_CASE(invoke_helper, invokeHelper);
-        
+
         _RTYPE_CASE(lookup_on_context, lookupOnContext);
-        
+
         _RTYPE_CASE(lookup_data, lookupData);
-        
+
         _RTYPE_CASE(invalid, invalid);
-        
+
         // Added in v3
         _RTYPE_CASE(lookup_block_param, lookupBlockParam);
 
@@ -185,7 +185,7 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
         // Special
         _RTYPE_CASE(return, return);
     }
-    
+
     return "invalid";
 }
 
@@ -197,7 +197,7 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
     if( strcmp(type, _RTYPE_REV_STR(str2)) == 0 ) { \
         return _RTYPE_MK(str); \
     }
-    
+
     switch( type[0] ) {
         case 'a':
             _RTYPE_REV_CMP(ambiguous_block_value, ambiguousBlockValue);
@@ -246,7 +246,7 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
             _RTYPE_REV_CMP(register_decorator, registerDecorator);
             break;
     }
-    
+
     // Unknown :(
     return -1;
 }
@@ -265,7 +265,7 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
         case handlebars_opcode_type_push_hash:
         case handlebars_opcode_type_resolve_possible_lambda:
             return 0;
-        
+
         case handlebars_opcode_type_get_context:
         case handlebars_opcode_type_push_program:
         case handlebars_opcode_type_append_content:
@@ -277,15 +277,19 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
         // In v3, empty_hash was changed from zero to zero or one
         case handlebars_opcode_type_empty_hash:
             return 1;
-        
+
         case handlebars_opcode_type_push_string_param:
-        case handlebars_opcode_type_invoke_ambiguous:
         case handlebars_opcode_type_invoke_known_helper:
         case handlebars_opcode_type_lookup_block_param:
         // Added in v4
         case handlebars_opcode_type_register_decorator:
             return 2;
-            
+
+
+        // @TODO make sure everything works. this one only really has two, but we're going to try to use the third one for mustache lambdas
+        case handlebars_opcode_type_invoke_ambiguous:
+
+
         case handlebars_opcode_type_invoke_helper:
         // In v3 invoke_partial and push_id were changed from two to two or three
         case handlebars_opcode_type_invoke_partial:

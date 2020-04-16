@@ -35,10 +35,10 @@
 START_TEST(test_ast_node_ctor)
 {
     struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
-    
+
     ck_assert_ptr_ne(NULL, node);
     ck_assert_int_eq(HANDLEBARS_AST_NODE_PROGRAM, node->type);
-    
+
     handlebars_talloc_free(node);
 }
 END_TEST
@@ -78,21 +78,21 @@ START_TEST(test_ast_node_dtor_failed_alloc)
 #if HANDLEBARS_MEMORY
     struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     int call_count;
-    
+
     handlebars_memory_fail_enable();
     handlebars_ast_node_dtor(node);
     call_count = handlebars_memory_get_call_counter();
     handlebars_memory_fail_disable();
-    
+
     ck_assert_int_eq(1, call_count);
-    
+
     handlebars_talloc_free(node);
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
 }
 END_TEST
-    
+
 START_TEST(test_ast_node_readable_type)
 {
 #define _RTYPE_STR(str) #str
@@ -103,7 +103,7 @@ START_TEST(test_ast_node_readable_type)
 			const char * actual = handlebars_ast_node_readable_type(_RTYPE_MK(str)); \
 			ck_assert_str_eq(expected, actual); \
 		} while(0)
-    
+
 	_RTYPE_TEST(NIL, NIL);
     _RTYPE_TEST(BLOCK, block);
     _RTYPE_TEST(BOOLEAN, BooleanLiteral);
@@ -133,13 +133,13 @@ END_TEST
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("AST Node");
-    
+
     REGISTER_TEST_FIXTURE(s, test_ast_node_ctor, "Constructor");
     REGISTER_TEST_FIXTURE(s, test_ast_node_ctor_failed_alloc, "Constructor (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_ast_node_dtor, "Destructor");
     REGISTER_TEST_FIXTURE(s, test_ast_node_dtor_failed_alloc, "Destructor (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_ast_node_readable_type, "Readable Type");
-    
+
     return s;
 }
 
@@ -150,13 +150,13 @@ int main(void)
     int error;
 
     talloc_set_log_stderr();
-    
+
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     // Set up test suite
     Suite * s = parser_suite();
     SRunner * sr = srunner_create(s);
@@ -167,12 +167,12 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }
-    
+
     // Return
     return error;
 }

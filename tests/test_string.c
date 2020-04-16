@@ -109,6 +109,33 @@ START_TEST(test_handlebars_string_reduce_3)
 }
 END_TEST
 
+START_TEST(test_handlebars_string_replace_1)
+{
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("abcdef"));
+    input = handlebars_str_replace(context, input, HBS_STRL("bcd"), HBS_STRL("qq"));
+    ck_assert_str_eq("aqqef", input->val);
+    handlebars_talloc_free(input);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_replace_2)
+{
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL(""));
+    input = handlebars_str_replace(context, input, HBS_STRL("a"), HBS_STRL(""));
+    ck_assert_str_eq("", input->val);
+    handlebars_talloc_free(input);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_replace_3)
+{
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("QQQ"));
+    input = handlebars_str_replace(context, input, HBS_STRL("Q"), HBS_STRL("W"));
+    ck_assert_str_eq("WWW", input->val);
+    handlebars_talloc_free(input);
+}
+END_TEST
+
 START_TEST(test_handlebars_string_addcslashes_1)
 {
     struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL(""));
@@ -411,6 +438,9 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_1, "handlebars_string_reduce 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_2, "handlebars_string_reduce 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_3, "handlebars_string_reduce 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_1, "handlebars_string_replace 1");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_2, "handlebars_string_replace 2");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_3, "handlebars_string_replace 3");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_1, "handlebars_string_addcslashes 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_2, "handlebars_string_addcslashes 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_addcslashes_3, "handlebars_string_addcslashes 3");

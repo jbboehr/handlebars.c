@@ -120,7 +120,7 @@ static void loadSpecTest(json_object * object)
     if( cur && json_object_get_type(cur) == json_type_string ) {
         test->expected = handlebars_talloc_strdup(test, json_object_get_string(cur));
     } else {
-        fprintf(stderr, "Warning: Expected was not a string\n");
+        // fprintf(stderr, "Warning: Expected was not a string\n");
     }
 
     // Get message
@@ -140,7 +140,7 @@ static void loadSpecTest(json_object * object)
     if( cur ) {
         test->context = cur;
     } else {
-        fprintf(stderr, "Warning: Data was not set\n");
+        // fprintf(stderr, "Warning: Data was not set\n");
     }
 
     // Get options
@@ -237,6 +237,55 @@ error:
     }
     return error;
 }
+
+START_TEST(test_ast_to_string_on_handlebars_spec)
+{
+    struct generic_test * test = tests[_i];
+    struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
+    struct handlebars_string * tmpl;
+    TALLOC_CTX * memctx = talloc_new(rootctx);
+
+    ctx = handlebars_context_ctor_ex(memctx);
+    parser = handlebars_parser_ctor(ctx);
+
+    tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
+    const char *expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
+
+    // Won't work with a bunch of shit from handlebars - ast is lossy
+    // We're mostly doing this to make sure it won't segfault on handlebars sytax since
+    // it's mainly meant to be used with mustache templates
+    if (test->exception || NULL != strstr(expected, "{{&") || NULL != strstr(expected, "{{else") ||
+            NULL != strstr(expected, "{{!--") || NULL != strstr(expected, "[") || NULL != strstr(expected, "{{>(") ||
+            NULL != strstr(expected, "\\{{") || NULL != strstr(tmpl->val, "{{'") ) {
+        fprintf(stderr, "SKIPPED #%d\n", _i);
+        goto done;
+    }
+
+    parser->tmpl = tmpl;
+    handlebars_parse(parser);
+
+    // Check error
+    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
+        ck_assert_msg(0, handlebars_error_msg(ctx));
+    }
+
+    struct handlebars_string *ast_str = handlebars_ast_to_string(ctx, parser->program);
+
+    const char *actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
+    if (strcmp(actual, expected) != 0) {
+            char *tmp = handlebars_talloc_asprintf(rootctx,
+                                                   "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+                                                   "" /*test->suite_name*/,
+                                                   test->description, test->it, test->flags,
+                                                   test->tmpl, expected, actual);
+        ck_abort_msg(tmp);
+    }
+
+done:
+    talloc_free(memctx);
+}
+END_TEST
 
 int shouldnt_skip(struct generic_test * test)
 {
@@ -516,6 +565,10 @@ Suite * parser_suite(void)
         start = end = num;
         end++;
     }
+
+    TCase * tc_ast_to_string_on_handlebars_spec = tcase_create("AST to string on handlebars spec");
+    tcase_add_loop_test(tc_ast_to_string_on_handlebars_spec, test_ast_to_string_on_handlebars_spec, start, end);
+    suite_add_tcase(s, tc_ast_to_string_on_handlebars_spec);
 
     // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
     tcase_add_loop_test(tc_handlebars_spec, test_handlebars_spec, start, end);

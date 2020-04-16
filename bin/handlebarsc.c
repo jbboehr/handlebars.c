@@ -104,6 +104,7 @@ static void readOpts(int argc, char * argv[])
         {"alternate-decorators", no_argument,   0,  'A' },
         {"strict",    no_argument,              0,  's' },
         {"assume-objects", no_argument,         0,  'a' },
+        {"mustache-style-lambdas", no_argument, 0,  'L' },
         {0,           0,                        0,  0   }
     };
 
@@ -164,6 +165,9 @@ start:
             break;
         case 'a':
             compiler_flags |= handlebars_compiler_flag_assume_objects;
+            break;
+        case 'L':
+            compiler_flags |= handlebars_compiler_flag_mustache_style_lambdas;
             break;
 
         // input
@@ -472,6 +476,7 @@ static int do_execute(void)
     struct handlebars_module * module = handlebars_program_serialize(ctx, compiler->program);
 
     // Execute
+    vm->flags = compiler_flags;
     handlebars_vm_execute(vm, module, context);
 
     fprintf(stdout, "%.*s", (int) vm->buffer->len, vm->buffer->val);

@@ -257,3 +257,43 @@ char ** json_load_known_helpers(void * ctx, struct json_object * object)
 
     return known_helpers;
 }
+
+char * normalize_template_whitespace(TALLOC_CTX *ctx, char *str, size_t len)
+{
+    char *i = str;
+    char *ret = handlebars_talloc_size(context, len + 1);
+    char *j = ret;
+    short in_ws = 0;
+    while (1) {
+        switch (*i) {
+            case 0:
+                *j++ = 0;
+                return ret;
+
+            case '\'':
+                *j++ = '"';
+                break;
+
+            case '~': // sadface
+            case '\r':
+            case '\n':
+            case '\t':
+            case '\v':
+                // ignore
+                break;
+
+            case ' ':
+                // ignore
+                // if (!in_ws) {
+                //     *j++ = ' ';
+                // }
+                // in_ws = 1;
+                break;
+            default:
+                // in_ws = 0;
+                *j++ = *i;
+                break;
+        }
+        i++;
+    }
+}
