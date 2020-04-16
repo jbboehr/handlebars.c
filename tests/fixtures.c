@@ -1476,7 +1476,7 @@ FIXTURE_FN(401804363)
     }
     struct handlebars_value * context = argv[0];
     struct handlebars_string * str = handlebars_value_to_string(argv[0]);
-    if (0 == strncmp(str->val, HBS_STRL("{{x}}"))) {
+    if (0 == strncmp(str->val, "{{x}}", sizeof("{{x}}") - 1)) {
         FIXTURE_STRING("yes");
     } else {
         FIXTURE_STRING("no");
