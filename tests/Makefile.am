@@ -18,6 +18,7 @@ check_PROGRAMS = \
 	test_map \
 	test_opcode_printer \
 	test_opcodes \
+	test_partial_loader \
 	test_scanners \
 	test_string \
 	test_token \
@@ -40,6 +41,7 @@ test_compiler_SOURCES = $(COMMONFILES) test_compiler.c
 test_map_SOURCES = $(COMMONFILES) test_map.c
 test_opcode_printer_SOURCES = $(COMMONFILES) test_opcode_printer.c
 test_opcodes_SOURCES = $(COMMONFILES) test_opcodes.c
+test_partial_loader_SOURCES = $(COMMONFILES) test_partial_loader.c
 test_scanners_SOURCES = $(COMMONFILES) test_scanners.c
 test_string_SOURCES = $(COMMONFILES) test_string.c
 test_token_SOURCES = $(COMMONFILES) test_token.c
@@ -61,6 +63,7 @@ TESTS = \
 	test_map \
 	test_opcode_printer \
 	test_opcodes \
+	test_partial_loader \
 	test_scanners \
 	test_string \
 	test_token \

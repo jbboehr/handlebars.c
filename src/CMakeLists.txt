@@ -38,6 +38,7 @@ set(SOURCE_FILES
     handlebars_opcode_printer.c
     handlebars_opcode_serializer.c
     handlebars_opcodes.c
+    handlebars_partial_loader.c
     handlebars_scanners.c
     handlebars_stack.c
     handlebars_string.c
@@ -66,6 +67,7 @@ set(HEADERS
     handlebars_opcode_printer.h
     handlebars_opcode_serializer.h
     handlebars_opcodes.h
+    handlebars_partial_loader.h
     handlebars_private.h
     handlebars_scanners.h
     handlebars_stack.h

@@ -8,6 +8,12 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ### Added
 - Mustache-style lambda support
+- The executable now supports loading partials from files via the new options
+`--partial-loader`, `--partial-path=DIR`, and `--partial-ext=EXT`.
+
+### Changed
+- The executable's default mode is now `--execute`. Compiler flags are now
+specified through a single `--flags=FLAGS` option, and there is an improved `--help` message.
 
 ## [0.6.4] - 2017-07-17
 
