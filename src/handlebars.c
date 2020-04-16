@@ -42,7 +42,7 @@
 struct handlebars_parser * _handlebars_parser_init_current;
 
 int handlebars_version(void) {
-    return HANDLEBARS_VERSION_PATCH 
+    return HANDLEBARS_VERSION_PATCH
         + (HANDLEBARS_VERSION_MINOR * 100)
         + (HANDLEBARS_VERSION_MAJOR * 10000);
 }
@@ -200,9 +200,6 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
 
 void handlebars_parser_dtor(struct handlebars_parser * parser)
 {
-    if( unlikely(parser == NULL) ) {
-        return;
-    }
     if( likely(parser->scanner != NULL) ) {
         // Note: it has int return value, but appears to always return 0
         handlebars_yy_lex_destroy(parser->scanner);
@@ -236,7 +233,7 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
 
     // Prepare token list
     tokens = MC(talloc_array(parser, struct handlebars_token *, 32));
-    
+
     // Run
     do {
         int token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
@@ -244,10 +241,10 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
             break;
         }
         lval = handlebars_yy_get_lval(parser->scanner);
-        
+
         // Make token object
         token = handlebars_token_ctor(HBSCTX(parser), token_int, lval->string);
-        
+
         // Append
         tokens = talloc_realloc(parser, tokens, struct handlebars_token *, i + 2);
         tokens[i] = talloc_steal(tokens, token);

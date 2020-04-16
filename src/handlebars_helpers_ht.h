@@ -1,5 +1,5 @@
-/* C code produced by gperf version 3.0.4 */
-/* Command-line: /usr/bin/gperf --struct-type --readonly-tables --pic --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf  */
+/* ANSI-C code produced by gperf version 3.1 */
+/* Command-line: /nix/store/yb9mzsjbbsfpr3q22lllzn2fhqywr28w-gperf-3.1/bin/gperf --struct-type --readonly-tables --pic --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf  */
 /* Computed positions: -k'1' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \
@@ -26,7 +26,7 @@
       && ('w' == 119) && ('x' == 120) && ('y' == 121) && ('z' == 122) \
       && ('{' == 123) && ('|' == 124) && ('}' == 125) && ('~' == 126))
 /* The character set is not based on ISO-646.  */
-error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gnu-gperf@gnu.org>."
+#error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gperf@gnu.org>."
 #endif
 
 #line 1 "handlebars_helpers_ht.gperf"
@@ -47,9 +47,7 @@ inline
 #endif
 #endif
 static unsigned int
-hash (str, len)
-     register const char *str;
-     register unsigned int len;
+hash (register const char *str, register size_t len)
 {
   static const unsigned char asso_values[] =
     {
@@ -106,48 +104,40 @@ static const struct stringpool_t stringpool_contents =
     "blockHelperMissing"
   };
 #define stringpool ((const char *) &stringpool_contents)
-#ifdef __GNUC__
-__inline
-#if defined __GNUC_STDC_INLINE__ || defined __GNUC_GNU_INLINE__
-__attribute__ ((__gnu_inline__))
-#endif
-#endif
 const struct handlebars_builtin_pair *
-in_word_set (str, len)
-     register const char *str;
-     register unsigned int len;
+in_word_set (register const char *str, register size_t len)
 {
   static const struct handlebars_builtin_pair wordlist[] =
     {
       {-1}, {-1},
 #line 6 "handlebars_helpers_ht.gperf"
-      {(int)(long)&((struct stringpool_t *)0)->stringpool_str2,3},
+      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str2,3},
 #line 9 "handlebars_helpers_ht.gperf"
-      {(int)(long)&((struct stringpool_t *)0)->stringpool_str3,6},
+      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str3,6},
 #line 8 "handlebars_helpers_ht.gperf"
-      {(int)(long)&((struct stringpool_t *)0)->stringpool_str4,5},
+      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str4,5},
       {-1},
 #line 10 "handlebars_helpers_ht.gperf"
-      {(int)(long)&((struct stringpool_t *)0)->stringpool_str6,7},
+      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str6,7},
       {-1}, {-1},
 #line 5 "handlebars_helpers_ht.gperf"
-      {(int)(long)&((struct stringpool_t *)0)->stringpool_str9,2},
+      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str9,2},
       {-1},
 #line 7 "handlebars_helpers_ht.gperf"
-      {(int)(long)&((struct stringpool_t *)0)->stringpool_str11,4},
+      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str11,4},
       {-1},
 #line 4 "handlebars_helpers_ht.gperf"
-      {(int)(long)&((struct stringpool_t *)0)->stringpool_str13,1},
+      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str13,1},
       {-1}, {-1}, {-1}, {-1},
 #line 3 "handlebars_helpers_ht.gperf"
-      {(int)(long)&((struct stringpool_t *)0)->stringpool_str18,0}
+      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str18,0}
     };
 
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
     {
-      register int key = hash (str, len);
+      register unsigned int key = hash (str, len);
 
-      if (key <= MAX_HASH_VALUE && key >= 0)
+      if (key <= MAX_HASH_VALUE)
         {
           register int o = wordlist[key].name;
           if (o >= 0)

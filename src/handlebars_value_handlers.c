@@ -59,11 +59,13 @@ struct _yaml_ctx {
 };
 
 
-static void handlebars_json_dtor(struct handlebars_json * obj)
+static int handlebars_json_dtor(struct handlebars_json * obj)
 {
     if( obj ) {
         json_object_put(obj->object);
     }
+
+    return 0;
 }
 
 
@@ -352,10 +354,11 @@ struct handlebars_value * handlebars_value_from_json_string(struct handlebars_co
 
 
 
-static void _yaml_ctx_dtor(struct _yaml_ctx * holder)
+static int _yaml_ctx_dtor(struct _yaml_ctx * holder)
 {
     yaml_document_delete(&holder->document);
     yaml_parser_delete(&holder->parser);
+    return 0;
 }
 
 void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct handlebars_value * value, struct yaml_document_s * document, struct yaml_node_s * node)

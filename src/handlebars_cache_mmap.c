@@ -221,7 +221,7 @@ static inline void table_unset(struct handlebars_cache_mmap * intern, struct han
 #define DECR(var) lock(cache); var--; unlock(cache)
 #endif
 
-static void cache_dtor(struct handlebars_cache * cache)
+static int cache_dtor(struct handlebars_cache * cache)
 {
     // This may be unnecessary with MAP_ANONYMOUS
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
@@ -229,6 +229,7 @@ static void cache_dtor(struct handlebars_cache * cache)
         munmap(intern, intern->size);
     }
     // @todo do we need to release the mutexes?
+    return 0;
 }
 
 static void cache_reset(struct handlebars_cache * cache)

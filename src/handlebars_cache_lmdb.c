@@ -52,10 +52,11 @@ struct handlebars_cache_lmdb {
 #undef CONTEXT
 #define CONTEXT HBSCTX(cache)
 
-static void cache_dtor(struct handlebars_cache * cache)
+static int cache_dtor(struct handlebars_cache * cache)
 {
     struct handlebars_cache_lmdb * intern = (struct handlebars_cache_lmdb *) cache->internal;
     mdb_env_close(intern->env);
+    return 0;
 }
 
 static int cache_gc(struct handlebars_cache * cache)
@@ -256,7 +257,6 @@ static void cache_reset(struct handlebars_cache * cache)
     int err;
     MDB_txn *txn;
     MDB_dbi dbi;
-    MDB_stat stat;
 
     err = mdb_txn_begin(intern->env, NULL, 0, &txn);
     HANDLE_RC(err);

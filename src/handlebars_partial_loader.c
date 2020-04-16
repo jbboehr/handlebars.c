@@ -38,6 +38,17 @@ struct handlebars_partial_loader {
     struct handlebars_map * map;
 };
 
+
+static int partial_loader_dtor(struct handlebars_partial_loader * obj)
+{
+    if( obj ) {
+        handlebars_map_dtor(obj->map);
+    }
+
+    return 0;
+}
+
+
 #define GET_INTERN(value) ((struct handlebars_partial_loader *) talloc_get_type(value->v.usr, struct handlebars_partial_loader))
 
 #undef CONTEXT
@@ -201,7 +212,7 @@ struct handlebars_value * handlebars_value_partial_loader_ctor(
     obj->base_path = talloc_steal(obj, handlebars_string_copy_ctor(context, base_path));
     obj->extension = talloc_steal(obj, handlebars_string_copy_ctor(context, extension));
     obj->map = talloc_steal(obj, handlebars_map_ctor(context));
-    talloc_set_destructor(obj, std_partial_loader_dtor);
+    talloc_set_destructor(obj, partial_loader_dtor);
 
     value->type = HANDLEBARS_VALUE_TYPE_USER;
     value->v.usr = (struct handlebars_user *) obj;

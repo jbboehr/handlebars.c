@@ -32,6 +32,7 @@
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_ast_helpers.h"
+#include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_opcodes.h"
@@ -190,7 +191,9 @@ struct handlebars_string ** handlebars_ast_node_get_id_parts(struct handlebars_c
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
 
-    if( !ast_node || ast_node->type != HANDLEBARS_AST_NODE_PATH ) {
+    assert(ast_node != NULL);
+
+    if( ast_node->type != HANDLEBARS_AST_NODE_PATH ) {
         return NULL;
     }
 
