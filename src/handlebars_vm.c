@@ -332,9 +332,9 @@ static inline struct handlebars_value * execute_template(
         vm->cache->release(vm->cache, tmpl, module);
     }
 
-done:
     handlebars_vm_dtor(vm2);
 
+done:
     return retval;
 }
 
