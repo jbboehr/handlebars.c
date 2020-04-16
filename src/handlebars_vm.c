@@ -206,9 +206,9 @@ static inline char * dump_stack(struct handlebars_stack * stack)
 static inline void dump_vm_stack(struct handlebars_vm *vm)
 {
     size_t i;
-    fprintf(stdout, "STACK[%d]\n", vm->stack.i);
+    fprintf(stdout, "STACK[%lu]\n", (unsigned long) vm->stack.i);
     for ( i = 0; i < vm->stack.i; i++ ) {
-        fprintf(stdout, "STACK[%d]: %s\n", i, handlebars_value_dump(vm->stack.v[i], 0));
+        fprintf(stdout, "STACK[%lu]: %s\n", (unsigned long) i, handlebars_value_dump(vm->stack.v[i], 0));
     }
     fflush(stdout);
 }
@@ -746,7 +746,7 @@ ACCEPT_FUNCTION(lookup_data)
     } else if( 0 == strcmp(first->string->val, "root") ) {
         val = BOTTOM(vm->contextStack);
     } else if( vm->flags & handlebars_compiler_flag_assume_objects ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
     } else {
         goto done_and_null;
     }
@@ -760,7 +760,7 @@ ACCEPT_FUNCTION(lookup_data)
             handlebars_value_delref(val);
             val = tmp;
         } else if( is_strict ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
         } else {
             goto done_and_null;
         }
@@ -769,7 +769,7 @@ ACCEPT_FUNCTION(lookup_data)
     if( !val ) {
         done_and_null:
         if( require_terminal ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
         } else {
             val = handlebars_value_ctor(CONTEXT);
         }
@@ -818,13 +818,13 @@ ACCEPT_FUNCTION(lookup_on_context)
             handlebars_value_try_delref(value);
             value = tmp;
         } else if( vm->flags & handlebars_compiler_flag_assume_objects && is_last ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
         } else {
             goto done_and_null;
         }
         if( !value ) {
             if( is_strict && !is_last ) {
-                handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+                handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
             }
             goto done_and_null;
         }
@@ -833,7 +833,7 @@ ACCEPT_FUNCTION(lookup_on_context)
     if( value == NULL ) {
         done_and_null:
         if( require_terminal ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", arr->string->len, arr->string->val);
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
         } else {
             value = handlebars_value_ctor(CONTEXT);
         }

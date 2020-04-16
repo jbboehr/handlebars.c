@@ -103,7 +103,7 @@ struct handlebars_string * handlebars_str_replace(
     const char * last_tok = string->val;
 
     if( search_len <= 0 || string->len <= 0 ) {
-        return string;
+        return handlebars_string_copy_ctor(context, string);
     }
 
     struct handlebars_string *new_string = handlebars_string_init(context, string->len * 4 + 1);
@@ -444,7 +444,7 @@ struct handlebars_string * handlebars_string_ltrim(struct handlebars_string * st
 
     assert(string != NULL);
 
-    if( unlikely(string == NULL || string->len <= 0) ) {
+    if( unlikely(string->len <= 0) ) {
         return string;
     }
 
@@ -475,7 +475,7 @@ struct handlebars_string * handlebars_string_rtrim(struct handlebars_string * st
 
     assert(string != NULL);
 
-    if( unlikely(string == NULL || string->len <= 0) ) {
+    if( unlikely(string->len <= 0) ) {
         return string;
     }
 

@@ -572,7 +572,7 @@ static void _handlebars_ast_to_string_program(struct handlebars_ast_node * ast_n
 
 static void _handlebars_ast_to_string_mustache(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    short unescaped = *((short *) &ast_node->node.mustache.unescaped); // @todo fixme
+    short unescaped = ast_node->node.mustache.unescaped;
 
     __APPENDS("{{");
     if (unescaped == 1) {

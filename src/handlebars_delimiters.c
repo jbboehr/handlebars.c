@@ -45,7 +45,7 @@
 #define append(str, len) new_tmpl = handlebars_string_append(ctx, new_tmpl, str, len)
 #define move_forward(x) \
     if( x > i ) { \
-        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %ld", x); \
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %lu", (unsigned long) x); \
     } \
     p += x; \
     i -= x
