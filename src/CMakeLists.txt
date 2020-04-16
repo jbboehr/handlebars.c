@@ -33,11 +33,13 @@ set(SOURCE_FILES
     handlebars_compiler.c
     handlebars_delimiters.c
     handlebars_helpers.c
+    handlebars_helper_loader.c
     handlebars_map.c
 #    handlebars_memory.c
     handlebars_opcode_printer.c
     handlebars_opcode_serializer.c
     handlebars_opcodes.c
+    handlebars_partial_loader.c
     handlebars_scanners.c
     handlebars_stack.c
     handlebars_string.c
@@ -61,11 +63,13 @@ set(HEADERS
     handlebars_compiler.h
     handlebars_helpers.h
     handlebars_helpers_ht.h
+    handlebars_helper_loader.h
     handlebars_map.h
     handlebars_memory.h
     handlebars_opcode_printer.h
     handlebars_opcode_serializer.h
     handlebars_opcodes.h
+    handlebars_partial_loader.h
     handlebars_private.h
     handlebars_scanners.h
     handlebars_stack.h

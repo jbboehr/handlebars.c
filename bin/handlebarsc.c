@@ -59,6 +59,7 @@ char * input_data_name = NULL;
 char * input_buf = NULL;
 size_t input_buf_length = 0;
 unsigned long compiler_flags = 0;
+short enable_partial_loader = 0;
 
 enum handlebarsc_mode {
     handlebarsc_mode_usage = 0,
@@ -95,16 +96,10 @@ static void readOpts(int argc, char * argv[])
         {"template",  required_argument,        0,  't' },
         {"data",      required_argument,        0,  'D' },
         // compiler flags
-        {"compat",    no_argument,              0,  'C' },
-        {"known-helpers-only", no_argument,     0,  'K' },
-        {"string-params", no_argument,          0,  'S' },
-        {"track-ids", no_argument,              0,  'T' },
-        {"no-escape", no_argument,              0,  'U' },
-        {"ignore-standalone", no_argument,      0,  'G' },
-        {"alternate-decorators", no_argument,   0,  'A' },
-        {"strict",    no_argument,              0,  's' },
-        {"assume-objects", no_argument,         0,  'a' },
-        {"mustache-style-lambdas", no_argument, 0,  'L' },
+        {"flags",     required_argument,        0,  'F' },
+        // loaders
+        {"partial-loader", no_argument,         0,  'P' },
+        // end
         {0,           0,                        0,  0   }
     };
 
@@ -139,35 +134,33 @@ start:
             break;
 
         // compiler flags
-        case 'C':
-            compiler_flags |= handlebars_compiler_flag_compat;
+        case 'F':
+            // we could do this more efficiently
+            if (NULL != strstr(optarg, "compat")) {
+                compiler_flags |= handlebars_compiler_flag_compat;
+            } else if (NULL != strstr(optarg, "known_helpers_only")) {
+                compiler_flags |= handlebars_compiler_flag_known_helpers_only;
+            } else if (NULL != strstr(optarg, "string_params")) {
+                compiler_flags |= handlebars_compiler_flag_string_params;
+            } else if (NULL != strstr(optarg, "track_ids")) {
+                compiler_flags |= handlebars_compiler_flag_track_ids;
+            } else if (NULL != strstr(optarg, "no_escape")) {
+                compiler_flags |= handlebars_compiler_flag_no_escape;
+            } else if (NULL != strstr(optarg, "ignore_standalone")) {
+                compiler_flags |= handlebars_compiler_flag_ignore_standalone;
+            } else if (NULL != strstr(optarg, "alternate_decorators")) {
+                compiler_flags |= handlebars_compiler_flag_alternate_decorators;
+            } else if (NULL != strstr(optarg, "strict")) {
+                compiler_flags |= handlebars_compiler_flag_strict;
+            } else if (NULL != strstr(optarg, "assume_objects")) {
+                compiler_flags |= handlebars_compiler_flag_assume_objects;
+            } else if (NULL != strstr(optarg, "mustache_style_lambdas")) {
+                compiler_flags |= handlebars_compiler_flag_mustache_style_lambdas;
+            }
             break;
-        case 'K':
-            compiler_flags |= handlebars_compiler_flag_known_helpers_only;
-            break;
-        case 'S':
-            compiler_flags |= handlebars_compiler_flag_string_params;
-            break;
-        case 'T':
-            compiler_flags |= handlebars_compiler_flag_track_ids;
-            break;
-        case 'U':
-            compiler_flags |= handlebars_compiler_flag_no_escape;
-            break;
-        case 'G':
-            compiler_flags |= handlebars_compiler_flag_ignore_standalone;
-            break;
-        case 'A':
-            compiler_flags |= handlebars_compiler_flag_alternate_decorators;
-            break;
-        case 's':
-            compiler_flags |= handlebars_compiler_flag_strict;
-            break;
-        case 'a':
-            compiler_flags |= handlebars_compiler_flag_assume_objects;
-            break;
-        case 'L':
-            compiler_flags |= handlebars_compiler_flag_mustache_style_lambdas;
+
+        case 'P':
+            enable_partial_loader = 1;
             break;
 
         // input
@@ -236,7 +229,7 @@ static void readInput(void)
 
 static int do_usage(void)
 {
-    fprintf(stderr, "Usage: handlebarsc [--lex|--parse|--compile|--execute] [--data JSON_FILE] [TEMPLATE]\n");
+    fprintf(stderr, "Usage: handlebarsc [--lex|--parse|--compile|--execute] [--data JSON_FILE] [--flags FLAGS] [TEMPLATE]\n");
     return 0;
 }
 
@@ -436,7 +429,12 @@ static int do_execute(void)
     compiler = handlebars_compiler_ctor(ctx);
     vm = handlebars_vm_ctor(ctx);
     vm->helpers = handlebars_value_ctor(ctx);
-    vm->partials = handlebars_value_ctor(ctx);
+
+    if (enable_partial_loader) {
+        vm->partials = handlebars_value_ctor(ctx);
+    } else {
+        vm->partials = handlebars_value_ctor(ctx);
+    }
 
     if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
         parser->ignore_standalone = 1;
