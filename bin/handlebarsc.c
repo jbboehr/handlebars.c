@@ -281,7 +281,6 @@ static int do_usage(void)
         "\n"
         "handlebarsc home page: " PACKAGE_URL
     );
-        //[--lex|--parse|--compile|--execute] [--data JSON_FILE] [--flags FLAGS] [TEMPLATE]
     return 0;
 }
 
