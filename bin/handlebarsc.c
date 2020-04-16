@@ -143,23 +143,32 @@ start:
             // we could do this more efficiently
             if (NULL != strstr(optarg, "compat")) {
                 compiler_flags |= handlebars_compiler_flag_compat;
-            } else if (NULL != strstr(optarg, "known_helpers_only")) {
+            }
+            if (NULL != strstr(optarg, "known_helpers_only")) {
                 compiler_flags |= handlebars_compiler_flag_known_helpers_only;
-            } else if (NULL != strstr(optarg, "string_params")) {
+            }
+            if (NULL != strstr(optarg, "string_params")) {
                 compiler_flags |= handlebars_compiler_flag_string_params;
-            } else if (NULL != strstr(optarg, "track_ids")) {
+            }
+            if (NULL != strstr(optarg, "track_ids")) {
                 compiler_flags |= handlebars_compiler_flag_track_ids;
-            } else if (NULL != strstr(optarg, "no_escape")) {
+            }
+            if (NULL != strstr(optarg, "no_escape")) {
                 compiler_flags |= handlebars_compiler_flag_no_escape;
-            } else if (NULL != strstr(optarg, "ignore_standalone")) {
+            }
+            if (NULL != strstr(optarg, "ignore_standalone")) {
                 compiler_flags |= handlebars_compiler_flag_ignore_standalone;
-            } else if (NULL != strstr(optarg, "alternate_decorators")) {
+            }
+            if (NULL != strstr(optarg, "alternate_decorators")) {
                 compiler_flags |= handlebars_compiler_flag_alternate_decorators;
-            } else if (NULL != strstr(optarg, "strict")) {
+            }
+            if (NULL != strstr(optarg, "strict")) {
                 compiler_flags |= handlebars_compiler_flag_strict;
-            } else if (NULL != strstr(optarg, "assume_objects")) {
+            }
+            if (NULL != strstr(optarg, "assume_objects")) {
                 compiler_flags |= handlebars_compiler_flag_assume_objects;
-            } else if (NULL != strstr(optarg, "mustache_style_lambdas")) {
+            }
+            if (NULL != strstr(optarg, "mustache_style_lambdas")) {
                 compiler_flags |= handlebars_compiler_flag_mustache_style_lambdas;
             }
             break;
