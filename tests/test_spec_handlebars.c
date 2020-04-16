@@ -253,6 +253,8 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
     const char *expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
 
     // Won't work with a bunch of shit from handlebars - ast is lossy
+    // We're mostly doing this to make sure it won't segfault on handlebars sytax since
+    // it's mainly meant to be used with mustache templates
     if (test->exception || NULL != strstr(expected, "{{&") || NULL != strstr(expected, "{{else") ||
             NULL != strstr(expected, "{{!--") || NULL != strstr(expected, "[") || NULL != strstr(expected, "{{>(") ||
             NULL != strstr(expected, "\\{{") || NULL != strstr(tmpl->val, "{{'") ) {
