@@ -42,7 +42,6 @@ include_HEADERS = \
 	handlebars_compiler.h \
 	handlebars_config.h \
 	handlebars_helpers.h \
-    handlebars_helper_loader.h \
 	handlebars_map.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
@@ -91,8 +90,6 @@ libhandlebars_la_SOURCES = \
 	handlebars_delimiters.c \
 	handlebars_helpers.h \
 	handlebars_helpers.c \
-    handlebars_helper_loader.h \
-    handlebars_helper_loader.c \
 	handlebars_map.h \
 	handlebars_map.c \
 	handlebars_opcode_printer.h \
