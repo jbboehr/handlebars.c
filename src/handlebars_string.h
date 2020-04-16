@@ -201,6 +201,22 @@ static inline struct handlebars_string * handlebars_string_append(
 }
 
 /**
+ * @brief Append to a string
+ * @param[in] context
+ * @param[in] string
+ * @param[in] str
+ * @return The original string, unless moved by reallocation
+ */
+HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL
+static inline struct handlebars_string * handlebars_string_append_str(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const struct handlebars_string * string2
+) {
+    return handlebars_string_append(context, string, string2->val, string2->len);
+}
+
+/**
  * @brief Resize a string buffer to match the size of it's contents
  * @param[in] string
  * @return The original string
@@ -282,6 +298,23 @@ struct handlebars_string * handlebars_str_reduce(
     const char * search, size_t search_len,
     const char * replacement, size_t replacement_len
 ) HBS_ATTR_NONNULL(1, 2, 4);
+
+/**
+ * @brief Performs a string replace.
+ * @param[in] context The handlebars context
+ * @param[in] string The input string
+ * @param[in] search The search string
+ * @param[in] search_len The search string length
+ * @param[in] replacement The replacement string
+ * @param[in] replacement_len The replacement string length
+ * @return A newly allocated string, transformed
+ */
+struct handlebars_string * handlebars_str_replace(
+    struct handlebars_context * context,
+    const struct handlebars_string * string,
+    const char * search, size_t search_len,
+    const char * replacement, size_t replacement_len
+) HBS_ATTR_NONNULL(1, 2, 3, 5);
 
 /**
  * @brief Adds slashes to as string for a list of specified characters. Returns a

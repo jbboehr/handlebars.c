@@ -93,6 +93,40 @@ struct handlebars_string * handlebars_str_reduce(
     return string;
 }
 
+struct handlebars_string * handlebars_str_replace(
+    struct handlebars_context * context,
+    const struct handlebars_string * string,
+    const char * search, size_t search_len,
+    const char * replacement, size_t replacement_len
+) {
+    const char * tok = string->val;
+    const char * last_tok = string->val;
+
+    if( search_len <= 0 || string->len <= 0 ) {
+        return string;
+    }
+
+    struct handlebars_string *new_string = handlebars_string_init(context, string->len * 4 + 1);
+
+    while( NULL != (tok = (char *) handlebars_strnstr(tok, string->len - (tok - string->val), search, search_len)) ) {
+        new_string = handlebars_string_append(context, new_string, last_tok, tok - last_tok);
+        new_string = handlebars_string_append(context, new_string, replacement, replacement_len);
+
+        tok += search_len;
+        last_tok = tok;
+        if( tok >= string->val + string->len ) {
+            break;
+        }
+    }
+
+    new_string = handlebars_string_append(context, new_string, last_tok, string->len - (last_tok - string->val));
+
+    assert(new_string->val[new_string->len] == 0);
+    new_string->hash = 0;
+
+    return handlebars_string_compact(new_string);
+}
+
 struct handlebars_string * handlebars_string_addcslashes(struct handlebars_context * context, struct handlebars_string * string, const char * what, size_t what_length)
 {
     char flags[256];

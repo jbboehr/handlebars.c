@@ -43,6 +43,25 @@
         } \
     } while(0)
 
+#define __APPENDS(str) \
+    do { \
+        ctx->output = handlebars_string_append(ctx->ctx, ctx->output, str, sizeof(str) - 1); \
+    } while(0)
+
+#define __APPENDL(str, len) \
+    do { \
+        if( likely(str != NULL) ) { \
+            ctx->output = handlebars_string_append(ctx->ctx, ctx->output, str, len); \
+        } \
+    } while(0)
+
+#define __APPEND_STR(str) \
+    do { \
+        if( likely(str != NULL) ) { \
+            ctx->output = handlebars_string_append_str(ctx->ctx, ctx->output, str); \
+        } \
+    } while(0)
+
 #define __PAD(str) \
     _handlebars_ast_print_pad(str, ctx)
 
@@ -58,7 +77,7 @@
     } while(0)
 
 #define __PAD_FOOT() \
-    __APPEND("\n")
+    __APPENDS("\n")
 
 #define __PRINT(node) \
     _handlebars_ast_print(node, ctx)
@@ -72,6 +91,7 @@ struct handlebars_ast_printer_context {
     int error;
     struct handlebars_string * output;
     bool in_partial;
+    bool in_raw_block;
 };
 
 
@@ -112,7 +132,7 @@ static void _handlebars_ast_print_path_params_hash(
     if( path ) {
         __PRINT(path);
     }
-    __APPEND(" [");
+    __APPENDS(" [");
 
     if( params ) {
         struct handlebars_ast_list * ast_list = params;
@@ -122,15 +142,15 @@ static void _handlebars_ast_print_path_params_hash(
         handlebars_ast_list_foreach(ast_list, item, tmp) {
             __PRINT(item->data);
             if( item->next ) {
-                __APPEND(", ");
+                __APPENDS(", ");
             }
         }
     }
 
-    __APPEND("]");
+    __APPENDS("]");
 
     if( hash ) {
-        __APPEND(" ");
+        __APPENDS(" ");
         __PRINT(hash);
     }
 }
@@ -142,13 +162,13 @@ static void _handlebars_ast_print_program(struct handlebars_ast_node * ast_node,
 {
     if( ast_node->node.program.block_param1 ) {
         __PAD_HEAD();
-        __APPEND("BLOCK PARAMS: [ ");
-        __APPEND(ast_node->node.program.block_param1->val);
+        __APPENDS("BLOCK PARAMS: [ ");
+        __APPEND_STR(ast_node->node.program.block_param1);
         if( ast_node->node.program.block_param2 ) {
-            __APPEND(" ");
-            __APPEND(ast_node->node.program.block_param2->val);
+            __APPENDS(" ");
+            __APPEND_STR(ast_node->node.program.block_param2);
         }
-        __APPEND(" ]");
+        __APPENDS(" ]");
         __PAD_FOOT();
     }
 
@@ -160,17 +180,17 @@ static void _handlebars_ast_print_program(struct handlebars_ast_node * ast_node,
 static void _handlebars_ast_print_mustache(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __PAD_HEAD();
-    __APPEND("{{ ");
+    __APPENDS("{{ ");
 
     if( ast_node->node.mustache.is_decorator ) {
-    	__APPEND("DIRECTIVE ");
+    	__APPENDS("DIRECTIVE ");
     }
 
     // Sexpr
     _handlebars_ast_print_path_params_hash(ast_node->node.mustache.path,
             ast_node->node.mustache.params, ast_node->node.mustache.hash, ctx);
 
-    __APPEND(" }}");
+    __APPENDS(" }}");
     __PAD_FOOT();
 }
 
@@ -220,7 +240,7 @@ static void _handlebars_ast_print_partial(struct handlebars_ast_node * ast_node,
     assert(ast_node->node.partial.name != NULL);
 
     __PAD_HEAD();
-    __APPEND("{{> PARTIAL:");
+    __APPENDS("{{> PARTIAL:");
 
     ctx->in_partial = true;
     __PRINT(ast_node->node.partial.name);
@@ -229,16 +249,16 @@ static void _handlebars_ast_print_partial(struct handlebars_ast_node * ast_node,
 
    if( ast_node->node.partial.params != NULL &&
             handlebars_ast_list_count(ast_node->node.partial.params) ) {
-        __APPEND(" ");
+        __APPENDS(" ");
         __PRINT(ast_node->node.partial.params->first->data);
     }
 
     if( ast_node->node.partial.hash ) {
-        __APPEND(" ");
+        __APPENDS(" ");
         __PRINT(ast_node->node.partial.hash);
     }
 
-    __APPEND(" }}");
+    __APPENDS(" }}");
     __PAD_FOOT();
 }
 
@@ -246,7 +266,7 @@ static void _handlebars_ast_print_partial(struct handlebars_ast_node * ast_node,
 static void _handlebars_ast_print_partial_block(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
 	__PAD_HEAD();
-    __APPEND("{{> PARTIAL BLOCK:");
+    __APPENDS("{{> PARTIAL BLOCK:");
 
     ctx->padding++;
     ctx->in_partial = true;
@@ -254,17 +274,17 @@ static void _handlebars_ast_print_partial_block(struct handlebars_ast_node * ast
     // Sexpr
     _handlebars_ast_print(ast_node->node.partial_block.path, ctx);
     if( ast_node->node.partial_block.params ) {
-    	__APPEND(" PATH:");
+    	__APPENDS(" PATH:");
         _handlebars_ast_print_list(ast_node->node.partial_block.params, ctx);
     }
     if( ast_node->node.partial_block.hash ) {
-    	__APPEND(" ");
+    	__APPENDS(" ");
         _handlebars_ast_print(ast_node->node.partial_block.hash, ctx);
     }
 
     // Program
     if( ast_node->node.partial_block.program ) {
-        __APPEND(" PROGRAM:");
+        __APPENDS(" PROGRAM:");
         __PAD_FOOT();
 
         //ctx->padding++;
@@ -275,25 +295,25 @@ static void _handlebars_ast_print_partial_block(struct handlebars_ast_node * ast
     ctx->in_partial = false;
     ctx->padding--;
 
-    __APPEND(" }}");
+    __APPENDS(" }}");
     __PAD_FOOT();
 }
 
 static void _handlebars_ast_print_content(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __PAD_HEAD();
-    __APPEND("CONTENT[ '");
-    __APPEND(ast_node->node.content.value->val);
-    __APPEND("' ]");
+    __APPENDS("CONTENT[ '");
+    __APPEND_STR(ast_node->node.content.value);
+    __APPENDS("' ]");
     __PAD_FOOT();
 }
 
 static void _handlebars_ast_print_comment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __PAD_HEAD();
-    __APPEND("{{! '");
-    __APPEND(ast_node->node.comment.value->val);
-    __APPEND("' }}");
+    __APPENDS("{{! '");
+    __APPEND_STR(ast_node->node.comment.value);
+    __APPENDS("' }}");
     __PAD_FOOT();
 }
 
@@ -307,40 +327,40 @@ static void _handlebars_ast_print_sexpr(struct handlebars_ast_node * ast_node, s
 static void _handlebars_ast_print_string(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     if( !ctx->in_partial ) {
-        __APPEND("\"");
+        __APPENDS("\"");
     }
-    __APPEND(ast_node->node.string.value->val);
+    __APPEND_STR(ast_node->node.string.value);
     if( !ctx->in_partial ) {
-        __APPEND("\"");
+        __APPENDS("\"");
     }
 }
 
 static void _handlebars_ast_print_number(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     if( !ctx->in_partial ) {
-        __APPEND("NUMBER{");
+        __APPENDS("NUMBER{");
     }
-    __APPEND(ast_node->node.number.value->val);
+    __APPEND_STR(ast_node->node.number.value);
     if( !ctx->in_partial ) {
-        __APPEND("}");
+        __APPENDS("}");
     }
 }
 
 static void _handlebars_ast_print_boolean(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND("BOOLEAN{");
-    __APPEND(ast_node->node.boolean.value->val);
-    __APPEND("}");
+    __APPENDS("BOOLEAN{");
+    __APPEND_STR(ast_node->node.boolean.value);
+    __APPENDS("}");
 }
 
 static void _handlebars_ast_print_undefined(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND("UNDEFINED");
+    __APPENDS("UNDEFINED");
 }
 
 static void _handlebars_ast_print_null(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND("NULL");
+    __APPENDS("NULL");
 }
 
 static void _handlebars_ast_print_hash(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
@@ -351,18 +371,18 @@ static void _handlebars_ast_print_hash(struct handlebars_ast_node * ast_node, st
     bool prev_in_partial = ctx->in_partial;
     ctx->in_partial = false;
 
-    __APPEND("HASH{");
+    __APPENDS("HASH{");
 
     handlebars_ast_list_foreach(ast_list, item, tmp) {
-        __APPEND(item->data->node.hash_pair.key->val);
-        __APPEND("=");
+        __APPEND_STR(item->data->node.hash_pair.key);
+        __APPENDS("=");
         __PRINT(item->data->node.hash_pair.value);
         if( item->next ) {
-            __APPEND(", ");
+            __APPENDS(", ");
         }
     }
 
-    __APPEND("}");
+    __APPENDS("}");
 
     ctx->in_partial = prev_in_partial;
 }
@@ -379,18 +399,18 @@ static void _handlebars_ast_print_path(struct handlebars_ast_node * ast_node, st
     assert(ast_node->node.path.data == 0 || ast_node->node.path.data == 1);
 
     if( ast_node->node.path.data ) {
-        __APPEND("@");
+        __APPENDS("@");
     }
     if( !ctx->in_partial ) {
-        __APPEND("PATH:");
+        __APPENDS("PATH:");
     }
 
     handlebars_ast_list_foreach(ast_list, item, tmp) {
-        __APPEND(item->data->node.path_segment.part->val);
+        __APPEND_STR(item->data->node.path_segment.part);
         //__PRINT(item->data);
         if( item->next ) {
-            __APPEND(item->next->data->node.path_segment.separator->val);
-            //__APPEND("/");
+            __APPEND_STR(item->next->data->node.path_segment.separator);
+            //__APPENDS("/");
         }
     }
 }
@@ -508,7 +528,7 @@ static void _handlebars_ast_to_string_path_params_hash(
     int depth = ctx->padding++;
 
     if (depth > 0) {
-        __APPEND("(");
+        __APPENDS("(");
     }
 
     if( path ) {
@@ -520,23 +540,23 @@ static void _handlebars_ast_to_string_path_params_hash(
         struct handlebars_ast_list_item * item;
         struct handlebars_ast_list_item * tmp;
 
-        __APPEND(" ");
+        __APPENDS(" ");
 
         handlebars_ast_list_foreach(ast_list, item, tmp) {
             __PRINT(item->data);
             if( item->next ) {
-                __APPEND(" ");
+                __APPENDS(" ");
             }
         }
     }
 
     if( hash ) {
-        __APPEND(" ");
+        __APPENDS(" ");
         __PRINT(hash);
     }
 
     if (depth > 0) {
-        __APPEND(")");
+        __APPENDS(")");
     }
 
     ctx->padding--;
@@ -547,18 +567,6 @@ static void _handlebars_ast_to_string_path_params_hash(
 
 static void _handlebars_ast_to_string_program(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    // if( ast_node->node.program.block_param1 ) {
-    //     __PAD_HEAD();
-    //     __APPEND("BLOCK PARAMS: [ ");
-    //     __APPEND(ast_node->node.program.block_param1->val);
-    //     if( ast_node->node.program.block_param2 ) {
-    //         __APPEND(" ");
-    //         __APPEND(ast_node->node.program.block_param2->val);
-    //     }
-    //     __APPEND(" ]");
-    //     __PAD_FOOT();
-    // }
-
     _handlebars_ast_to_string_list(ast_node->node.program.statements, ctx);
 }
 
@@ -566,49 +574,73 @@ static void _handlebars_ast_to_string_mustache(struct handlebars_ast_node * ast_
 {
     short unescaped = *((short *) &ast_node->node.mustache.unescaped); // @todo fixme
 
-    __APPEND("{{");
+    __APPENDS("{{");
     if (unescaped == 1) {
-        __APPEND("{");
+        __APPENDS("{");
     } /*else if (unescaped == 3) {
-        __APPEND("&");
+        __APPENDS("&");
     } */
 	if( ast_node->node.mustache.is_decorator ) {
-		__APPEND("*");
+		__APPENDS("*");
 	}
     _handlebars_ast_to_string_path_params_hash(ast_node->node.mustache.path,
             ast_node->node.mustache.params, ast_node->node.mustache.hash, ctx);
     if (unescaped == 1) {
-        __APPEND("}");
+        __APPENDS("}");
     }
-    __APPEND("}}");
+    __APPENDS("}}");
 }
 
 static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
+    bool is_raw = ast_node->type == HANDLEBARS_AST_NODE_RAW_BLOCK;
+    if (is_raw) {
+        ctx->in_raw_block = 1;
+    }
+
     // Use an inverted section
     if (ast_node->node.block.inverse && !ast_node->node.block.program) {
-        __APPEND("{{^");
+        if (is_raw) { __APPENDS("{{"); }
+        __APPENDS("{{^");
         _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path,
                 ast_node->node.block.params, ast_node->node.block.hash, ctx);
-        __APPEND("}}");
+        __APPENDS("}}");
+        if (is_raw) { __APPENDS("}}"); }
 
         __PRINT(ast_node->node.block.inverse);
 
-        __APPEND("{{/");
+        if (is_raw) { __APPENDS("{{"); }
+        __APPENDS("{{/");
         _handlebars_ast_to_string_path(ast_node->node.block.path, ctx, 1);
-        __APPEND("}}");
-        return;
+        __APPENDS("}}");
+        if (is_raw) { __APPENDS("}}"); }
+        goto done;
     }
 
 
     // Sexpr
-    __APPEND("{{#");
+    if (is_raw) { __APPENDS("{{{{"); }
+    else { __APPENDS("{{#"); }
 	if( ast_node->node.block.is_decorator ) {
-		__APPEND("*");
+		__APPENDS("*");
 	}
     _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path,
             ast_node->node.block.params, ast_node->node.block.hash, ctx);
-    __APPEND("}}");
+
+    if (ast_node->node.block.program) {
+        if( ast_node->node.block.program->node.program.block_param1 ) {
+            __APPENDS("as |");
+            __APPEND_STR(ast_node->node.block.program->node.program.block_param1);
+            if( ast_node->node.block.program->node.program.block_param2 ) {
+                __APPENDS(" ");
+                __APPEND_STR(ast_node->node.block.program->node.program.block_param2);
+            }
+            __APPENDS("|");
+        }
+    }
+
+    __APPENDS("}}");
+    if (is_raw) { __APPENDS("}}"); }
 
     // Program
     if( ast_node->node.block.program ) {
@@ -617,36 +649,46 @@ static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_nod
 
     // Inverse
     if( ast_node->node.block.inverse ) {
-        __APPEND("{{^}}");
+        __APPENDS("{{^}}");
         __PRINT(ast_node->node.block.inverse);
     }
 
     // end
-    __APPEND("{{/");
-    _handlebars_ast_to_string_path(ast_node->node.block.path, ctx, 1);
-    __APPEND("}}");
+    if (is_raw) { __APPENDS("{{"); }
+    __APPENDS("{{/");
+    _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path, NULL, NULL, ctx);
+    // _handlebars_ast_to_string_path(ast_node->node.block.path, ctx, 1);
+    __APPENDS("}}");
+    if (is_raw) { __APPENDS("}}"); }
+
+done:
+    ctx->in_raw_block = 0;
 }
 
 static void _handlebars_ast_to_string_partial(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
+    ctx->in_partial = true;
+
     assert(ast_node->node.partial.name != NULL);
 
-    __APPEND("{{>");
+    __APPENDS("{{>");
 
     __PRINT(ast_node->node.partial.name);
 
    if( ast_node->node.partial.params != NULL &&
             handlebars_ast_list_count(ast_node->node.partial.params) ) {
-        __APPEND(" ");
+        __APPENDS(" ");
         __PRINT(ast_node->node.partial.params->first->data);
     }
 
     if( ast_node->node.partial.hash ) {
-        __APPEND(" ");
+        __APPENDS(" ");
         __PRINT(ast_node->node.partial.hash);
     }
 
-    __APPEND(" }}");
+    __APPENDS(" }}");
+
+    ctx->in_partial = false;
 }
 
 
@@ -655,16 +697,16 @@ static void _handlebars_ast_to_string_partial_block(struct handlebars_ast_node *
     ctx->in_partial = true;
 
     // Sexpr
-    __APPEND("{{#> ");
+    __APPENDS("{{#> ");
     _handlebars_ast_to_string(ast_node->node.partial_block.path, ctx);
     if( ast_node->node.partial_block.params ) {
         _handlebars_ast_to_string_list(ast_node->node.partial_block.params, ctx);
     }
     if( ast_node->node.partial_block.hash ) {
-    	__APPEND(" ");
+    	__APPENDS(" ");
         _handlebars_ast_to_string(ast_node->node.partial_block.hash, ctx);
     }
-    __APPEND("}}");
+    __APPENDS("}}");
 
     // Program
     if( ast_node->node.partial_block.program ) {
@@ -672,23 +714,30 @@ static void _handlebars_ast_to_string_partial_block(struct handlebars_ast_node *
     }
 
     // end
-    __APPEND("{{/");
+    __APPENDS("{{/");
     _handlebars_ast_to_string(ast_node->node.partial_block.path, ctx);
-    __APPEND("}}");
+    __APPENDS("}}");
 
     ctx->in_partial = false;
 }
 
 static void _handlebars_ast_to_string_content(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND(ast_node->node.content.value->val);
+    // Need to escape {{ if not in a raw block
+    if (ctx->in_raw_block) {
+        __APPEND_STR(ast_node->node.content.original);
+    } else {
+        struct handlebars_string *escaped = handlebars_str_replace(CONTEXT, ast_node->node.content.original, HBS_STRL("{{"), HBS_STRL("\\{{"));
+        __APPEND_STR(escaped);
+        handlebars_talloc_free(escaped);
+    }
 }
 
 static void _handlebars_ast_to_string_comment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND("{{!");
-    __APPEND(ast_node->node.comment.value->val);
-    __APPEND("}}");
+    __APPENDS("{{!");
+    __APPEND_STR(ast_node->node.comment.value);
+    __APPENDS("}}");
 }
 
 static void _handlebars_ast_to_string_sexpr(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
@@ -700,33 +749,31 @@ static void _handlebars_ast_to_string_sexpr(struct handlebars_ast_node * ast_nod
 
 static void _handlebars_ast_to_string_string(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    if( !ctx->in_partial ) {
-        __APPEND("\"");
-    }
-    __APPEND(ast_node->node.string.value->val);
-    if( !ctx->in_partial ) {
-        __APPEND("\"");
-    }
+    __APPENDS("\"");
+    struct handlebars_string *tmp = handlebars_string_addcslashes(ctx->ctx, ast_node->node.string.value, HBS_STRL("\""));
+    __APPEND_STR(tmp);
+    handlebars_talloc_free(tmp);
+    __APPENDS("\"");
 }
 
 static void _handlebars_ast_to_string_number(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND(ast_node->node.number.value->val);
+    __APPEND_STR(ast_node->node.number.value);
 }
 
 static void _handlebars_ast_to_string_boolean(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND(ast_node->node.boolean.value->val);
+    __APPEND_STR(ast_node->node.boolean.value);
 }
 
 static void _handlebars_ast_to_string_undefined(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND("undefined");
+    __APPENDS("undefined");
 }
 
 static void _handlebars_ast_to_string_null(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPEND("null");
+    __APPENDS("null");
 }
 
 static void _handlebars_ast_to_string_hash(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
@@ -738,11 +785,11 @@ static void _handlebars_ast_to_string_hash(struct handlebars_ast_node * ast_node
     ctx->in_partial = false;
 
     handlebars_ast_list_foreach(ast_list, item, tmp) {
-        __APPEND(item->data->node.hash_pair.key->val);
-        __APPEND("=");
+        __APPEND_STR(item->data->node.hash_pair.key);
+        __APPENDS("=");
         __PRINT(item->data->node.hash_pair.value);
         if( item->next ) {
-            __APPEND(" ");
+            __APPENDS(" ");
         }
     }
 
@@ -760,22 +807,26 @@ static void _handlebars_ast_to_string_path(struct handlebars_ast_node * ast_node
 
     assert(ast_node->node.path.data == 0 || ast_node->node.path.data == 1);
 
-    if( ast_node->node.path.data ) {
-        __APPEND("@");
-    }
+    if (ast_node->node.path.original) {
+        __APPEND_STR(ast_node->node.path.original);
+    } else {
+        if( ast_node->node.path.data ) {
+            __APPENDS("@");
+        }
 
-    if( !ast_list || handlebars_ast_list_count(ast_list) <= 0 ) {
-        __APPEND(".");
-        return;
-    }
+        if( !ast_list || handlebars_ast_list_count(ast_list) <= 0 ) {
+            __APPENDS(".");
+            return;
+        }
 
-    handlebars_ast_list_foreach(ast_list, item, tmp) {
-        __APPEND(item->data->node.path_segment.part->val);
-        // if (first_only) {
-        //     return;
-        // }
-        if( item->next ) {
-            __APPEND(item->next->data->node.path_segment.separator->val);
+        handlebars_ast_list_foreach(ast_list, item, tmp) {
+            __APPEND_STR(item->data->node.path_segment.part);
+            // if (first_only) {
+            //     return;
+            // }
+            if( item->next ) {
+                __APPEND_STR(item->next->data->node.path_segment.separator);
+            }
         }
     }
 }
