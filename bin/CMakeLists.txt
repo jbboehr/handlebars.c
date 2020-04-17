@@ -27,4 +27,4 @@ link_libraries(${LIBS} handlebars_static)
 add_executable(handlebarsc handlebarsc.c)
 
 install(TARGETS handlebarsc
-        RUNTIME DESTINATION bin)
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

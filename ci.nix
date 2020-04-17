@@ -1,24 +1,14 @@
 let
-  generateHandlebarsCTestsForPlatform = { pkgs, stdenv }:
-    pkgs.callPackage ./derivation.nix {
-      inherit stdenv;
+  generateHandlebarsCTestsForPlatform = { pkgs, stdenv, handlebarscWithCmake ? false }:
+    pkgs.callPackage ./default.nix {
+      inherit stdenv handlebarscWithCmake;
 
       handlebarscSrc = builtins.filterSource
         (path: type: baseNameOf path != ".idea" && baseNameOf path != ".git" && baseNameOf path != "ci.nix")
         ./.;
-
-      mustache_spec = pkgs.callPackage (import ((fetchTarball {
-        url = https://github.com/jbboehr/mustache-spec/archive/5b85c1b58309e241a6f7c09fa57bd1c7b16fa9be.tar.gz;
-        sha256 = "1h9zsnj4h8qdnzji5l9f9zmdy1nyxnf8by9869plyn7qlk71gdyv";
-      }))) {};
-
-      handlebars_spec = pkgs.callPackage (import ((fetchTarball {
-        url = https://github.com/jbboehr/handlebars-spec/archive/9306f3062b4b03d5179c33834bee7263a621639a.tar.gz;
-        sha256 = "0gn9v88fxdf0wwgd8ix1xfxvif89mgfhxkp316arv5ljbibx2x9h";
-      }))) {};
     };
 
-  generateHandlebarsCTestsForPlatform2 = { pkgs }:
+  generateHandlebarsCTestsForPlatform2 = { pkgs, handlebarscWithCmake ? false }:
     pkgs.recurseIntoAttrs {
       gcc = generateHandlebarsCTestsForPlatform { inherit pkgs; stdenv = pkgs.stdenv; };
       clang = generateHandlebarsCTestsForPlatform { inherit pkgs; stdenv = pkgs.clangStdenv; };
@@ -43,20 +33,30 @@ builtins.mapAttrs (k: _v:
       inherit pkgs;
     };
 
-    n1903 = let
-        path = builtins.fetchTarball {
-           url = https://github.com/NixOS/nixpkgs/archive/release-19.03.tar.gz;
-           name = "nixpkgs-19.03";
-        };
-        pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2  {
+    n1903 = generateHandlebarsCTestsForPlatform2  {
       inherit pkgs;
+    };
+
+    # test once with cmake
+    n1903cmake = generateHandlebarsCTestsForPlatform2  {
+      inherit pkgs;
+      handlebarscWithCmake = true;
     };
 
     n1909 = let
         path = builtins.fetchTarball {
            url = https://github.com/NixOS/nixpkgs/archive/release-19.09.tar.gz;
            name = "nixpkgs-19.09";
+        };
+        pkgs = import (path) { system = k; };
+    in generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs;
+    };
+
+    n2003 = let
+        path = builtins.fetchTarball {
+           url = https://github.com/NixOS/nixpkgs/archive/release-20.03.tar.gz;
+           name = "nixpkgs-20.03";
         };
         pkgs = import (path) { system = k; };
     in generateHandlebarsCTestsForPlatform2 {

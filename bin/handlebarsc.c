@@ -279,7 +279,7 @@ static int do_usage(void)
         "\n"
         "If a FILE is specified as '-', it will be read from STDIN.\n"
         "\n"
-        "handlebarsc home page: " PACKAGE_URL
+        "handlebarsc home page: https://github.com/jbboehr/handlebars.c"
     );
     return 0;
 }

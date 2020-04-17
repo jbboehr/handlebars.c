@@ -1,8 +1,15 @@
-{ stdenv, fetchurl, pkgconfig, glib, autoconf, automake, json_c, lmdb,
+{ stdenv, fetchurl, pkgconfig, glib, json_c, lmdb,
   talloc, libyaml, libtool, m4, pcre, check, handlebars_spec, mustache_spec, autoreconfHook,
-  handlebarscVersion ? null, handlebarscSrc ? null, handlebarscSha256 ? null }:
+  autoconf ? null,
+  automake ? null,
+  cmake ? null,
+  handlebarscWithCmake ? false,
+  handlebarscVersion ? null,
+  handlebarscSrc ? null,
+  handlebarscSha256 ? null }:
 
 let
+  debug = false;
   orDefault = x: y: (if (!isNull x) then x else y);
 in
 
@@ -15,12 +22,13 @@ stdenv.mkDerivation rec {
     sha256 = orDefault handlebarscSha256 "0vmq3dxgbpx3yba0nvnxmcmc902yl7a7s49iv4cbb0m7jz0zbd8q";
   });
 
-  outputs = [ "bin" "dev" "out" ];
+  outputs = [ "out" "dev" "bin" ];
 
   enableParallelBuilding = true;
   buildInputs = [ glib json_c lmdb pcre libyaml ];
   propagatedBuildInputs = [ talloc pkgconfig ];
-  nativeBuildInputs = [ autoreconfHook handlebars_spec mustache_spec check libtool m4 autoconf automake ];
+  nativeBuildInputs = [  handlebars_spec mustache_spec check ]
+    ++ (if handlebarscWithCmake then [cmake] else [autoreconfHook autoconf automake libtool m4]);
 
   doCheck = true;
   configureFlags = [
@@ -28,6 +36,19 @@ stdenv.mkDerivation rec {
     "--with-mustache-spec=${mustache_spec}/share/mustache-spec/"
     "--bindir=$(bin)/bin"
   ];
+
+  cmakeFlags = [
+    "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}"
+    "-DHANDLEBARS_ENABLE_TESTS=1"
+  ];
+
+  preConfigure = ''
+      export handlebars_export_dir=${handlebars_spec}/share/handlebars-spec/export/
+      export handlebars_spec_dir=${handlebars_spec}/share/handlebars-spec/spec/
+      export handlebars_tokenizer_spec=${handlebars_spec}/share/handlebars-spec/spec/tokenizer.json
+      export handlebars_parser_spec=${handlebars_spec}/share/handlebars-spec/spec/parser.json
+      export mustache_spec_dir=${mustache_spec}/share/mustache-spec/specs
+    '';
 
   meta = with stdenv.lib; {
     description = "C implementation of handlebars.js";

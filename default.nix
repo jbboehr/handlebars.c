@@ -1,9 +1,12 @@
 {
   pkgs ? import <nixpkgs> {},
 
+  handlebarscWithCmake ? false,
   handlebarscVersion ? null,
   handlebarscSrc ? ./.,
   handlebarscSha256 ? null,
+
+  stdenv ? pkgs.stdenv,
 
   mustache_spec ? pkgs.callPackage (import ((fetchTarball {
     url = https://github.com/jbboehr/mustache-spec/archive/5b85c1b58309e241a6f7c09fa57bd1c7b16fa9be.tar.gz;
@@ -17,6 +20,6 @@
 }:
 
 pkgs.callPackage ./derivation.nix {
-  inherit mustache_spec handlebars_spec handlebarscVersion handlebarscSrc handlebarscSha256;
+  inherit mustache_spec handlebars_spec handlebarscVersion handlebarscSrc handlebarscSha256 handlebarscWithCmake;
 }
 

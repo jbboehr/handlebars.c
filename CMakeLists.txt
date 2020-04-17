@@ -21,6 +21,7 @@ cmake_minimum_required(VERSION 3.5)
 project(handlebars C)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_MODULE_PATH}")
+include(GNUInstallDirs)
 
 set(HANDLEBARS_VERSION_MAJOR 0)
 set(HANDLEBARS_VERSION_MINOR 6)
@@ -39,7 +40,7 @@ option(HANDLEBARS_ENABLE_TESTS
 if(WIN32)
     add_definitions(-DYY_NO_UNISTD_H=1)
     add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE_STATIC=1)
-	
+
     find_package(Libcompat REQUIRED)
     set(LIBS ${LIBS} ${LIBCOMPAT_LIBRARIES})
 ENDIF(WIN32)
