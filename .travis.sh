@@ -5,13 +5,20 @@ set -exE
 export CC="$MYCC"
 export PREFIX="$HOME/build"
 export PATH="$PREFIX/bin:$PATH"
-export CFLAGS="-g -O3 -L$PREFIX/lib $CFLAGS"
+export CFLAGS="-g -O2 -L$PREFIX/lib $CFLAGS"
 export CPPFLAGS="-I$PREFIX/include"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:/usr/lib/$ARCH-linux-gnu/pkgconfig"
 
 if [ "$COVERAGE" = "true" ]; then
 	export CFLAGS="$CFLAGS -fprofile-arcs -ftest-coverage"
 	export LDFLAGS="$LDFLAGS --coverage"
+fi
+
+if [ "$HARDENING" = "true" ]; then
+	export CFLAGS="$CFLAGS -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fexceptions -fstack-protector-strong -grecord-gcc-switches"
+	export CFLAGS="$CFLAGS -specs=`pwd`/tests/redhat-hardened-cc1 -specs=`pwd`/tests/redhat-hardened-ld"
+	export CFLAGS="$CFLAGS -fasynchronous-unwind-tables -fstack-clash-protection -fPIC -DPIC"
+	# this is not supported on travis: -fcf-protection
 fi
 
 case $1 in
