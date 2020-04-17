@@ -4,7 +4,7 @@ All Notable changes to `handlebars.c` will be documented in this file.
 
 Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) principles.
 
-## [Unreleased]
+## [0.7.0] - 2020-04-17
 
 ### Added
 - Mustache-style lambda support
@@ -56,7 +56,8 @@ function to receive a new template with converted delimiters
 ### Changed
 - Changed the license from `LGPLv3` to `LGPLv2.1 or later`
 
-[Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.6.4...HEAD
+[Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jbboehr/handlebars.c/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/jbboehr/handlebars.c/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/jbboehr/handlebars.c/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jbboehr/handlebars.c/compare/v0.6.1...v0.6.2
