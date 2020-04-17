@@ -10,15 +10,15 @@ let
 
   generateHandlebarsCTestsForPlatform2 = { pkgs, handlebarscWithCmake ? false }:
     pkgs.recurseIntoAttrs {
-      gcc = generateHandlebarsCTestsForPlatform { inherit pkgs; stdenv = pkgs.stdenv; };
-      clang = generateHandlebarsCTestsForPlatform { inherit pkgs; stdenv = pkgs.clangStdenv; };
+      gcc = generateHandlebarsCTestsForPlatform { inherit pkgs handlebarscWithCmake; stdenv = pkgs.stdenv; };
+      clang = generateHandlebarsCTestsForPlatform { inherit pkgs handlebarscWithCmake; stdenv = pkgs.clangStdenv; };
     };
 in
 builtins.mapAttrs (k: _v:
   let
     path = builtins.fetchTarball {
-       url = https://github.com/NixOS/nixpkgs/archive/release-19.03.tar.gz;
-       name = "nixpkgs-19.03";
+        url = https://github.com/NixOS/nixpkgs/archive/release-19.09.tar.gz;
+        name = "nixpkgs-19.09";
     };
     pkgs = import (path) { system = k; };
   in
@@ -33,24 +33,24 @@ builtins.mapAttrs (k: _v:
       inherit pkgs;
     };
 
-    n1903 = generateHandlebarsCTestsForPlatform2  {
+    n1903 = let
+      path = builtins.fetchTarball {
+        url = https://github.com/NixOS/nixpkgs/archive/release-19.03.tar.gz;
+        name = "nixpkgs-19.03";
+      };
+      pkgs = import (path) { system = k; };
+    in generateHandlebarsCTestsForPlatform2  {
+      inherit pkgs;
+    };
+
+    n1909 = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs;
     };
 
     # test once with cmake
-    n1903cmake = generateHandlebarsCTestsForPlatform2  {
+    n1909cmake = generateHandlebarsCTestsForPlatform2  {
       inherit pkgs;
       handlebarscWithCmake = true;
-    };
-
-    n1909 = let
-        path = builtins.fetchTarball {
-           url = https://github.com/NixOS/nixpkgs/archive/release-19.09.tar.gz;
-           name = "nixpkgs-19.09";
-        };
-        pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs;
     };
 
     n2003 = let
