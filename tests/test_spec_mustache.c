@@ -236,6 +236,9 @@ START_TEST(test_ast_to_string_on_mustache_spec)
     struct handlebars_parser * parser;
     struct handlebars_string * origtmpl;
     struct handlebars_string * tmpl;
+    struct handlebars_string *ast_str;
+    const char *actual;
+    const char *expected;
     TALLOC_CTX * memctx = talloc_new(rootctx);
 
     ctx = handlebars_context_ctor_ex(memctx);
@@ -258,10 +261,10 @@ START_TEST(test_ast_to_string_on_mustache_spec)
         ck_assert_msg(0, handlebars_error_msg(ctx));
     }
 
-    struct handlebars_string *ast_str = handlebars_ast_to_string(ctx, parser->program);
+    ast_str = handlebars_ast_to_string(ctx, parser->program);
 
-    const char *actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
-    const char *expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
+    actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
+    expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
     if (strcmp(actual, expected) != 0) {
         char *tmp = handlebars_talloc_asprintf(rootctx,
                                                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
@@ -285,6 +288,7 @@ START_TEST(test_mustache_spec)
     struct handlebars_vm * vm;
     struct handlebars_value_iterator it;
     struct handlebars_string * tmpl;
+    struct handlebars_module * module;
     TALLOC_CTX * memctx = talloc_new(rootctx);
 
 #ifndef NDEBUG
@@ -330,7 +334,7 @@ START_TEST(test_mustache_spec)
     }
 
     // Serialize
-    struct handlebars_module * module = handlebars_program_serialize(HBSCTX(compiler), compiler->program);
+    module = handlebars_program_serialize(HBSCTX(compiler), compiler->program);
 
     // Setup VM
     vm = handlebars_vm_ctor(ctx);

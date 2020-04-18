@@ -75,9 +75,6 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb);
 int regex_compare(const char * regex, const char * string, char ** error);
 uint32_t adler32(unsigned char *data, size_t len);
 
-long json_load_compile_flags(struct json_object * object);
-char ** json_load_known_helpers(void * ctx, struct json_object * object);
-
 void load_fixtures(struct handlebars_value * value);
 
 char * normalize_template_whitespace(TALLOC_CTX *ctx, char *str, size_t len);

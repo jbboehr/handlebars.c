@@ -470,7 +470,7 @@ static inline void handlebars_compiler_push_param(
                 handlebars_operand_set_arrayval(CONTEXT, opcode, &opcode->op2, block_param_arr);
                 parts_arr = MC(handlebars_ast_node_get_id_parts(compiler, param));
                 if( *parts_arr ) {
-                    block_param_parts = MC(handlebars_string_implode(CONTEXT, HBS_STRL("."), parts_arr + 1));
+                    block_param_parts = MC(handlebars_string_implode(CONTEXT, HBS_STRL("."), /*(const struct handlebars_string **)*/ parts_arr + 1));
                     handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, block_param_parts);
                 } else {
                     handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, handlebars_string_init(CONTEXT, 0));
@@ -991,7 +991,11 @@ static inline void handlebars_compiler_accept_sexpr_ambiguous(
         handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, name);
         handlebars_operand_set_boolval(&opcode->op2, is_block);
         if (compiler->flags & handlebars_compiler_flag_mustache_style_lambdas) {
-            handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, handlebars_ast_to_string(CONTEXT, programNode));
+            if (programNode) {
+                handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, handlebars_ast_to_string(CONTEXT, programNode));
+            } else {
+                handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, handlebars_string_ctor(CONTEXT, HBS_STRL("")));
+            }
         }
         __PUSH(opcode);
         //__OPSL(invoke_ambiguous, name, is_block);

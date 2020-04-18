@@ -373,10 +373,10 @@ struct handlebars_string * handlebars_string_implode(
     struct handlebars_context * context,
     const char * sep,
     size_t sep_len,
-    struct handlebars_string ** parts
+    /*const*/ struct handlebars_string** parts
 ) {
     struct handlebars_string * string;
-    struct handlebars_string ** ptr;
+    /*const*/ struct handlebars_string** ptr;
     size_t len = 0;
 
     // Calc new size

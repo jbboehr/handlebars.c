@@ -105,8 +105,12 @@ static struct handlebars_value * std_partial_loader_map_find(struct handlebars_v
     fseek(f, 0, SEEK_SET);
 
     struct handlebars_string *buf = handlebars_string_init(CONTEXT, size);
-    fread(buf->val, size, 1, f);
+    size_t read = fread(buf->val, size, 1, f);
     fclose(f);
+
+    if (!read) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to read partial: %s", filename->val);
+    }
 
     buf->val[size] = 0;
     buf->len = size - 1;

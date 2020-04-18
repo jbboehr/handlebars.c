@@ -394,6 +394,7 @@ struct handlebars_string * handlebars_value_expression_append(
     bool escape
 ) {
     struct handlebars_value_iterator it;
+    bool first;
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_TRUE:
@@ -427,7 +428,7 @@ struct handlebars_string * handlebars_value_expression_append(
             // fall-through to array
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             handlebars_value_iterator_init(&it, value);
-            bool first = true;
+            first = true;
             for( ; it.current != NULL; it.next(&it) ) {
                 if( !first ) {
                     string = handlebars_string_append(value->ctx, string, HBS_STRL(","));

@@ -52,7 +52,6 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_ast_node * open_block_path = open_block->node.intermediate.path;
     struct handlebars_ast_node * close_block_path;
     struct handlebars_ast_node * inverse = NULL;
-    struct handlebars_ast_node * tmp;
     long inverse_strip = 0;
     struct handlebars_string * open_str;
     struct handlebars_string * close_str;
@@ -115,6 +114,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     assert(!inverse || inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
 
     if( inverted ) {
+        struct handlebars_ast_node * tmp;
         tmp = program;
         program = inverse;
         inverse = tmp;

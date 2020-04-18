@@ -20,6 +20,7 @@
 #ifndef HANDLEBARS_VALUE_H
 #define HANDLEBARS_VALUE_H
 
+#include <assert.h>
 #include <string.h>
 
 #include "handlebars.h"
@@ -318,6 +319,7 @@ static inline int _handlebars_value_addref(struct handlebars_value * value, cons
 #define handlebars_value_addref(value) _handlebars_value_addref(value, "[" HBS_S2(__FILE__) ":" HBS_S2(__LINE__) "]")
 #elif !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_addref(struct handlebars_value * value) {
+    assert(value != NULL);
     return ++value->refcount;
 }
 static inline struct handlebars_value * handlebars_value_addref2(struct handlebars_value * value) {
@@ -344,6 +346,7 @@ static inline int _handlebars_value_delref(struct handlebars_value * value, cons
 #define handlebars_value_delref(value) _handlebars_value_delref(value, "[" HBS_S2(__FILE__) ":" HBS_S2(__LINE__) "]")
 #elif !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_delref(struct handlebars_value * value) {
+    assert(value != NULL);
     if( value->refcount <= 1 ) {
         handlebars_value_dtor(value);
         if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
@@ -382,7 +385,7 @@ static inline int handlebars_value_try_addref(struct handlebars_value * value) {
 #if !defined(HANDLEBARS_NO_REFCOUNT)
 static inline int handlebars_value_refcount(struct handlebars_value * value) {
     return value->refcount;
-}
+} HBS_ATTR_NONNULL_ALL
 #else
 #define handlebars_value_refcount(v) 999
 #endif
@@ -460,7 +463,7 @@ static inline long handlebars_value_count(struct handlebars_value * value) {
  */
 static inline bool handlebars_value_is_empty(struct handlebars_value * value) {
     return !handlebars_value_get_boolval(value);
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the value to null
@@ -471,7 +474,7 @@ static inline void handlebars_value_null(struct handlebars_value * value) {
     if( value->type != HANDLEBARS_VALUE_TYPE_NULL ) {
         handlebars_value_dtor(value);
     }
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the boolean value
@@ -482,7 +485,7 @@ static inline void handlebars_value_null(struct handlebars_value * value) {
 static inline void handlebars_value_boolean(struct handlebars_value * value, bool bval) {
     handlebars_value_null(value);
     value->type = bval ? HANDLEBARS_VALUE_TYPE_TRUE : HANDLEBARS_VALUE_TYPE_FALSE;
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the integer value
@@ -494,7 +497,7 @@ static inline void handlebars_value_integer(struct handlebars_value * value, lon
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
     value->v.lval = lval;
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the float value
@@ -506,7 +509,7 @@ static inline void handlebars_value_float(struct handlebars_value * value, doubl
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
     value->v.dval = dval;
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the string value (#handlebars_string variant)
@@ -519,7 +522,7 @@ static inline void handlebars_value_str(struct handlebars_value * value, struct 
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = handlebars_string_copy_ctor(value->ctx, string);
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the string value (#handlebars_string variant) and `talloc_steal` the given string.
@@ -532,7 +535,7 @@ static inline void handlebars_value_str_steal(struct handlebars_value * value, s
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = talloc_steal(value->ctx, string);
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the string value (const char[] variant)
@@ -544,7 +547,7 @@ static inline void handlebars_value_string(struct handlebars_value * value, cons
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the string value (char[] variant) and `talloc_free` the given string
@@ -557,7 +560,7 @@ static inline void handlebars_value_string_steal(struct handlebars_value * value
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
     talloc_free(strval); // meh
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the string value (char[] with length variant)
@@ -570,7 +573,7 @@ static inline void handlebars_value_stringl(struct handlebars_value * value, con
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen)/*)*/;
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the value to an empty map
@@ -581,7 +584,7 @@ static inline void handlebars_value_map_init(struct handlebars_value * value) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_MAP;
     value->v.map = /*talloc_steal(value,*/ handlebars_map_ctor(value->ctx)/*)*/;
-}
+} HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Set the value to an empty array
@@ -592,7 +595,7 @@ static inline void handlebars_value_array_init(struct handlebars_value * value) 
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
     value->v.stack = /*talloc_steal(value,*/ handlebars_stack_ctor(value->ctx)/*)*/;
-}
+} HBS_ATTR_NONNULL_ALL
 
 #ifdef	__cplusplus
 }

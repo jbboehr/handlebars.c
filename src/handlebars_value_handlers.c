@@ -95,7 +95,7 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
     size_t l;
 
     switch( json_object_get_type(intern) ) {
-        case json_type_object:
+        case json_type_object: {
             handlebars_value_map_init(value);
             json_object_object_foreach(intern, k, v) {
                 new_value = handlebars_value_from_json_object(CONTEXT, v);
@@ -106,7 +106,9 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
                 handlebars_value_delref(new_value);
             }
             break;
-        case json_type_array:
+        }
+
+        case json_type_array: {
             handlebars_value_array_init(value);
 
             for( i = 0, l = json_object_array_length(intern); i < l; i++ ) {
@@ -118,6 +120,8 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
                 handlebars_value_delref(new_value);
             }
             break;
+        }
+
         default: break; // LCOV_EXCL_LINE
     }
 }

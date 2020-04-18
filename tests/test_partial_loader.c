@@ -48,6 +48,8 @@ static struct handlebars_string * execute_template(const char *template)
     struct handlebars_parser * parser;
     struct handlebars_vm * vm;
     struct handlebars_string *retval = NULL;
+    struct handlebars_module * module;
+    struct handlebars_value *context;
     TALLOC_CTX * memctx = talloc_new(rootctx);
 
     // Initialize
@@ -74,7 +76,7 @@ static struct handlebars_string * execute_template(const char *template)
     }
 
     // Serialize
-    struct handlebars_module * module = handlebars_program_serialize(ctx, compiler->program);
+    module = handlebars_program_serialize(ctx, compiler->program);
     handlebars_compiler_dtor(compiler);
 
     // Setup VM
@@ -90,7 +92,7 @@ static struct handlebars_string * execute_template(const char *template)
         handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".hbs")));
 
     // setup context
-    struct handlebars_value *context = handlebars_value_from_json_string(ctx, "{\"foo\":\"bar\"}");
+    context = handlebars_value_from_json_string(ctx, "{\"foo\":\"bar\"}");
 
     // Execute
     handlebars_vm_execute(vm, module, context);

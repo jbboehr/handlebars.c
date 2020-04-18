@@ -128,7 +128,7 @@ static inline struct handlebars_string * handlebars_string_ctor(
 HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
 static inline struct handlebars_string * handlebars_string_copy_ctor(
     struct handlebars_context * context,
-    struct handlebars_string * string
+    const struct handlebars_string * string
 ) {
     size_t size = HBS_STR_SIZE(string->len);
     struct handlebars_string * st = handlebars_talloc_size(context, size);
@@ -260,8 +260,10 @@ static inline bool handlebars_string_eq_ex(
  * @return Whether or not the strings are equal
  */
 HBS_ATTR_NONNULL(1, 2)
-static inline bool handlebars_string_eq(struct handlebars_string * string1, struct handlebars_string * string2)
-{
+static inline bool handlebars_string_eq(
+    /*const*/ struct handlebars_string * string1,
+    /*const*/ struct handlebars_string * string2
+) {
     if( string1->len != string2->len ) {
         return false;
     } else {
@@ -435,7 +437,7 @@ struct handlebars_string * handlebars_string_implode(
     struct handlebars_context * context,
     const char * sep,
     size_t sep_len,
-    struct handlebars_string ** parts
+    /*const*/ struct handlebars_string** parts
 ) HBS_ATTR_NONNULL(1, 2, 4) HBS_ATTR_RETURNS_NONNULL;
 
 /**

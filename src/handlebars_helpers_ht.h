@@ -1,5 +1,5 @@
 /* ANSI-C code produced by gperf version 3.1 */
-/* Command-line: /nix/store/yb9mzsjbbsfpr3q22lllzn2fhqywr28w-gperf-3.1/bin/gperf --struct-type --readonly-tables --pic --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf  */
+/* Command-line: /nix/store/yb9mzsjbbsfpr3q22lllzn2fhqywr28w-gperf-3.1/bin/gperf --struct-type --readonly-tables --compare-strncmp --compare-lengths --global-table --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf  */
 /* Computed positions: -k'1' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \
@@ -81,73 +81,53 @@ hash (register const char *str, register size_t len)
   return len + asso_values[(unsigned char)str[0]];
 }
 
-struct stringpool_t
+static const unsigned char lengthtable[] =
   {
-    char stringpool_str2[sizeof("if")];
-    char stringpool_str3[sizeof("log")];
-    char stringpool_str4[sizeof("with")];
-    char stringpool_str6[sizeof("lookup")];
-    char stringpool_str9[sizeof("each")];
-    char stringpool_str11[sizeof("unless")];
-    char stringpool_str13[sizeof("helperMissing")];
-    char stringpool_str18[sizeof("blockHelperMissing")];
+     0,  0,  2,  3,  4,  0,  6,  0,  0,  4,  0,  6,  0, 13,
+     0,  0,  0,  0, 18
   };
-static const struct stringpool_t stringpool_contents =
+
+static const struct handlebars_builtin_pair wordlist[] =
   {
-    "if",
-    "log",
-    "with",
-    "lookup",
-    "each",
-    "unless",
-    "helperMissing",
-    "blockHelperMissing"
+    {""}, {""},
+#line 6 "handlebars_helpers_ht.gperf"
+    {"if",3},
+#line 9 "handlebars_helpers_ht.gperf"
+    {"log",6},
+#line 8 "handlebars_helpers_ht.gperf"
+    {"with",5},
+    {""},
+#line 10 "handlebars_helpers_ht.gperf"
+    {"lookup",7},
+    {""}, {""},
+#line 5 "handlebars_helpers_ht.gperf"
+    {"each",2},
+    {""},
+#line 7 "handlebars_helpers_ht.gperf"
+    {"unless",4},
+    {""},
+#line 4 "handlebars_helpers_ht.gperf"
+    {"helperMissing",1},
+    {""}, {""}, {""}, {""},
+#line 3 "handlebars_helpers_ht.gperf"
+    {"blockHelperMissing",0}
   };
-#define stringpool ((const char *) &stringpool_contents)
+
 const struct handlebars_builtin_pair *
 in_word_set (register const char *str, register size_t len)
 {
-  static const struct handlebars_builtin_pair wordlist[] =
-    {
-      {-1}, {-1},
-#line 6 "handlebars_helpers_ht.gperf"
-      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str2,3},
-#line 9 "handlebars_helpers_ht.gperf"
-      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str3,6},
-#line 8 "handlebars_helpers_ht.gperf"
-      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str4,5},
-      {-1},
-#line 10 "handlebars_helpers_ht.gperf"
-      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str6,7},
-      {-1}, {-1},
-#line 5 "handlebars_helpers_ht.gperf"
-      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str9,2},
-      {-1},
-#line 7 "handlebars_helpers_ht.gperf"
-      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str11,4},
-      {-1},
-#line 4 "handlebars_helpers_ht.gperf"
-      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str13,1},
-      {-1}, {-1}, {-1}, {-1},
-#line 3 "handlebars_helpers_ht.gperf"
-      {(int)(size_t)&((struct stringpool_t *)0)->stringpool_str18,0}
-    };
-
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
     {
       register unsigned int key = hash (str, len);
 
       if (key <= MAX_HASH_VALUE)
-        {
-          register int o = wordlist[key].name;
-          if (o >= 0)
-            {
-              register const char *s = o + stringpool;
+        if (len == lengthtable[key])
+          {
+            register const char *s = wordlist[key].name;
 
-              if (*str == *s && !strcmp (str + 1, s + 1))
-                return &wordlist[key];
-            }
-        }
+            if (*str == *s && !memcmp (str + 1, s + 1, len - 1))
+              return &wordlist[key];
+          }
     }
   return 0;
 }

@@ -233,10 +233,15 @@ static char * file_get_contents(char * filename)
     fseek(f, 0, SEEK_SET);
 
     buf = talloc_array(root, char, size + 1);
-    fread(buf, size, 1, f);
+    size_t read = fread(buf, size, 1, f);
     fclose(f);
 
     buf[size] = 0;
+
+    if (!read) {
+        fprintf(stderr, "Failed to read file: %s\n", filename);
+        exit(1);
+    }
 
     return buf;
 }
@@ -376,6 +381,7 @@ static int do_parse(void)
     struct handlebars_string * tmpl;
     int error = 0;
     jmp_buf jmp;
+    struct handlebars_string * output;
 
     ctx = handlebars_context_ctor();
 
@@ -404,7 +410,7 @@ static int do_parse(void)
 
     handlebars_parse(parser);
 
-    struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), parser->program);
+    output = handlebars_ast_print(HBSCTX(parser), parser->program);
     fprintf(stdout, "%s\n", output->val);
 
 error:
@@ -473,6 +479,8 @@ static int do_execute(void)
     struct handlebars_string * tmpl;
     int error = 0;
     jmp_buf jmp;
+    struct handlebars_value * context = NULL;
+    struct handlebars_module * module = NULL;
 
     ctx = handlebars_context_ctor();
 
@@ -513,7 +521,6 @@ static int do_execute(void)
     }
 
     // Read context
-    struct handlebars_value * context = NULL;
     if( input_data_name ) {
         size_t input_data_name_len = strlen(input_data_name);
         char * context_str = file_get_contents(input_data_name);
@@ -539,7 +546,7 @@ static int do_execute(void)
     handlebars_compiler_compile(compiler, parser->program);
 
     // Serialize
-    struct handlebars_module * module = handlebars_program_serialize(ctx, compiler->program);
+    module = handlebars_program_serialize(ctx, compiler->program);
 
     // Execute
     vm->flags = compiler_flags;

@@ -55,7 +55,7 @@ AS_IF([test "x$BISONFLAGS" == "x"], [BISONFLAGS="-Wall"])
 AC_ARG_VAR([FLEXFLAGS], [flex flags])
 AS_IF([test "x$FLEXFLAGS" == "x"], [FLEXFLAGS="--noreject --fast --align"])
 AC_ARG_VAR([GPERFFLAGS], [gperf flags])
-AS_IF([test "x$GPERFFLAGS" == "x"], [GPERFFLAGS="--struct-type --readonly-tables --pic"])
+AS_IF([test "x$GPERFFLAGS" == "x"], [GPERFFLAGS="--struct-type --readonly-tables --compare-strncmp --compare-lengths --global-table"])
 AC_ARG_VAR([RE2CFLAGS], [re2c flags])
 AS_IF([test "x$RE2CFLAGS" == "x"], [RE2CFLAGS="--no-generation-date -s8"])
 

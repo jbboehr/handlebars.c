@@ -113,6 +113,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     char tmp[256];
     struct handlebars_module * module;
     time_t now;
+    size_t size;
 
     time(&now);
 
@@ -153,7 +154,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     intern->stat.hits++;
 
     // Duplicate data
-    size_t size = module->size;
+    size = module->size;
     module = handlebars_talloc_size(cache, size);
     memcpy(module, data.mv_data, size);
 

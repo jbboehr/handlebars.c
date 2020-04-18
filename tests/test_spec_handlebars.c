@@ -79,6 +79,69 @@ static size_t tests_size = 0;
 static char * spec_dir;
 static int runs = 1;
 
+long json_load_compile_flags(struct json_object * object)
+{
+    long flags = 0;
+    json_object * cur = NULL;
+
+    if( (cur = json_object_object_get(object, "compat")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_compat;
+    }
+    if( (cur = json_object_object_get(object, "data")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_compat; // @todo correct?
+    }
+    if( (cur = json_object_object_get(object, "knownHelpersOnly")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_known_helpers_only;
+    }
+    if( (cur = json_object_object_get(object, "stringParams")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_string_params;
+    }
+    if( (cur = json_object_object_get(object, "trackIds")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_track_ids;
+    }
+    if( (cur = json_object_object_get(object, "preventIndent")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_prevent_indent;
+    }
+    if( (cur = json_object_object_get(object, "explicitPartialContext")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_explicit_partial_context;
+    }
+    if( (cur = json_object_object_get(object, "ignoreStandalone")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_ignore_standalone;
+    }
+    if( (cur = json_object_object_get(object, "strict")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_strict;
+    }
+    if( (cur = json_object_object_get(object, "assumeObjects")) && json_object_get_boolean(cur) ) {
+        flags |= handlebars_compiler_flag_assume_objects;
+    }
+
+    return flags;
+}
+
+char ** json_load_known_helpers(void * ctx, struct json_object * object)
+{
+    struct json_object * array_item = NULL;
+    int array_len = 0;
+    // Let's just allocate a nice fat array >.>
+    char ** known_helpers = talloc_zero_array(ctx, char *, 32);
+    char ** ptr = known_helpers;
+    const char ** ptr2 = handlebars_builtins_names();
+
+    for( ; *ptr2 ; ++ptr2 ) {
+        *ptr = handlebars_talloc_strdup(ctx, *ptr2);
+        ptr++;
+    }
+
+    json_object_object_foreach(object, key, value) {
+        *ptr = handlebars_talloc_strdup(ctx, key);
+        ptr++;
+    }
+
+    *ptr++ = NULL;
+
+    return known_helpers;
+}
+
 static void loadOptions(struct generic_test * test, json_object * object)
 {
     json_object * cur = NULL;
@@ -245,6 +308,8 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_string * tmpl;
+    struct handlebars_string *ast_str;
+    const char *actual;
     TALLOC_CTX * memctx = talloc_new(rootctx);
 
     ctx = handlebars_context_ctor_ex(memctx);
@@ -271,9 +336,9 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
         ck_assert_msg(0, handlebars_error_msg(ctx));
     }
 
-    struct handlebars_string *ast_str = handlebars_ast_to_string(ctx, parser->program);
+    ast_str = handlebars_ast_to_string(ctx, parser->program);
 
-    const char *actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
+    actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
     if (strcmp(actual, expected) != 0) {
             char *tmp = handlebars_talloc_asprintf(rootctx,
                                                    "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
@@ -353,13 +418,14 @@ static inline void run_test(struct generic_test * test, int _i)
     struct handlebars_value * context;
     struct handlebars_value * helpers;
     struct handlebars_value_iterator it;
+    struct handlebars_module * module;
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
     fprintf(stderr, "RAW: %s\n", json_object_to_json_string_ext(test->raw, JSON_C_TO_STRING_PRETTY));
     fprintf(stderr, "NUM: %d\n", _i);
     fprintf(stderr, "TMPL: %s\n", test->tmpl);
-    fprintf(stderr, "FLAGS: %d\n", test->flags);
+    fprintf(stderr, "FLAGS: %ld\n", test->flags);
 #endif
 
     //ck_assert_msg(shouldnt_skip(test), "Skipped");
@@ -399,7 +465,7 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     // Serialize
-    struct handlebars_module * module = handlebars_program_serialize(ctx, compiler->program);
+    module = handlebars_program_serialize(ctx, compiler->program);
     handlebars_compiler_dtor(compiler);
 
     // Setup VM

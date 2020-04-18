@@ -148,11 +148,10 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 		if( strlen(ent->d_name) + strlen(dirname) + 1 >= 128 ) continue; // fear
 
 		// Make filename
-		char filename[128];
-		snprintf(filename, 128, "%s/%s", dirname, ent->d_name);
-
-		// Callback
+		char *filename = talloc_asprintf(NULL, "%s/%s", dirname, ent->d_name);
+		// snprintf(filename, 254, "%s/%s", dirname, ent->d_name);
 		cb(filename);
+        talloc_free(filename);
 	}
 
 	if( dir != NULL) closedir(dir);
@@ -189,73 +188,6 @@ int regex_compare(const char * regex, const char * string, char ** error)
 error:
     pcre_free(re);
     return ret;
-}
-
-
-
-/* Loaders */
-
-long json_load_compile_flags(struct json_object * object)
-{
-    long flags = 0;
-    json_object * cur = NULL;
-
-    if( (cur = json_object_object_get(object, "compat")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_compat;
-    }
-    if( (cur = json_object_object_get(object, "data")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_compat; // @todo correct?
-    }
-    if( (cur = json_object_object_get(object, "knownHelpersOnly")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_known_helpers_only;
-    }
-    if( (cur = json_object_object_get(object, "stringParams")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_string_params;
-    }
-    if( (cur = json_object_object_get(object, "trackIds")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_track_ids;
-    }
-    if( (cur = json_object_object_get(object, "preventIndent")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_prevent_indent;
-    }
-    if( (cur = json_object_object_get(object, "explicitPartialContext")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_explicit_partial_context;
-    }
-    if( (cur = json_object_object_get(object, "ignoreStandalone")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_ignore_standalone;
-    }
-    if( (cur = json_object_object_get(object, "strict")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_strict;
-    }
-    if( (cur = json_object_object_get(object, "assumeObjects")) && json_object_get_boolean(cur) ) {
-        flags |= handlebars_compiler_flag_assume_objects;
-    }
-
-    return flags;
-}
-
-char ** json_load_known_helpers(void * ctx, struct json_object * object)
-{
-    struct json_object * array_item = NULL;
-    int array_len = 0;
-    // Let's just allocate a nice fat array >.>
-    char ** known_helpers = talloc_zero_array(ctx, char *, 32);
-    char ** ptr = known_helpers;
-    const char ** ptr2 = handlebars_builtins_names();
-
-    for( ; *ptr2 ; ++ptr2 ) {
-        *ptr = handlebars_talloc_strdup(ctx, *ptr2);
-        ptr++;
-    }
-
-    json_object_object_foreach(object, key, value) {
-        *ptr = handlebars_talloc_strdup(ctx, key);
-        ptr++;
-    }
-
-    *ptr++ = NULL;
-
-    return known_helpers;
 }
 
 char * normalize_template_whitespace(TALLOC_CTX *ctx, char *str, size_t len)

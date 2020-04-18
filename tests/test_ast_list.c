@@ -37,13 +37,13 @@ START_TEST(test_ast_list_append)
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
     handlebars_ast_list_append(list, node2);
-    
+
     ck_assert_ptr_eq(list->first->data, node1);
     ck_assert_ptr_eq(list->first->next->data, node2);
     ck_assert_ptr_eq(list->last->data, node2);
     ck_assert_ptr_eq(list->last->prev->data, node1);
     ck_assert_int_eq(list->count, 2);
-    
+
     handlebars_ast_list_dtor(list);
 }
 END_TEST
@@ -51,7 +51,7 @@ END_TEST
 START_TEST(test_ast_list_append_failed_alloc)
 {
 #if HANDLEBARS_MEMORY
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     jmp_buf buf;
 
@@ -72,18 +72,18 @@ START_TEST(test_ast_list_append_failed_alloc)
 }
 END_TEST
 
-START_TEST(test_ast_list_append_null)
-{
-    handlebars_ast_list_append(NULL, NULL);
-}
-END_TEST
+// START_TEST(test_ast_list_append_null)
+// {
+//     handlebars_ast_list_append(NULL, NULL);
+// }
+// END_TEST
 
 START_TEST(test_ast_list_ctor)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
-    
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
+
     ck_assert_ptr_ne(list, NULL);
-    
+
     handlebars_ast_list_dtor(list);
 }
 END_TEST
@@ -97,9 +97,9 @@ START_TEST(test_ast_list_ctor_failed_alloc)
         ck_assert(1);
         return;
     }
-    
+
     handlebars_memory_fail_enable();
-    handlebars_ast_list_ctor(parser);
+    handlebars_ast_list_ctor(HBSCTX(parser));
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -111,18 +111,18 @@ END_TEST
 
 START_TEST(test_ast_list_prepend)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_prepend(list, node1);
     handlebars_ast_list_prepend(list, node2);
-    
+
     ck_assert_ptr_eq(list->first->data, node2);
     ck_assert_ptr_eq(list->first->next->data, node1);
     ck_assert_ptr_eq(list->last->data, node1);
     ck_assert_ptr_eq(list->last->prev->data, node2);
     ck_assert_int_eq(list->count, 2);
-    
+
     handlebars_ast_list_dtor(list);
 }
 END_TEST
@@ -130,7 +130,7 @@ END_TEST
 START_TEST(test_ast_list_prepend_failed_alloc)
 {
 #if HANDLEBARS_MEMORY
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     jmp_buf buf;
 
@@ -151,25 +151,25 @@ START_TEST(test_ast_list_prepend_failed_alloc)
 }
 END_TEST
 
-START_TEST(test_ast_list_prepend_null)
-{
-    handlebars_ast_list_prepend(NULL, NULL);
-}
-END_TEST
+// START_TEST(test_ast_list_prepend_null)
+// {
+//     handlebars_ast_list_prepend(NULL, NULL);
+// }
+// END_TEST
 
 START_TEST(test_ast_list_remove_single)
 {
     // Only item
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
-    
+
     handlebars_ast_list_remove(list, node1);
-    
+
     ck_assert_ptr_eq(list->first, NULL);
     ck_assert_ptr_eq(list->last, NULL);
     ck_assert_int_eq(list->count, 0);
-    
+
     handlebars_ast_list_dtor(list);
 }
 END_TEST
@@ -177,73 +177,73 @@ END_TEST
 START_TEST(test_ast_list_remove_first)
 {
     // Not only item
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
     handlebars_ast_list_append(list, node2);
-    
+
     handlebars_ast_list_remove(list, node1);
-    
+
     ck_assert_ptr_eq(list->first->data, node2);
     ck_assert_ptr_eq(list->last->data, node2);
     ck_assert_ptr_eq(list->first->prev, NULL);
     ck_assert_ptr_eq(list->last->next, NULL);
     ck_assert_int_eq(list->count, 1);
-    
+
     handlebars_ast_list_dtor(list);
 }
 END_TEST
 
 START_TEST(test_ast_list_remove_middle)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node3 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
     handlebars_ast_list_append(list, node2);
     handlebars_ast_list_append(list, node3);
-    
+
     handlebars_ast_list_remove(list, node2);
-    
+
     ck_assert_ptr_eq(list->first->data, node1);
     ck_assert_ptr_eq(list->last->data, node3);
     ck_assert_ptr_eq(list->first->next->data, node3);
     ck_assert_ptr_eq(list->last->prev->data, node1);
     ck_assert_int_eq(list->count, 2);
-    
+
     handlebars_ast_list_dtor(list);
 }
 END_TEST
 
 START_TEST(test_ast_list_remove_last)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
     struct handlebars_ast_node * node2 = handlebars_talloc(list, struct handlebars_ast_node);
     handlebars_ast_list_append(list, node1);
     handlebars_ast_list_append(list, node2);
-    
+
     handlebars_ast_list_remove(list, node2);
-    
+
     ck_assert_ptr_eq(list->first->data, node1);
     ck_assert_ptr_eq(list->last->data, node1);
     ck_assert_ptr_eq(list->first->prev, NULL);
     ck_assert_ptr_eq(list->last->next, NULL);
     ck_assert_int_eq(list->count, 1);
-    
+
     handlebars_ast_list_dtor(list);
 }
 END_TEST
 
 START_TEST(test_ast_list_remove_empty)
 {
-    struct handlebars_ast_list * list = handlebars_ast_list_ctor(parser);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
     struct handlebars_ast_node * node1 = handlebars_talloc(list, struct handlebars_ast_node);
-    
+
     ck_assert_int_eq(0, handlebars_ast_list_remove(list, node1));
-    
+
     handlebars_ast_list_dtor(list);
 }
 END_TEST
@@ -251,7 +251,7 @@ END_TEST
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("AST Node List");
-    
+
     REGISTER_TEST_FIXTURE(s, test_ast_list_append, "Append");
     REGISTER_TEST_FIXTURE(s, test_ast_list_append_failed_alloc, "Append with failed alloc");
     //REGISTER_TEST_FIXTURE(s, test_ast_list_append_null, "Append with null argument");
@@ -265,7 +265,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_middle, "Remove (middle)");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_last, "Remove (last)");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_empty, "Remove (empty)");
-    
+
     return s;
 }
 
@@ -276,13 +276,13 @@ int main(void)
     int error;
 
     talloc_set_log_stderr();
-    
+
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     // Set up test suite
     Suite * s = parser_suite();
     SRunner * sr = srunner_create(s);
@@ -293,12 +293,12 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }
-    
+
     // Return
     return error;
 }

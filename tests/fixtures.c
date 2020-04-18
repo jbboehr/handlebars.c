@@ -31,6 +31,8 @@
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 
+uint32_t adler32(unsigned char *data, size_t len);
+
 #define CONTEXT ((struct handlebars_context *)options->vm)
 #define FIXTURE_FN(hash) static struct handlebars_value * fixture_ ## hash(HANDLEBARS_HELPER_ARGS)
 #define FIXTURE_STRING(string) \

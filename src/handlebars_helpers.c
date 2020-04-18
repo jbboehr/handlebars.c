@@ -284,15 +284,15 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
 
 struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
 {
-    if( argc < 1 ) {
-        goto inverse;
-    }
-
     struct handlebars_value * conditional = argv[0];
     long program;
     struct handlebars_value * tmp = NULL;
     struct handlebars_value * ret = NULL;
     struct handlebars_string * result;
+
+    if( argc < 1 ) {
+        goto inverse;
+    }
 
     if( handlebars_value_is_callable(conditional) ) {
         struct handlebars_options options2 = {0};
@@ -333,11 +333,13 @@ inverse:
 
 struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 {
-    struct handlebars_value * conditional = NULL;
-    struct handlebars_value * result = NULL;
+    struct handlebars_value * conditional;
+    struct handlebars_value * result;
 
-    if( argc >= 1  ) {
+    if( argc >= 1 && argv[0] ) {
         conditional = argv[0];
+    } else {
+        conditional = handlebars_value_ctor(CONTEXT);
     }
 
     handlebars_value_boolean(conditional, conditional ? handlebars_value_is_empty(conditional) : true);
@@ -349,14 +351,14 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 
 struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
 {
-    if( argc < 1 ) {
-        goto inverse;
-    }
-
     struct handlebars_string * result = NULL;
     struct handlebars_value * context = argv[0];
     struct handlebars_value * block_params = NULL;
     struct handlebars_value * ret = NULL;
+
+    if( argc < 1 ) {
+        goto inverse;
+    }
 
     if( handlebars_value_is_callable(context) ) {
         struct handlebars_options options2 = {0};
