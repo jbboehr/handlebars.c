@@ -25,8 +25,8 @@ or, in a `.nix` file:
 
 ```nix
 (import <nixpkgs> {}).callPackage (import (fetchTarball {
-  url = https://github.com/jbboehr/handlebars.c/archive/v0.7.0.tar.gz;
-  sha256 = "175gs14r8lmz8k6ylwqw7c5q5hj9n4khjz674h7xzal9ddggx0q7";
+  url = https://github.com/jbboehr/handlebars.c/archive/v0.7.1.tar.gz;
+  sha256 = "0rmwgjy7v59a80csn5dwwzdhg00k8aghkbxyljmqkvx858zjq30x";
 })) {}
 ```
 

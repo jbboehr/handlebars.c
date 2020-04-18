@@ -15,11 +15,11 @@ in
 
 stdenv.mkDerivation rec {
   name = "handlebars.c-${version}";
-  version = orDefault handlebarscVersion "v0.7.0";
+  version = orDefault handlebarscVersion "v0.7.1";
 
   src = orDefault handlebarscSrc (fetchurl {
     url = "https://github.com/jbboehr/handlebars.c/archive/${version}.tar.gz";
-    sha256 = orDefault handlebarscSha256 "1415cnh51c650fi2r3x12aj5mgfq187sann3zcrrjcza5skk15ng";
+    sha256 = orDefault handlebarscSha256 "1irss3zbpjshmlp0ng1pr796hqzs151yhj8y6gp2jwgin9ha2dr8";
   });
 
   outputs = [ "out" "dev" "bin" ];
