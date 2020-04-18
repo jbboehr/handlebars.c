@@ -246,6 +246,52 @@ struct handlebars_module * handlebars_program_serialize(
 
 
 
+static inline void normalize_operand(struct handlebars_module * module, struct handlebars_operand * operand, void * baseaddr)
+{
+    int i;
+
+    switch( operand->type ) {
+        case handlebars_operand_type_string:
+            PATCH(operand->data.string.string, baseaddr);
+            break;
+        case handlebars_operand_type_array:
+            for( i = 0; i < operand->data.array.count; i++ ) {
+                PATCH(operand->data.array.array[i].string, baseaddr);
+            }
+            PATCH(operand->data.array.array, baseaddr);
+            break;
+        default:
+            // nothing
+            break;
+    }
+}
+
+void handlebars_module_normalize_pointers(struct handlebars_module * module, void *baseaddr)
+{
+    int i;
+
+    if( module->addr == baseaddr ) {
+        return;
+    }
+
+    for( i = 0; i < module->opcode_count; i++ ) {
+        normalize_operand(module, &module->opcodes[i].op1, baseaddr);
+        normalize_operand(module, &module->opcodes[i].op2, baseaddr);
+        normalize_operand(module, &module->opcodes[i].op3, baseaddr);
+        normalize_operand(module, &module->opcodes[i].op4, baseaddr);
+    }
+
+    for( i = 0; i < module->program_count; i++ ) {
+        PATCH(module->programs[i].children, baseaddr);
+        PATCH(module->programs[i].opcodes, baseaddr);
+    }
+
+    PATCH(module->programs, baseaddr);
+    PATCH(module->opcodes, baseaddr);
+
+    module->addr = baseaddr;
+}
+
 static inline void patch_operand(struct handlebars_module * module, struct handlebars_operand * operand, void * baseaddr)
 {
     int i;
@@ -266,9 +312,10 @@ static inline void patch_operand(struct handlebars_module * module, struct handl
     }
 }
 
-void handlebars_module_patch_pointers_ex(struct handlebars_module * module, void *baseaddr)
+void handlebars_module_patch_pointers(struct handlebars_module * module)
 {
     int i;
+    void *baseaddr = (void *) module;
 
     if( module->addr == baseaddr ) {
         return;
@@ -290,9 +337,4 @@ void handlebars_module_patch_pointers_ex(struct handlebars_module * module, void
     }
 
     module->addr = baseaddr;
-}
-
-void handlebars_module_patch_pointers(struct handlebars_module * module)
-{
-    handlebars_module_patch_pointers_ex(module, (void *) module);
 }
