@@ -95,14 +95,21 @@ struct handlebars_module
 struct handlebars_module * handlebars_program_serialize(
     struct handlebars_context * context,
     struct handlebars_program * program
-);
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+/**
+ * @brief Adjust pointers by the offset between the specified base address and handlebars_module#addr
+ * @param[in] module
+ * @return void
+ */
+void handlebars_module_patch_pointers_ex(struct handlebars_module * module, void * baseaddr) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Fix any pointers by adjusting by the offset between the address of `module` and handlebars_module#addr
  * @param[in] module
  * @return void
  */
-void handlebars_module_patch_pointers(struct handlebars_module * module);
+void handlebars_module_patch_pointers(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
 
 #ifdef	__cplusplus
 }

@@ -29,7 +29,7 @@
 #define PTR_DIFF(a, b) ((size_t) (((char *) a) - ((char *) b)))
 #define PTR_ADD(a, b) ((void *) (((char *) a) + (b)))
 
-#define PATCH(ptr) ptr = (void *) (((char *) ptr) - ((char *) module->addr) + ((char *) module))
+#define PATCH(ptr, baseaddr) ptr = (void *) (((char *) ptr) - ((char *) module->addr) + ((char *) baseaddr))
 
 static void * append(struct handlebars_module * module, void * source, size_t size)
 {
@@ -246,18 +246,18 @@ struct handlebars_module * handlebars_program_serialize(
 
 
 
-static inline void patch_operand(struct handlebars_module * module, struct handlebars_operand * operand)
+static inline void patch_operand(struct handlebars_module * module, struct handlebars_operand * operand, void * baseaddr)
 {
     int i;
 
     switch( operand->type ) {
         case handlebars_operand_type_string:
-            PATCH(operand->data.string.string);
+            PATCH(operand->data.string.string, baseaddr);
             break;
         case handlebars_operand_type_array:
-            PATCH(operand->data.array.array);
+            PATCH(operand->data.array.array, baseaddr);
             for( i = 0; i < operand->data.array.count; i++ ) {
-                PATCH(operand->data.array.array[i].string);
+                PATCH(operand->data.array.array[i].string, baseaddr);
             }
             break;
         default:
@@ -266,28 +266,33 @@ static inline void patch_operand(struct handlebars_module * module, struct handl
     }
 }
 
-void handlebars_module_patch_pointers(struct handlebars_module * module)
+void handlebars_module_patch_pointers_ex(struct handlebars_module * module, void *baseaddr)
 {
     int i;
 
-    if( module->addr == (void *) module ) {
+    if( module->addr == baseaddr ) {
         return;
     }
 
-    PATCH(module->programs);
-    PATCH(module->opcodes);
+    PATCH(module->programs, baseaddr);
+    PATCH(module->opcodes, baseaddr);
 
     for( i = 0; i < module->program_count; i++ ) {
-        PATCH(module->programs[i].children);
-        PATCH(module->programs[i].opcodes);
+        PATCH(module->programs[i].children, baseaddr);
+        PATCH(module->programs[i].opcodes, baseaddr);
     }
 
     for( i = 0; i < module->opcode_count; i++ ) {
-        patch_operand(module, &module->opcodes[i].op1);
-        patch_operand(module, &module->opcodes[i].op2);
-        patch_operand(module, &module->opcodes[i].op3);
-        patch_operand(module, &module->opcodes[i].op4);
+        patch_operand(module, &module->opcodes[i].op1, baseaddr);
+        patch_operand(module, &module->opcodes[i].op2, baseaddr);
+        patch_operand(module, &module->opcodes[i].op3, baseaddr);
+        patch_operand(module, &module->opcodes[i].op4, baseaddr);
     }
 
-    module->addr = (void *) module;
+    module->addr = baseaddr;
+}
+
+void handlebars_module_patch_pointers(struct handlebars_module * module)
+{
+    handlebars_module_patch_pointers_ex(module, (void *) module);
 }
