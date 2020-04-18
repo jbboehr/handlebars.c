@@ -66,7 +66,7 @@ function to receive a new template with converted delimiters
 - Changed the license from `LGPLv3` to `LGPLv2.1 or later`
 
 [Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.7.1...HEAD
-[0.7.0]: https://github.com/jbboehr/handlebars.c/compare/v0.7.0...v0.7.1
+[0.7.1]: https://github.com/jbboehr/handlebars.c/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/jbboehr/handlebars.c/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/jbboehr/handlebars.c/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/jbboehr/handlebars.c/compare/v0.6.2...v0.6.3
