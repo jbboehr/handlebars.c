@@ -8,7 +8,6 @@ env:
   global:
     - ARCH="amd64"
     - COVERAGE="true"
-    - secure: "qhgUldrBzVBuE5QQBtkgNmlZjIxPSiWX0MS2zth1hQPzQw0zr50+tBE5/tetBXsWkBwOJi5IEWgs5LWdDLe/yhQ3oFeCqfn2fVa6ZSWLxmHgBC5VX1tZQ8mCmVYc781t131mYcbpCJaAi2/X21aqPB9y29Xj2MoMNlJSgv7Xffo="
   matrix:
     - MYCC="gcc-4.9"
     - MYCC="gcc-5"
@@ -22,15 +21,18 @@ env:
       COVERAGE="false"
     - MYCC="clang-3.8"
       COVERAGE="false"
+    - MYCC="gcc-9"
+      COVERAGE="false"
+      HARDENING="true"
 
 matrix:
   include:
     - language: nix
-      before_install: nix-env -iA cachix -f https://github.com/NixOS/nixpkgs/tarball/889c72032f8595fcd7542c6032c208f6b8033db6
+      before_install:
       install:
       before_script:
-      script: nix-build --argstr handlebarscVersion $TRAVIS_BRANCH | tee result.txt
-      after_success: cat result.txt | cachix push jbboehr-ci
+      script: nix-build --argstr handlebarscVersion $TRAVIS_BRANCH
+      after_success:
       after_failure:
       env:
         - MYCC=
