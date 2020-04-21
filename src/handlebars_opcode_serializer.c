@@ -288,6 +288,7 @@ void handlebars_module_normalize_pointers(struct handlebars_module * module, voi
 
     PATCH(module->programs, baseaddr);
     PATCH(module->opcodes, baseaddr);
+    PATCH(module->data, baseaddr); // TBH we can probably zero this out
 
     module->addr = baseaddr;
 }
@@ -321,6 +322,7 @@ void handlebars_module_patch_pointers(struct handlebars_module * module)
         return;
     }
 
+    PATCH(module->data, baseaddr); // TBH we can probably zero this out
     PATCH(module->programs, baseaddr);
     PATCH(module->opcodes, baseaddr);
 
