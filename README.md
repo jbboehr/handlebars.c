@@ -18,7 +18,7 @@ partials.
 ### Nix / NixOS
 
 ```bash
-nix-env -i -f https://github.com/jbboehr/handlebars.c/archive/v0.7.1.tar.gz
+nix-env -i -f https://github.com/jbboehr/handlebars.c/archive/v0.7.2.tar.gz
 ```
 
 or, in a `.nix` file:

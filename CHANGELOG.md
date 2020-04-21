@@ -6,6 +6,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+## [0.7.2] - 2020-04-21
+
 ### Fixed
 - Determinism issue with `handlebars_module_normalize_pointers`
 
@@ -70,7 +72,8 @@ function to receive a new template with converted delimiters
 ### Changed
 - Changed the license from `LGPLv3` to `LGPLv2.1 or later`
 
-[Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/jbboehr/handlebars.c/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/jbboehr/handlebars.c/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/jbboehr/handlebars.c/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/jbboehr/handlebars.c/compare/v0.6.3...v0.6.4
