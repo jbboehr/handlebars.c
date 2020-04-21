@@ -4,6 +4,11 @@ All Notable changes to `handlebars.c` will be documented in this file.
 
 Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) principles.
 
+## [Unreleased]
+
+### Fixed
+- Determinism issue with `handlebars_module_normalize_pointers`
+
 ## [0.7.1] - 2020-04-18
 
 ### Added
