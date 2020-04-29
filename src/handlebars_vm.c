@@ -330,6 +330,7 @@ static inline struct handlebars_value * execute_template(
     vm2->flags = vm->flags;
     vm2->helpers = vm->helpers;
     vm2->partials = vm->partials;
+    vm2->data = vm->data; // need to pass data along to partials
 
     // Copy stacks
     memcpy(&vm2->contextStack, &vm->contextStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->contextStack)));
@@ -351,6 +352,7 @@ static inline struct handlebars_value * execute_template(
         vm->cache->release(vm->cache, tmpl, module);
     }
 
+    vm2->data = NULL;
     handlebars_vm_dtor(vm2);
 
 // done:

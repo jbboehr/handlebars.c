@@ -51,6 +51,7 @@
 #include "utils.h"
 
 struct generic_test {
+    const char * suiteName;
     char * description;
     char * it;
     char * tmpl;
@@ -142,7 +143,7 @@ char ** json_load_known_helpers(void * ctx, struct json_object * object)
     return known_helpers;
 }
 
-static void loadOptions(struct generic_test * test, json_object * object)
+static void loadRuntimeOptions(struct generic_test * test, json_object * object)
 {
     json_object * cur = NULL;
 
@@ -153,12 +154,13 @@ static void loadOptions(struct generic_test * test, json_object * object)
     }
 }
 
-static void loadSpecTest(json_object * object)
+static void loadSpecTest(json_object * object, const char *suiteName)
 {
     json_object * cur = NULL;
 
     // Get test
     struct generic_test * test = tests[tests_len++] = handlebars_talloc_zero(tests, struct generic_test);
+    test->suiteName = suiteName;
     test->raw = object;
 
     // Get description
@@ -188,15 +190,18 @@ static void loadSpecTest(json_object * object)
     }
 
     // Get message
-    cur = json_object_object_get(object, "message");
-    if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->message = handlebars_talloc_strdup(test, json_object_get_string(cur));
-    }
+    // cur = json_object_object_get(object, "message");
+    // if( cur && json_object_get_type(cur) == json_type_string ) {
+    //     test->message = handlebars_talloc_strdup(test, json_object_get_string(cur));
+    // }
 
     // Get exception
     cur = json_object_object_get(object, "exception");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->exception = json_object_get_boolean(cur);
+    } else if (cur && json_object_get_type(cur) == json_type_string) {
+        test->exception = true;
+        test->message = handlebars_talloc_strdup(test, json_object_get_string(cur));
     }
 
     // Get data
@@ -208,9 +213,9 @@ static void loadSpecTest(json_object * object)
     }
 
     // Get options
-    cur = json_object_object_get(object, "options");
+    cur = json_object_object_get(object, "runtimeOptions");
     if( cur && json_object_get_type(cur) == json_type_object ) {
-        loadOptions(test, cur);
+        loadRuntimeOptions(test, cur);
     }
 
     // Get helpers
@@ -289,7 +294,7 @@ static int loadSpec(const char * spec)
             fprintf(stderr, "Warning: test case was not an object\n");
             continue;
         }
-        loadSpecTest(array_item);
+        loadSpecTest(array_item, spec);
     }
 error:
     if( data ) {
@@ -355,54 +360,37 @@ END_TEST
 
 int shouldnt_skip(struct generic_test * test)
 {
-#define MYCHECK(d, i) \
-    if( 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return 0;
+#define MYCHECKALL(s, d) \
+    if (0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description)) return 0;
+#define MYCHECK(s, d, i) \
+    if( 0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return 0;
 
     // Still having issues with whitespace
-    MYCHECK("standalone sections", "block standalone else sections can be disabled");
+    MYCHECK("blocks", "blocks - standalone sections", "block standalone else sections can be disabled");
 
     // Decorators aren't implemented
-    MYCHECK("decorators", "should apply mustache decorators");
-    MYCHECK("decorators", "should apply block decorators");
-    MYCHECK("decorators", "should apply allow undefined return");
-    MYCHECK("decorators", "should support nested decorators");
-    MYCHECK("decorators", "should apply multiple decorators");
-    MYCHECK("decorators", "should access parent variables");
-    MYCHECK("decorators", "should work with root program");
-    MYCHECK("decorators", "should fail when accessing variables from root");
-
-    MYCHECK("block params", "should take presednece over parent block params");
-    MYCHECK("registration", "fails with multiple and args");
+    MYCHECKALL("blocks", "blocks - decorators");
+    MYCHECK("helpers", "helpers - block params", "should take presednece over parent block params");
 
     // Regressions
-    MYCHECK("Regressions", "GH-1065: Sparse arrays")
-    MYCHECK("Regressions", "should support multiple levels of inline partials")
-    MYCHECK("Regressions", "GH-1089: should support failover content in multiple levels of inline partials")
-    MYCHECK("Regressions", "GH-1099: should support greater than 3 nested levels of inline partials");
+    MYCHECK("regressions", "Regressions", "GH-1065: Sparse arrays")
+    MYCHECK("regressions", "Regressions", "should support multiple levels of inline partials")
+    MYCHECK("regressions", "Regressions", "GH-1089: should support failover content in multiple levels of inline partials")
+    MYCHECK("regressions", "Regressions", "GH-1099: should support greater than 3 nested levels of inline partials");
+    MYCHECK("regressions", "Regressions", "GH-1341: 4.0.7 release breaks {{#if @partial-block}} usage");
+    MYCHECK("regressions", "Regressions", "GH-1186: Support block params for existing programs");
 
     // Subexpressions
     // This one might need to be handled in the parser
-    MYCHECK("subexpressions", "subexpressions can\'t just be property lookups");
-    MYCHECK("subexpressions", "in string params mode,");
-    MYCHECK("subexpressions", "as hashes in string params mode");
-    MYCHECK("subexpressions", "string params for inner helper processed correctly");
+    MYCHECK("subexpressions", "subexpressions", "subexpressions can\'t just be property lookups");
+    MYCHECK("subexpressions", "subexpressions", "in string params mode,");
+    MYCHECK("subexpressions", "subexpressions", "as hashes in string params mode");
+    MYCHECK("subexpressions", "subexpressions", "string params for inner helper processed correctly");
 
     // Partials
-    MYCHECK("partials", "registering undefined partial throws an exception");
-    MYCHECK("partial blocks", "should render block from partial");
-    MYCHECK("partial blocks", "should render block from partial with context");
-    MYCHECK("partial blocks", "should render block from partial with block params");
-    MYCHECK("partial blocks", "should render partial block as default");
-    MYCHECK("partial blocks", "should execute default block with proper context");
-    MYCHECK("partial blocks", "should propagate block parameters to default block");
-    MYCHECK("inline partials", "should define inline partials for template");
-    MYCHECK("inline partials", "should overwrite multiple partials in the same template");
-    MYCHECK("inline partials", "should define inline partials for block");
-    MYCHECK("inline partials", "should override global partials");
-    MYCHECK("inline partials", "should override template partials");
-    MYCHECK("inline partials", "should override partials down the entire stack");
-    MYCHECK("inline partials", "should define inline partials for partial call");
-    MYCHECK("inline partials", "should define inline partials in partial block call");
+    MYCHECK("partials", "partials", "registering undefined partial throws an exception");
+    MYCHECKALL("partials", "partials - partial blocks");
+    MYCHECKALL("partials", "partials - inline partials");
 
     return 1;
 
