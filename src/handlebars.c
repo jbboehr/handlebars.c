@@ -156,8 +156,8 @@ char * handlebars_error_message_js(struct handlebars_context * context)
     // @todo check errno == HANDLEBARS_PARSEERR
 
     snprintf(errbuf, sizeof(errbuf), "Parse error on line %d, column %d : %s",
-             e->loc.last_line,
-             e->loc.last_column,
+             e->loc.first_line,
+             e->loc.first_column,
              e->msg);
 
     errmsg = handlebars_talloc_strdup(context, errbuf);

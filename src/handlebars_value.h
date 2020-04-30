@@ -448,7 +448,7 @@ static inline long handlebars_value_count(struct handlebars_value * value) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             return handlebars_stack_length(value->v.stack);
         case HANDLEBARS_VALUE_TYPE_MAP:
-            return value->v.map->i;
+            return handlebars_map_count(value->v.map);
         case HANDLEBARS_VALUE_TYPE_USER:
             return handlebars_value_get_handlers(value)->count(value);
         default:

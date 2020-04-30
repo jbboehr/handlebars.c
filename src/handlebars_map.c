@@ -301,3 +301,8 @@ void handlebars_map_str_update(struct handlebars_map * map, const char * key, si
         _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
     }
 }
+
+size_t handlebars_map_count(struct handlebars_map * map)
+{
+    return map->i;
+}

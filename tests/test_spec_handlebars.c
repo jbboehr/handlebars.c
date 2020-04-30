@@ -64,11 +64,12 @@ struct generic_test {
     char * expected;
     char * message;
     short exception;
+    char * exceptionMatcher;
     //struct handlebars_context * ctx;
 
     char ** known_helpers;
     long flags;
-    struct json_object * raw;
+    char * raw;
 };
 
 static int memdebug;
@@ -157,11 +158,12 @@ static void loadRuntimeOptions(struct generic_test * test, json_object * object)
 static void loadSpecTest(json_object * object, const char *suiteName)
 {
     json_object * cur = NULL;
+    int nreq = 0;
 
     // Get test
     struct generic_test * test = tests[tests_len++] = handlebars_talloc_zero(tests, struct generic_test);
     test->suiteName = suiteName;
-    test->raw = object;
+    test->raw = json_object_to_json_string_ext(object, JSON_C_TO_STRING_PRETTY);
 
     // Get description
     cur = json_object_object_get(object, "description");
@@ -185,23 +187,26 @@ static void loadSpecTest(json_object * object, const char *suiteName)
     cur = json_object_object_get(object, "expected");
     if( cur && json_object_get_type(cur) == json_type_string ) {
         test->expected = handlebars_talloc_strdup(test, json_object_get_string(cur));
+        nreq++;
     } else {
         // fprintf(stderr, "Warning: Expected was not a string\n");
     }
 
     // Get message
-    // cur = json_object_object_get(object, "message");
-    // if( cur && json_object_get_type(cur) == json_type_string ) {
-    //     test->message = handlebars_talloc_strdup(test, json_object_get_string(cur));
-    // }
+    cur = json_object_object_get(object, "message");
+    if( cur && json_object_get_type(cur) == json_type_string ) {
+        test->message = handlebars_talloc_strdup(test, json_object_get_string(cur));
+    }
 
     // Get exception
     cur = json_object_object_get(object, "exception");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->exception = json_object_get_boolean(cur);
+        nreq++;
     } else if (cur && json_object_get_type(cur) == json_type_string) {
         test->exception = true;
-        test->message = handlebars_talloc_strdup(test, json_object_get_string(cur));
+        test->exceptionMatcher = handlebars_talloc_strdup(test, json_object_get_string(cur));
+        nreq++;
     }
 
     // Get data
@@ -242,6 +247,11 @@ static void loadSpecTest(json_object * object, const char *suiteName)
         if( cur2 ) {
             test->known_helpers = json_load_known_helpers(test, cur2);
         }
+    }
+
+    // Check
+    if( nreq <= 0 ) {
+        fprintf(stderr, "Warning: expected or exception/message must be specified\n");
     }
 }
 
@@ -410,7 +420,7 @@ static inline void run_test(struct generic_test * test, int _i)
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
-    fprintf(stderr, "RAW: %s\n", json_object_to_json_string_ext(test->raw, JSON_C_TO_STRING_PRETTY));
+    fprintf(stderr, "RAW: %s\n", test->raw);
     fprintf(stderr, "NUM: %d\n", _i);
     fprintf(stderr, "TMPL: %s\n", test->tmpl);
     fprintf(stderr, "FLAGS: %ld\n", test->flags);
@@ -537,13 +547,13 @@ static inline void run_test(struct generic_test * test, int _i)
 //        if( test->message ) {
 //            ck_assert_str_eq(vm->errmsg, test->message);
 //        }
-        if( test->message == NULL ) {
+        if( test->exceptionMatcher == NULL ) {
             // Just check if there was an error
             ck_assert_str_ne("", handlebars_error_msg(HBSCTX(vm)));
-        } else if( test->message[0] == '/' && test->message[strlen(test->message) - 1] == '/' ) {
+        } else if( test->exceptionMatcher[0] == '/' && test->exceptionMatcher[strlen(test->exceptionMatcher) - 1] == '/' ) {
             // It's a regex
-            char * tmp = strdup(test->message + 1);
-            tmp[strlen(test->message) - 2] = '\0';
+            char * tmp = strdup(test->exceptionMatcher + 1);
+            tmp[strlen(test->exceptionMatcher) - 2] = '\0';
             char * regex_error = NULL;
             if( 0 == regex_compare(tmp, handlebars_error_msg(HBSCTX(vm)), &regex_error) ) {
                 // ok
@@ -552,7 +562,7 @@ static inline void run_test(struct generic_test * test, int _i)
             }
             free(tmp);
         } else {
-            ck_assert_str_eq(test->message, handlebars_error_msg(HBSCTX(vm)));
+            ck_assert_str_eq(test->exceptionMatcher, handlebars_error_msg(HBSCTX(vm)));
         }
     } else {
         ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
