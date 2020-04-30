@@ -233,7 +233,7 @@ FIXTURE_FN(620828131)
 FIXTURE_FN(665715952)
 {
     // "function () {}"
-    return NULL;
+    return handlebars_value_ctor(CONTEXT);
 }
 
 FIXTURE_FN(662835958)

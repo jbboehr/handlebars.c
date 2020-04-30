@@ -120,23 +120,41 @@ long json_load_compile_flags(struct json_object * object)
     return flags;
 }
 
-char ** json_load_known_helpers(void * ctx, struct json_object * object)
+char ** json_load_known_helpers(void * ctx, struct json_object * object, struct json_object * helpers)
 {
     struct json_object * array_item = NULL;
     int array_len = 0;
+    const char ** ptr2 = handlebars_builtins_names();
+
+    if (!object && !helpers) {
+        return ptr2;
+    }
+
     // Let's just allocate a nice fat array >.>
+    // @TODO FIXME
     char ** known_helpers = talloc_zero_array(ctx, char *, 32);
     char ** ptr = known_helpers;
-    const char ** ptr2 = handlebars_builtins_names();
 
     for( ; *ptr2 ; ++ptr2 ) {
         *ptr = handlebars_talloc_strdup(ctx, *ptr2);
         ptr++;
     }
 
-    json_object_object_foreach(object, key, value) {
-        *ptr = handlebars_talloc_strdup(ctx, key);
-        ptr++;
+    if (object) {
+        json_object_object_foreach(object, key, value) {
+            *ptr = handlebars_talloc_strdup(ctx, key);
+            ptr++;
+            assert(ptr - known_helpers < 32);
+        }
+    }
+
+    // Merge in from helpers
+    if (helpers) {
+        json_object_object_foreach(helpers, key, value) {
+            *ptr = handlebars_talloc_strdup(ctx, key);
+            ptr++;
+            assert(ptr - known_helpers < 32);
+        }
     }
 
     *ptr++ = NULL;
@@ -227,27 +245,20 @@ static void loadSpecTest(json_object * object, const char *suiteName)
     if( NULL != (cur = json_object_object_get(object, "helpers")) ) {
         test->helpers = cur;
     }
-    if( NULL != (cur = json_object_object_get(object, "globalHelpers")) ) {
-        test->globalHelpers = cur;
-    }
 
     // Get partials
     if( NULL != (cur = json_object_object_get(object, "partials")) ) {
         test->partials = cur;
     }
-    if( NULL != (cur = json_object_object_get(object, "globalPartials")) ) {
-        test->globalPartials = cur;
-    }
 
     // Get compile options
     cur = json_object_object_get(object, "compileOptions");
+    struct json_object * kh = NULL;
     if( cur && json_object_get_type(cur) == json_type_object ) {
         test->flags = json_load_compile_flags(cur);
         struct json_object * cur2 = json_object_object_get(cur, "knownHelpers");
-        if( cur2 ) {
-            test->known_helpers = json_load_known_helpers(test, cur2);
-        }
     }
+    test->known_helpers = json_load_known_helpers(test, kh, test->helpers);
 
     // Check
     if( nreq <= 0 ) {
@@ -475,17 +486,6 @@ static inline void run_test(struct generic_test * test, int _i)
     // Setup helpers
     vm->helpers = handlebars_value_ctor(HBSCTX(vm));
     handlebars_value_map_init(vm->helpers);
-    if( test->globalHelpers ) {
-        helpers = handlebars_value_from_json_object(ctx, test->globalHelpers);
-        load_fixtures(helpers);
-        handlebars_value_iterator_init(&it, helpers);
-        for (; it.current != NULL; it.next(&it)) {
-            //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-                handlebars_map_update(vm->helpers->v.map, it.key, it.current);
-            //}
-        }
-        handlebars_value_delref(helpers);
-    }
     if( test->helpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->helpers);
         load_fixtures(helpers);
@@ -501,15 +501,6 @@ static inline void run_test(struct generic_test * test, int _i)
     // Setup partials
     vm->partials = handlebars_value_ctor(ctx);
     handlebars_value_map_init(vm->partials);
-    if( test->globalPartials ) {
-        struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->globalPartials);
-        load_fixtures(partials);
-        handlebars_value_iterator_init(&it, partials);
-        for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(vm->partials->v.map, it.key, it.current);
-        }
-        handlebars_value_delref(partials);
-    }
     if( test->partials ) {
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->partials);
         load_fixtures(partials);
@@ -677,7 +668,6 @@ int main(int argc, char *argv[])
         spec_dir = "./spec/handlebars/spec";
     }
     loadSpec("basic");
-    loadSpec("bench");
     loadSpec("blocks");
     loadSpec("builtins");
     loadSpec("data");
