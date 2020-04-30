@@ -201,6 +201,7 @@ START_TEST(handlebars_spec_parser)
     fprintf(stderr, "RAW: %s\n", test->raw);
     fprintf(stderr, "NUM: %d\n", _i);
     fprintf(stderr, "TMPL: %s\n", test->tmpl);
+    fflush(stderr);
 #endif
 
     parser = handlebars_parser_ctor(ctx);
@@ -214,6 +215,7 @@ START_TEST(handlebars_spec_parser)
 #ifndef NDEBUG
         fprintf(stderr, "ERR: %s\n", errmsg);
         fprintf(stderr, "ERRJS: %s\n", errmsgjs);
+        fflush(stderr);
 #endif
 
         if( test->exception ) {
@@ -248,6 +250,7 @@ START_TEST(handlebars_spec_parser)
 
 #ifndef NDEBUG
         fprintf(stderr, "AST: %s\n", output->val);
+        fflush(stderr);
 #endif
 
         if( !test->exception ) {

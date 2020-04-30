@@ -143,10 +143,11 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     len = handlebars_value_count(context) - 1;
 
     for( ; it.current != NULL; it.next(&it) ) {
-        if( it.current->type == HANDLEBARS_VALUE_TYPE_NULL ) {
-            i++;
-            continue;
-        }
+        // Disabled for Regressions - Undefined helper context
+        // if( it.current->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+        //     i++;
+        //     continue;
+        // }
 
         if( it.key /*it->value->type == HANDLEBARS_VALUE_TYPE_MAP*/ ) {
             handlebars_value_str(key, it.key);

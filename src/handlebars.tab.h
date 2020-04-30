@@ -112,7 +112,7 @@ union YYSTYPE
     struct handlebars_string * string;
     struct handlebars_ast_node * ast_node;
     struct handlebars_ast_list * ast_list;
-  
+
     struct handlebars_yy_block_intermediate block_intermediate;
     struct handlebars_yy_block_params block_params;
 

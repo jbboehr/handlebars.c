@@ -368,12 +368,12 @@ done:
 }
 END_TEST
 
-int shouldnt_skip(struct generic_test * test)
+bool should_skip(struct generic_test * test)
 {
 #define MYCHECKALL(s, d) \
-    if (0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description)) return 0;
+    if (0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description)) return true;
 #define MYCHECK(s, d, i) \
-    if( 0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return 0;
+    if( 0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return true;
 
     // Still having issues with whitespace
     MYCHECK("blocks", "blocks - standalone sections", "block standalone else sections can be disabled");
@@ -402,7 +402,7 @@ int shouldnt_skip(struct generic_test * test)
     MYCHECKALL("partials", "partials - partial blocks");
     MYCHECKALL("partials", "partials - inline partials");
 
-    return 1;
+    return false;
 
 #undef MYCCHECK
 }
@@ -424,11 +424,13 @@ static inline void run_test(struct generic_test * test, int _i)
     fprintf(stderr, "NUM: %d\n", _i);
     fprintf(stderr, "TMPL: %s\n", test->tmpl);
     fprintf(stderr, "FLAGS: %ld\n", test->flags);
+    fflush(stderr);
 #endif
 
     //ck_assert_msg(shouldnt_skip(test), "Skipped");
-    if( !shouldnt_skip(test) ) {
+    if( should_skip(test) ) {
         fprintf(stderr, "SKIPPED #%d\n", _i);
+        fflush(stderr);
         return;
     }
 
@@ -540,6 +542,7 @@ static inline void run_test(struct generic_test * test, int _i)
     } else if( ctx->e->msg ) {
         fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
     }
+    fflush(stderr);
 #endif
 
     if( test->exception ) {
@@ -627,8 +630,10 @@ Suite * parser_suite(void)
     if( getenv("TEST_NUM") != NULL ) {
         int num;
         sscanf(getenv("TEST_NUM"), "%d", &num);
-        start = end = num;
-        end++;
+        if (num < end && num >= start) {
+            start = end = num;
+            end++;
+        }
     }
 
     TCase * tc_ast_to_string_on_handlebars_spec = tcase_create("AST to string on handlebars spec");

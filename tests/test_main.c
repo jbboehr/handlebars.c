@@ -71,19 +71,19 @@ END_TEST
 START_TEST(test_lex)
 {
     struct handlebars_token ** tokens;
-    
+
     parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{foo}}"));
 
     tokens = handlebars_lex(parser);
-    
+
     ck_assert_ptr_ne(NULL, tokens[0]);
     ck_assert_int_eq(OPEN, tokens[0]->token);
     ck_assert_str_eq("{{", tokens[0]->string->val);
-    
+
     ck_assert_ptr_ne(NULL, tokens[1]);
     ck_assert_int_eq(ID, tokens[1]->token);
     ck_assert_str_eq("foo", tokens[1]->string->val);
-    
+
     ck_assert_ptr_ne(NULL, tokens[2]);
     ck_assert_int_eq(CLOSE, tokens[2]->token);
     ck_assert_str_eq("}}", tokens[2]->string->val);
@@ -161,6 +161,8 @@ START_TEST(test_context_get_errmsg_js)
 {
     struct handlebars_locinfo loc;
     char * actual;
+    loc.first_line = 1;
+    loc.first_column = 2;
     loc.last_line = 1;
     loc.last_column = 2;
 
@@ -225,13 +227,13 @@ int main(void)
     int error;
 
     talloc_set_log_stderr();
-    
+
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     // Set up test suite
     Suite * s = parser_suite();
     SRunner * sr = srunner_create(s);
@@ -242,12 +244,12 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }
-    
+
     // Return
     return error;
 }
