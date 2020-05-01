@@ -1,20 +1,20 @@
-/**
- * Copyright (C) 2016 John Boehr
+ /**
+ * Copyright (C) 2020 John Boehr
  *
  * This file is part of handlebars.c.
  *
- * handlebars.c is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 2.1 of the License, or
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * handlebars.c is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -294,7 +294,7 @@ static int do_version(void)
     fprintf(stdout,
         "handlebarsc v%s\n"
         "Copyright (C) 2020 John Boehr\n"
-        "License LGPLv2.1+: Lesser GNU GPL version 2.1 or later <https://www.gnu.org/licenses/lgpl-2.1.html>.\n"
+        "License AGPLv3.0+: Affero GNU GPL version 3.0 or later <https://www.gnu.org/licenses/agpl-3.0.html>.\n"
         "This is free software: you are free to change and redistribute it.\n"
         "There is NO WARRANTY, to the extent permitted by law.\n",
         handlebars_version_string());

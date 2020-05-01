@@ -8,6 +8,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ### Changed
 - Updated handlebars-spec to v104.7.6 (handlebars.js v4.7.6)
+- The executable and the test suite are now licensed under the AGPLv3 or later. The
+  library remains licensed under the LGPLv2.1 or later.
 
 ### Fixed
 - Segmentation fault when attempting to use unimplemented inline partials in the VM

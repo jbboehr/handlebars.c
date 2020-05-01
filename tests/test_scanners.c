@@ -1,20 +1,20 @@
-/**
- * Copyright (C) 2016 John Boehr
+ /**
+ * Copyright (C) 2020 John Boehr
  *
  * This file is part of handlebars.c.
  *
- * handlebars.c is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 2.1 of the License, or
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * handlebars.c is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <check.h>
@@ -36,7 +36,7 @@ START_TEST(test_scanner_next_whitespace)
     ck_assert_int_eq(0, handlebars_scanner_next_whitespace(" \t\r", 0));
     ck_assert_int_eq(0, handlebars_scanner_next_whitespace(" \t\rfoo\n", 0));
     ck_assert_int_eq(1, handlebars_scanner_next_whitespace(" \t\r\n", 0));
-    
+
     ck_assert_int_eq(0, handlebars_scanner_next_whitespace(" \t\rz", 1));
     ck_assert_int_eq(1, handlebars_scanner_next_whitespace(" \t\r", 1));
 }
@@ -46,21 +46,21 @@ START_TEST(test_scanner_prev_whitespace)
 {
     ck_assert_int_eq(1, handlebars_scanner_prev_whitespace("\n \t\r", 0));
     ck_assert_int_eq(0, handlebars_scanner_prev_whitespace("\n foo", 0));
-    
+
     ck_assert_int_eq(0, handlebars_scanner_prev_whitespace("foo \t\r", 1));
     ck_assert_int_eq(1, handlebars_scanner_prev_whitespace(" \t\r", 1));
-    
+
 }
 END_TEST
 
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("Scanners");
-    
+
 	REGISTER_TEST_FIXTURE(s, test_scanner_next_whitespace, "Prev Whitespace");
 	REGISTER_TEST_FIXTURE(s, test_scanner_prev_whitespace, "Next Whitespace");
-	
-	
+
+
     return s;
 }
 
@@ -71,13 +71,13 @@ int main(void)
     int error;
 
     talloc_set_log_stderr();
-    
+
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     // Set up test suite
     Suite * s = parser_suite();
     SRunner * sr = srunner_create(s);
@@ -88,12 +88,12 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }
-    
+
     // Return
     return error;
 }

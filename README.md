@@ -75,6 +75,7 @@ cd handlebars.c
 
 ## License
 
-This project is licensed under the [LGPLv2.1 or later](LICENSE.md).
+The library for this project is licensed under the [LGPLv2.1 or later](LICENSE.md).
+The executable and the test suite are licensed under the [AGPLv3.0 or later](LICENSE-AGPL.md).
 handlebars.js is licensed under the [MIT license](http://opensource.org/licenses/MIT).
 
