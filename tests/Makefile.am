@@ -1,5 +1,5 @@
 
-EXTRA_DIST = utils.h
+EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml
 
 if CHECK_HAS_TAP
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
