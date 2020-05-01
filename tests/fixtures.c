@@ -1016,7 +1016,6 @@ FIXTURE_FN(2961119846)
     struct handlebars_value * adjective = handlebars_value_map_str_find(options->data, HBS_STRL("adjective"));
     struct handlebars_value * noun = handlebars_value_map_str_find(options->scope, HBS_STRL("noun"));
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    fprintf(stdout, "%s\n", handlebars_value_dump(options->data, 0));
     assert(adjective != NULL);
     assert(noun != NULL);
     char * tmp = handlebars_talloc_asprintf(

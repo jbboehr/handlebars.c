@@ -835,7 +835,7 @@ static inline void _handlebars_compiler_accept_partial(
         if( indent ) {
             handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, indent);
         } else {
-            handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, handlebars_string_init(CONTEXT, 0));
+            handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op3, handlebars_string_ctor(CONTEXT, HBS_STRL("")));
         }
         __PUSH(opcode);
     } while(0);

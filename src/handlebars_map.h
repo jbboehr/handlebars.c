@@ -137,13 +137,6 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
  */
 bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
 
-/**
- * @brief Get the number of items in the map
- * @param[in] map
- * @return The number of items in the map
- */
-size_t handlebars_map_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
-
 #ifdef	__cplusplus
 }
 #endif

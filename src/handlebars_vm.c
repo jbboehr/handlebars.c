@@ -616,7 +616,6 @@ ACCEPT_FUNCTION(invoke_partial)
     struct handlebars_value * tmp = NULL;
     struct handlebars_string * name = NULL;
     struct handlebars_value * partial = NULL;
-    jmp_buf buf;
     int argc = 1;
     struct handlebars_value * argv[1];
 
@@ -650,13 +649,15 @@ ACCEPT_FUNCTION(invoke_partial)
         if( vm->flags & handlebars_compiler_flag_compat ) {
             return;
         } else {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s could not be found", name ? name->val : "(NULL)");
+            if (!name) {
+                name = handlebars_string_ctor(CONTEXT, HBS_STRL("(NULL)"));
+            }
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %.*s could not be found", (int) name->len, name->val);
         }
     }
 
     // Construct new context
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
-    context->e->jmp = &buf;
 
     // If partial is a function?
     if( handlebars_value_is_callable(partial) ) {
