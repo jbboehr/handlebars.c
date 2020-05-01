@@ -15,7 +15,7 @@
 
   handlebars_spec ? pkgs.callPackage (import ((fetchTarball {
     url = https://github.com/jbboehr/handlebars-spec/archive/v104.7.6.tar.gz;
-    sha256 = "08dvx3s8j6i3npvh65halv18f5ilm0iisbrqxxv9gpfcav0m3hi6";
+    sha256 = "0i2czm6yhiv5xbq93yj249xjxqrfv70mk1qgl0abkbm0qmmkc4vk";
   }))) {}
 }:
 
