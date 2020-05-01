@@ -658,6 +658,7 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Construct new context
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
+    context->e = vm->ctx.e;
 
     // If partial is a function?
     if( handlebars_value_is_callable(partial) ) {
