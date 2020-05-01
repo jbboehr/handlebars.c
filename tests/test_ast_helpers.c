@@ -1,20 +1,20 @@
-/**
- * Copyright (C) 2016 John Boehr
+ /**
+ * Copyright (C) 2020 John Boehr
  *
  * This file is part of handlebars.c.
  *
- * handlebars.c is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 2.1 of the License, or
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * handlebars.c is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -44,13 +44,13 @@ START_TEST(test_ast_helper_set_strip_flags)
     struct handlebars_string * str4 = handlebars_string_ctor(context, HBS_STRL("~}}"));
 
     memset(&node, 0, sizeof(struct handlebars_ast_node));
-    
+
     handlebars_ast_helper_set_strip_flags(&node, str1, str3);
     ck_assert_int_eq(1, node.strip);
-    
+
     handlebars_ast_helper_set_strip_flags(&node, str2, str4);
     ck_assert_int_eq(7, node.strip);
-    
+
     handlebars_ast_helper_set_strip_flags(&node, NULL, NULL);
     ck_assert_int_eq(1, node.strip);
 }
@@ -113,10 +113,10 @@ END_TEST
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("AST Helpers");
-    
+
     REGISTER_TEST_FIXTURE(s, test_ast_helper_set_strip_flags, "Set strip flags");
     REGISTER_TEST_FIXTURE(s, test_ast_helper_strip_comment, "Strip comment");
-    
+
     return s;
 }
 
@@ -127,13 +127,13 @@ int main(void)
     int error;
 
     talloc_set_log_stderr();
-    
+
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     // Set up test suite
     Suite * s = parser_suite();
     SRunner * sr = srunner_create(s);
@@ -144,12 +144,12 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
     // Generate report for memdebug
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }
-    
+
     // Return
     return error;
 }

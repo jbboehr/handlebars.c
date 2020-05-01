@@ -1,20 +1,20 @@
-/**
- * Copyright (C) 2016 John Boehr
+ /**
+ * Copyright (C) 2020 John Boehr
  *
  * This file is part of handlebars.c.
  *
- * handlebars.c is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 2.1 of the License, or
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * handlebars.c is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -145,7 +145,7 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_parser, "Random Memory Allocation Failures (Parser)");
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_compiler, "Random Memory Allocation Failures (Compiler)");
     REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_vm, "Random Memory Allocation Failures (VM)");
-    
+
     return s;
 }
 
@@ -159,16 +159,16 @@ int main(void)
     int error = 0;
 
     talloc_set_log_stderr();
-    
+
 #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
     iswin = 1;
 #endif
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    
+
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    
+
     s = parser_suite();
     sr = srunner_create(s);
     if( iswin || memdebug ) {
@@ -178,7 +178,7 @@ int main(void)
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-    
+
 error:
     if( memdebug ) {
         talloc_report_full(NULL, stderr);

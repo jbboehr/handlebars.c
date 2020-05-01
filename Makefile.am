@@ -1,7 +1,7 @@
 
 SUBDIRS = src . doc bin tests
 
-EXTRA_DIST = LICENSE.md LICENSE.GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs
+EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs
 
 ACLOCAL_AMFLAGS = -I m4 --install
 
