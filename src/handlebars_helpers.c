@@ -143,10 +143,11 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     len = handlebars_value_count(context) - 1;
 
     for( ; it.current != NULL; it.next(&it) ) {
-        if( it.current->type == HANDLEBARS_VALUE_TYPE_NULL ) {
-            i++;
-            continue;
-        }
+        // Disabled for Regressions - Undefined helper context
+        // if( it.current->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+        //     i++;
+        //     continue;
+        // }
 
         if( it.key /*it->value->type == HANDLEBARS_VALUE_TYPE_MAP*/ ) {
             handlebars_value_str(key, it.key);
@@ -290,8 +291,8 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
     struct handlebars_value * ret = NULL;
     struct handlebars_string * result;
 
-    if( argc < 1 ) {
-        goto inverse;
+    if (argc != 1) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "#if requires exactly one argument");
     }
 
     if( handlebars_value_is_callable(conditional) ) {
@@ -320,7 +321,6 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
         program = options->program;
         handlebars_value_delref(tmp);
     } else {
-inverse:
         program = options->inverse;
     }
 
@@ -336,11 +336,11 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
     struct handlebars_value * conditional;
     struct handlebars_value * result;
 
-    if( argc >= 1 && argv[0] ) {
-        conditional = argv[0];
-    } else {
-        conditional = handlebars_value_ctor(CONTEXT);
+    if (argc != 1) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "#unless requires exactly one argument");
     }
+
+    conditional = argv[0];
 
     handlebars_value_boolean(conditional, conditional ? handlebars_value_is_empty(conditional) : true);
 
@@ -356,8 +356,8 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
     struct handlebars_value * block_params = NULL;
     struct handlebars_value * ret = NULL;
 
-    if( argc < 1 ) {
-        goto inverse;
+    if (argc != 1) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "#with requires exactly one argument");
     }
 
     if( handlebars_value_is_callable(context) ) {
@@ -377,7 +377,6 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
     }
 
     if( context == NULL ) {
-inverse:
         context = handlebars_value_ctor(CONTEXT);
         result = handlebars_vm_execute_program(options->vm, options->inverse, context);
     } else if( context->type == HANDLEBARS_VALUE_TYPE_NULL ) {

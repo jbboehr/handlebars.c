@@ -233,7 +233,7 @@ FIXTURE_FN(620828131)
 FIXTURE_FN(665715952)
 {
     // "function () {}"
-    return NULL;
+    return handlebars_value_ctor(CONTEXT);
 }
 
 FIXTURE_FN(662835958)
@@ -1016,6 +1016,8 @@ FIXTURE_FN(2961119846)
     struct handlebars_value * adjective = handlebars_value_map_str_find(options->data, HBS_STRL("adjective"));
     struct handlebars_value * noun = handlebars_value_map_str_find(options->scope, HBS_STRL("noun"));
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+    assert(adjective != NULL);
+    assert(noun != NULL);
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s %s",
@@ -1435,6 +1437,113 @@ FIXTURE_FN(4207421535)
     return result;
 }
 
+FIXTURE_FN(1414406764)
+{
+    // function testHelper(options) {\n          return options.lookupProperty(this, 'testProperty');\n        }
+    return handlebars_value_map_str_find(options->scope, HBS_STRL("testProperty"));
+}
+
+FIXTURE_FN(1830193534)
+{
+    // function() {\n        \/\/ It's valid to execute a block against an undefined context, but\n        \/\/ helpers can not do so, so we expect to have an empty object here;\n        for (var name in this) {\n          if (Object.prototype.hasOwnProperty.call(this, name)) {\n            return 'found';\n          }\n        }\n        \/\/ And to make IE happy, check for the known string as length is not enumerated.\n        return this === 'bat' ? 'found' : 'not';\n      }
+    if (!handlebars_value_is_empty(options->scope)) {
+        FIXTURE_STRING("found");
+    } else {
+        FIXTURE_STRING("not");
+    }
+}
+
+FIXTURE_FN(1569150712)
+{
+    // function goodbye(options) {\n        if (options.hash.print === true) {\n          return 'GOODBYE ' + options.hash.cruel + ' ' + options.hash.world;\n        } else if (options.hash.print === false) {\n          return 'NOT PRINTING';\n        } else {\n          return 'THIS SHOULD NOT HAPPEN';\n        }\n      }
+    struct handlebars_value * print = handlebars_value_map_str_find(options->hash, HBS_STRL("print"));
+    struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
+    struct handlebars_value * world = handlebars_value_map_str_find(options->hash, HBS_STRL("world"));
+
+    if (print && print->type == HANDLEBARS_VALUE_TYPE_TRUE) {
+        char * tmp = handlebars_talloc_asprintf(
+                options->vm,
+                "GOODBYE %s %s",
+                handlebars_value_to_string(cruel)->val,
+                handlebars_value_to_string(world)->val
+        );
+        struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+        handlebars_value_string(result, tmp);
+        handlebars_talloc_free(tmp);
+        return result;
+    } else if (print && print->type == HANDLEBARS_VALUE_TYPE_FALSE) {
+        FIXTURE_STRING("NOT PRINTING");
+    } else {
+        FIXTURE_STRING("THIS SHOULD NOT HAPPEN");
+    }
+}
+
+FIXTURE_FN(1646670161)
+{
+    // function(conditional, options) {\n        if (conditional) {\n          return options.fn(this);\n        } else {\n          return options.inverse(this);\n        }\n      }
+    assert(argc > 0);
+    struct handlebars_value * conditional = argv[0];
+    struct handlebars_string * str;
+    if (!handlebars_value_is_empty(conditional)) {
+        // assert(options->program > 0);
+        str = handlebars_vm_execute_program(options->vm, options->program, options->scope);
+    } else {
+        // assert(options->inverse > 0);
+        str = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
+    }
+    struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+    handlebars_value_str_steal(result, str);
+    return result;
+}
+
+FIXTURE_FN(2855343161)
+{
+    // function(options) {\n        return options.hash.length;\n      }
+    return handlebars_value_map_str_find(options->hash, HBS_STRL("length"));
+}
+
+// static struct handlebars_value * last_options = NULL;
+
+FIXTURE_FN(3568189707)
+{
+    // function(x, y, options) {\n        if (!options || options === global.lastOptions) {\n          throw new Error('options hash was reused');\n        }\n        global.lastOptions = options;\n        return x === y;\n      }
+
+    // Yeah so each stack allocation of this produces the same pointer to options, so we can't test for pointer equality here
+    // @TODO add a field to options to uniquely identify it? (breaks ABI)
+
+    // if (!options || options == last_options) {
+    //     last_options = NULL;
+    //     FIXTURE_STRING("options hash was reused");
+    // }
+    // last_options = options;
+
+    assert(argc >= 2);
+
+    struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+    if (argv[0]->type == HANDLEBARS_VALUE_TYPE_TRUE && argv[1]->type == HANDLEBARS_VALUE_TYPE_TRUE) {
+        handlebars_value_boolean(result, true);
+    } else {
+        handlebars_value_boolean(result, false);
+    }
+    return result;
+}
+
+FIXTURE_FN(1561073198)
+{
+    // function (options) {\n        return \"val is \" + options.hash.fun;\n      }
+    struct handlebars_value * fun = handlebars_value_map_str_find(options->hash, HBS_STRL("fun"));
+    assert(fun != NULL);
+    char * tmp = handlebars_talloc_asprintf(
+            options->vm,
+            "val is %s",
+            handlebars_value_to_string(fun)->val
+    );
+    struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
+    handlebars_value_string(result, tmp);
+    handlebars_talloc_free(tmp);
+    return result;
+}
+
 // mustache lambda fixtures
 
 FIXTURE_FN(779421032)
@@ -1614,11 +1723,16 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(1252527367);
         FIXTURE_CASE(1283397100);
         FIXTURE_CASE(1341397520);
+        FIXTURE_CASE(1414406764);
+        FIXTURE_CASE(1561073198);
+        FIXTURE_CASE(1569150712);
         FIXTURE_CASE(1582700088);
         FIXTURE_CASE(1623791204);
         FIXTURE_CASE(1644694756);
+        FIXTURE_CASE(1646670161);
         FIXTURE_CASE(1774917451);
         FIXTURE_CASE(1818365722);
+        FIXTURE_CASE(1830193534);
         FIXTURE_CASE(1872958178);
         FIXTURE_CASE(1983911259);
         FIXTURE_CASE(2084318034);
@@ -1645,6 +1759,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(2795443460);
         FIXTURE_CASE(2818908139);
         FIXTURE_CASE(2842041837);
+        FIXTURE_CASE(2855343161);
         FIXTURE_CASE(2857704189);
         FIXTURE_CASE(2919388099);
         FIXTURE_CASE(2927692429);
@@ -1668,6 +1783,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(3379432388);
         FIXTURE_CASE(3407223629);
         FIXTURE_CASE(3477736473);
+        FIXTURE_CASE(3568189707);
         FIXTURE_CASE(3578728160);
         FIXTURE_CASE(3659403207);
         FIXTURE_CASE(3691188061);
@@ -1694,6 +1810,9 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE_ALIAS(2337343947, 126946175);
         FIXTURE_CASE_ALIAS(2443446763, 126946175);
 
+        FIXTURE_CASE_ALIAS(2734230037, 464915369);
+        FIXTURE_CASE_ALIAS(1276597723, 666457330);
+
         // mustache lambda fixtures
         FIXTURE_CASE(779421032);
         FIXTURE_CASE(1396901812);
@@ -1712,7 +1831,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
     }
 
 #ifndef NDEBUG
-    fprintf(stderr, "Got fixture [%u]\n", hash);
+    fprintf(stderr, "FIXTURE: [%u]\n", hash);
 #endif
 
 #undef SET_FUNCTION

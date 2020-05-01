@@ -51,6 +51,7 @@
 #include "utils.h"
 
 struct generic_test {
+    const char * suiteName;
     char * description;
     char * it;
     char * tmpl;
@@ -63,11 +64,12 @@ struct generic_test {
     char * expected;
     char * message;
     short exception;
+    char * exceptionMatcher;
     //struct handlebars_context * ctx;
 
     char ** known_helpers;
     long flags;
-    struct json_object * raw;
+    char * raw;
 };
 
 static int memdebug;
@@ -118,23 +120,41 @@ long json_load_compile_flags(struct json_object * object)
     return flags;
 }
 
-char ** json_load_known_helpers(void * ctx, struct json_object * object)
+char ** json_load_known_helpers(void * ctx, struct json_object * object, struct json_object * helpers)
 {
     struct json_object * array_item = NULL;
     int array_len = 0;
+    const char ** ptr2 = handlebars_builtins_names();
+
+    if (!object && !helpers) {
+        return ptr2;
+    }
+
     // Let's just allocate a nice fat array >.>
+    // @TODO FIXME
     char ** known_helpers = talloc_zero_array(ctx, char *, 32);
     char ** ptr = known_helpers;
-    const char ** ptr2 = handlebars_builtins_names();
 
     for( ; *ptr2 ; ++ptr2 ) {
         *ptr = handlebars_talloc_strdup(ctx, *ptr2);
         ptr++;
     }
 
-    json_object_object_foreach(object, key, value) {
-        *ptr = handlebars_talloc_strdup(ctx, key);
-        ptr++;
+    if (object) {
+        json_object_object_foreach(object, key, value) {
+            *ptr = handlebars_talloc_strdup(ctx, key);
+            ptr++;
+            assert(ptr - known_helpers < 32);
+        }
+    }
+
+    // Merge in from helpers
+    if (helpers) {
+        json_object_object_foreach(helpers, key, value) {
+            *ptr = handlebars_talloc_strdup(ctx, key);
+            ptr++;
+            assert(ptr - known_helpers < 32);
+        }
     }
 
     *ptr++ = NULL;
@@ -142,7 +162,7 @@ char ** json_load_known_helpers(void * ctx, struct json_object * object)
     return known_helpers;
 }
 
-static void loadOptions(struct generic_test * test, json_object * object)
+static void loadRuntimeOptions(struct generic_test * test, json_object * object)
 {
     json_object * cur = NULL;
 
@@ -153,13 +173,15 @@ static void loadOptions(struct generic_test * test, json_object * object)
     }
 }
 
-static void loadSpecTest(json_object * object)
+static void loadSpecTest(json_object * object, const char *suiteName)
 {
     json_object * cur = NULL;
+    int nreq = 0;
 
     // Get test
     struct generic_test * test = tests[tests_len++] = handlebars_talloc_zero(tests, struct generic_test);
-    test->raw = object;
+    test->suiteName = suiteName;
+    test->raw = json_object_to_json_string_ext(object, JSON_C_TO_STRING_PRETTY);
 
     // Get description
     cur = json_object_object_get(object, "description");
@@ -183,6 +205,7 @@ static void loadSpecTest(json_object * object)
     cur = json_object_object_get(object, "expected");
     if( cur && json_object_get_type(cur) == json_type_string ) {
         test->expected = handlebars_talloc_strdup(test, json_object_get_string(cur));
+        nreq++;
     } else {
         // fprintf(stderr, "Warning: Expected was not a string\n");
     }
@@ -197,6 +220,11 @@ static void loadSpecTest(json_object * object)
     cur = json_object_object_get(object, "exception");
     if( cur && json_object_get_type(cur) == json_type_boolean ) {
         test->exception = json_object_get_boolean(cur);
+        nreq++;
+    } else if (cur && json_object_get_type(cur) == json_type_string) {
+        test->exception = true;
+        test->exceptionMatcher = handlebars_talloc_strdup(test, json_object_get_string(cur));
+        nreq++;
     }
 
     // Get data
@@ -208,35 +236,33 @@ static void loadSpecTest(json_object * object)
     }
 
     // Get options
-    cur = json_object_object_get(object, "options");
+    cur = json_object_object_get(object, "runtimeOptions");
     if( cur && json_object_get_type(cur) == json_type_object ) {
-        loadOptions(test, cur);
+        loadRuntimeOptions(test, cur);
     }
 
     // Get helpers
     if( NULL != (cur = json_object_object_get(object, "helpers")) ) {
         test->helpers = cur;
     }
-    if( NULL != (cur = json_object_object_get(object, "globalHelpers")) ) {
-        test->globalHelpers = cur;
-    }
 
     // Get partials
     if( NULL != (cur = json_object_object_get(object, "partials")) ) {
         test->partials = cur;
     }
-    if( NULL != (cur = json_object_object_get(object, "globalPartials")) ) {
-        test->globalPartials = cur;
-    }
 
     // Get compile options
     cur = json_object_object_get(object, "compileOptions");
+    struct json_object * kh = NULL;
     if( cur && json_object_get_type(cur) == json_type_object ) {
         test->flags = json_load_compile_flags(cur);
         struct json_object * cur2 = json_object_object_get(cur, "knownHelpers");
-        if( cur2 ) {
-            test->known_helpers = json_load_known_helpers(test, cur2);
-        }
+    }
+    test->known_helpers = json_load_known_helpers(test, kh, test->helpers);
+
+    // Check
+    if( nreq <= 0 ) {
+        fprintf(stderr, "Warning: expected or exception/message must be specified\n");
     }
 }
 
@@ -289,7 +315,7 @@ static int loadSpec(const char * spec)
             fprintf(stderr, "Warning: test case was not an object\n");
             continue;
         }
-        loadSpecTest(array_item);
+        loadSpecTest(array_item, spec);
     }
 error:
     if( data ) {
@@ -353,58 +379,41 @@ done:
 }
 END_TEST
 
-int shouldnt_skip(struct generic_test * test)
+bool should_skip(struct generic_test * test)
 {
-#define MYCHECK(d, i) \
-    if( 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return 0;
+#define MYCHECKALL(s, d) \
+    if (0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description)) return true;
+#define MYCHECK(s, d, i) \
+    if( 0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return true;
 
     // Still having issues with whitespace
-    MYCHECK("standalone sections", "block standalone else sections can be disabled");
+    MYCHECK("blocks", "blocks - standalone sections", "block standalone else sections can be disabled");
 
     // Decorators aren't implemented
-    MYCHECK("decorators", "should apply mustache decorators");
-    MYCHECK("decorators", "should apply block decorators");
-    MYCHECK("decorators", "should apply allow undefined return");
-    MYCHECK("decorators", "should support nested decorators");
-    MYCHECK("decorators", "should apply multiple decorators");
-    MYCHECK("decorators", "should access parent variables");
-    MYCHECK("decorators", "should work with root program");
-    MYCHECK("decorators", "should fail when accessing variables from root");
-
-    MYCHECK("block params", "should take presednece over parent block params");
-    MYCHECK("registration", "fails with multiple and args");
+    MYCHECKALL("blocks", "blocks - decorators");
+    MYCHECK("helpers", "helpers - block params", "should take presednece over parent block params");
 
     // Regressions
-    MYCHECK("Regressions", "GH-1065: Sparse arrays")
-    MYCHECK("Regressions", "should support multiple levels of inline partials")
-    MYCHECK("Regressions", "GH-1089: should support failover content in multiple levels of inline partials")
-    MYCHECK("Regressions", "GH-1099: should support greater than 3 nested levels of inline partials");
+    MYCHECK("regressions", "Regressions", "GH-1065: Sparse arrays")
+    MYCHECK("regressions", "Regressions", "should support multiple levels of inline partials")
+    MYCHECK("regressions", "Regressions", "GH-1089: should support failover content in multiple levels of inline partials")
+    MYCHECK("regressions", "Regressions", "GH-1099: should support greater than 3 nested levels of inline partials");
+    MYCHECK("regressions", "Regressions", "GH-1341: 4.0.7 release breaks {{#if @partial-block}} usage");
+    MYCHECK("regressions", "Regressions", "GH-1186: Support block params for existing programs");
 
     // Subexpressions
     // This one might need to be handled in the parser
-    MYCHECK("subexpressions", "subexpressions can\'t just be property lookups");
-    MYCHECK("subexpressions", "in string params mode,");
-    MYCHECK("subexpressions", "as hashes in string params mode");
-    MYCHECK("subexpressions", "string params for inner helper processed correctly");
+    MYCHECK("subexpressions", "subexpressions", "subexpressions can\'t just be property lookups");
+    MYCHECK("subexpressions", "subexpressions", "in string params mode,");
+    MYCHECK("subexpressions", "subexpressions", "as hashes in string params mode");
+    MYCHECK("subexpressions", "subexpressions", "string params for inner helper processed correctly");
 
     // Partials
-    MYCHECK("partials", "registering undefined partial throws an exception");
-    MYCHECK("partial blocks", "should render block from partial");
-    MYCHECK("partial blocks", "should render block from partial with context");
-    MYCHECK("partial blocks", "should render block from partial with block params");
-    MYCHECK("partial blocks", "should render partial block as default");
-    MYCHECK("partial blocks", "should execute default block with proper context");
-    MYCHECK("partial blocks", "should propagate block parameters to default block");
-    MYCHECK("inline partials", "should define inline partials for template");
-    MYCHECK("inline partials", "should overwrite multiple partials in the same template");
-    MYCHECK("inline partials", "should define inline partials for block");
-    MYCHECK("inline partials", "should override global partials");
-    MYCHECK("inline partials", "should override template partials");
-    MYCHECK("inline partials", "should override partials down the entire stack");
-    MYCHECK("inline partials", "should define inline partials for partial call");
-    MYCHECK("inline partials", "should define inline partials in partial block call");
+    MYCHECK("partials", "partials", "registering undefined partial throws an exception");
+    MYCHECKALL("partials", "partials - partial blocks");
+    MYCHECKALL("partials", "partials - inline partials");
 
-    return 1;
+    return false;
 
 #undef MYCCHECK
 }
@@ -422,15 +431,17 @@ static inline void run_test(struct generic_test * test, int _i)
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
-    fprintf(stderr, "RAW: %s\n", json_object_to_json_string_ext(test->raw, JSON_C_TO_STRING_PRETTY));
+    fprintf(stderr, "RAW: %s\n", test->raw);
     fprintf(stderr, "NUM: %d\n", _i);
     fprintf(stderr, "TMPL: %s\n", test->tmpl);
     fprintf(stderr, "FLAGS: %ld\n", test->flags);
+    fflush(stderr);
 #endif
 
     //ck_assert_msg(shouldnt_skip(test), "Skipped");
-    if( !shouldnt_skip(test) ) {
+    if( should_skip(test) ) {
         fprintf(stderr, "SKIPPED #%d\n", _i);
+        fflush(stderr);
         return;
     }
 
@@ -475,17 +486,6 @@ static inline void run_test(struct generic_test * test, int _i)
     // Setup helpers
     vm->helpers = handlebars_value_ctor(HBSCTX(vm));
     handlebars_value_map_init(vm->helpers);
-    if( test->globalHelpers ) {
-        helpers = handlebars_value_from_json_object(ctx, test->globalHelpers);
-        load_fixtures(helpers);
-        handlebars_value_iterator_init(&it, helpers);
-        for (; it.current != NULL; it.next(&it)) {
-            //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-                handlebars_map_update(vm->helpers->v.map, it.key, it.current);
-            //}
-        }
-        handlebars_value_delref(helpers);
-    }
     if( test->helpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->helpers);
         load_fixtures(helpers);
@@ -501,15 +501,6 @@ static inline void run_test(struct generic_test * test, int _i)
     // Setup partials
     vm->partials = handlebars_value_ctor(ctx);
     handlebars_value_map_init(vm->partials);
-    if( test->globalPartials ) {
-        struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->globalPartials);
-        load_fixtures(partials);
-        handlebars_value_iterator_init(&it, partials);
-        for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(vm->partials->v.map, it.key, it.current);
-        }
-        handlebars_value_delref(partials);
-    }
     if( test->partials ) {
         struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->partials);
         load_fixtures(partials);
@@ -542,6 +533,7 @@ static inline void run_test(struct generic_test * test, int _i)
     } else if( ctx->e->msg ) {
         fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
     }
+    fflush(stderr);
 #endif
 
     if( test->exception ) {
@@ -549,13 +541,13 @@ static inline void run_test(struct generic_test * test, int _i)
 //        if( test->message ) {
 //            ck_assert_str_eq(vm->errmsg, test->message);
 //        }
-        if( test->message == NULL ) {
+        if( test->exceptionMatcher == NULL ) {
             // Just check if there was an error
             ck_assert_str_ne("", handlebars_error_msg(HBSCTX(vm)));
-        } else if( test->message[0] == '/' && test->message[strlen(test->message) - 1] == '/' ) {
+        } else if( test->exceptionMatcher[0] == '/' && test->exceptionMatcher[strlen(test->exceptionMatcher) - 1] == '/' ) {
             // It's a regex
-            char * tmp = strdup(test->message + 1);
-            tmp[strlen(test->message) - 2] = '\0';
+            char * tmp = strdup(test->exceptionMatcher + 1);
+            tmp[strlen(test->exceptionMatcher) - 2] = '\0';
             char * regex_error = NULL;
             if( 0 == regex_compare(tmp, handlebars_error_msg(HBSCTX(vm)), &regex_error) ) {
                 // ok
@@ -564,7 +556,7 @@ static inline void run_test(struct generic_test * test, int _i)
             }
             free(tmp);
         } else {
-            ck_assert_str_eq(test->message, handlebars_error_msg(HBSCTX(vm)));
+            ck_assert_str_eq(test->exceptionMatcher, handlebars_error_msg(HBSCTX(vm)));
         }
     } else {
         ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
@@ -629,8 +621,10 @@ Suite * parser_suite(void)
     if( getenv("TEST_NUM") != NULL ) {
         int num;
         sscanf(getenv("TEST_NUM"), "%d", &num);
-        start = end = num;
-        end++;
+        if (num < end && num >= start) {
+            start = end = num;
+            end++;
+        }
     }
 
     TCase * tc_ast_to_string_on_handlebars_spec = tcase_create("AST to string on handlebars spec");
@@ -674,7 +668,6 @@ int main(int argc, char *argv[])
         spec_dir = "./spec/handlebars/spec";
     }
     loadSpec("basic");
-    loadSpec("bench");
     loadSpec("blocks");
     loadSpec("builtins");
     loadSpec("data");

@@ -91,7 +91,7 @@ int handlebars_yy_debug = 0;
     struct handlebars_string * string;
     struct handlebars_ast_node * ast_node;
     struct handlebars_ast_list * ast_list;
-  
+
     struct handlebars_yy_block_intermediate block_intermediate;
     struct handlebars_yy_block_params block_params;
 }
@@ -175,7 +175,7 @@ int handlebars_yy_debug = 0;
 
 %%
 
-start : 
+start :
     program END {
       parser->program = $1;
       handlebars_whitespace_accept(parser, parser->program);
@@ -226,7 +226,7 @@ statement
   | COMMENT {
       // Strip comment strips in place
       unsigned strip = handlebars_ast_helper_strip_flags($1, $1);
-      $$ = handlebars_ast_node_ctor_comment(parser, 
+      $$ = handlebars_ast_node_ctor_comment(parser,
       			handlebars_ast_helper_strip_comment($1), &@$);
       $$->strip = strip;
     }
@@ -245,6 +245,9 @@ content
 raw_block
   : open_raw_block content END_RAW_BLOCK {
       $$ = handlebars_ast_helper_prepare_raw_block(parser, $1, $2, $3, &@$);
+    }
+    | open_raw_block END_RAW_BLOCK {
+      $$ = handlebars_ast_helper_prepare_raw_block(parser, $1, handlebars_string_ctor(HBSCTX(parser), HBS_STRL("")), $2, &@$);
     }
   ;
 
@@ -268,7 +271,7 @@ block
       $$ = handlebars_ast_helper_prepare_block(parser, $1, NULL, NULL, $2, 1, &@$);
     }
   ;
-  
+
 block_intermediate
   : inverse_chain {
       $$.program = NULL;
@@ -326,20 +329,20 @@ inverse_chain
 
 inverse_and_program
   : INVERSE program {
-      $$ = handlebars_ast_node_ctor_inverse(parser, $2, 0, 
+      $$ = handlebars_ast_node_ctor_inverse(parser, $2, 0,
               handlebars_ast_helper_strip_flags($1, $1), &@$);
     }
   | INVERSE {
       struct handlebars_ast_node * program_node;
       program_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PROGRAM);
-      $$ = handlebars_ast_node_ctor_inverse(parser, program_node, 0, 
+      $$ = handlebars_ast_node_ctor_inverse(parser, program_node, 0,
               handlebars_ast_helper_strip_flags($1, $1), &@$);
     }
   ;
 
 close_block
   : OPEN_ENDBLOCK helper_name CLOSE {
-      $$ = handlebars_ast_node_ctor_intermediate(parser, $2, NULL, NULL, 
+      $$ = handlebars_ast_node_ctor_intermediate(parser, $2, NULL, NULL,
               handlebars_ast_helper_strip_flags($1, $3), &@$);
     }
   ;
@@ -511,7 +514,7 @@ helper_name
       $$ = handlebars_ast_node_ctor_null(parser, $1, &@$);
     }
   ;
-  
+
 partial_name
   : helper_name {
       $$ = $1;
@@ -536,17 +539,17 @@ path
 path_segments
   : path_segments SEP ID {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor_path_segment(parser, $3, $2, &@$);
-      
+
       handlebars_ast_list_append($1, ast_node);
       $$ = $1;
     }
   | ID {
       struct handlebars_ast_node * ast_node;
       MEMCHK($1); // this is weird
-  	  
+
       ast_node = handlebars_ast_node_ctor_path_segment(parser, $1, NULL, &@$);
       MEMCHK(ast_node); // this is weird
-      
+
       $$ = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append($$, ast_node);
     }

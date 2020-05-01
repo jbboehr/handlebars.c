@@ -6,6 +6,14 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+### Changed
+- Updated handlebars-spec to v104.7.6 (handlebars.js v4.7.6)
+
+### Fixed
+- Segmentation fault when attempting to use unimplemented inline partials in the VM
+- Empty raw block no longer has a parse error
+- Access of uninitialized memory in partials related to indentation
+
 ## [0.7.2] - 2020-04-21
 
 ### Fixed
