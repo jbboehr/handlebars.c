@@ -22,23 +22,14 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 struct handlebars_stack;
 struct handlebars_value;
 struct handlebars_vm;
+struct handlebars_options;
 
-struct handlebars_options {
-    struct handlebars_vm * vm;
-    long inverse;
-    long program;
-    struct handlebars_string * name;
-    struct handlebars_value * scope;
-    struct handlebars_value * data;
-    struct handlebars_value * hash;
-};
+extern size_t HANDLEBARS_OPTIONS_SIZE;
 
 typedef struct handlebars_value * (*handlebars_helper_func)(
     int argc,
@@ -79,8 +70,20 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS) HBS_ATTR
 struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-#ifdef	__cplusplus
-}
-#endif
+#ifdef HANDLEBARS_HELPERS_PRIVATE
 
-#endif
+struct handlebars_options {
+    struct handlebars_vm * vm;
+    long inverse;
+    long program;
+    struct handlebars_string * name;
+    struct handlebars_value * scope;
+    struct handlebars_value * data;
+    struct handlebars_value * hash;
+};
+
+#endif /* HANDLEBARS_HELPERS_PRIVATE */
+
+HBS_EXTERN_C_END
+
+#endif /* HANDLEBARS_HELPERS_H */

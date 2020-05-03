@@ -28,8 +28,8 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_string.h"
-
 #include "utils.h"
+
 
 
 START_TEST(test_handlebars_string_hash)

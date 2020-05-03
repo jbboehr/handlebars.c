@@ -22,20 +22,23 @@
 #endif
 
 #include <assert.h>
+#include <time.h>
 
 #if HAVE_LIBLMDB
 #include <lmdb.h>
 #endif
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#define HANDLEBARS_CACHE_PRIVATE
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_cache.h"
 #include "handlebars_map.h"
+#include "handlebars_memory.h"
+#include "handlebars_opcode_serializer.h"
+#include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
-#include "handlebars_opcode_serializer.h"
 
 
 

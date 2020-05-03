@@ -25,9 +25,8 @@
 #include <talloc.h>
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
-
 #include "handlebars_ast.h"
+#include "handlebars_memory.h"
 #include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"

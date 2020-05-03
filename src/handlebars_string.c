@@ -28,7 +28,6 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
-
 #include "handlebars_string.h"
 
 

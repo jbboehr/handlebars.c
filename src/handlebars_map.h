@@ -17,39 +17,19 @@
  * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "handlebars.h"
+
 #ifndef HANDLEBARS_MAP_H
 #define HANDLEBARS_MAP_H
 
-#include "handlebars.h"
-
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 struct handlebars_context;
+struct handlebars_map;
+struct handlebars_string;
 struct handlebars_value;
 
-struct handlebars_map_entry {
-    struct handlebars_string * key;
-    struct handlebars_value * value;
-    struct handlebars_map_entry * next;
-    struct handlebars_map_entry * prev;
-    struct handlebars_map_entry * parent;
-    struct handlebars_map_entry * child;
-};
-
-struct handlebars_map {
-    struct handlebars_context * ctx;
-    size_t i;
-    struct handlebars_map_entry * first;
-    struct handlebars_map_entry * last;
-    size_t table_size;
-    struct handlebars_map_entry ** table;
-    size_t collisions;
-};
-
-#define handlebars_map_foreach(list, el, tmp) \
-    for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
+extern size_t HANDLEBARS_MAP_SIZE;
 
 /**
  * @brief Construct a new map
@@ -137,8 +117,40 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
  */
 bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
 
-#ifdef	__cplusplus
-}
-#endif
+#ifndef HANDLEBARS_MAP_PRIVATE
 
-#endif
+size_t handlebars_map_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
+
+#else /* HANDLEBARS_MAP_PRIVATE */
+
+struct handlebars_map_entry {
+    struct handlebars_string * key;
+    struct handlebars_value * value;
+    struct handlebars_map_entry * next;
+    struct handlebars_map_entry * prev;
+    struct handlebars_map_entry * parent;
+    struct handlebars_map_entry * child;
+};
+
+struct handlebars_map {
+    struct handlebars_context * ctx;
+    size_t i;
+    struct handlebars_map_entry * first;
+    struct handlebars_map_entry * last;
+    size_t table_size;
+    struct handlebars_map_entry ** table;
+    size_t collisions;
+};
+
+#define handlebars_map_foreach(list, el, tmp) \
+    for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
+
+inline size_t handlebars_map_count(struct handlebars_map * map) {
+    return map->i;
+}
+
+#endif /* HANDLEBARS_MAP_PRIVATE */
+
+HBS_EXTERN_C_END
+
+#endif /* HANDLEBARS_MAP_H */

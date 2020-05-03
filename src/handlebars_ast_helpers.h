@@ -19,7 +19,7 @@
 
 /**
  * @file
- * @brief Helpers for manipulating the AST 
+ * @brief Helpers for manipulating the AST
  */
 
 #ifndef HANDLEBARS_AST_HELPERS_H
@@ -27,9 +27,7 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 // Declarations
 struct handlebars_ast_list;
@@ -122,8 +120,6 @@ bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path);
 
 bool handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
-#endif
+#endif /* HANDLEBARS_AST_HELPERS_H */

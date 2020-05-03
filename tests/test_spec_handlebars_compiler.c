@@ -36,16 +36,22 @@
 #include <json/json_tokener.h>
 #endif
 
+#define HANDLEBARS_COMPILER_PRIVATE
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 #include "utils.h"
+
+
 
 struct compiler_test {
     const char * suite_name;
@@ -667,12 +673,10 @@ START_TEST(handlebars_spec_compiler)
     // Initialize
     ctx = handlebars_context_ctor();
     parser = handlebars_parser_ctor(ctx);
-    parser->ignore_standalone = test->opt_ignore_standalone;
     compiler = handlebars_compiler_ctor(ctx);
 
     // Parse
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), test->flags);
 
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
@@ -680,11 +684,11 @@ START_TEST(handlebars_spec_compiler)
         compiler->known_helpers = (const char **) test->known_helpers;
     }
 
-    handlebars_compiler_compile(compiler, parser->program);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
     ck_assert_int_eq(0, handlebars_error_num(ctx));
 
     // Printer
-    actual = handlebars_program_print(ctx, compiler->program, 0);
+    actual = handlebars_program_print(ctx, program, 0);
 
     // Check
     /*if( test->exception ) {

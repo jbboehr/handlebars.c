@@ -22,23 +22,13 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 struct handlebars_context;
 struct handlebars_value;
+struct handlebars_stack;
 
-struct handlebars_stack {
-    //! Handlebars context
-    struct handlebars_context * ctx;
-    //! Number of elements in the stack
-    size_t i;
-    //! Currently available number of elements (size of the buffer)
-    size_t s;
-    //! Data
-    struct handlebars_value ** v;
-};
+extern size_t HANDLEBARS_STACK_SIZE;
 
 /**
  * @brief Construct a new stack
@@ -114,8 +104,21 @@ struct handlebars_value * handlebars_stack_set(
 
 void handlebars_stack_reverse(struct handlebars_stack * stack) HBS_ATTR_NONNULL_ALL;
 
-#ifdef	__cplusplus
-}
-#endif
+#ifdef HANDLEBARS_STACK_PRIVATE
 
-#endif
+struct handlebars_stack {
+    //! Handlebars context
+    struct handlebars_context * ctx;
+    //! Number of elements in the stack
+    size_t i;
+    //! Currently available number of elements (size of the buffer)
+    size_t s;
+    //! Data
+    struct handlebars_value ** v;
+};
+
+#endif /* HANDLEBARS_STACK_PRIVATE */
+
+HBS_EXTERN_C_END
+
+#endif /* HANDLEBARS_STACK_H */

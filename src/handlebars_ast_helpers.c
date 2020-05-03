@@ -26,17 +26,20 @@
 #include <string.h>
 #include <talloc.h>
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_AST_LIST_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars_whitespace.h"
 #include "handlebars.tab.h"
+
 
 
 #undef CONTEXT

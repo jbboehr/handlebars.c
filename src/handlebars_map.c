@@ -24,6 +24,8 @@
 #include <assert.h>
 #include <string.h>
 
+#define HANDLEBARS_MAP_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
@@ -35,6 +37,9 @@
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(ctx)
+
+size_t HANDLEBARS_MAP_SIZE = sizeof(struct handlebars_map);
+
 
 struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx)
 {
@@ -301,3 +306,5 @@ void handlebars_map_str_update(struct handlebars_map * map, const char * key, si
         _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
     }
 }
+
+extern inline inline size_t handlebars_map_count(struct handlebars_map * map);

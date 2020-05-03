@@ -50,12 +50,13 @@
 #include <json/json_tokener.h>
 #endif
 
-#include "utils.h"
 #include "handlebars.h"
 #include "handlebars_compiler.h"
+#include "handlebars_parser.h"
 #include "handlebars_helpers.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
+#include "utils.h"
 
 
 TALLOC_CTX * root;
@@ -164,7 +165,7 @@ int regex_compare(const char * regex, const char * string, char ** error)
     const char * errmsg = NULL;
     int erroffset;
     int ovector[30];
-    int rc, i, ret;
+    int rc, ret;
 
     re = pcre_compile(regex, 0, &errmsg, &erroffset, NULL);
 
@@ -195,7 +196,6 @@ char * normalize_template_whitespace(TALLOC_CTX *ctx, char *str, size_t len)
     char *i = str;
     char *ret = handlebars_talloc_size(context, len + 1);
     char *j = ret;
-    short in_ws = 0;
     while (1) {
         switch (*i) {
             case 0:

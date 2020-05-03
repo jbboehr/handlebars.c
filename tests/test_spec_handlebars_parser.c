@@ -38,15 +38,14 @@
 #endif
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
-
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
+#include "handlebars_memory.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
 
 
@@ -60,7 +59,7 @@ struct parser_test {
     int exception;
     char * exceptionMatcher;
     char * message;
-    char * raw;
+    const char * raw;
 };
 
 static TALLOC_CTX * rootctx;
@@ -193,8 +192,6 @@ START_TEST(handlebars_spec_parser)
     struct parser_test * test = &tests[_i];
     struct handlebars_context * ctx = handlebars_context_ctor();
     struct handlebars_parser * parser;
-    char * errmsg;
-    char errlinestr[32];
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
@@ -205,8 +202,7 @@ START_TEST(handlebars_spec_parser)
 #endif
 
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), 0);
 
     if( handlebars_error_num(HBSCTX(parser)) != HANDLEBARS_SUCCESS ) {
         char * errmsg = handlebars_error_message((struct handlebars_context *) parser);
@@ -246,7 +242,7 @@ START_TEST(handlebars_spec_parser)
             ck_assert_msg(0, lesigh);
         }
     } else {
-        struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), parser->program);
+        struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), ast);
 
 #ifndef NDEBUG
         fprintf(stderr, "AST: %s\n", output->val);

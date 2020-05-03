@@ -17,28 +17,16 @@
  * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HANDLEBARS_PRIVATE_H
-#define HANDLEBARS_PRIVATE_H
+#ifndef HANDLEBARS_DELIMITERS_H
+#define HANDLEBARS_DELIMITERS_H
 
 #include "handlebars.h"
 
-HBS_EXTERN_C_START
+struct handlebars_string * handlebars_preprocess_delimiters(
+    struct handlebars_context * ctx,
+    struct handlebars_string * tmpl,
+    struct handlebars_string * open,
+    struct handlebars_string * close
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
-struct handlebars_context;
-
-#define likely handlebars_likely
-#define unlikely handlebars_unlikely
-
-#define CONTEXT context
-#define MEMCHK_MSG HANDLEBARS_MEMCHECK_MSG
-#define MEMCHKEX(cond, ctx) HANDLEBARS_MEMCHECK(cond, ctx)
-#define MEMCHK(cond) MEMCHKEX(cond, CONTEXT)
-#define MEMCHKF(ptr) (HBS_TYPEOF(ptr)) handlebars_check(CONTEXT, (void *) (ptr), MEMCHK_MSG)
-#define MC(ptr) MEMCHKF(ptr)
-
-#define YY_NO_UNISTD_H 1
-#define YYLTYPE handlebars_locinfo
-
-HBS_EXTERN_C_END
-
-#endif
+#endif /* HANDLEBARS_DELIMITERS_H */

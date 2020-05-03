@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <talloc.h>
 
+#define HANDLEBARS_AST_LIST_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
@@ -56,7 +58,7 @@ void handlebars_ast_list_append(struct handlebars_ast_list * list, struct handle
     // Initialize list item
     item = MC(handlebars_talloc_zero(list, struct handlebars_ast_list_item));
     item->data = ast_node;
-    
+
     // Append item
     if( list->last == NULL ) {
         // Initialize
@@ -88,17 +90,17 @@ struct handlebars_ast_list_item * handlebars_ast_list_find(
 {
     struct handlebars_ast_list_item * item = NULL;
     struct handlebars_ast_list_item * tmp = NULL;
-    
+
     handlebars_ast_list_foreach(list, item, tmp) {
         if( item->data == ast_node ) {
             return item;
         }
     }
-    
+
     return NULL;
 }
 
-void handlebars_ast_list_insert_after(struct handlebars_ast_list * list, 
+void handlebars_ast_list_insert_after(struct handlebars_ast_list * list,
         struct handlebars_ast_list_item * item,
         struct handlebars_ast_list_item * new_item)
 {
@@ -112,7 +114,7 @@ void handlebars_ast_list_insert_after(struct handlebars_ast_list * list,
     item->next = new_item;
 }
 
-void handlebars_ast_list_insert_before(struct handlebars_ast_list * list, 
+void handlebars_ast_list_insert_before(struct handlebars_ast_list * list,
         struct handlebars_ast_list_item * item,
         struct handlebars_ast_list_item * new_item)
 {
@@ -131,22 +133,22 @@ bool handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handle
     struct handlebars_ast_list_item * it;
     struct handlebars_ast_list_item * tmp;
     struct handlebars_ast_list_item * found = NULL;
-    
+
     if( !list->first || !list->last ) {
         return false;
     }
-    
+
     handlebars_ast_list_foreach(list, it, tmp) {
         if( it->data == ast_node ) {
             found = it;
             break;
         }
     }
-    
+
     if( !found ) {
         return false;
     }
-    
+
     if( found->prev == NULL ) {
         list->first = found->next;
     } else {
@@ -158,9 +160,9 @@ bool handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handle
         found->next->prev = found->prev;
     }
     list->count--;
-    
+
     handlebars_talloc_free(found);
-    
+
     return true;
 }
 
@@ -170,11 +172,11 @@ void handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handl
 
     assert(list != NULL);
     assert(ast_node != NULL);
-    
+
     // Initialize list item
     item = MC(handlebars_talloc_zero(list, struct handlebars_ast_list_item));
     item->data = ast_node;
-    
+
     // Prepend item
     if( list->first == NULL ) {
         // Initialize

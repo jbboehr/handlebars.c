@@ -24,17 +24,19 @@
 #include <check.h>
 #include <talloc.h>
 
+#define HANDLEBARS_MAP_PRIVATE
+
 #include "handlebars.h"
-#include "handlebars_memory.h"
 #include "handlebars_map.h"
+#include "handlebars_memory.h"
 #include "handlebars_value.h"
 #include "utils.h"
+
 
 
 char mkchar(unsigned long i) {
     return (char) (32 + (i % (126 - 32)));
 }
-
 
 START_TEST(test_map)
 {

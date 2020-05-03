@@ -17,6 +17,16 @@
  * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <time.h>
+
+#define HANDLEBARS_COMPILER_PRIVATE
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -25,6 +35,8 @@
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
+
+
 
 #define PTR_DIFF(a, b) ((size_t) (((char *) a) - ((char *) b)))
 #define PTR_ADD(a, b) ((void *) (((char *) a) + (b)))

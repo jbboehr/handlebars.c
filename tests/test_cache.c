@@ -29,25 +29,30 @@
 #include <unistd.h>
 #endif
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
+#define HANDLEBARS_CACHE_PRIVATE
+#define HANDLEBARS_COMPILER_PRIVATE
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_cache.h"
 #include "handlebars_compiler.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_memory.h"
+#include "handlebars_parser.h"
 #include "handlebars_helpers.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
 
+
+
 static int memdebug;
-static const char * tmpl1 = "{{foo}}";
-static const char * tmpl2 = "{{bar}}";
-static const char * tmpl3 = "{{baz}}";
+// static const char * tmpl1 = "{{foo}}";
+// static const char * tmpl2 = "{{bar}}";
+// static const char * tmpl3 = "{{baz}}";
 
 
 struct cache_test_ctx {
@@ -77,8 +82,7 @@ static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cach
 
 START_TEST(test_cache_gc_entries)
 {
-    struct handlebars_cache * cache = handlebars_cache_ctor(context);
-    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
     size_t expected_size = sizeof(struct handlebars_module);
 
     struct cache_test_ctx * ctx0 = make_cache_test_ctx(0, cache);
@@ -118,25 +122,25 @@ static void execute_gc_test(struct handlebars_cache * cache)
     handlebars_value_map_init(partials);
     handlebars_map_str_add(partials->v.map, HBS_STRL("foo"), partial);
 
-    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{>foo}}"));
-    handlebars_parse(parser);
-    handlebars_compiler_compile(compiler, parser->program);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
+    handlebars_compiler_compile(compiler, ast);
 
-    struct handlebars_module * module = handlebars_program_serialize(context, compiler->program);
+    struct handlebars_module * module = handlebars_program_serialize(context, handlebars_compiler_get_program(compiler));
 
-    vm->helpers = handlebars_value_ctor(context);
-    handlebars_value_map_init(vm->helpers);
-    vm->partials = partials;
+    struct handlebars_value * helpers = handlebars_value_ctor(context);
+    handlebars_value_map_init(helpers);
+    handlebars_vm_set_helpers(vm, helpers);
 
-    vm->cache = cache;
+    handlebars_vm_set_partials(vm, partials);
+    handlebars_vm_set_cache(vm, cache);
 
-    handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(vm->buffer->val, "baz");
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(buffer->val, "baz");
 
     int i;
     for( i = 0; i < 10; i++ ) {
         handlebars_vm_execute(vm, module, value);
-        ck_assert_str_eq(vm->buffer->val, "baz");
+        ck_assert_str_eq(buffer->val, "baz");
     }
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 10);
@@ -152,6 +156,8 @@ static void execute_gc_test(struct handlebars_cache * cache)
 
 static void execute_reset_test(struct handlebars_cache * cache)
 {
+    struct handlebars_string * buffer;
+
     //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
     struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
     handlebars_value_convert(value);
@@ -163,28 +169,28 @@ static void execute_reset_test(struct handlebars_cache * cache)
     handlebars_value_map_init(partials);
     handlebars_map_str_add(partials->v.map, HBS_STRL("foo"), partial);
 
-    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{>foo}}"));
-    handlebars_parse(parser);
-    handlebars_compiler_compile(compiler, parser->program);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
 
-    struct handlebars_module * module = handlebars_program_serialize(context, compiler->program);
+    struct handlebars_module * module = handlebars_program_serialize(context, program);
 
-    vm->helpers = handlebars_value_ctor(context);
-    handlebars_value_map_init(vm->helpers);
-    vm->partials = partials;
+    struct handlebars_value * helpers = handlebars_value_ctor(context);
+    handlebars_value_map_init(helpers);
+    handlebars_vm_set_helpers(vm, helpers);
 
-    vm->cache = cache;
+    handlebars_vm_set_partials(vm, partials);
+    handlebars_vm_set_cache(vm, cache);
 
     // This shouldn't use the cache
-    handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(vm->buffer->val, "baz");
+    buffer = handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(buffer->val, "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
 
     // This should use the cache
-    handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(vm->buffer->val, "baz");
+    buffer = handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(buffer->val, "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 1);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
@@ -193,8 +199,8 @@ static void execute_reset_test(struct handlebars_cache * cache)
     handlebars_cache_reset(cache);
 
     // This shouldn't use the cache
-    handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(vm->buffer->val, "baz");
+    buffer = handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(buffer->val, "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);

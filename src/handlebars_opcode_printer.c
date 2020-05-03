@@ -24,6 +24,9 @@
 #include <assert.h>
 #include <string.h>
 
+#define HANDLEBARS_COMPILER_PRIVATE
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
@@ -43,8 +46,6 @@ struct handlebars_opcode_printer {
     int flags;
     struct handlebars_string * output;
 };
-
-
 
 static struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_context * context)
 {

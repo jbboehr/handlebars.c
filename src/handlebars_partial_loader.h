@@ -27,9 +27,7 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 struct handlebars_context;
 struct handlebars_string;
@@ -42,8 +40,6 @@ struct handlebars_value * handlebars_value_partial_loader_ctor(
     struct handlebars_string * extension
 );
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
-#endif
+#endif /* HANDLEBARS_PARTIAL_LOADER_H */

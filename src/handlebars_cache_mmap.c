@@ -21,8 +21,6 @@
 #include "config.h"
 #endif
 
-#include "handlebars.h"
-
 #ifdef HAVE_PTHREAD
 
 #include <assert.h>
@@ -32,17 +30,23 @@
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#define HANDLEBARS_CACHE_PRIVATE
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_cache.h"
 #include "handlebars_map.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
+#include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
-#include "handlebars_opcode_serializer.h"
+
+
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(cache)

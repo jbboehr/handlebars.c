@@ -24,6 +24,9 @@
 #include <assert.h>
 #include <string.h>
 
+#define HANDLEBARS_HELPERS_PRIVATE
+#define HANDLEBARS_VM_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_helpers_ht.h"
 #include "handlebars_map.h"
@@ -35,25 +38,9 @@
 
 
 
+size_t HANDLEBARS_OPTIONS_SIZE = sizeof(struct handlebars_options);
+
 #define SAFE_RETURN(val) return val ? val : handlebars_value_ctor(CONTEXT)
-
-#undef CONTEXT
-#define CONTEXT HBSCTX(vm)
-
-static inline struct handlebars_value * call_helper_str(const char * name, unsigned int len, int argc, struct handlebars_value * argv[], struct handlebars_options * options)
-{
-    struct handlebars_value * helper;
-    struct handlebars_value * result;
-    handlebars_helper_func fn;
-    if( NULL != (helper = handlebars_value_map_str_find(options->vm->helpers, name, len)) ) {
-        result = handlebars_value_call(helper, argc, argv, options);
-        handlebars_value_delref(helper);
-        return result;
-    } else if( NULL != (fn = handlebars_builtins_find(name, len)) ) {
-        return fn(argc, argv, options);
-    }
-    return NULL;
-}
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(options->vm)
@@ -213,7 +200,7 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HEL
 inverse:
         result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        ret = call_helper_str(HBS_STRL("each"), argc, argv, options);
+        ret = handlebars_vm_call_helper_str(HBS_STRL("each"), argc, argv, options);
         goto done;
     } else {
         // For object, etc
@@ -344,7 +331,7 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 
     handlebars_value_boolean(conditional, conditional ? handlebars_value_is_empty(conditional) : true);
 
-    result = call_helper_str(HBS_STRL("if"), argc, argv, options);
+    result = handlebars_vm_call_helper_str(HBS_STRL("if"), argc, argv, options);
     //handlebars_value_delref(conditional); // @todo double-check
     SAFE_RETURN(result);
 }

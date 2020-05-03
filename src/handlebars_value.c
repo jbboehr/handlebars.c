@@ -39,10 +39,15 @@
 #include <json/json_tokener.h>
 #endif
 
+#define HANDLEBARS_MAP_PRIVATE
+#define HANDLEBARS_VALUE_PRIVATE
+#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
+
 #include "handlebars.h"
-#include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+
+#include "handlebars_map.h"
 #include "handlebars_stack.h"
 #include "handlebars_utils.h"
 #include "handlebars_value.h"
@@ -173,7 +178,7 @@ bool handlebars_value_get_boolval(struct handlebars_value * value)
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             return handlebars_stack_length(value->v.stack) != 0;
         case HANDLEBARS_VALUE_TYPE_MAP:
-            return value->v.map->first != NULL;
+            return handlebars_map_count(value->v.map) > 0;
         case HANDLEBARS_VALUE_TYPE_USER:
             return handlebars_value_count(value) != 0;
         default:
@@ -523,3 +528,12 @@ void handlebars_value_dtor(struct handlebars_value * value)
     memset(&value->v, 0, sizeof(value->v));
     value->flags = restore_flags;
 }
+
+#if !defined(HANDLEBARS_NO_REFCOUNT)
+extern inline int handlebars_value_addref(struct handlebars_value * value);
+extern inline struct handlebars_value * handlebars_value_addref2(struct handlebars_value * value);
+extern inline int handlebars_value_delref(struct handlebars_value * value);
+extern inline int handlebars_value_try_delref(struct handlebars_value * value);
+extern inline int handlebars_value_try_addref(struct handlebars_value * value);
+extern inline int handlebars_value_refcount(struct handlebars_value * value);
+#endif

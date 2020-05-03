@@ -28,11 +28,13 @@
 #include <string.h>
 #include <talloc.h>
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#define HANDLEBARS_PARSER_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
+#include "handlebars_memory.h"
+#include "handlebars_parser.h"
+#include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_utils.h"
 #include "handlebars.tab.h"

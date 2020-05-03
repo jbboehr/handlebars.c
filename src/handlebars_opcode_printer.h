@@ -27,9 +27,7 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 // Declarations
 struct handlebars_opcode;
@@ -54,12 +52,12 @@ enum handlebars_opcode_printer_flag {
      * @brief Dump all operands (not implemented)
      */
     handlebars_opcode_printer_flag_dump_all_operands = (1 << 1),
-    
+
     /**
      * @brief Print locations
      */
     handlebars_opcode_printer_flag_locations = (1 << 2),
-    
+
     handlebars_opcode_printer_flag_all = (1 << 3) - 1
 };
 
@@ -126,8 +124,6 @@ struct handlebars_string * handlebars_program_print(
     int flags
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
-#endif
+#endif /* HANDLEBARS_OPCODE_PRINTER_H */

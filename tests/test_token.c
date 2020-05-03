@@ -26,7 +26,6 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
-
 #include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
@@ -40,10 +39,10 @@ START_TEST(test_token_ctor)
     struct handlebars_token * token = handlebars_token_ctor(HBSCTX(parser), OPEN, string);
 
     ck_assert_ptr_ne(NULL, token);
-    ck_assert_ptr_ne(NULL, token->string);
-    ck_assert_int_eq(OPEN, token->token);
-    ck_assert_str_eq(token->string->val, "{{");
-    ck_assert_uint_eq(sizeof("{{") - 1, token->string->len);
+    ck_assert_ptr_ne(NULL, handlebars_token_get_text(token));
+    ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
+    ck_assert_str_eq(handlebars_token_get_text(token)->val, "{{");
+    ck_assert_uint_eq(sizeof("{{") - 1, handlebars_token_get_text(token)->len);
 
     handlebars_token_dtor(token);
 }

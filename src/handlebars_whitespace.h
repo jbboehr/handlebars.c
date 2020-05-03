@@ -27,9 +27,7 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 // Declarations
 struct handlebars_ast_list;
@@ -66,8 +64,6 @@ void handlebars_whitespace_accept(
     struct handlebars_ast_node * node
 ) HBS_ATTR_NONNULL(1);
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
-#endif
+#endif /* HANDLEBARS_WHITESPACE_H */

@@ -24,11 +24,12 @@
 #include <check.h>
 #include <talloc.h>
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
+#define HANDLEBARS_AST_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
+#include "handlebars_memory.h"
 #include "handlebars_string.h"
 #include "handlebars.tab.h"
 #include "utils.h"

@@ -29,9 +29,7 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 #define HBS_STRVAL(str) str->val
 #define HBS_STRLEN(str) str->len
@@ -481,8 +479,6 @@ struct handlebars_string * handlebars_string_rtrim(
     const char * what, size_t what_length
 ) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
-#endif
+#endif /* HANDLEBARS_STRING_H */

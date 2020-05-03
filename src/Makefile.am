@@ -41,9 +41,11 @@ include_HEADERS = \
 	handlebars_cache.h \
 	handlebars_compiler.h \
 	handlebars_config.h \
+	handlebars_delimiters.h \
 	handlebars_helpers.h \
 	handlebars_map.h \
 	handlebars_memory.h \
+	handlebars_parser.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_serializer.h \
 	handlebars_opcodes.h \
@@ -82,12 +84,14 @@ libhandlebars_la_SOURCES = \
 	handlebars_ast_printer.h \
 	handlebars_ast_printer.c \
 	handlebars_cache.h \
+	handlebars_cache.c \
 	handlebars_cache_lmdb.c \
 	handlebars_cache_mmap.c \
 	handlebars_cache_simple.c \
 	handlebars_compiler.h \
 	handlebars_compiler.c \
 	handlebars_delimiters.c \
+	handlebars_delimiters.h \
 	handlebars_helpers.h \
 	handlebars_helpers.c \
 	handlebars_map.h \
@@ -98,6 +102,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_opcode_serializer.c \
 	handlebars_opcodes.h \
 	handlebars_opcodes.c \
+	handlebars_parser.h \
+	handlebars_parser.c \
     handlebars_partial_loader.h \
     handlebars_partial_loader.c \
 	handlebars_private.h \

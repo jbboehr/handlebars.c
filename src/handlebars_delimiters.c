@@ -31,6 +31,8 @@
 #include "handlebars_private.h"
 #include "handlebars_string.h"
 
+
+
 #if defined(YYDEBUG)
 #define append(str, len) fprintf(stderr, "Delimiter preprocessor: appending: \"%.*s\"\n", len, str); \
     new_tmpl = handlebars_string_append(ctx, new_tmpl, str, len)

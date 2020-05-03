@@ -25,14 +25,14 @@
 #include <string.h>
 #include <talloc.h>
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
+#define HANDLEBARS_OPCODES_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_compiler.h"
+#include "handlebars_memory.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_string.h"
-
 #include "utils.h"
 
 

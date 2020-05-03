@@ -25,11 +25,15 @@
 #include <ctype.h>
 #include <string.h>
 
+#define HANDLEBARS_HELPERS_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_map.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
+
+
 
 uint32_t adler32(unsigned char *data, size_t len);
 
@@ -662,7 +666,6 @@ FIXTURE_FN(2084318034)
     // This is a dumb test
     // "function (_undefined, _null, options) {\n            return (_undefined === undefined) + ' ' + (_null === null) + ' ' + (typeof options);\n          }"
     struct handlebars_value * arg1 = argv[0];
-    struct handlebars_value * arg2 = argv[1];
     char * res = handlebars_talloc_asprintf(options->vm, "%s %s %s",
                                             (arg1->type == HANDLEBARS_VALUE_TYPE_NULL ? "true" : "false"),
                                             (arg1->type == HANDLEBARS_VALUE_TYPE_NULL ? "true" : "false"),
@@ -1586,7 +1589,7 @@ FIXTURE_FN(401804363)
         FIXTURE_STRING("must be run with mustache style lambdas")
     }
     struct handlebars_value * context = argv[0];
-    struct handlebars_string * str = handlebars_value_to_string(argv[0]);
+    struct handlebars_string * str = handlebars_value_to_string(context);
     if (0 == strncmp(str->val, "{{x}}", sizeof("{{x}}") - 1)) {
         FIXTURE_STRING("yes");
     } else {
@@ -1683,7 +1686,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
     }
     assert(jsvalue != NULL);
     assert(jsvalue->type == HANDLEBARS_VALUE_TYPE_STRING);
-    uint32_t hash = adler32(handlebars_value_to_string(jsvalue)->val, handlebars_value_get_strlen(jsvalue));
+    uint32_t hash = adler32((unsigned char *) handlebars_value_to_string(jsvalue)->val, handlebars_value_get_strlen(jsvalue));
 
     switch( hash ) {
         FIXTURE_CASE(20974934);
@@ -1872,6 +1875,9 @@ void load_fixtures(struct handlebars_value * value)
             for( ; it.current != NULL; it.next(&it) ) {
                 load_fixtures(it.current);
             }
+            break;
+        default:
+            // do nothing
             break;
     }
 }

@@ -21,8 +21,6 @@
 #include "config.h"
 #endif
 
-#include "handlebars.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,14 +29,16 @@
 #include <assert.h>
 #include <getopt.h>
 
-#include "handlebars_memory.h"
-
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
+#include "handlebars_delimiters.h"
+#include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_parser.h"
 #include "handlebars_partial_loader.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
@@ -49,10 +49,10 @@
 #ifdef _MSC_VER
 #define BOOLEAN HBS_BOOLEAN
 #endif
-#include "handlebars.tab.h"
-#include "handlebars.lex.h"
 
 #define __BUFF_SIZE 1024
+
+
 
 TALLOC_CTX * root;
 char * input_name = NULL;
@@ -305,14 +305,15 @@ static int do_debug(void)
 {
     fprintf(stderr, "sizeof(void *): %lu\n", (long unsigned) sizeof(void *));
     fprintf(stderr, "sizeof(struct handlebars_context): %lu\n", (long unsigned) sizeof(struct handlebars_context));
-    fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) sizeof(struct handlebars_compiler));
-    fprintf(stderr, "sizeof(struct handlebars_opcode): %lu\n", (long unsigned) sizeof(struct handlebars_opcode));
-    fprintf(stderr, "sizeof(struct handlebars_operand): %lu\n", (long unsigned) sizeof(struct handlebars_operand));
-    fprintf(stderr, "sizeof(struct handlebars_parser): %lu\n", (long unsigned) sizeof(struct handlebars_parser));
-    fprintf(stderr, "sizeof(struct handlebars_program): %lu\n", (long unsigned) sizeof(struct handlebars_program));
+    fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) HANDLEBARS_COMPILER_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_opcode): %lu\n", (long unsigned) HANDLEBARS_OPCODE_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_operand): %lu\n", (long unsigned) HANDLEBARS_OPERAND_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_options): %lu\n", (long unsigned) HANDLEBARS_OPTIONS_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_parser): %lu\n", (long unsigned) HANDLEBARS_PARSER_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_program): %lu\n", (long unsigned) HANDLEBARS_PROGRAM_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) sizeof(struct handlebars_value));
     fprintf(stderr, "sizeof(union handlebars_value_internals): %lu\n", (long unsigned) sizeof(union handlebars_value_internals));
-    fprintf(stderr, "sizeof(struct handlebars_vm): %lu\n", (long unsigned) sizeof(struct handlebars_vm));
+    fprintf(stderr, "sizeof(struct handlebars_vm): %lu\n", (long unsigned) HANDLEBARS_VM_SIZE);
     return 0;
 }
 
@@ -320,10 +321,7 @@ static int do_lex(void)
 {
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
-    struct handlebars_token * token = NULL;
     struct handlebars_string * tmpl;
-    int token_int = 0;
-    struct handlebars_string * output;
     jmp_buf jmp;
 
 
@@ -331,7 +329,7 @@ static int do_lex(void)
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
         goto error;
     }
 
@@ -345,32 +343,19 @@ static int do_lex(void)
     }
 
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = tmpl;
 
-    // Run
-    do {
-        YYSTYPE yylval_param;
-        YYLTYPE yylloc_param;
-        YYSTYPE * lval;
+    // Lex
+    struct handlebars_token ** tokens = handlebars_lex_ex(parser, tmpl);
 
-        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
-        if( token_int == END || token_int == INVALID ) {
-            break;
-        }
-        lval = handlebars_yy_get_lval(parser->scanner);
-
-        // Make token object
-        token = handlebars_token_ctor(ctx, token_int, lval->string);
-
-        // Print token
-        output = handlebars_token_print(ctx, token, 0);
-        fprintf(stdout, "%s\n", output->val);
+    for ( ; *tokens; tokens++ ) {
+        struct handlebars_string * tmp = handlebars_token_print(ctx, *tokens, 1);
+        fwrite(tmp->val, sizeof(char), tmp->len, stdout);
         fflush(stdout);
-        handlebars_talloc_free(output);
-    } while( token && token_int != END && token_int != INVALID );
+        handlebars_talloc_free(tmp);
+    }
 
 error:
-handlebars_context_dtor(ctx);
+    handlebars_context_dtor(ctx);
     return 0;
 }
 
@@ -387,7 +372,7 @@ static int do_parse(void)
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
         goto error;
     }
 
@@ -402,16 +387,11 @@ static int do_parse(void)
 
     // Parse
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = tmpl;
 
-    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
-        parser->ignore_standalone = 1;
-    }
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
-    handlebars_parse(parser);
-
-    output = handlebars_ast_print(HBSCTX(parser), parser->program);
-    fprintf(stdout, "%s\n", output->val);
+    output = handlebars_ast_print(HBSCTX(parser), ast);
+    fwrite(output->val, sizeof(char), output->len, stdout);
 
 error:
     handlebars_context_dtor(ctx);
@@ -432,16 +412,12 @@ static int do_compile(void)
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
         goto error;
     }
 
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
-
-    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
-        parser->ignore_standalone = 1;
-    }
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
 
@@ -455,15 +431,14 @@ static int do_compile(void)
     }
 
     // Parse
-    parser->tmpl = tmpl;
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     // Compile
-    handlebars_compiler_compile(compiler, parser->program);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
 
     // Print
-    output = handlebars_program_print(ctx, compiler->program, 0);
-    fprintf(stdout, "%.*s\n", (int) output->len, output->val);
+    output = handlebars_program_print(ctx, program, 0);
+    fwrite(output->val, sizeof(char), output->len, stdout);
 
 error:
     handlebars_context_dtor(ctx);
@@ -493,20 +468,16 @@ static int do_execute(void)
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
     vm = handlebars_vm_ctor(ctx);
-    vm->helpers = handlebars_value_ctor(ctx);
+    handlebars_vm_set_helpers(vm, handlebars_value_ctor(ctx));
 
     if (enable_partial_loader) {
         struct handlebars_string *partial_path_str = NULL;
         struct handlebars_string *partial_extension_str = NULL;
         partial_path_str = handlebars_string_ctor(ctx, partial_path, strlen(partial_path));
         partial_extension_str = handlebars_string_ctor(ctx, partial_extension, strlen(partial_extension));
-        vm->partials = handlebars_value_partial_loader_ctor(ctx, partial_path_str, partial_extension_str);
+        handlebars_vm_set_partials(vm, handlebars_value_partial_loader_ctor(ctx, partial_path_str, partial_extension_str));
     } else {
-        vm->partials = handlebars_value_ctor(ctx);
-    }
-
-    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
-        parser->ignore_standalone = 1;
+        handlebars_vm_set_partials(vm, handlebars_value_ctor(ctx));
     }
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
@@ -539,20 +510,19 @@ static int do_execute(void)
     }
 
     // Parse
-    parser->tmpl = tmpl;
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     // Compile
-    handlebars_compiler_compile(compiler, parser->program);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
 
     // Serialize
-    module = handlebars_program_serialize(ctx, compiler->program);
+    module = handlebars_program_serialize(ctx, program);
 
     // Execute
-    vm->flags = compiler_flags;
-    handlebars_vm_execute(vm, module, context);
+    handlebars_vm_set_flags(vm, compiler_flags);
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, context);
 
-    fprintf(stdout, "%.*s", (int) vm->buffer->len, vm->buffer->val);
+    fprintf(stdout, "%.*s", (int) buffer->len, buffer->val);
 
 error:
     handlebars_context_dtor(ctx);

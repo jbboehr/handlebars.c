@@ -24,6 +24,8 @@
 #include <assert.h>
 #include <string.h>
 
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
@@ -33,6 +35,8 @@
 
 
 
+size_t HANDLEBARS_OPCODE_SIZE = sizeof(struct handlebars_opcode);
+size_t HANDLEBARS_OPERAND_SIZE = sizeof(struct handlebars_operand);
 
 struct handlebars_opcode * handlebars_opcode_ctor(
         struct handlebars_context * context, enum handlebars_opcode_type type)
@@ -303,3 +307,5 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
             return 4;
     }
 }
+
+extern inline void handlebars_opcode_set_loc(struct handlebars_opcode * opcode, struct handlebars_locinfo loc);

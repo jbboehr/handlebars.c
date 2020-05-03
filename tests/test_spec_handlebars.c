@@ -36,19 +36,20 @@
 #endif
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
-
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_memory.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
+
+
 
 struct generic_test {
     const char * suiteName;
@@ -69,7 +70,7 @@ struct generic_test {
 
     char ** known_helpers;
     long flags;
-    char * raw;
+    const char * raw;
 };
 
 static int memdebug;
@@ -122,13 +123,11 @@ long json_load_compile_flags(struct json_object * object)
 
 char ** json_load_known_helpers(void * ctx, struct json_object * object, struct json_object * helpers)
 {
-    struct json_object * array_item = NULL;
-    int array_len = 0;
     const char ** ptr2 = handlebars_builtins_names();
 
-    if (!object && !helpers) {
-        return ptr2;
-    }
+    // if (!object && !helpers) {
+    //     return ptr2;
+    // }
 
     // Let's just allocate a nice fat array >.>
     // @TODO FIXME
@@ -256,7 +255,7 @@ static void loadSpecTest(json_object * object, const char *suiteName)
     struct json_object * kh = NULL;
     if( cur && json_object_get_type(cur) == json_type_object ) {
         test->flags = json_load_compile_flags(cur);
-        struct json_object * cur2 = json_object_object_get(cur, "knownHelpers");
+        // struct json_object * cur2 = json_object_object_get(cur, "knownHelpers");
     }
     test->known_helpers = json_load_known_helpers(test, kh, test->helpers);
 
@@ -354,15 +353,14 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
         goto done;
     }
 
-    parser->tmpl = tmpl;
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         ck_assert_msg(0, handlebars_error_msg(ctx));
     }
 
-    ast_str = handlebars_ast_to_string(ctx, parser->program);
+    ast_str = handlebars_ast_to_string(ctx, ast);
 
     actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
     if (strcmp(actual, expected) != 0) {
@@ -425,7 +423,6 @@ static inline void run_test(struct generic_test * test, int _i)
     struct handlebars_parser * parser;
     struct handlebars_vm * vm;
     struct handlebars_value * context;
-    struct handlebars_value * helpers;
     struct handlebars_value_iterator it;
     struct handlebars_module * module;
 
@@ -452,8 +449,7 @@ static inline void run_test(struct generic_test * test, int _i)
     compiler = handlebars_compiler_ctor(ctx);
 
     // Parse
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), test->flags);
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
@@ -465,10 +461,10 @@ static inline void run_test(struct generic_test * test, int _i)
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
     if( test->known_helpers ) {
-        compiler->known_helpers = (const char **) test->known_helpers;
+        handlebars_compiler_set_known_helpers(compiler, (const char **) test->known_helpers);
     }
 
-    handlebars_compiler_compile(compiler, parser->program);
+    handlebars_compiler_compile(compiler, ast);
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         // @todo check message
         ck_assert_int_eq(1, test->exception);
@@ -476,40 +472,42 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     // Serialize
-    module = handlebars_program_serialize(ctx, compiler->program);
+    module = handlebars_program_serialize(ctx, handlebars_compiler_get_program(compiler));
     handlebars_compiler_dtor(compiler);
 
     // Setup VM
     vm = handlebars_vm_ctor(ctx);
-    vm->flags = test->flags;
+    handlebars_vm_set_flags(vm, test->flags);
 
     // Setup helpers
-    vm->helpers = handlebars_value_ctor(HBSCTX(vm));
-    handlebars_value_map_init(vm->helpers);
+    struct handlebars_value * helpers = handlebars_value_ctor(HBSCTX(vm));
+    handlebars_value_map_init(helpers);
     if( test->helpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->helpers);
         load_fixtures(helpers);
         handlebars_value_iterator_init(&it, helpers);
         for (; it.current != NULL; it.next(&it)) {
             //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-            handlebars_map_update(vm->helpers->v.map, it.key, it.current);
+            handlebars_map_update(helpers->v.map, it.key, it.current);
             //}
         }
-        handlebars_value_delref(helpers);
     }
+    handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partials
-    vm->partials = handlebars_value_ctor(ctx);
-    handlebars_value_map_init(vm->partials);
+    struct handlebars_value * partials;
     if( test->partials ) {
-        struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->partials);
+        partials = handlebars_value_from_json_object(ctx, test->partials);
         load_fixtures(partials);
         handlebars_value_iterator_init(&it, partials);
         for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(vm->partials->v.map, it.key, it.current);
+            handlebars_map_update(partials->v.map, it.key, it.current);
         }
-        handlebars_value_delref(partials);
+    } else {
+        partials = handlebars_value_ctor(ctx);
+        handlebars_value_map_init(partials);
     }
+    handlebars_vm_set_partials(vm, partials);
 
     // Load context
     context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
@@ -517,19 +515,20 @@ static inline void run_test(struct generic_test * test, int _i)
 
     // Load data
     if( test->data ) {
-        vm->data = handlebars_value_from_json_object(ctx, test->data);
-        load_fixtures(vm->data);
+        struct handlebars_value * data = handlebars_value_from_json_object(ctx, test->data);
+        load_fixtures(data);
+        handlebars_vm_set_data(vm, data);
     }
 
     // Execute
-    handlebars_vm_execute(vm, module, context);
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, context);
 
 #ifndef NDEBUG
     fprintf(stderr, "TMPL %s\n", test->tmpl);
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
-        fprintf(stderr, "ACTUAL: %s\n", vm->buffer->val);
-        fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer->val, test->expected) ? "PASS" : "FAIL");
+        fprintf(stderr, "ACTUAL: %s\n", buffer->val);
+        fprintf(stderr, "%s\n", buffer && 0 == strcmp(buffer->val, test->expected) ? "PASS" : "FAIL");
     } else if( ctx->e->msg ) {
         fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
     }
@@ -561,23 +560,20 @@ static inline void run_test(struct generic_test * test, int _i)
     } else {
         ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
         ck_assert_ptr_ne(test->expected, NULL);
-        ck_assert_ptr_ne(vm->buffer, NULL);
+        ck_assert_ptr_ne(buffer, NULL);
 
-        if (strcmp(vm->buffer->val, test->expected) != 0) {
+        if (strcmp(buffer->val, test->expected) != 0) {
             char *tmp = handlebars_talloc_asprintf(rootctx,
                                                    "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                                                    "" /*test->suite_name*/,
                                                    test->description, test->it, test->flags,
-                                                   test->tmpl, test->expected, vm->buffer->val);
+                                                   test->tmpl, test->expected, buffer->val);
             ck_abort_msg(tmp);
         }
     }
 
     // Memdebug
     handlebars_value_delref(context);
-    handlebars_value_delref(vm->helpers);
-    handlebars_value_delref(vm->partials);
-    handlebars_value_try_delref(vm->data);
     handlebars_vm_dtor(vm);
     if( memdebug ) {
         talloc_report_full(ctx, stderr);

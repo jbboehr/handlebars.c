@@ -39,10 +39,14 @@
 #include <json/json_tokener.h>
 #endif
 
+#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
+
+#include "handlebars.h"
 #include "handlebars_private.h"
 #include "handlebars_memory.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
+
 
 
 #define HANDLEBARS_JSON(value) ((struct handlebars_json *) talloc_get_type(value->v.usr, struct handlebars_json))
@@ -452,3 +456,5 @@ struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_co
     handlebars_value_init_yaml_string(ctx, value, yaml);
     return value;
 }
+
+extern inline handlebars_count_func handlebars_value_handlers_get_count_fn(struct handlebars_value_handlers * handlers);

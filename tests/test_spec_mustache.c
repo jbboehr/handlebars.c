@@ -39,21 +39,20 @@
 #include <check.h>
 #include <stdio.h>
 #include <talloc.h>
-#include <yaml.h>
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
-
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
+#include "handlebars_delimiters.h"
 #include "handlebars_helpers.h"
+#include "handlebars_memory.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
 
 
@@ -83,17 +82,13 @@ static char * spec_dir;
 
 static bool loadSpecTestPartials(yaml_document_t * document, yaml_node_t * node, struct mustache_test * test)
 {
-    yaml_node_pair_t * pair;
-
     if( !node || node->type != YAML_MAPPING_NODE ) {
         fprintf(stderr, "Test partials was not a mapping node, was %d\n", node->type);
         return false;
     }
 
     test->partials = handlebars_value_from_yaml_node(test->ctx, document, node);
-    /*for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
-
-    }*/
+    return true;
 }
 
 static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node)
@@ -168,9 +163,6 @@ static bool loadSpecTests(yaml_document_t * document, yaml_node_t * node)
 static int loadSpec(const char * spec)
 {
     int error = 0;
-    char * data = NULL;
-    size_t data_len = 0;
-    int array_len = 0;
     char filename[1024];
     FILE * fh = NULL;
     yaml_parser_t parser = {0};
@@ -253,15 +245,14 @@ START_TEST(test_ast_to_string_on_mustache_spec)
         goto done;
     }
 
-    parser->tmpl = tmpl;
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, test->flags);
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         ck_assert_msg(0, handlebars_error_msg(ctx));
     }
 
-    ast_str = handlebars_ast_to_string(ctx, parser->program);
+    ast_str = handlebars_ast_to_string(ctx, ast);
 
     actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
     expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
@@ -317,8 +308,7 @@ START_TEST(test_mustache_spec)
     tmpl = handlebars_preprocess_delimiters(ctx, tmpl, NULL, NULL);
 
     // Parse
-    parser->tmpl = tmpl;
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, test->flags);
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
@@ -327,40 +317,44 @@ START_TEST(test_mustache_spec)
 
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
-    handlebars_compiler_compile(compiler, parser->program);
+    handlebars_compiler_compile(compiler, ast);
 
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         ck_assert_msg(0, handlebars_error_msg(ctx));
     }
 
     // Serialize
-    module = handlebars_program_serialize(HBSCTX(compiler), compiler->program);
+    module = handlebars_program_serialize(HBSCTX(compiler), handlebars_compiler_get_program(compiler));
 
     // Setup VM
     vm = handlebars_vm_ctor(ctx);
-    vm->helpers = handlebars_value_ctor(HBSCTX(vm));
-    vm->flags = test->flags;
+    handlebars_vm_set_flags(vm, test->flags);
+
+    // Setup helpers
+    struct handlebars_value * helpers = handlebars_value_ctor(HBSCTX(vm));
+    handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partials
-    vm->partials = handlebars_value_ctor(ctx);
-    handlebars_value_map_init(vm->partials);
+    struct handlebars_value * partials = handlebars_value_ctor(ctx);
+    handlebars_value_map_init(partials);
     if( test->partials ) {
         handlebars_value_iterator_init(&it, test->partials);
         for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(vm->partials->v.map, it.key, it.current);
+            handlebars_map_update(partials->v.map, it.key, it.current);
         }
     }
+    handlebars_vm_set_partials(vm, partials);
 
     load_fixtures(test->data);
 
     // Execute
-    handlebars_vm_execute(vm, module, test->data);
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, test->data);
 
 #ifndef NDEBUG
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
-        fprintf(stderr, "ACTUAL: %s\n", vm->buffer->val);
-        fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer->val, test->expected) ? "PASS" : "FAIL");
+        fprintf(stderr, "ACTUAL: %s\n", buffer->val);
+        fprintf(stderr, "%s\n", buffer && 0 == strcmp(buffer->val, test->expected) ? "PASS" : "FAIL");
     } else if( handlebars_error_msg(ctx) ) {
         fprintf(stderr, "ERROR: %s\n", handlebars_error_msg(ctx));
     }
@@ -371,14 +365,14 @@ START_TEST(test_mustache_spec)
         ck_assert_msg(0, handlebars_error_msg(ctx));
     }
 
-    ck_assert_ptr_ne(vm->buffer, NULL);
+    ck_assert_ptr_ne(buffer, NULL);
 
-    if (strcmp(vm->buffer->val, test->expected) != 0) {
+    if (strcmp(buffer->val, test->expected) != 0) {
         char *tmp = handlebars_talloc_asprintf(rootctx,
                                                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                                                "" /*test->suite_name*/,
                                                test->name, test->desc, test->flags,
-                                               test->tmpl, test->expected, vm->buffer->val);
+                                               test->tmpl, test->expected, buffer->val);
         ck_abort_msg(tmp);
     }
 

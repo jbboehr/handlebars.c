@@ -25,17 +25,28 @@
 #include <string.h>
 #include <talloc.h>
 
+#define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_COMPILER_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
+#include "handlebars_opcodes.h"
+#include "handlebars_string.h"
 #include "handlebars_memory.h"
 #include "utils.h"
 
-// Include compiler source file so we can test the inline functions
-#include "handlebars_compiler.c"
 
 
+bool handlebars_compiler_is_known_helper(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * path
+);
+void handlebars_compiler_opcode(
+    struct handlebars_compiler * compiler,
+    struct handlebars_opcode * opcode
+);
 
 START_TEST(test_compiler_ctor)
 {
@@ -84,7 +95,7 @@ START_TEST(test_compiler_get_flags)
 {
     ck_assert_int_eq(0, handlebars_compiler_get_flags(compiler));
 
-    compiler->flags = handlebars_compiler_flag_all;
+    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_all);
 
     ck_assert_int_eq(handlebars_compiler_flag_all, handlebars_compiler_get_flags(compiler));
 }
@@ -94,14 +105,10 @@ START_TEST(test_compiler_set_flags)
 {
     // Make sure it changes option flags
     handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_string_params);
-    ck_assert_int_eq(handlebars_compiler_flag_string_params, compiler->flags);
-    ck_assert_int_eq(1, compiler->string_params);
-    ck_assert_int_eq(0, compiler->track_ids);
+    ck_assert_int_eq(handlebars_compiler_flag_string_params, handlebars_compiler_get_flags(compiler));
 
     handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_track_ids);
-    ck_assert_int_eq(handlebars_compiler_flag_track_ids, compiler->flags);
-    ck_assert_int_eq(0, compiler->string_params);
-    ck_assert_int_eq(1, compiler->track_ids);
+    ck_assert_int_eq(handlebars_compiler_flag_track_ids, handlebars_compiler_get_flags(compiler));
 }
 END_TEST
 
@@ -141,21 +148,26 @@ START_TEST(test_compiler_opcode)
 {
     struct handlebars_opcode * op1;
     struct handlebars_opcode * op2;
+    struct handlebars_program *program;
 
     op1 = handlebars_opcode_ctor(HBSCTX(compiler), handlebars_opcode_type_append);
     op2 = handlebars_opcode_ctor(HBSCTX(compiler), handlebars_opcode_type_append_escaped);
 
     handlebars_compiler_opcode(compiler, op1);
-    ck_assert_ptr_ne(NULL, compiler->program->opcodes);
-    ck_assert_int_ne(0, compiler->program->opcodes_size);
-    ck_assert_int_eq(1, compiler->program->opcodes_length);
-    ck_assert_ptr_eq(op1, *compiler->program->opcodes);
+    program = handlebars_compiler_get_program(compiler);
+
+    ck_assert_ptr_ne(NULL, program->opcodes);
+    ck_assert_int_ne(0, program->opcodes_size);
+    ck_assert_int_eq(1, program->opcodes_length);
+    ck_assert_ptr_eq(op1, *program->opcodes);
 
     handlebars_compiler_opcode(compiler, op2);
-    ck_assert_ptr_ne(NULL, compiler->program->opcodes);
-    ck_assert_int_ne(0, compiler->program->opcodes_size);
-    ck_assert_int_eq(2, compiler->program->opcodes_length);
-    ck_assert_ptr_eq(op2, *(compiler->program->opcodes + 1));
+    program = handlebars_compiler_get_program(compiler);
+
+    ck_assert_ptr_ne(NULL, program->opcodes);
+    ck_assert_int_ne(0, program->opcodes_size);
+    ck_assert_int_eq(2, program->opcodes_length);
+    ck_assert_ptr_eq(op2, *(program->opcodes + 1));
 }
 END_TEST
 

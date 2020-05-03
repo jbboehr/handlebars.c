@@ -27,9 +27,7 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 /**
  * Declarations
@@ -37,6 +35,9 @@ extern "C" {
 struct handlebars_context;
 struct handlebars_ast_node;
 struct handlebars_ast_list;
+struct handlebars_parser;
+
+extern size_t HANDLEBARS_AST_NODE_SIZE;
 
 /**
  * @brief An enumeration of AST node types
@@ -64,156 +65,6 @@ enum handlebars_ast_node_type
     HANDLEBARS_AST_NODE_SEXPR,
     HANDLEBARS_AST_NODE_STRING,
     HANDLEBARS_AST_NODE_UNDEFINED
-};
-
-struct handlebars_ast_node_block {
-    struct handlebars_ast_node * path;
-    struct handlebars_ast_list * params;
-    struct handlebars_ast_node * hash;
-    struct handlebars_ast_node * program;
-    struct handlebars_ast_node * inverse;
-    unsigned int open_strip;
-    unsigned int inverse_strip;
-    unsigned int close_strip;
-    bool is_decorator;
-};
-
-struct handlebars_ast_node_comment {
-    struct handlebars_string * value;
-};
-
-struct handlebars_ast_node_hash {
-    struct handlebars_ast_list * pairs;
-};
-
-struct handlebars_ast_node_hash_pair {
-	struct handlebars_string * key;
-    struct handlebars_ast_node * value;
-};
-
-struct handlebars_ast_node_intermediate {
-    struct handlebars_ast_node * path;
-    struct handlebars_ast_list * params;
-    struct handlebars_ast_node * hash;
-    struct handlebars_string * block_param1;
-	struct handlebars_string * block_param2;
-	struct handlebars_string * open;
-};
-
-struct handlebars_ast_node_inverse {
-    struct handlebars_ast_node * program;
-	bool chained;
-};
-
-struct handlebars_ast_node_literal {
-    struct handlebars_string * value;
-	struct handlebars_string * original;
-};
-
-struct handlebars_ast_node_mustache {
-    struct handlebars_ast_node * path;
-    struct handlebars_ast_list * params;
-    struct handlebars_ast_node * hash;
-	bool unescaped;
-	bool is_decorator;
-};
-
-struct handlebars_ast_node_partial {
-    struct handlebars_ast_node * name;
-    struct handlebars_ast_list * params;
-    struct handlebars_ast_node * hash;
-	struct handlebars_string * indent;
-};
-
-struct handlebars_ast_node_path {
-    struct handlebars_string * original;
-    struct handlebars_ast_list * parts;
-    unsigned int depth;
-	bool data;
-	bool falsy;
-	bool strict;
-};
-
-struct handlebars_ast_node_path_segment {
-    struct handlebars_string * part;
-    struct handlebars_string * separator;
-    struct handlebars_string * original;
-};
-
-struct handlebars_ast_node_program {
-    struct handlebars_ast_list * statements;
-	struct handlebars_string * block_param1;
-	struct handlebars_string * block_param2;
-	bool chained;
-};
-
-struct handlebars_ast_node_sexpr {
-    struct handlebars_ast_node * path;
-    struct handlebars_ast_list * params;
-    struct handlebars_ast_node * hash;
-};
-
-union handlebars_ast_internals {
-    struct handlebars_ast_node_block block;
-    struct handlebars_ast_node_literal boolean;
-    struct handlebars_ast_node_comment comment;
-    struct handlebars_ast_node_literal content;
-    struct handlebars_ast_node_hash hash;
-    struct handlebars_ast_node_hash_pair hash_pair;
-    struct handlebars_ast_node_intermediate intermediate;
-    struct handlebars_ast_node_inverse inverse;
-    struct handlebars_ast_node_mustache mustache;
-    struct handlebars_ast_node_literal number;
-    struct handlebars_ast_node_literal nul;
-    struct handlebars_ast_node_partial partial;
-    struct handlebars_ast_node_block partial_block;
-    struct handlebars_ast_node_path path;
-    struct handlebars_ast_node_path_segment path_segment;
-    struct handlebars_ast_node_program program;
-    struct handlebars_ast_node_block raw_block;
-    struct handlebars_ast_node_sexpr sexpr;
-    struct handlebars_ast_node_literal string;
-    struct handlebars_ast_node_literal undefined;
-};
-
-/**
- * @brief Flags to control and about whitespace control
- */
-enum handlebars_ast_strip_flag {
-  handlebars_ast_strip_flag_none = 0,
-  handlebars_ast_strip_flag_set = (1 << 0),
-  handlebars_ast_strip_flag_left = (1 << 1),
-  handlebars_ast_strip_flag_right = (1 << 2),
-  handlebars_ast_strip_flag_open_standalone = (1 << 3),
-  handlebars_ast_strip_flag_close_standalone = (1 << 4),
-  handlebars_ast_strip_flag_inline_standalone = (1 << 5),
-  handlebars_ast_strip_flag_left_stripped = (1 << 6),
-  handlebars_ast_strip_flag_right_stripped = (1 << 7)
-};
-
-/**
- * @brief The main AST node structure
- */
-struct handlebars_ast_node {
-  /**
-   * @brief Enum describing the type of node
-   */
-  enum handlebars_ast_node_type type;
-
-  /**
-   * @brief Stores info about whitespace stripping
-   */
-  unsigned int strip;
-
-  /**
-   * @brief Stores info about location
-   */
-  struct handlebars_locinfo loc;
-
-  /**
-   * @brief A union with structs of the different node types
-   */
-  union handlebars_ast_internals node;
 };
 
 /**
@@ -424,8 +275,170 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
     struct handlebars_locinfo * locinfo
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-#ifdef	__cplusplus
-}
-#endif
+#ifndef HANDLEBARS_AST_PRIVATE
 
-#endif
+void handlebars_ast_node_set_strip(struct handlebars_ast_node * node, unsigned flags) HBS_ATTR_NONNULL_ALL;
+
+#else
+
+struct handlebars_ast_node_block {
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
+    struct handlebars_ast_node * program;
+    struct handlebars_ast_node * inverse;
+    unsigned int open_strip;
+    unsigned int inverse_strip;
+    unsigned int close_strip;
+    bool is_decorator;
+};
+
+struct handlebars_ast_node_comment {
+    struct handlebars_string * value;
+};
+
+struct handlebars_ast_node_hash {
+    struct handlebars_ast_list * pairs;
+};
+
+struct handlebars_ast_node_hash_pair {
+	struct handlebars_string * key;
+    struct handlebars_ast_node * value;
+};
+
+struct handlebars_ast_node_intermediate {
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
+    struct handlebars_string * block_param1;
+	struct handlebars_string * block_param2;
+	struct handlebars_string * open;
+};
+
+struct handlebars_ast_node_inverse {
+    struct handlebars_ast_node * program;
+	bool chained;
+};
+
+struct handlebars_ast_node_literal {
+    struct handlebars_string * value;
+	struct handlebars_string * original;
+};
+
+struct handlebars_ast_node_mustache {
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
+	bool unescaped;
+	bool is_decorator;
+};
+
+struct handlebars_ast_node_partial {
+    struct handlebars_ast_node * name;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
+	struct handlebars_string * indent;
+};
+
+struct handlebars_ast_node_path {
+    struct handlebars_string * original;
+    struct handlebars_ast_list * parts;
+    unsigned int depth;
+	bool data;
+	bool falsy;
+	bool strict;
+};
+
+struct handlebars_ast_node_path_segment {
+    struct handlebars_string * part;
+    struct handlebars_string * separator;
+    struct handlebars_string * original;
+};
+
+struct handlebars_ast_node_program {
+    struct handlebars_ast_list * statements;
+	struct handlebars_string * block_param1;
+	struct handlebars_string * block_param2;
+	bool chained;
+};
+
+struct handlebars_ast_node_sexpr {
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_list * params;
+    struct handlebars_ast_node * hash;
+};
+
+union handlebars_ast_internals {
+    struct handlebars_ast_node_block block;
+    struct handlebars_ast_node_literal boolean;
+    struct handlebars_ast_node_comment comment;
+    struct handlebars_ast_node_literal content;
+    struct handlebars_ast_node_hash hash;
+    struct handlebars_ast_node_hash_pair hash_pair;
+    struct handlebars_ast_node_intermediate intermediate;
+    struct handlebars_ast_node_inverse inverse;
+    struct handlebars_ast_node_mustache mustache;
+    struct handlebars_ast_node_literal number;
+    struct handlebars_ast_node_literal nul;
+    struct handlebars_ast_node_partial partial;
+    struct handlebars_ast_node_block partial_block;
+    struct handlebars_ast_node_path path;
+    struct handlebars_ast_node_path_segment path_segment;
+    struct handlebars_ast_node_program program;
+    struct handlebars_ast_node_block raw_block;
+    struct handlebars_ast_node_sexpr sexpr;
+    struct handlebars_ast_node_literal string;
+    struct handlebars_ast_node_literal undefined;
+};
+
+/**
+ * @brief Flags to control and about whitespace control
+ */
+enum handlebars_ast_strip_flag {
+  handlebars_ast_strip_flag_none = 0,
+  handlebars_ast_strip_flag_set = (1 << 0),
+  handlebars_ast_strip_flag_left = (1 << 1),
+  handlebars_ast_strip_flag_right = (1 << 2),
+  handlebars_ast_strip_flag_open_standalone = (1 << 3),
+  handlebars_ast_strip_flag_close_standalone = (1 << 4),
+  handlebars_ast_strip_flag_inline_standalone = (1 << 5),
+  handlebars_ast_strip_flag_left_stripped = (1 << 6),
+  handlebars_ast_strip_flag_right_stripped = (1 << 7)
+};
+
+/**
+ * @brief The main AST node structure
+ */
+struct handlebars_ast_node {
+  /**
+   * @brief Enum describing the type of node
+   */
+  enum handlebars_ast_node_type type;
+
+  /**
+   * @brief Stores info about whitespace stripping
+   */
+  unsigned int strip;
+
+  /**
+   * @brief Stores info about location
+   */
+  struct handlebars_locinfo loc;
+
+  /**
+   * @brief A union with structs of the different node types
+   */
+  union handlebars_ast_internals node;
+};
+
+HBS_ATTR_NONNULL_ALL
+inline void handlebars_ast_node_set_strip(struct handlebars_ast_node * node, unsigned flags)
+{
+    node->strip = flags;
+}
+
+#endif /* HANDLEBARS_AST_PRIVATE */
+
+HBS_EXTERN_C_END
+
+#endif /* HANDLEBARS_AST_H */

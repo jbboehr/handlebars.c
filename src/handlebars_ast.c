@@ -26,17 +26,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_AST_LIST_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_utils.h"
 
 
+
+size_t HANDLEBARS_AST_NODE_SIZE = sizeof(struct handlebars_ast_node);
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(context)
@@ -61,17 +65,17 @@ struct handlebars_string * handlebars_ast_node_get_id_part(struct handlebars_ast
 {
     struct handlebars_ast_list * parts;
     struct handlebars_ast_node * path_segment;
-    
+
     assert(ast_node != NULL);
     assert(ast_node->type == HANDLEBARS_AST_NODE_PATH);
-    
+
     parts = ast_node->node.path.parts;
     if( parts == NULL || parts->first == NULL || parts->first->data == NULL ) {
         return NULL;
     }
-    
+
     path_segment = parts->first->data;
-    
+
     assert(path_segment->type == HANDLEBARS_AST_NODE_PATH_SEGMENT);
     return path_segment->node.path_segment.part;
 }
@@ -81,9 +85,9 @@ struct handlebars_string * handlebars_ast_node_get_string_mode_value(
         struct handlebars_ast_node * node
 ) {
     struct handlebars_string * string;
-    
+
     assert(node != NULL);
-    
+
     switch( node->type ) {
         case HANDLEBARS_AST_NODE_PATH:
             string = node->node.path.original;
@@ -206,7 +210,7 @@ const char * handlebars_ast_node_readable_type(int type)
     _RTYPE_CASE(UNDEFINED, UNDEFINED);
     case HANDLEBARS_AST_NODE_NUL: return "NULL";
   }
-  
+
   return "UNKNOWN";
 }
 
@@ -227,7 +231,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
         ast_node->node.block.path = talloc_steal(ast_node, intermediate->node.intermediate.path);
         ast_node->node.block.params = talloc_steal(ast_node, intermediate->node.intermediate.params);
         ast_node->node.block.hash = talloc_steal(ast_node, intermediate->node.intermediate.hash);
-        
+
         // We can free the intermediate
         // @todo it seems to not be safe to free it... used in prepare_block
         //handlebars_talloc_free(intermediate);
@@ -441,7 +445,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     ast_node->node.path_segment.original = talloc_steal(ast_node, handlebars_string_copy_ctor(HBSCTX(parser), part));
     ast_node->node.path_segment.part = handlebars_string_copy_ctor(HBSCTX(parser), part);
     ast_node->node.path_segment.part = handlebars_ast_helper_strip_id_literal(ast_node->node.path_segment.part);
-    
+
     if( separator != NULL ) {
         ast_node->node.path_segment.separator = talloc_steal(ast_node, handlebars_string_copy_ctor(HBSCTX(parser), separator));
     }
@@ -463,16 +467,16 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     // Construct the ast node
     ast_node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_RAW_BLOCK);
     ast_node->loc = *locinfo;
-    
+
     // Assign the content
     assert(content != NULL);
     assert(content->type == HANDLEBARS_AST_NODE_CONTENT);
     assert(intermediate != NULL);
-    
+
     path = intermediate->node.intermediate.path;
     params = intermediate->node.intermediate.params;
     hash = intermediate->node.intermediate.hash;
-    
+
     assert(path == NULL || path->type == HANDLEBARS_AST_NODE_PATH);
     assert(hash == NULL || hash->type == HANDLEBARS_AST_NODE_HASH);
 
@@ -483,7 +487,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     handlebars_ast_list_append(statements, talloc_steal(program, content));
     ast_node->node.raw_block.program = program;
     //ast_node->node.raw_block.program = talloc_steal(ast_node, content);
-    
+
     // Assign the other nodes
     ast_node->node.raw_block.path = talloc_steal(ast_node, path);
     ast_node->node.raw_block.params = talloc_steal(ast_node, params);
@@ -532,3 +536,4 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
     return ast_node;
 }
 
+extern inline void handlebars_ast_node_set_strip(struct handlebars_ast_node * node, unsigned flags);

@@ -29,6 +29,7 @@
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_parser.h"
 #include "handlebars_partial_loader.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -36,6 +37,8 @@
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 #include "utils.h"
+
+
 
 static TALLOC_CTX * rootctx;
 TALLOC_CTX * memctx;
@@ -58,8 +61,7 @@ static struct handlebars_string * execute_template(const char *template)
     compiler = handlebars_compiler_ctor(ctx);
 
     // Parse
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), template, strlen(template));
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), template, strlen(template)), 0);
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
@@ -69,43 +71,44 @@ static struct handlebars_string * execute_template(const char *template)
     }
 
     // Compile
-    handlebars_compiler_compile(compiler, parser->program);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         ck_abort_msg(handlebars_error_msg(ctx));
         goto done;
     }
 
     // Serialize
-    module = handlebars_program_serialize(ctx, compiler->program);
+    module = handlebars_program_serialize(ctx, program);
     handlebars_compiler_dtor(compiler);
 
     // Setup VM
     vm = handlebars_vm_ctor(ctx);
 
     // Setup helpers
-    vm->helpers = handlebars_value_ctor(HBSCTX(vm));
-    handlebars_value_map_init(vm->helpers);
+    struct handlebars_value * helpers = handlebars_value_ctor(HBSCTX(vm));
+    handlebars_value_map_init(helpers);
+    handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partial loader
-    vm->partials = handlebars_value_partial_loader_ctor(HBSCTX(vm),
-        handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".")),
-        handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".hbs")));
+    handlebars_vm_set_partials(
+        vm,
+        handlebars_value_partial_loader_ctor(HBSCTX(vm),
+            handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".")),
+            handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".hbs")))
+    );
 
     // setup context
     context = handlebars_value_from_json_string(ctx, "{\"foo\":\"bar\"}");
 
     // Execute
-    handlebars_vm_execute(vm, module, context);
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, context);
 
     ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
 
-    retval = talloc_steal(NULL, vm->buffer);
+    retval = talloc_steal(NULL, buffer);
 
     // Memdebug
     handlebars_value_delref(context);
-    handlebars_value_delref(vm->helpers);
-    handlebars_value_delref(vm->partials);
-    handlebars_value_try_delref(vm->data);
     handlebars_vm_dtor(vm);
     if( memdebug ) {
         talloc_report_full(ctx, stderr);

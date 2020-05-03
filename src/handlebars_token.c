@@ -25,12 +25,15 @@
 #include <string.h>
 #include <talloc.h>
 
+#define HANDLEBARS_TOKEN_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
+
 
 
 #undef CONTEXT
@@ -51,15 +54,9 @@ void handlebars_token_dtor(struct handlebars_token * token)
     handlebars_talloc_free(token);
 }
 
-int handlebars_token_get_type(struct handlebars_token * token)
-{
-    return token->token;
-}
+extern int handlebars_token_get_type(struct handlebars_token * token);
 
-struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token)
-{
-    return token->string;
-}
+extern struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token);
 
 const char * handlebars_token_readable_type(int type)
 {
@@ -101,7 +98,7 @@ const char * handlebars_token_readable_type(int type)
     _RTYPE_CASE(OPEN_PARTIAL_BLOCK);
     case NUL: return "NULL";
   }
-  
+
   return "UNKNOWN";
 }
 
@@ -169,7 +166,7 @@ int handlebars_token_reverse_readable_type(const char * type)
             _RTYPE_REV_CMP(UNDEFINED);
             break;
     }
-    
+
     // Unknown :(
     return -1;
 }

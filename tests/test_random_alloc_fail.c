@@ -35,8 +35,9 @@
 #include "utils.h"
 
 
+
 // @todo try to get this to include every language feature
-static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} "
+static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} {{{{/raw}}}}"
         "{{#a}}{{^}}{{/a}} {{bar baz=foo}} {{> partial}} {{../depth}} {{this}} "
         "{{#unless}}{{else}}{{/unless}} {{&unescaped}} {{~strip~}}  "
         "{{!-- comment --}} {{! coment }} {{blah (a (b)}}";

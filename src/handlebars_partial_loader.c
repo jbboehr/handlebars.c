@@ -25,11 +25,17 @@
 #include <string.h>
 #include <talloc.h>
 
-#include "handlebars_private.h"
-#include "handlebars_memory.h"
+#define HANDLEBARS_MAP_PRIVATE
+#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
+
+#include "handlebars.h"
 #include "handlebars_map.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
+
+
 
 struct handlebars_partial_loader {
     struct handlebars_user usr;
@@ -41,9 +47,14 @@ struct handlebars_partial_loader {
 
 static int partial_loader_dtor(struct handlebars_partial_loader * obj)
 {
-    if( obj ) {
-        handlebars_map_dtor(obj->map);
-    }
+    // @TODO FIXME
+    // I believe this may not be working due to the map not being allocated
+    // directly under the partial loader
+
+    // if( obj && obj->map ) {
+    //     handlebars_map_dtor(obj->map);
+    //     obj->map = NULL;
+    // }
 
     return 0;
 }
@@ -63,7 +74,6 @@ static void std_partial_loader_dtor(struct handlebars_value * value)
 {
     struct handlebars_partial_loader * intern = GET_INTERN(value);
     handlebars_talloc_free(intern);
-    value->v.usr = NULL;
 }
 
 static void std_partial_loader_convert(struct handlebars_value * value, bool recurse)

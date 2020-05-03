@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <talloc.h>
 
+#define HANDLEBARS_STACK_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -35,6 +37,8 @@
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(ctx)
+
+size_t HANDLEBARS_STACK_SIZE = sizeof(struct handlebars_stack);
 
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 {

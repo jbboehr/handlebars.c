@@ -24,6 +24,8 @@
 #include <check.h>
 #include <talloc.h>
 
+#define HANDLEBARS_AST_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_memory.h"

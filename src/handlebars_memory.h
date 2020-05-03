@@ -28,9 +28,7 @@
 #include <talloc.h>
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 #ifndef HANDLEBARS_MEMORY
 
@@ -210,8 +208,6 @@ int handlebars_memory_get_call_counter(void);
 
 #endif /* HANDLEBARS_MEMORY */
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
 #endif

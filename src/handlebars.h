@@ -37,12 +37,12 @@
 #include "handlebars_config.h"
 
 #ifdef	__cplusplus
-extern "C" {
+#define HBS_EXTERN_C_START extern "C" {
+#define HBS_EXTERN_C_END }
+#else
+#define HBS_EXTERN_C_START
+#define HBS_EXTERN_C_END
 #endif
-
-// Declarations
-struct handlebars_ast_node;
-struct handlebars_string;
 
 // Attributes
 #if (__GNUC__ >= 3)
@@ -111,6 +111,8 @@ struct handlebars_string;
 #define handlebars_setjmp_cp(ctx, ctx2) setjmp(*(HBSCTX(ctx)->e->jmp = ctx2->jmp))
 #define handlebars_setjmp_ex(ctx, buf) setjmp(*(HBSCTX(ctx)->e->jmp = (buf)))
 #define handlebars_rethrow(parent, child) handlebars_throw_ex(parent, child->e->num, &child->e->loc, "%s", child->e->msg);
+
+HBS_EXTERN_C_START
 
 /**
  * @brief Enumeration of error types
@@ -181,24 +183,6 @@ struct handlebars_context
 };
 
 /**
- * @brief Structure for parsing or lexing a template
- */
-struct handlebars_parser
-{
-    //! The internal context
-    struct handlebars_context ctx;
-
-    //! The template to parse
-    struct handlebars_string * tmpl;
-
-    int tmplReadOffset;
-    void * scanner;
-    struct handlebars_ast_node * program;
-    bool whitespace_root_seen;
-    bool ignore_standalone;
-};
-
-/**
  * @brief Get the library version as an integer
  * @return The version of handlebars as an integer
  */
@@ -245,46 +229,6 @@ void handlebars_context_bind(struct handlebars_context * parent, struct handleba
  * @return void
  */
 void handlebars_context_dtor(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Construct a parser
- * @param[in] ctx The parent handlebars and talloc context
- * @return the parser pointer
- */
-struct handlebars_parser * handlebars_parser_ctor(
-    struct handlebars_context * ctx
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Free a parser and it's resources.
- * @param[in] parser The parser to free
- * @return void
- */
-void handlebars_parser_dtor(struct handlebars_parser * parser) HBS_ATTR_NONNULL_ALL;
-
-struct handlebars_string * handlebars_preprocess_delimiters(
-    struct handlebars_context * ctx,
-    struct handlebars_string * tmpl,
-    struct handlebars_string * open,
-    struct handlebars_string * close
-) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Convenience function for lexing to a token list
- * @param[in] parser The parser
- * @return the token list
- */
-struct handlebars_token ** handlebars_lex(
-    struct handlebars_parser * parser
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Parser a template. The template is stored in handlebars_parser#tmpl and the resultant
- *        AST is stored in handlebars_parser#program
- * @param[in] parser The parser
- * @return true on success
- */
-bool handlebars_parse(struct handlebars_parser * parser) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Throw an error. If the context has a `jmp_buf`, `longjmp(context->jmp, num)` will be called, otherwise
@@ -391,13 +335,6 @@ struct handlebars_context * handlebars_get_context(void * ctx, const char * loc)
 #define HBSCTX(ctx) ((struct handlebars_context *)ctx)
 #endif
 
-// Flex/Bison prototypes
-int handlebars_yy_get_column(void * yyscanner);
-void handlebars_yy_set_column(int column_no, void * yyscanner);
-int handlebars_yy_parse(struct handlebars_parser * parser);
+HBS_EXTERN_C_END
 
-#ifdef	__cplusplus
-}
-#endif
-
-#endif
+#endif /* HANDLEBARS_H */

@@ -26,12 +26,11 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
-
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
 
 
@@ -72,21 +71,19 @@ START_TEST(test_lex)
 {
     struct handlebars_token ** tokens;
 
-    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{foo}}"));
-
-    tokens = handlebars_lex(parser);
+    tokens = handlebars_lex_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{foo}}")));
 
     ck_assert_ptr_ne(NULL, tokens[0]);
-    ck_assert_int_eq(OPEN, tokens[0]->token);
-    ck_assert_str_eq("{{", tokens[0]->string->val);
+    ck_assert_int_eq(OPEN, handlebars_token_get_type(tokens[0]));
+    ck_assert_str_eq("{{", handlebars_token_get_text(tokens[0])->val);
 
     ck_assert_ptr_ne(NULL, tokens[1]);
-    ck_assert_int_eq(ID, tokens[1]->token);
-    ck_assert_str_eq("foo", tokens[1]->string->val);
+    ck_assert_int_eq(ID, handlebars_token_get_type(tokens[1]));
+    ck_assert_str_eq("foo", handlebars_token_get_text(tokens[1])->val);
 
     ck_assert_ptr_ne(NULL, tokens[2]);
-    ck_assert_int_eq(CLOSE, tokens[2]->token);
-    ck_assert_str_eq("}}", tokens[2]->string->val);
+    ck_assert_int_eq(CLOSE, handlebars_token_get_type(tokens[2]));
+    ck_assert_str_eq("}}", handlebars_token_get_text(tokens[2])->val);
 
     ck_assert_ptr_eq(NULL, tokens[3]);
 }

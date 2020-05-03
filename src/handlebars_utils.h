@@ -25,18 +25,16 @@
 #ifndef HANDLEBARS_UTILS_H
 #define HANDLEBARS_UTILS_H
 
-#include <stdio.h>
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 /**
  * Declarations
  */
 struct handlebars_context;
 struct handlebars_locinfo;
+struct handlebars_parser;
 union YYSTYPE;
 
 /**
@@ -92,26 +90,24 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner);
 /**
  * @brief Custom realloc for use with flex/bison. Uses talloc with
  *        handlebars_context as a talloc context.
- * 
+ *
  * @param[in] ptr The pointer to reallocate
  * @param[in] bytes The desired new size
  * @param[in] yyscanner The scanner context
- * @return The original pointer, or a new pointer, or NULL on failure 
+ * @return The original pointer, or a new pointer, or NULL on failure
  */
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner);
 
 /**
  * @brief Custom free for use with flex/bison. Uses talloc with
  *        handlebars_context as a talloc context.
- * 
+ *
  * @param[in] ptr The pointer to free
  * @param[in] yyscanner The scanner context
  * @return void
  */
 void handlebars_yy_free(void * ptr, void * yyscanner);
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
-#endif
+#endif /* HANDLEBARS_UTILS_H */

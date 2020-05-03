@@ -22,23 +22,27 @@
 #endif
 
 #include <assert.h>
+#include <time.h>
+
+#define HANDLEBARS_CACHE_PRIVATE
+#define HANDLEBARS_MAP_PRIVATE
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
-
 #include "handlebars_cache.h"
 #include "handlebars_map.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_opcode_serializer.h"
+
 
 
 struct handlebars_cache_simple {
     struct handlebars_map * map;
     struct handlebars_cache_stat stat;
 };
-
 
 static inline bool should_gc(struct handlebars_cache * cache)
 {

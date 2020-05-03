@@ -25,6 +25,8 @@
 #include <string.h>
 #include <talloc.h>
 
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
@@ -196,7 +198,6 @@ START_TEST(test_operand_set_arrayval)
     const char * strs[] = {
             "foo", "bar", "baz", "helicopter", NULL
     };
-    int ret;
     const char ** ptr1;
     struct handlebars_operand_string * ptr2;
 

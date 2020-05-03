@@ -22,24 +22,15 @@
  * @brief Token
  */
 
+#include "handlebars.h"
+
 #ifndef HANDLEBARS_TOKEN_H
 #define HANDLEBARS_TOKEN_H
 
-#include "handlebars.h"
-
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 struct handlebars_string;
-
-/**
- * @brief Token structure 
- */
-struct handlebars_token {
-    int token;
-    struct handlebars_string * string;
-};
+struct handlebars_token;
 
 /**
  * @brief Flags to control print behaviour
@@ -73,7 +64,7 @@ struct handlebars_token * handlebars_token_ctor(
 
 /**
  * @brief Destruct a token
- * 
+ *
  * @param[in] token Token type
  * @return void
  */
@@ -81,7 +72,7 @@ void handlebars_token_dtor(struct handlebars_token * token) HBS_ATTR_NONNULL_ALL
 
 /**
  * @brief Get the token type
- * 
+ *
  * @param[in] token Token
  * @return void
  */
@@ -89,7 +80,7 @@ int handlebars_token_get_type(struct handlebars_token * token) HBS_ATTR_NONNULL_
 
 /**
  * @brief Get the token text.
- * 
+ *
  * @param[in] token Token
  * @return The token text
  */
@@ -97,7 +88,7 @@ struct handlebars_string * handlebars_token_get_text(struct handlebars_token * t
 
 /**
  * @brief Get a string for the integral token type
- * 
+ *
  * @param[in] type The integral token type
  * @return The string name of the type
  */
@@ -105,7 +96,7 @@ const char * handlebars_token_readable_type(int type) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Get an integral type for the token name
- * 
+ *
  * @param[in] type The token type name
  * @return The integral token type
  */
@@ -141,8 +132,29 @@ struct handlebars_string * handlebars_token_print(
     int flags
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-#ifdef	__cplusplus
-}
-#endif
+#ifdef HANDLEBARS_TOKEN_PRIVATE
 
-#endif
+/**
+ * @brief Token structure
+ */
+struct handlebars_token {
+    int token;
+    struct handlebars_string * string;
+};
+
+
+inline int handlebars_token_get_type(struct handlebars_token * token)
+{
+    return token->token;
+}
+
+inline struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token)
+{
+    return token->string;
+}
+
+#endif /* HANDLEBARS_TOKEN_PRIVATE */
+
+HBS_EXTERN_C_END
+
+#endif /* HANDLEBARS_TOKEN_H */

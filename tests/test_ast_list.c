@@ -24,11 +24,16 @@
 #include <check.h>
 #include <talloc.h>
 
+#define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_AST_LIST_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_memory.h"
 #include "utils.h"
+
+
 
 START_TEST(test_ast_list_append)
 {
