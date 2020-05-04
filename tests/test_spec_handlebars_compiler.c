@@ -695,12 +695,12 @@ START_TEST(handlebars_spec_compiler)
        ck_assert_int_ne(0, compiler->errnum);
     } else {*/
         //ck_assert_str_eq(printer->output, test->expected);
-        if( strcmp(actual->val, test->expected->val) != 0 ) {
+        if (!handlebars_string_eq(actual, test->expected)) {
             char * tmp = handlebars_talloc_asprintf(rootctx,
                 "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                 test->suite_name,
                 test->description, test->it, test->flags,
-                test->tmpl, test->expected->val, actual->val);
+                test->tmpl, hbs_str_val(test->expected), hbs_str_val(actual));
             ck_abort_msg(tmp);
         }
     /* } */

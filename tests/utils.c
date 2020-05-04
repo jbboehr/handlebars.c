@@ -54,6 +54,7 @@
 #include "handlebars_compiler.h"
 #include "handlebars_parser.h"
 #include "handlebars_helpers.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 #include "utils.h"
@@ -191,10 +192,10 @@ error:
     return ret;
 }
 
-char * normalize_template_whitespace(TALLOC_CTX *ctx, char *str, size_t len)
+char * normalize_template_whitespace(TALLOC_CTX *ctx, struct handlebars_string * str)
 {
-    char *i = str;
-    char *ret = handlebars_talloc_size(context, len + 1);
+    char *i = hbs_str_val(str);
+    char *ret = handlebars_talloc_size(context, hbs_str_len(str) + 1);
     char *j = ret;
     while (1) {
         switch (*i) {

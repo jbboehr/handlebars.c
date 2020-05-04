@@ -25,6 +25,8 @@
 #include <talloc.h>
 #include <limits.h>
 
+#define HANDLEBARS_STRING_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_string.h"

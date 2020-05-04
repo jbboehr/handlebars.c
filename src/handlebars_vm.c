@@ -135,7 +135,7 @@ static inline struct handlebars_value * call_helper(struct handlebars_string * s
         result = handlebars_value_call(helper, argc, argv, options);
         handlebars_value_delref(helper);
         return result;
-    } else if( NULL != (fn = handlebars_builtins_find(string->val, string->len)) ) {
+    } else if( NULL != (fn = handlebars_builtins_find(hbs_str_val(string), hbs_str_len(string))) ) {
         return fn(argc, argv, options);
     }
     return NULL;
@@ -255,18 +255,18 @@ static inline struct handlebars_value * merge_hash(struct handlebars_context * c
     struct handlebars_value * context2;
     struct handlebars_value_iterator it;
     if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
-        hash && hash->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        hash && handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP ) {
         context2 = handlebars_value_ctor(context);
         handlebars_value_map_init(context2);
         handlebars_value_iterator_init(&it, context1);
         for( ; it.current ; it.next(&it) ) {
-            handlebars_map_update(context2->v.map, it.key, it.current);
+            handlebars_map_update(handlebars_value_get_map(context2), it.key, it.current);
         }
         handlebars_value_iterator_init(&it, hash);
         for( ; it.current ; it.next(&it) ) {
-            handlebars_map_update(context2->v.map, it.key, it.current);
+            handlebars_map_update(handlebars_value_get_map(context2), it.key, it.current);
         }
-    } else if( !context1 || context1->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+    } else if( !context1 || handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_NULL ) {
         context2 = hash;
         if( context2 ) {
             handlebars_value_addref(context2);
@@ -295,7 +295,7 @@ static inline struct handlebars_value * execute_template(
     }
 
     // Get template
-    if( !tmpl || !tmpl->len ) {
+    if( !tmpl || !hbs_str_len(tmpl) ) {
         return retval;
     }
 
@@ -404,7 +404,7 @@ ACCEPT_FUNCTION(ambiguous_block_value)
     if( vm->last_helper == NULL ) {
         result = handlebars_vm_call_helper_str(HBS_STRL("blockHelperMissing"), 1, argv, &options);
         PUSH(vm->stack, result);
-    } else if (0 == strcmp(vm->last_helper->val, "lambda")) {
+    } else if (hbs_str_eq_strl(vm->last_helper, HBS_STRL("lambda"))) {
         PUSH(vm->stack, current);
         talloc_free(vm->last_helper);
         vm->last_helper = NULL;
@@ -442,9 +442,9 @@ ACCEPT_FUNCTION(assign_to_hash)
     assert(hash != NULL);
     assert(value != NULL);
     assert(opcode->op1.type == handlebars_operand_type_string);
-    assert(hash->type == HANDLEBARS_VALUE_TYPE_MAP);
+    assert(handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP);
 
-    handlebars_map_update(hash->v.map, opcode->op1.data.string.string, value);
+    handlebars_map_update(handlebars_value_get_map(hash), opcode->op1.data.string.string, value);
 
     handlebars_value_delref(hash);
     handlebars_value_delref(value);
@@ -619,7 +619,12 @@ ACCEPT_FUNCTION(invoke_known_helper)
     result = call_helper(options.name, argc, argv, &options);
 
     if( result == NULL ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid known helper: %s", options.name->val);
+        handlebars_throw(
+            CONTEXT,
+            HANDLEBARS_ERROR,
+            "Invalid known helper: %.*s",
+            (int) hbs_str_len(options.name), hbs_str_val(options.name)
+        );
     }
 
     PUSH(vm->stack, result);
@@ -645,7 +650,7 @@ ACCEPT_FUNCTION(invoke_partial)
         // Dynamic partial
         tmp = POP(vm->stack);
         assert(tmp != NULL);
-        name = tmp->v.string;
+        name = handlebars_value_get_string(tmp);
         options.name = NULL; // fear
     } else {
         if( opcode->op2.type == handlebars_operand_type_long ) {
@@ -668,7 +673,12 @@ ACCEPT_FUNCTION(invoke_partial)
             if (!name) {
                 name = handlebars_string_ctor(CONTEXT, HBS_STRL("(NULL)"));
             }
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %.*s could not be found", (int) name->len, name->val);
+            handlebars_throw(
+                CONTEXT,
+                HANDLEBARS_ERROR,
+                "The partial %.*s could not be found",
+                (int) hbs_str_len(name), hbs_str_val(name)
+            );
         }
     }
 
@@ -684,20 +694,26 @@ ACCEPT_FUNCTION(invoke_partial)
 
         struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
         struct handlebars_string * tmp2 = handlebars_value_expression(ret, 0);
-        struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), tmp2->val, tmp2->len, HBS_STR_STRL(opcode->op3.data.string.string));
+        struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), hbs_str_val(tmp2), hbs_str_len(tmp2), HBS_STR_STRL(opcode->op3.data.string.string));
         vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(tmp3));
         handlebars_talloc_free(tmp3);
         handlebars_talloc_free(tmp2);
         handlebars_value_try_delref(ret);
     } else {
 
-        if( !partial || partial->type != HANDLEBARS_VALUE_TYPE_STRING ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "The partial %s was not a string, was %d", name ? name->val : "(NULL)", partial ? partial->type : -1);
+        if( !partial || handlebars_value_get_type(partial) != HANDLEBARS_VALUE_TYPE_STRING ) {
+            handlebars_throw(
+                CONTEXT,
+                HANDLEBARS_ERROR,
+                "The partial %s was not a string, was %d",
+                name ? hbs_str_val(name) : "(NULL)",
+                partial ? handlebars_value_get_type(partial) : -1
+            );
         }
 
         struct handlebars_value * context1 = argv[0];
         struct handlebars_value * context2 = merge_hash(HBSCTX(context), options.hash, context1);
-        struct handlebars_value *rv = execute_template(context, vm, partial->v.string, context2, opcode->op3.data.string.string, 0);
+        struct handlebars_value *rv = execute_template(context, vm, handlebars_value_get_string(partial), context2, opcode->op3.data.string.string, 0);
         vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(handlebars_value_to_string(rv)));
         handlebars_value_try_delref(rv);
 
@@ -722,8 +738,8 @@ ACCEPT_FUNCTION(lookup_block_param)
     assert(opcode->op1.type == handlebars_operand_type_array);
     assert(opcode->op2.type == handlebars_operand_type_array);
 
-    sscanf(opcode->op1.data.array.array[0].string->val, "%ld", &blockParam1);
-    sscanf(opcode->op1.data.array.array[1].string->val, "%ld", &blockParam2);
+    sscanf(hbs_str_val(opcode->op1.data.array.array[0].string), "%ld", &blockParam1);
+    sscanf(hbs_str_val(opcode->op1.data.array.array[1].string), "%ld", &blockParam2);
 
     if( blockParam1 >= LEN(vm->blockParamStack) ) goto done;
 
@@ -789,10 +805,10 @@ ACCEPT_FUNCTION(lookup_data)
 
     if( data && (tmp = handlebars_value_map_find(data, first->string)) ) {
         val = tmp;
-    } else if( 0 == strcmp(first->string->val, "root") ) {
+    } else if (hbs_str_eq_strl(first->string, HBS_STRL("root"))) {
         val = BOTTOM(vm->contextStack);
     } else if( vm->flags & handlebars_compiler_flag_assume_objects ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
     } else {
         goto done_and_null;
     }
@@ -806,7 +822,7 @@ ACCEPT_FUNCTION(lookup_data)
             handlebars_value_delref(val);
             val = tmp;
         } else if( is_strict ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
         } else {
             goto done_and_null;
         }
@@ -815,7 +831,7 @@ ACCEPT_FUNCTION(lookup_data)
     if( !val ) {
         done_and_null:
         if( require_terminal ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
         } else {
             val = handlebars_value_ctor(CONTEXT);
         }
@@ -856,7 +872,7 @@ ACCEPT_FUNCTION(lookup_on_context)
             handlebars_value_try_delref(value);
             value = tmp;
         } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-            if (sscanf(arr->string->val, "%ld", &index)) {
+            if (sscanf(hbs_str_val(arr->string), "%ld", &index)) {
                 tmp = handlebars_value_array_find(value, index);
             } else {
                 tmp = NULL;
@@ -864,13 +880,13 @@ ACCEPT_FUNCTION(lookup_on_context)
             handlebars_value_try_delref(value);
             value = tmp;
         } else if( vm->flags & handlebars_compiler_flag_assume_objects && is_last ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
         } else {
             goto done_and_null;
         }
         if( !value ) {
             if( is_strict && !is_last ) {
-                handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
+                handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
             }
             goto done_and_null;
         }
@@ -879,7 +895,7 @@ ACCEPT_FUNCTION(lookup_on_context)
     if( value == NULL ) {
         done_and_null:
         if( require_terminal ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) arr->string->len, arr->string->val);
+            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
         } else {
             value = handlebars_value_ctor(CONTEXT);
         }
@@ -939,9 +955,9 @@ ACCEPT_FUNCTION(push_literal)
     switch( opcode->op1.type ) {
         case handlebars_operand_type_string:
             // @todo should we move this to the parser?
-            if( 0 == strcmp(opcode->op1.data.string.string->val, "undefined") ) {
+            if (hbs_str_eq_strl(opcode->op1.data.string.string, HBS_STRL("undefined"))) {
                 break;
-            } else if( 0 == strcmp(opcode->op1.data.string.string->val, "null") ) {
+            } else if (hbs_str_eq_strl(opcode->op1.data.string.string, HBS_STRL("null"))) {
                 break;
             }
             handlebars_value_str(value, opcode->op1.data.string.string);

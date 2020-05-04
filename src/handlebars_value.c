@@ -40,6 +40,8 @@
 #endif
 
 #define HANDLEBARS_MAP_PRIVATE
+#define HANDLEBARS_STACK_PRIVATE
+#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 
@@ -55,29 +57,51 @@
 
 
 
+size_t HANDLEBARS_VALUE_SIZE = sizeof(struct handlebars_value);
+
+
+
+extern inline bool handlebars_value_is_callable(struct handlebars_value * value);
+extern inline bool handlebars_value_is_empty(struct handlebars_value * value);
+extern inline bool handlebars_value_is_scalar(struct handlebars_value * value);
+extern inline long handlebars_value_count(struct handlebars_value * value);
+
+extern inline struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value);
+extern inline struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value);
+extern inline void * handlebars_value_get_ptr(struct handlebars_value * value);
+extern inline struct handlebars_stack * handlebars_value_get_stack(struct handlebars_value * value);
+extern inline struct handlebars_string * handlebars_value_get_string(struct handlebars_value * value);
+extern inline void * handlebars_value_get_usr(struct handlebars_value * value);
+extern inline enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
+
+extern inline void handlebars_value_null(struct handlebars_value * value);
+extern inline void handlebars_value_boolean(struct handlebars_value * value, bool bval);
+extern inline void handlebars_value_integer(struct handlebars_value * value, long lval);
+extern inline void handlebars_value_float(struct handlebars_value * value, double dval);
+extern inline void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string);
+extern inline void handlebars_value_str_steal(struct handlebars_value * value, struct handlebars_string * string);
+extern inline void handlebars_value_string(struct handlebars_value * value, const char * strval);
+extern inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval);
+extern inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen);
+extern inline void handlebars_value_map_init(struct handlebars_value * value);
+extern inline void handlebars_value_array_init(struct handlebars_value * value);
+extern inline void handlebars_value_ptr(struct handlebars_value * value, void * ptr);
+
+
+
 #undef CONTEXT
 #define CONTEXT HBSCTX(ctx)
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_value * value = MC(handlebars_talloc_zero(ctx, struct handlebars_value));
-    handlebars_value_init(CONTEXT, value);
-    value->refcount = 1;
+    value->ctx = CONTEXT;
     value->flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
     return value;
 }
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(value->ctx)
-
-enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value)
-{
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		return handlebars_value_get_handlers(value)->type(value);
-	} else {
-		return value->type;
-	}
-}
 
 struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key)
 {
@@ -528,12 +552,3 @@ void handlebars_value_dtor(struct handlebars_value * value)
     memset(&value->v, 0, sizeof(value->v));
     value->flags = restore_flags;
 }
-
-#if !defined(HANDLEBARS_NO_REFCOUNT)
-extern inline int handlebars_value_addref(struct handlebars_value * value);
-extern inline struct handlebars_value * handlebars_value_addref2(struct handlebars_value * value);
-extern inline int handlebars_value_delref(struct handlebars_value * value);
-extern inline int handlebars_value_try_delref(struct handlebars_value * value);
-extern inline int handlebars_value_try_addref(struct handlebars_value * value);
-extern inline int handlebars_value_refcount(struct handlebars_value * value);
-#endif

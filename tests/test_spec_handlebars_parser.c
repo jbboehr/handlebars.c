@@ -234,7 +234,7 @@ START_TEST(handlebars_spec_parser)
             }
         } else {
             char * lesigh = handlebars_talloc_strdup(ctx, "\nExpected: \n");
-            lesigh = handlebars_talloc_strdup_append(lesigh, test->expected->val);
+            lesigh = handlebars_talloc_strdup_append(lesigh, hbs_str_val(test->expected));
             lesigh = handlebars_talloc_strdup_append(lesigh, "\nActual (error): \n");
             lesigh = handlebars_talloc_strdup_append(lesigh, errmsg);
             lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
@@ -245,19 +245,19 @@ START_TEST(handlebars_spec_parser)
         struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), ast);
 
 #ifndef NDEBUG
-        fprintf(stderr, "AST: %s\n", output->val);
+        fprintf(stderr, "AST: %s\n", hbs_str_val(output));
         fflush(stderr);
 #endif
 
         if( !test->exception ) {
             ck_assert_ptr_ne(NULL, output);
             if( handlebars_string_eq(test->expected, output) ) {
-                ck_assert_str_eq(test->expected->val, output->val);
+                ck_assert_str_eq(hbs_str_val(test->expected), hbs_str_val(output));
             } else {
                 char * lesigh = handlebars_talloc_strdup(ctx, "\nExpected: \n");
-                lesigh = handlebars_talloc_strdup_append(lesigh, test->expected->val);
+                lesigh = handlebars_talloc_strdup_append(lesigh, hbs_str_val(test->expected));
                 lesigh = handlebars_talloc_strdup_append(lesigh, "\nActual: \n");
-                lesigh = handlebars_talloc_strdup_append(lesigh, output->val);
+                lesigh = handlebars_talloc_strdup_append(lesigh, hbs_str_val(output));
                 lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
                 lesigh = handlebars_talloc_strdup_append(lesigh, test->tmpl);
                 ck_assert_msg(0, lesigh);

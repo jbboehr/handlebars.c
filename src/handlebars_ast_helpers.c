@@ -28,6 +28,7 @@
 
 #define HANDLEBARS_AST_PRIVATE
 #define HANDLEBARS_AST_LIST_PRIVATE
+#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -68,11 +69,18 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
         open_str = handlebars_ast_node_get_string_mode_value(CONTEXT, open_block_path);
         close_str = handlebars_ast_node_get_string_mode_value(CONTEXT, close_block_path);
         if( close_block_path && !handlebars_string_eq(open_str, close_str) ) {
-            handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo,  "%s doesn't match %s", open_str->val, close_str->val);
+            handlebars_throw_ex(
+                CONTEXT,
+                HANDLEBARS_PARSEERR,
+                locinfo,
+                "%.*s doesn't match %.*s",
+                (int) hbs_str_len(open_str), hbs_str_val(open_str),
+                (int) hbs_str_len(close_str), hbs_str_val(close_str)
+            );
         }
     }
 
-    if( open_block->node.intermediate.open && NULL != strchr(open_block->node.intermediate.open->val, '*') ) {
+    if( open_block->node.intermediate.open && NULL != strchr(hbs_str_val(open_block->node.intermediate.open), '*') ) {
     	is_decorator = true;
     }
 
@@ -171,12 +179,12 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
 
     // Check escaped
     if( open ) {
-        if( open->len >= 4 ) {
-            c = *(open->val + 3);
-        } else if( open->len >= 3 ) {
-            c = *(open->val + 2);
+        if( hbs_str_len(open) >= 4 ) {
+            c = *(hbs_str_val(open) + 3);
+        } else if( hbs_str_len(open) >= 3 ) {
+            c = *(hbs_str_val(open) + 2);
         }
-        if( NULL != strchr(open->val, '*') ) {
+        if( NULL != strchr(hbs_str_val(open), '*') ) {
         	ast_node->node.mustache.is_decorator = 1;
         }
     }
@@ -206,7 +214,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
         open_str = handlebars_ast_node_get_string_mode_value(CONTEXT, open_block_path);
         close_str = handlebars_ast_node_get_string_mode_value(CONTEXT, close_block_path);
         if( close_block_path && !handlebars_string_eq(open_str, close_str) ) {
-            handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "%s doesn't match %s", open_str->val, close_str->val);
+            handlebars_throw_ex(
+                CONTEXT,
+                HANDLEBARS_PARSEERR,
+                locinfo,
+                "%.*s doesn't match %.*s",
+                (int) hbs_str_len(open_str), hbs_str_val(open_str),
+                (int) hbs_str_len(close_str), hbs_str_val(close_str)
+            );
         }
     }
 
@@ -243,15 +258,22 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
 
         // Append to original
         if( separator ) {
-            original = handlebars_string_append(HBSCTX(parser), original, separator->val, separator->len);
+            original = handlebars_string_append_str(HBSCTX(parser), original, separator);
         }
-        original = handlebars_string_append(HBSCTX(parser), original, part->val, part->len);
+        original = handlebars_string_append_str(HBSCTX(parser), original, part);
 
         // Handle paths
-        if( !is_literal && (strcmp(part->val, "..") == 0 || strcmp(part->val, ".") == 0 || strcmp(part->val, "this") == 0) ) {
+
+        if( !is_literal && (hbs_str_eq_strl(part, HBS_STRL("..")) || hbs_str_eq_strl(part, HBS_STRL(".")) || hbs_str_eq_strl(part, HBS_STRL("this"))) ) {
             if( count > 0 ) {
-                handlebars_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "Invalid path: %s", original->val);
-            } else if( strcmp(part->val, "..") == 0 ) {
+                handlebars_throw_ex(
+                    CONTEXT,
+                    HANDLEBARS_ERROR,
+                    locinfo,
+                    "Invalid path: %.*s",
+                    (int) hbs_str_len(original), hbs_str_val(original)
+                );
+            } else if( hbs_str_eq_strl(part, HBS_STRL("..")) ) {
                 depth++;
             }
             // Instead of adding it below, remove it here
@@ -280,7 +302,15 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
 
     open_block_path = open_raw_block->node.intermediate.path;
     if( !handlebars_string_eq(open_block_path->node.path.original, close) ) {
-        handlebars_throw_ex(CONTEXT, HANDLEBARS_ERROR, locinfo, "%s doesn't match %s", open_block_path->node.path.original->val, close->val);
+        struct handlebars_string * open = open_block_path->node.path.original;
+        handlebars_throw_ex(
+            CONTEXT,
+            HANDLEBARS_ERROR,
+            locinfo,
+            "%.*s doesn't match %.*s",
+            (int) hbs_str_len(open), hbs_str_val(open),
+            (int) hbs_str_len(close), hbs_str_val(close)
+        );
     }
 
     // Create the content node
@@ -290,9 +320,9 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     return handlebars_ast_node_ctor_raw_block(parser, open_raw_block, content_node, locinfo);
 }
 
-static void handlebars_ast_helper_strip_comment_left(struct handlebars_string * comment)
+static inline void handlebars_ast_helper_strip_comment_left(struct handlebars_string * comment)
 {
-    char * c = comment->val;
+    char * c = hbs_str_val(comment);
 
     if( *c == '{' ) {
         c++;
@@ -326,7 +356,7 @@ static void handlebars_ast_helper_strip_comment_left(struct handlebars_string * 
         c++;
     }
 
-    if( c > comment->val ) {
+    if( c > hbs_str_val(comment) ) {
         comment->len = strlen(c);
         memmove(comment->val, c, comment->len);
         comment->val[comment->len] = 0;

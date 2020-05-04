@@ -67,6 +67,7 @@
 #endif
 
 struct handlebars_value;
+struct handlebars_string;
 
 typedef void (*scan_directory_cb)(char * filename);
 
@@ -77,7 +78,7 @@ uint32_t adler32(unsigned char *data, size_t len);
 
 void load_fixtures(struct handlebars_value * value);
 
-char * normalize_template_whitespace(TALLOC_CTX *ctx, char *str, size_t len);
+char * normalize_template_whitespace(TALLOC_CTX *ctx, struct handlebars_string * str);
 
 
 // Common

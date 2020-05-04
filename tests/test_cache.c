@@ -32,6 +32,7 @@
 #define HANDLEBARS_CACHE_PRIVATE
 #define HANDLEBARS_COMPILER_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
+#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_cache.h"
@@ -121,7 +122,7 @@ static void execute_gc_test(struct handlebars_cache * cache)
 
     struct handlebars_value * partials = handlebars_value_ctor(context);
     handlebars_value_map_init(partials);
-    handlebars_map_str_add(partials->v.map, HBS_STRL("foo"), partial);
+    handlebars_map_str_add(handlebars_value_get_map(partials), HBS_STRL("foo"), partial);
 
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
     handlebars_compiler_compile(compiler, ast);
@@ -168,7 +169,7 @@ static void execute_reset_test(struct handlebars_cache * cache)
 
     struct handlebars_value * partials = handlebars_value_ctor(context);
     handlebars_value_map_init(partials);
-    handlebars_map_str_add(partials->v.map, HBS_STRL("foo"), partial);
+    handlebars_map_str_add(handlebars_value_get_map(partials), HBS_STRL("foo"), partial);
 
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
     struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);

@@ -191,19 +191,19 @@ static inline void unlock(struct handlebars_cache * cache)
 
 static inline bool table_exists(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
 {
-    size_t offset = HBS_STR_HASH(string) % intern->table_count;
+    size_t offset = hbs_str_hash(string) % intern->table_count;
     return NULL != intern->table[offset];
 }
 
 static inline struct table_entry * table_find(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
 {
-    size_t offset = HBS_STR_HASH(string) % intern->table_count;
+    size_t offset = hbs_str_hash(string) % intern->table_count;
     return intern->table[offset];
 }
 
 static inline void table_set(struct handlebars_cache_mmap * intern, struct table_entry * entry)
 {
-    size_t offset = HBS_STR_HASH(entry->key) % intern->table_count;
+    size_t offset = hbs_str_hash(entry->key) % intern->table_count;
     if( entry == NULL ) {
         intern->table[offset] = NULL;
     } else {
@@ -363,7 +363,7 @@ static void cache_add(
     }
 
     // Copy key
-    entry.key = append(intern, (void *) key, HBS_STR_SIZE(key->len));
+    entry.key = append(intern, (void *) key, HBS_STR_SIZE(hbs_str_len(key)));
 
     // Copy data
     entry.data = append(intern, (void *) module, module->size);

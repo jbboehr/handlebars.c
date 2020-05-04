@@ -108,7 +108,7 @@ void handlebars_stack_reverse(struct handlebars_stack * stack) HBS_ATTR_NONNULL_
 
 struct handlebars_stack {
     //! Handlebars context
-    struct handlebars_context * ctx;
+    struct handlebars_context ctx;
     //! Number of elements in the stack
     size_t i;
     //! Currently available number of elements (size of the buffer)

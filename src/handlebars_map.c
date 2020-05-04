@@ -25,6 +25,7 @@
 #include <string.h>
 
 #define HANDLEBARS_MAP_PRIVATE
+#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_map.h"
@@ -44,7 +45,7 @@ size_t HANDLEBARS_MAP_SIZE = sizeof(struct handlebars_map);
 struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_map * map = MC(handlebars_talloc_zero(ctx, struct handlebars_map));
-    map->ctx = CONTEXT;
+    handlebars_context_bind(ctx, HBSCTX(map));
     map->table_size = 32;
     map->table = talloc_steal(map, MC(handlebars_talloc_array(ctx, struct handlebars_map_entry *, map->table_size)));
     memset(map->table, 0, sizeof(struct handlebars_map_entry *) * map->table_size);
@@ -52,7 +53,7 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx)
 }
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(map->ctx)
+#define CONTEXT HBSCTX(map)
 
 void handlebars_map_dtor(struct handlebars_map * map)
 {

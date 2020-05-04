@@ -87,7 +87,7 @@ struct handlebars_string * handlebars_operand_print_append(
             break;
         case handlebars_operand_type_string:
             tmp = handlebars_string_addcslashes(context, operand->data.string.string, HBS_STRL("\r\n\t"));
-            string = handlebars_string_asprintf_append(context, string, "[STRING:%.*s]", (int) tmp->len, tmp->val);
+            string = handlebars_string_asprintf_append(context, string, "[STRING:%.*s]", (int) hbs_str_len(tmp), hbs_str_val(tmp));
             handlebars_talloc_free(tmp);
             break;
         case handlebars_operand_type_array: {

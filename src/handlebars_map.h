@@ -133,7 +133,7 @@ struct handlebars_map_entry {
 };
 
 struct handlebars_map {
-    struct handlebars_context * ctx;
+    struct handlebars_context ctx;
     size_t i;
     struct handlebars_map_entry * first;
     struct handlebars_map_entry * last;

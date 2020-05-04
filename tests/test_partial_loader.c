@@ -25,6 +25,8 @@
 #include <string.h>
 #include <talloc.h>
 
+#define HANDLEBARS_STRING_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"

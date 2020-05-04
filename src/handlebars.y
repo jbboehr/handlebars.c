@@ -237,7 +237,7 @@ statement
 
 content
   : CONTENT content {
-      $$ = handlebars_string_append(CONTEXT, $1, $2->val, $2->len);
+      $$ = handlebars_string_append_str(CONTEXT, $1, $2);
       $$ = talloc_steal(parser, $$);
     }
   | CONTENT {

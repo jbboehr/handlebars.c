@@ -240,7 +240,7 @@ START_TEST(test_ast_to_string_on_mustache_spec)
     tmpl = handlebars_preprocess_delimiters(ctx, origtmpl, NULL, NULL);
 
     // Won't work with custom delimters or with '{{&'
-    if (!handlebars_string_eq(origtmpl, tmpl) || NULL != strstr(origtmpl->val, "{{&")) {
+    if (!handlebars_string_eq(origtmpl, tmpl) || NULL != strstr(hbs_str_val(origtmpl), "{{&")) {
         fprintf(stderr, "SKIPPED #%d\n", _i);
         goto done;
     }
@@ -254,8 +254,8 @@ START_TEST(test_ast_to_string_on_mustache_spec)
 
     ast_str = handlebars_ast_to_string(ctx, ast);
 
-    actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
-    expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
+    actual = normalize_template_whitespace(memctx, ast_str);
+    expected = normalize_template_whitespace(memctx, tmpl);
     if (strcmp(actual, expected) != 0) {
         char *tmp = handlebars_talloc_asprintf(rootctx,
                                                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
@@ -340,7 +340,7 @@ START_TEST(test_mustache_spec)
     if( test->partials ) {
         handlebars_value_iterator_init(&it, test->partials);
         for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(partials->v.map, it.key, it.current);
+            handlebars_map_update(handlebars_value_get_map(partials), it.key, it.current);
         }
     }
     handlebars_vm_set_partials(vm, partials);
@@ -353,8 +353,8 @@ START_TEST(test_mustache_spec)
 #ifndef NDEBUG
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
-        fprintf(stderr, "ACTUAL: %s\n", buffer->val);
-        fprintf(stderr, "%s\n", buffer && 0 == strcmp(buffer->val, test->expected) ? "PASS" : "FAIL");
+        fprintf(stderr, "ACTUAL: %s\n", hbs_str_val(buffer));
+        fprintf(stderr, "%s\n", buffer &&  hbs_str_eq_strl(buffer, test->expected, strlen(test->expected)) ? "PASS" : "FAIL");
     } else if( handlebars_error_msg(ctx) ) {
         fprintf(stderr, "ERROR: %s\n", handlebars_error_msg(ctx));
     }
@@ -367,12 +367,12 @@ START_TEST(test_mustache_spec)
 
     ck_assert_ptr_ne(buffer, NULL);
 
-    if (strcmp(buffer->val, test->expected) != 0) {
+    if (!hbs_str_eq_strl(buffer, test->expected, strlen(test->expected))) {
         char *tmp = handlebars_talloc_asprintf(rootctx,
                                                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                                                "" /*test->suite_name*/,
                                                test->name, test->desc, test->flags,
-                                               test->tmpl, test->expected, buffer->val);
+                                               test->tmpl, test->expected, hbs_str_val(buffer));
         ck_abort_msg(tmp);
     }
 

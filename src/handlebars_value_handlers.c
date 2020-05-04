@@ -39,7 +39,11 @@
 #include <json/json_tokener.h>
 #endif
 
+#define HANDLEBARS_MAP_PRIVATE
+#define HANDLEBARS_STACK_PRIVATE
+#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
+#define HANDLEBARS_VALUE_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_private.h"
@@ -49,7 +53,7 @@
 
 
 
-#define HANDLEBARS_JSON(value) ((struct handlebars_json *) talloc_get_type(value->v.usr, struct handlebars_json))
+#define HANDLEBARS_JSON(value) ((struct handlebars_json *) talloc_get_type(handlebars_value_get_usr(value), struct handlebars_json))
 #define HANDLEBARS_JSON_OBJ(value) HANDLEBARS_JSON(value)->object
 
 struct handlebars_json {

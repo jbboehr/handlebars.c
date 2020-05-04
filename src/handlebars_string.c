@@ -25,6 +25,8 @@
 #include <ctype.h>
 #include <talloc.h>
 
+#define HANDLEBARS_STRING_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -45,6 +47,61 @@ static const struct htmlspecialchars_pair htmlspecialchars[256] = {
     ['>']  = {HBS_STRL("&gt;")},
     ['`']  = {HBS_STRL("&#x60;")},
 };
+
+size_t HANDLEBARS_STRING_SIZE = sizeof(struct handlebars_string);
+
+extern inline char * hbs_str_val(struct handlebars_string * str);
+extern inline size_t hbs_str_len(struct handlebars_string * str);
+extern inline unsigned long hbs_str_hash(struct handlebars_string * str);
+
+extern inline unsigned long handlebars_string_hash_cont(const char * str, size_t len, unsigned long hash);
+extern inline unsigned long handlebars_string_hash(const char * str, size_t len);
+extern inline inline struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t length);
+extern inline struct handlebars_string * handlebars_string_ctor_ex(
+    struct handlebars_context * context,
+    const char * str, size_t len, unsigned long hash
+);
+extern inline struct handlebars_string * handlebars_string_ctor(
+    struct handlebars_context * context,
+    const char * str, size_t len
+);
+extern inline struct handlebars_string * handlebars_string_copy_ctor(
+    struct handlebars_context * context,
+    const struct handlebars_string * string
+);
+extern inline struct handlebars_string * handlebars_string_extend(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    size_t len
+);
+extern inline struct handlebars_string * handlebars_string_append_unsafe(
+    struct handlebars_string * string,
+    const char * str, size_t len
+);
+extern inline struct handlebars_string * handlebars_string_append(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const char * str, size_t len
+);
+extern inline struct handlebars_string * handlebars_string_append_str(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    const struct handlebars_string * string2
+);
+extern inline struct handlebars_string * handlebars_string_compact(struct handlebars_string * string);
+extern inline bool handlebars_string_eq(
+    /*const*/ struct handlebars_string * string1,
+    /*const*/ struct handlebars_string * string2
+);
+extern inline bool handlebars_string_eq_ex(
+    const char * string1, size_t length1, unsigned long hash1,
+    const char * string2, size_t length2, unsigned long hash2
+);
+extern inline bool hbs_str_eq_strl(
+    struct handlebars_string * string1,
+    const char * str2,
+    size_t len2
+);
 
 const char * handlebars_strnstr(const char * haystack, size_t haystack_len, const char * needle, size_t needle_len)
 {

@@ -29,6 +29,7 @@
 #define HANDLEBARS_AST_PRIVATE
 #define HANDLEBARS_AST_LIST_PRIVATE
 #define HANDLEBARS_PARSER_PRIVATE
+#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 
@@ -72,7 +73,7 @@ bool handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * state
     sibling = (next->next ? next->next->data : NULL);
 
     if( next->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        return handlebars_scanner_next_whitespace(next->data->node.content.original->val, !sibling && is_root);
+        return handlebars_scanner_next_whitespace(hbs_str_val(next->data->node.content.original), !sibling && is_root);
     }
 
     return false;
@@ -103,7 +104,7 @@ bool handlebars_whitespace_is_prev_whitespace(struct handlebars_ast_list * state
     sibling = (prev->prev ? prev->prev->data : NULL);
 
     if( prev->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        return handlebars_scanner_prev_whitespace(prev->data->node.content.original->val, !sibling && is_root);
+        return handlebars_scanner_prev_whitespace(hbs_str_val(prev->data->node.content.original), !sibling && is_root);
     }
 
     return false;
@@ -128,7 +129,7 @@ bool handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
         return 0;
     }
 
-    original_length = current->node.content.value->len;
+    original_length = hbs_str_len(current->node.content.value);
 
     if( multiple ) {
         current->node.content.value = handlebars_string_rtrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));
@@ -136,7 +137,7 @@ bool handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
         current->node.content.value = handlebars_string_rtrim(current->node.content.value, HBS_STRL(" \t"));
     }
 
-    if( original_length == current->node.content.value->len ) {
+    if( original_length == hbs_str_len(current->node.content.value) ) {
         current->strip &= ~handlebars_ast_strip_flag_left_stripped;
     } else {
         current->strip |= handlebars_ast_strip_flag_left_stripped;
@@ -165,7 +166,7 @@ bool handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
         return 0;
     }
 
-    original_length = current->node.content.value->len;
+    original_length = hbs_str_len(current->node.content.value);
 
     if( multiple ) {
         current->node.content.value = handlebars_string_ltrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));

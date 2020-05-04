@@ -43,7 +43,7 @@ size_t HANDLEBARS_STACK_SIZE = sizeof(struct handlebars_stack);
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_stack * stack = MC(handlebars_talloc_zero(ctx, struct handlebars_stack));
-    stack->ctx = CONTEXT;
+    handlebars_context_bind(ctx, HBSCTX(stack));
     stack->i = 0;
     stack->s = 32;
     stack->v = MC(handlebars_talloc_array(stack, struct handlebars_value *, stack->s));
@@ -51,7 +51,7 @@ struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
 }
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(stack->ctx)
+#define CONTEXT HBSCTX(stack)
 
 void handlebars_stack_dtor(struct handlebars_stack * stack)
 {

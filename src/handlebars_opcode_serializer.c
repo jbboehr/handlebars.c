@@ -57,6 +57,11 @@ static void * append(struct handlebars_module * module, void * source, size_t si
     return addr;
 }
 
+static inline void patch_string(struct handlebars_string * str) {
+    // str->rc.refcount = 0;
+    // str->rc.dtor = NULL;
+}
+
 static void calculate_size_operand(struct handlebars_module * module, struct handlebars_operand * operand)
 {
     int i;
@@ -64,12 +69,12 @@ static void calculate_size_operand(struct handlebars_module * module, struct han
     // Increment for children
     switch( operand->type ) {
         case handlebars_operand_type_string:
-            module->data_size += HBS_STR_SIZE(operand->data.string.string->len);
+            module->data_size += HBS_STR_SIZE(hbs_str_len(operand->data.string.string));
             break;
         case handlebars_operand_type_array:
             for( i = 0; i < operand->data.array.count; i++ ) {
                 module->data_size += sizeof(struct handlebars_operand_string);
-                module->data_size += HBS_STR_SIZE(operand->data.array.array[i].string->len);
+                module->data_size += HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string));
             }
             break;
         default:
@@ -124,8 +129,9 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
             // Make sure hash is computed
             HBS_STR_HASH(operand->data.string.string);
 
-            size = HBS_STR_SIZE(operand->data.string.string->len);
+            size = HBS_STR_SIZE(hbs_str_len(operand->data.string.string));
             operand->data.string.string = append(module, operand->data.string.string, size);
+            patch_string(operand->data.string.string);
             break;
         case handlebars_operand_type_array:
             operand->data.array.array = append(module, operand->data.array.array, sizeof(struct handlebars_operand_string) * operand->data.array.count);
@@ -133,8 +139,9 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
                 // Make sure hash is computed
                 HBS_STR_HASH(operand->data.array.array[i].string);
 
-                size = HBS_STR_SIZE(operand->data.array.array[i].string->len);
+                size = HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string));
                 operand->data.array.array[i].string = append(module, operand->data.array.array[i].string, size);
+                patch_string(operand->data.array.array[i].string);
             }
             break;
         default:
@@ -235,8 +242,8 @@ struct handlebars_module * handlebars_program_serialize(
     talloc_set_type(module, struct handlebars_module);
 
     // Setup pointers
-    module->programs =  PTR_ADD(module, sizeof(struct handlebars_module));
-    module->opcodes =  PTR_ADD(module->programs, (sizeof(struct handlebars_module_table_entry) * module->program_count));
+    module->programs = PTR_ADD(module, sizeof(struct handlebars_module));
+    module->opcodes = PTR_ADD(module->programs, (sizeof(struct handlebars_module_table_entry) * module->program_count));
     module->data = PTR_ADD(module->opcodes, (sizeof(struct handlebars_opcode) * module->opcode_count));
 
     // Reset counts - use as index

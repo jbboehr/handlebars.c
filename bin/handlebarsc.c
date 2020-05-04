@@ -311,8 +311,8 @@ static int do_debug(void)
     fprintf(stderr, "sizeof(struct handlebars_options): %lu\n", (long unsigned) HANDLEBARS_OPTIONS_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_parser): %lu\n", (long unsigned) HANDLEBARS_PARSER_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_program): %lu\n", (long unsigned) HANDLEBARS_PROGRAM_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) sizeof(struct handlebars_value));
-    fprintf(stderr, "sizeof(union handlebars_value_internals): %lu\n", (long unsigned) sizeof(union handlebars_value_internals));
+    fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) HANDLEBARS_VALUE_SIZE);
+    // fprintf(stderr, "sizeof(union handlebars_value_internals): %lu\n", (long unsigned) sizeof(union handlebars_value_internals));
     fprintf(stderr, "sizeof(struct handlebars_vm): %lu\n", (long unsigned) HANDLEBARS_VM_SIZE);
     return 0;
 }
@@ -349,7 +349,7 @@ static int do_lex(void)
 
     for ( ; *tokens; tokens++ ) {
         struct handlebars_string * tmp = handlebars_token_print(ctx, *tokens, 1);
-        fwrite(tmp->val, sizeof(char), tmp->len, stdout);
+        fwrite(hbs_str_val(tmp), sizeof(char), hbs_str_len(tmp), stdout);
         fflush(stdout);
         handlebars_talloc_free(tmp);
     }
@@ -391,7 +391,7 @@ static int do_parse(void)
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     output = handlebars_ast_print(HBSCTX(parser), ast);
-    fwrite(output->val, sizeof(char), output->len, stdout);
+    fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
 
 error:
     handlebars_context_dtor(ctx);
@@ -438,7 +438,7 @@ static int do_compile(void)
 
     // Print
     output = handlebars_program_print(ctx, program, 0);
-    fwrite(output->val, sizeof(char), output->len, stdout);
+    fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
 
 error:
     handlebars_context_dtor(ctx);
@@ -522,7 +522,7 @@ static int do_execute(void)
     handlebars_vm_set_flags(vm, compiler_flags);
     struct handlebars_string * buffer = handlebars_vm_execute(vm, module, context);
 
-    fprintf(stdout, "%.*s", (int) buffer->len, buffer->val);
+    fwrite(hbs_str_val(buffer), sizeof(char), hbs_str_len(buffer), stdout);
 
 error:
     handlebars_context_dtor(ctx);

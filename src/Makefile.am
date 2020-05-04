@@ -45,10 +45,10 @@ include_HEADERS = \
 	handlebars_helpers.h \
 	handlebars_map.h \
 	handlebars_memory.h \
-	handlebars_parser.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_serializer.h \
 	handlebars_opcodes.h \
+	handlebars_parser.h \
     handlebars_partial_loader.h \
 	handlebars_private.h \
 	handlebars_scanners.h \

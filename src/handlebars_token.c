@@ -183,7 +183,7 @@ struct handlebars_string * handlebars_token_print_append(
     struct handlebars_string * text = handlebars_string_addcslashes(context, token->string, HBS_STRL("\r\n\t\v"));
     string = handlebars_string_append(context, string, name, name_len);
     string = handlebars_string_append(context, string, HBS_STRL(" ["));
-    string = handlebars_string_append(context, string, text->val, text->len);
+    string = handlebars_string_append_str(context, string, text);
     string = handlebars_string_append(context, string, HBS_STRL("]"));
     string = handlebars_string_append(context, string, sep, 1);
     handlebars_talloc_free(text);

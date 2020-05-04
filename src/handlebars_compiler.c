@@ -252,12 +252,12 @@ extern inline bool handlebars_compiler_is_known_helper(
         return false;
     }
 
-    if( NULL != handlebars_builtins_find(helper_name->val, (unsigned int) helper_name->len) ) {
+    if( NULL != handlebars_builtins_find(hbs_str_val(helper_name), (unsigned int) hbs_str_len(helper_name)) ) {
         return true;
     }
 
     for( ptr = compiler->known_helpers ; *ptr ; ++ptr ) {
-        if( strcmp(helper_name->val, *ptr) == 0 ) {
+        if( hbs_str_eq_strl(helper_name, *ptr, strlen(*ptr)) ) {
             return true;
         }
     }
@@ -428,12 +428,12 @@ static inline void handlebars_compiler_push_param(
         opcode = MC(handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_push_string_param));
 
         if( param->type == HANDLEBARS_AST_NODE_BOOLEAN ) {
-            handlebars_operand_set_boolval(&opcode->op1, string && strcmp(string->val, "true") == 0);
+            handlebars_operand_set_boolval(&opcode->op1, string && hbs_str_eq_strl(string, HBS_STRL("true")));
         } else {
             // @todo should be /^(\.\.?\/)/
             string = handlebars_string_copy_ctor(CONTEXT, string);
             string = handlebars_string_ltrim(string, HBS_STRL("./"));
-            for( char * tmp2 = string->val; *tmp2; tmp2++ ) {
+            for( char * tmp2 = hbs_str_val(string); *tmp2; tmp2++ ) {
                 if( *tmp2 == '/' ) {
                     *tmp2 = '.';
                 }
@@ -487,7 +487,7 @@ static inline void handlebars_compiler_push_param(
                 __PUSH(opcode);
             } else {
                 string = handlebars_ast_node_get_string_mode_value(CONTEXT, param);
-                char * strval = string->val;
+                char * strval = hbs_str_val(string);
                 if( strval == strstr(strval, "this") ) {
                 	strval += 4 + (*(strval + 4) == '.' || *(strval + 4) == '$' ? 1 : 0 );
                 }
@@ -811,7 +811,7 @@ static inline void _handlebars_compiler_accept_partial(
 
     handlebars_compiler_setup_full_mustache_params(compiler, node, programGuid, -1, 1);
 
-    if( (compiler->flags & handlebars_compiler_flag_prevent_indent) && indent && indent->len > 0 ) {
+    if( (compiler->flags & handlebars_compiler_flag_prevent_indent) && indent && hbs_str_len(indent) > 0 ) {
         __OPS(append_content, indent);
         indent = NULL;
         /*
@@ -828,8 +828,8 @@ static inline void _handlebars_compiler_accept_partial(
             long lv = 0;
         	double fv;
             if( name->type == HANDLEBARS_AST_NODE_NUMBER ) {
-                fv = strtod(string->val, NULL);
-                lv = strtol(string->val, NULL, 10);
+                fv = strtod(hbs_str_val(string), NULL);
+                lv = strtol(hbs_str_val(string), NULL, 10);
                 if( !fv || !lv || fv != (double) lv ) {
                     lv = 0;
                 }
@@ -900,7 +900,7 @@ static inline void handlebars_compiler_accept_content(
     assert(content != NULL);
     assert(content->type == HANDLEBARS_AST_NODE_CONTENT);
 
-    if( likely(/* content && */ content->node.content.value && content->node.content.value->len) ) {
+    if( likely(/* content && */ content->node.content.value && hbs_str_len(content->node.content.value) > 0) ) {
         __OPS(append_content, content->node.content.value);
     }
 }
@@ -1057,7 +1057,12 @@ static inline void handlebars_compiler_accept_sexpr_helper(
         handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, name);
         __PUSH(opcode);
     } else if( compiler->flags & handlebars_compiler_flag_known_helpers_only ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_UNKNOWN_HELPER, "You specified knownHelpersOnly, but used the unknown helper %s", name->val);
+        handlebars_throw(
+            CONTEXT,
+            HANDLEBARS_UNKNOWN_HELPER,
+            "You specified knownHelpersOnly, but used the unknown helper %.*s",
+            (int) hbs_str_len(name), hbs_str_val(name)
+        );
     } else {
         bool is_simple = handlebars_ast_helper_simple_id(path);
 
@@ -1187,14 +1192,14 @@ static inline void handlebars_compiler_accept_number(
     assert(number != NULL);
     assert(number->type == HANDLEBARS_AST_NODE_NUMBER);
 
-    if( 0 == strcmp(val->val, "0") ) {
+    if (hbs_str_eq_strl(val, HBS_STRL("0"))) {
     	__OPL(push_literal, 0);
         return;
     }
 
     // Convert to float and long
-    fv = strtod(val->val, NULL);
-    lv = strtol(val->val, NULL, 10);
+    fv = strtod(hbs_str_val(val), NULL);
+    lv = strtol(hbs_str_val(val), NULL, 10);
 
     if( fv && lv && fv == (double) lv ) {
     	// It's a long - @todo do we need to do float too?
@@ -1215,7 +1220,7 @@ static inline void handlebars_compiler_accept_boolean(
     assert(boolean->type == HANDLEBARS_AST_NODE_BOOLEAN);
 
     opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_push_literal);
-    handlebars_operand_set_boolval(&opcode->op1, strcmp(val->val, "false") != 0);
+    handlebars_operand_set_boolval(&opcode->op1, !hbs_str_eq_strl(val, HBS_STRL("false")));
     __PUSH(opcode);
 }
 

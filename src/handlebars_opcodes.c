@@ -132,7 +132,8 @@ void handlebars_operand_set_arrayval_string(
     ptr = arg;
     arrptr = operand->data.array.array;
     for( ; *ptr; ++ptr, ++arrptr ) {
-        arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_ctor(context, (*ptr)->val, (*ptr)->len));
+        // arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_ctor(context, (*ptr)->val, (*ptr)->len));
+        arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_copy_ctor(context, *ptr));
     }
 }
 

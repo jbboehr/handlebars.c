@@ -26,7 +26,10 @@
 #include <talloc.h>
 
 #define HANDLEBARS_MAP_PRIVATE
+#define HANDLEBARS_STACK_PRIVATE
+#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
+#define HANDLEBARS_VALUE_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_map.h"

@@ -1653,7 +1653,7 @@ yyreduce:
   case 14:
 #line 239 "handlebars.y"
     {
-      (yyval.string) = handlebars_string_append(CONTEXT, (yyvsp[-1].string), (yyvsp[0].string)->val, (yyvsp[0].string)->len);
+      (yyval.string) = handlebars_string_append_str(CONTEXT, (yyvsp[-1].string), (yyvsp[0].string));
       (yyval.string) = talloc_steal(parser, (yyval.string));
     }
 #line 1660 "handlebars.tab.c"

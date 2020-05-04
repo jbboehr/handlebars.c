@@ -25,7 +25,12 @@
 #include <ctype.h>
 #include <string.h>
 
+#define HANDLEBARS_STACK_PRIVATE
+#define HANDLEBARS_STRING_PRIVATE
+#define HANDLEBARS_MAP_PRIVATE
 #define HANDLEBARS_HELPERS_PRIVATE
+#define HANDLEBARS_VALUE_PRIVATE
+#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_map.h"
@@ -52,7 +57,7 @@ FIXTURE_FN(20974934)
 {
     // "function (arg) { return typeof arg; }"
     struct handlebars_value * arg = argv[0];
-    if( arg->type == HANDLEBARS_VALUE_TYPE_NULL ) {
+    if( handlebars_value_get_type(arg) == HANDLEBARS_VALUE_TYPE_NULL ) {
         handlebars_value_delref(arg);
         FIXTURE_STRING("undefined");
     } else {
@@ -97,7 +102,7 @@ FIXTURE_FN(454102302)
     // "function (value) { return value + ''; }"
     // @todo implement undefined?
     struct handlebars_value * prefix = argv[0];
-    assert(prefix->type == HANDLEBARS_VALUE_TYPE_NULL);
+    assert(handlebars_value_get_type(prefix) == HANDLEBARS_VALUE_TYPE_NULL);
     const char * tmp = "undefined";
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -156,8 +161,8 @@ FIXTURE_FN(510017722)
     struct handlebars_value * bp2 = handlebars_value_ctor(CONTEXT);
     handlebars_value_integer(bp1, value_for_510017722++);
     handlebars_value_integer(bp2, value_for_510017722++);
-    handlebars_stack_push(block_params->v.stack, bp1);
-    handlebars_stack_push(block_params->v.stack, bp2);
+    handlebars_stack_push(handlebars_value_get_stack(block_params), bp1);
+    handlebars_stack_push(handlebars_value_get_stack(block_params), bp2);
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
@@ -178,9 +183,9 @@ FIXTURE_FN(585442881)
     handlebars_value_map_init(context);
     struct handlebars_value * greeting = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(greeting, "Goodbye");
-    handlebars_map_str_update(context->v.map, HBS_STRL("greeting"), greeting);
-    handlebars_map_str_update(context->v.map, HBS_STRL("adj"), cruel);
-    handlebars_map_str_update(context->v.map, HBS_STRL("noun"), world);
+    handlebars_map_str_update(handlebars_value_get_map(context), HBS_STRL("greeting"), greeting);
+    handlebars_map_str_update(handlebars_value_get_map(context), HBS_STRL("adj"), cruel);
+    handlebars_map_str_update(handlebars_value_get_map(context), HBS_STRL("noun"), world);
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
@@ -271,7 +276,7 @@ FIXTURE_FN(666457330)
 {
     // "function (options) {\n          if (options.hash.print === true) {\n            return 'GOODBYE ' + options.hash.cruel + ' ' + options.fn(this);\n          } else if (options.hash.print === false) {\n            return 'NOT PRINTING';\n          } else {\n            return 'THIS SHOULD NOT HAPPEN';\n          }\n        }"
     struct handlebars_value * print = handlebars_value_map_str_find(options->hash, HBS_STRL("print"));
-    if( print->type == HANDLEBARS_VALUE_TYPE_TRUE ) {
+    if( handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_TRUE ) {
         struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
         struct handlebars_string * res = handlebars_vm_execute_program(options->vm, options->program, options->scope);
         char * tmp = handlebars_talloc_asprintf(
@@ -285,7 +290,7 @@ FIXTURE_FN(666457330)
         handlebars_value_string(result, tmp);
         handlebars_talloc_free(tmp);
         return result;
-    } else if( print->type == HANDLEBARS_VALUE_TYPE_FALSE ) {
+    } else if( handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_FALSE ) {
         FIXTURE_STRING("NOT PRINTING");
     } else {
         FIXTURE_STRING("THIS SHOULD NOT HAPPEN");

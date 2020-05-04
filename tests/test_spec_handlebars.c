@@ -341,14 +341,14 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
     parser = handlebars_parser_ctor(ctx);
 
     tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
-    const char *expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
+    const char *expected = normalize_template_whitespace(memctx, tmpl);
 
     // Won't work with a bunch of shit from handlebars - ast is lossy
     // We're mostly doing this to make sure it won't segfault on handlebars sytax since
     // it's mainly meant to be used with mustache templates
     if (test->exception || NULL != strstr(expected, "{{&") || NULL != strstr(expected, "{{else") ||
             NULL != strstr(expected, "{{!--") || NULL != strstr(expected, "[") || NULL != strstr(expected, "{{>(") ||
-            NULL != strstr(expected, "\\{{") || NULL != strstr(tmpl->val, "{{'") ) {
+            NULL != strstr(expected, "\\{{") || NULL != strstr(hbs_str_val(tmpl), "{{'") ) {
         fprintf(stderr, "SKIPPED #%d\n", _i);
         goto done;
     }
@@ -362,7 +362,7 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
 
     ast_str = handlebars_ast_to_string(ctx, ast);
 
-    actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
+    actual = normalize_template_whitespace(memctx, ast_str);
     if (strcmp(actual, expected) != 0) {
             char *tmp = handlebars_talloc_asprintf(rootctx,
                                                    "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
@@ -488,7 +488,7 @@ static inline void run_test(struct generic_test * test, int _i)
         handlebars_value_iterator_init(&it, helpers);
         for (; it.current != NULL; it.next(&it)) {
             //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-            handlebars_map_update(helpers->v.map, it.key, it.current);
+            handlebars_map_update(handlebars_value_get_map(helpers), it.key, it.current);
             //}
         }
     }
@@ -501,7 +501,7 @@ static inline void run_test(struct generic_test * test, int _i)
         load_fixtures(partials);
         handlebars_value_iterator_init(&it, partials);
         for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(partials->v.map, it.key, it.current);
+            handlebars_map_update(handlebars_value_get_map(partials), it.key, it.current);
         }
     } else {
         partials = handlebars_value_ctor(ctx);
@@ -527,8 +527,8 @@ static inline void run_test(struct generic_test * test, int _i)
     fprintf(stderr, "TMPL %s\n", test->tmpl);
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
-        fprintf(stderr, "ACTUAL: %s\n", buffer->val);
-        fprintf(stderr, "%s\n", buffer && 0 == strcmp(buffer->val, test->expected) ? "PASS" : "FAIL");
+        fprintf(stderr, "ACTUAL: %s\n", hbs_str_val(buffer));
+        fprintf(stderr, "%s\n", buffer && hbs_str_eq_strl(buffer, test->expected, strlen(test->expected)) ? "PASS" : "FAIL");
     } else if( ctx->e->msg ) {
         fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
     }
@@ -562,12 +562,12 @@ static inline void run_test(struct generic_test * test, int _i)
         ck_assert_ptr_ne(test->expected, NULL);
         ck_assert_ptr_ne(buffer, NULL);
 
-        if (strcmp(buffer->val, test->expected) != 0) {
+        if (!hbs_str_eq_strl(buffer, test->expected, strlen(test->expected))) {
             char *tmp = handlebars_talloc_asprintf(rootctx,
                                                    "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                                                    "" /*test->suite_name*/,
                                                    test->description, test->it, test->flags,
-                                                   test->tmpl, test->expected, buffer->val);
+                                                   test->tmpl, test->expected, hbs_str_val(buffer));
             ck_abort_msg(tmp);
         }
     }

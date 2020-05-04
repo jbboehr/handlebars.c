@@ -75,15 +75,15 @@ START_TEST(test_lex)
 
     ck_assert_ptr_ne(NULL, tokens[0]);
     ck_assert_int_eq(OPEN, handlebars_token_get_type(tokens[0]));
-    ck_assert_str_eq("{{", handlebars_token_get_text(tokens[0])->val);
+    ck_assert_str_eq("{{", hbs_str_val(handlebars_token_get_text(tokens[0])));
 
     ck_assert_ptr_ne(NULL, tokens[1]);
     ck_assert_int_eq(ID, handlebars_token_get_type(tokens[1]));
-    ck_assert_str_eq("foo", handlebars_token_get_text(tokens[1])->val);
+    ck_assert_str_eq("foo", hbs_str_val(handlebars_token_get_text(tokens[1])));
 
     ck_assert_ptr_ne(NULL, tokens[2]);
     ck_assert_int_eq(CLOSE, handlebars_token_get_type(tokens[2]));
-    ck_assert_str_eq("}}", handlebars_token_get_text(tokens[2])->val);
+    ck_assert_str_eq("}}", hbs_str_val(handlebars_token_get_text(tokens[2])));
 
     ck_assert_ptr_eq(NULL, tokens[3]);
 }

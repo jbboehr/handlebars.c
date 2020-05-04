@@ -50,10 +50,10 @@ extern struct handlebars_parser * _handlebars_parser_init_current;
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser)
 {
     struct handlebars_string * tmpl = parser->tmpl;
-    const char * val = (const char *) tmpl->val;
+    const char * val = (const char *) hbs_str_val(tmpl);
 
     int numBytesToRead = maxBytesToRead;
-    int bytesRemaining = tmpl->len - parser->tmplReadOffset;
+    int bytesRemaining = hbs_str_len(tmpl) - parser->tmplReadOffset;
     int i;
     if( numBytesToRead > bytesRemaining ) {
         numBytesToRead = bytesRemaining;

@@ -26,6 +26,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+#define HANDLEBARS_STRING_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"

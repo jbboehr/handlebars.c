@@ -121,7 +121,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
 
         // Append
         struct handlebars_string * tmp = handlebars_token_print(test->ctx, token, 1);
-        test->expected = handlebars_string_append(context, test->expected, tmp->val, tmp->len);
+        test->expected = handlebars_string_append_str(context, test->expected, tmp);
         handlebars_talloc_free(tmp);
     }
 
@@ -233,13 +233,13 @@ START_TEST(handlebars_spec_tokenizer)
     struct handlebars_string * actual = handlebars_string_init(ctx, 256);
     for ( ; *tokens; tokens++ ) {
         struct handlebars_string * tmp = handlebars_token_print(ctx, *tokens, 1);
-        actual = handlebars_string_append(ctx, actual, tmp->val, tmp->len);
+        actual = handlebars_string_append_str(ctx, actual, tmp);
         handlebars_talloc_free(tmp);
     }
 
     actual = handlebars_string_rtrim(actual, HBS_STRL(" \t\r\n"));
 
-    ck_assert_str_eq_msg(test->expected->val, actual->val, test->tmpl);
+    ck_assert_str_eq_msg(hbs_str_val(test->expected), hbs_str_val(actual), test->tmpl);
 
     handlebars_context_dtor(ctx);
 }
