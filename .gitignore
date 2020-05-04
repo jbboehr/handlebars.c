@@ -13,6 +13,7 @@ src/handlebars_config.h
 src/handlebars.lex.*
 src/handlebars.tab.*
 test_coverage
+handlebars-lmdb-cache-test.mdb*
 
 # hackey rules
 bin/handlebarsc

@@ -50,6 +50,7 @@
 
 
 static int memdebug;
+char lmdb_db_file[] = "./handlebars-lmdb-cache-test.mdb";
 // static const char * tmpl1 = "{{foo}}";
 // static const char * tmpl2 = "{{bar}}";
 // static const char * tmpl3 = "{{baz}}";
@@ -139,7 +140,7 @@ static void execute_gc_test(struct handlebars_cache * cache)
 
     int i;
     for( i = 0; i < 10; i++ ) {
-        handlebars_vm_execute(vm, module, value);
+        buffer = handlebars_vm_execute(vm, module, value);
         ck_assert_str_eq(buffer->val, "baz");
     }
 
@@ -225,9 +226,7 @@ END_TEST
 #ifdef HAVE_LIBLMDB
 START_TEST(test_lmdb_cache_gc)
 {
-    char tmp[256];
-    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
-    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
     execute_gc_test(cache);
     handlebars_cache_dtor(cache);
 }
@@ -235,9 +234,7 @@ END_TEST
 
 START_TEST(test_lmdb_cache_reset)
 {
-    char tmp[256];
-    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
-    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
     execute_reset_test(cache);
     handlebars_cache_dtor(cache);
 }
@@ -246,16 +243,13 @@ END_TEST
 START_TEST(test_lmdb_cache_error)
 {
     jmp_buf buf;
-    char tmp[256];
-    const char *tmpdir = getenv("TMPDIR");
-    snprintf(tmp, 256, "%s/%s", tmpdir ? tmpdir : "/tmp", "handlebars-lmdb-cache-test.mdb");
 
     if( handlebars_setjmp_ex(context, &buf) ) {
         ck_assert(1);
         return;
     }
 
-    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
     ck_assert(0);
 }
 END_TEST
@@ -321,6 +315,9 @@ int main(void)
 {
     int number_failed;
     int error;
+
+    // Remove test file
+    unlink(lmdb_db_file);
 
     // Check if memdebug enabled
     memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
