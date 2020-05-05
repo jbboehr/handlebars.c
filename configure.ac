@@ -15,8 +15,8 @@ m4_define([MUSTACHE_SPEC_VERSION], [1.1.3])
 
 # Initialize autoconf & automake.
 AC_PREREQ(2.61)
-AC_INIT([handlebars-c], [HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH],
-        [jbboehr@gmail.com], [handlebars-c],
+AC_INIT([handlebars], [HANDLEBARS_MAJOR.HANDLEBARS_MINOR.HANDLEBARS_PATCH],
+        [jbboehr@gmail.com], [handlebars],
         [https://github.com/jbboehr/handlebars.c])
 
 AC_DEFINE([PACKAGE_DESCRIPTION], ["Library for handlebars"], [Description])

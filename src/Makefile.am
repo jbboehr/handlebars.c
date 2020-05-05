@@ -30,7 +30,7 @@ GENSOURCE2 += handlebars_scanners.c
 endif
 
 # Main
-include_HEADERS = \
+pkginclude_HEADERS = \
 	handlebars.h \
 	handlebars.lex.h \
 	handlebars.tab.h \
