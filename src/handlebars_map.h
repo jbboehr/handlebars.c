@@ -117,9 +117,9 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
  */
 bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
 
-#ifndef HANDLEBARS_MAP_PRIVATE
-
 size_t handlebars_map_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
+
+#ifndef HANDLEBARS_MAP_PRIVATE
 
 #else /* HANDLEBARS_MAP_PRIVATE */
 
@@ -144,10 +144,6 @@ struct handlebars_map {
 
 #define handlebars_map_foreach(list, el, tmp) \
     for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
-
-inline size_t handlebars_map_count(struct handlebars_map * map) {
-    return map->i;
-}
 
 #endif /* HANDLEBARS_MAP_PRIVATE */
 

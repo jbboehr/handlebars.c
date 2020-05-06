@@ -229,11 +229,6 @@ void handlebars_map_add(struct handlebars_map * map, struct handlebars_string * 
     _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
 }
 
-void handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
-{
-    _entry_add(map, key, len, handlebars_string_hash(key, len), value);
-}
-
 bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
 {
     struct handlebars_map_entry * entry = _entry_find(map, key->val, key->len, HBS_STR_HASH(key));
@@ -244,35 +239,10 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
     return 0;
 }
 
-bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
-{
-    unsigned long hash = handlebars_string_hash(key, len);
-    struct handlebars_map_entry * entry = _entry_find(map, key, len, hash);
-    if( entry ) {
-        _entry_remove(map, entry);
-        return 1;
-    }
-    return 0;
-}
-
-
 struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key)
 {
     struct handlebars_value * value = NULL;
     struct handlebars_map_entry * entry = _entry_find(map, key->val, key->len, HBS_STR_HASH(key));
-
-    if( entry ) {
-        value = entry->value;
-        handlebars_value_addref(value);
-    }
-
-    return value;
-}
-
-struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len)
-{
-    struct handlebars_value * value = NULL;
-    struct handlebars_map_entry * entry = _entry_find(map, key, len, handlebars_string_hash(key, len));
 
     if( entry ) {
         value = entry->value;
@@ -294,18 +264,41 @@ void handlebars_map_update(struct handlebars_map * map, struct handlebars_string
     }
 }
 
-void handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
-{
-    struct handlebars_string * string = talloc_steal(map, handlebars_string_ctor(CONTEXT, key, len));
-    struct handlebars_map_entry * entry = _entry_find(map, string->val, string->len, HBS_STR_HASH(string));
-    if( entry ) {
-        handlebars_value_delref(entry->value);
-        entry->value = value;
-        handlebars_value_addref(entry->value);
-        handlebars_talloc_free(string);
-    } else {
-        _entry_add(map, string->val, string->len, HBS_STR_HASH(string), value);
-    }
+size_t handlebars_map_count(struct handlebars_map * map) {
+    return map->i;
 }
 
-extern inline inline size_t handlebars_map_count(struct handlebars_map * map);
+
+
+
+// compat
+
+bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
+{
+    struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
+    bool removed = handlebars_map_remove(map, string);
+    handlebars_talloc_free(string);
+    return removed;
+}
+
+void handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+{
+    struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
+    handlebars_map_add(map, string, value);
+    handlebars_talloc_free(string);
+}
+
+struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len)
+{
+    struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
+    struct handlebars_value * value = handlebars_map_find(map, string);
+    handlebars_talloc_free(string);
+    return value;
+}
+
+void handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+{
+    struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
+    handlebars_map_update(map, string, value);
+    handlebars_talloc_free(string);
+}
