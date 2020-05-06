@@ -60,35 +60,18 @@
 #define ACCEPT_NAMED_FUNCTION(name) static inline void name (struct handlebars_vm * vm, struct handlebars_opcode * opcode)
 #define ACCEPT_FUNCTION(name) ACCEPT_NAMED_FUNCTION(ACCEPT_FN(name))
 
-#define LEN(stack) stack.i
-#define BOTTOM(stack) stack.v[0]
-
-#ifndef NDEBUG
-#else
-#endif
-
-static inline struct handlebars_value *_top(struct handlebars_vm_stack *stack) {
-    struct handlebars_value *rv;
-    if (stack->i > 0) {
-        rv = stack->v[stack->i - 1];
-        handlebars_value_addref2(rv);
-        return rv;
+static inline struct handlebars_value * _get(struct handlebars_stack * stack, size_t pos) {
+    if (handlebars_stack_count(stack) < pos + 1) {
+        return NULL;
     }
-    return NULL;
+    return handlebars_value_addref2(handlebars_stack_get(stack, handlebars_stack_count(stack) - pos - 1));
 }
 
-#define GET(stack, pos) handlebars_value_addref2(stack.v[stack.i - pos - 1])
-#define TOP(stack) _top(&stack)
-#define POP(stack) (stack.i > 0 ? stack.v[--stack.i] : NULL)
-#define PUSH(stack, value) do { \
-        assert(value != NULL); \
-        if( stack.i < HANDLEBARS_VM_STACK_SIZE ) { \
-            stack.v[stack.i++] = value; \
-        } else { \
-            handlebars_throw(HBSCTX(vm), HANDLEBARS_STACK_OVERFLOW, "Stack overflow in %s", #stack); \
-        } \
-    } while(0)
-
+#define LEN(stack) handlebars_stack_count(stack)
+#define TOP(stack) handlebars_stack_top(stack)
+#define POP(stack) handlebars_stack_pop(stack)
+#define GET(stack, pos) _get(stack, pos)
+#define PUSH(stack, value) handlebars_stack_push(stack, value)
 #define TOPCONTEXT TOP(vm->contextStack)
 
 ACCEPT_FUNCTION(push_context);
@@ -349,9 +332,11 @@ static inline struct handlebars_value * execute_template(
     vm2->partials = vm->partials;
     vm2->data = vm->data; // need to pass data along to partials
 
-    // Copy stacks
-    memcpy(&vm2->contextStack, &vm->contextStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->contextStack)));
-    memcpy(&vm2->blockParamStack, &vm->blockParamStack, offsetof(struct handlebars_vm_stack, v) + (sizeof(struct handlebars_value *) * LEN(vm->blockParamStack)));
+    // Copy stack pointers
+    vm2->stack = vm->stack;
+    vm2->hashStack = vm->hashStack;
+    vm2->contextStack = vm->contextStack;
+    vm2->blockParamStack = vm->blockParamStack;
 
     handlebars_vm_execute(vm2, module, data);
 
@@ -806,7 +791,7 @@ ACCEPT_FUNCTION(lookup_data)
     if( data && (tmp = handlebars_value_map_find(data, first->string)) ) {
         val = tmp;
     } else if (hbs_str_eq_strl(first->string, HBS_STRL("root"))) {
-        val = BOTTOM(vm->contextStack);
+        val = TOPCONTEXT;
     } else if( vm->flags & handlebars_compiler_flag_assume_objects ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
     } else {
@@ -1114,8 +1099,20 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_string * prevBuffer = vm->buffer;
     vm->buffer = handlebars_string_init(CONTEXT, HANDLEBARS_VM_BUFFER_INIT_SIZE);
 
+    // Check stacks
+    assert(vm->stack != NULL);
+    assert(vm->contextStack != NULL);
+    assert(vm->hashStack != NULL);
+    assert(vm->blockParamStack != NULL);
+
+    // Save stacks
+    struct handlebars_stack_save_buf st = handlebars_stack_save(vm->stack);
+    struct handlebars_stack_save_buf hst = handlebars_stack_save(vm->hashStack);
+    struct handlebars_stack_save_buf cst = handlebars_stack_save(vm->contextStack);
+    struct handlebars_stack_save_buf bst = handlebars_stack_save(vm->blockParamStack);
+
     // Push the context stack
-    if( LEN(vm->contextStack) <= 0 || TOP(vm->contextStack) != context ) {
+    if( context && (LEN(vm->contextStack) <= 0 || TOP(vm->contextStack) != context) ) {
         PUSH(vm->contextStack, context);
         pushed_context = true;
     }
@@ -1135,15 +1132,17 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     // Execute the program
 	handlebars_vm_accept(vm, entry);
 
-    // Pop context stack
+    // Restore stacks
     if( pushed_context ) {
         POP(vm->contextStack);
     }
-
-    // Pop block params
     if( pushed_block_param ) {
         POP(vm->blockParamStack);
     }
+    handlebars_stack_restore(vm->stack, st);
+    handlebars_stack_restore(vm->hashStack, hst);
+    handlebars_stack_restore(vm->contextStack, cst);
+    handlebars_stack_restore(vm->blockParamStack, bst);
 
     // Restore data
     vm->data = prevData;
@@ -1176,6 +1175,20 @@ struct handlebars_string * handlebars_vm_execute(
         }
     }
 
+    // Setup stacks
+    if (vm->stack == NULL) {
+        vm->stack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+    }
+    if (vm->contextStack == NULL) {
+        vm->contextStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+    }
+    if (vm->hashStack == NULL) {
+        vm->hashStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+    }
+    if (vm->blockParamStack == NULL) {
+        vm->blockParamStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+    }
+
     vm->module = module;
 
     // Save context
@@ -1184,6 +1197,12 @@ struct handlebars_string * handlebars_vm_execute(
 
     // Execute
     vm->buffer = handlebars_vm_execute_program_ex(vm, 0, context, vm->data, NULL);
+
+    // Reset stacks
+    vm->stack = NULL;
+    vm->contextStack = NULL;
+    vm->hashStack = NULL;
+    vm->blockParamStack = NULL;
 
 done:
     // Release context

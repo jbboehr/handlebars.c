@@ -25,8 +25,6 @@
 #include <stdlib.h>
 #include <talloc.h>
 
-#define HANDLEBARS_STACK_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -35,34 +33,61 @@
 
 
 
-#undef CONTEXT
-#define CONTEXT HBSCTX(ctx)
+enum handlebars_stack_flags {
+    HANDLEBARS_STACK_TALLOCATED = 1,
+};
 
-size_t HANDLEBARS_STACK_SIZE = sizeof(struct handlebars_stack);
+struct handlebars_stack {
+    //! Handlebars context
+    struct handlebars_context * ctx;
+    //! Number of elements in the stack
+    size_t i;
+    //! Currently available number of elements (size of the buffer)
+    size_t capacity;
+    //! Flags from enum #handlebars_stack_flags
+    unsigned flags;
+    //! Number of elements to protect from popping or setting
+    size_t protect;
+    //! Data
+    struct handlebars_value * v[];
+};
 
-struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx)
+void * HANDLEBARS_STACK_ALLOC_PTR = NULL;
+
+size_t handlebars_stack_size(size_t capacity) {
+    return (sizeof(struct handlebars_stack) + sizeof(struct handlebars_value *) * (capacity + 1));
+}
+
+struct handlebars_stack * handlebars_stack_init(struct handlebars_context * ctx, struct handlebars_stack * stack, size_t elem)
 {
-    struct handlebars_stack * stack = MC(handlebars_talloc_zero(ctx, struct handlebars_stack));
-    handlebars_context_bind(ctx, HBSCTX(stack));
-    stack->i = 0;
-    stack->s = 32;
-    stack->v = MC(handlebars_talloc_array(stack, struct handlebars_value *, stack->s));
+    memset(stack, 0, handlebars_stack_size(elem));
+    stack->ctx = ctx;
+    stack->capacity = elem;
     return stack;
 }
 
-#undef CONTEXT
-#define CONTEXT HBSCTX(stack)
+struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx, size_t capacity)
+{
+    struct handlebars_stack * stack = handlebars_talloc_zero_size(ctx, handlebars_stack_size(capacity));
+    HANDLEBARS_MEMCHECK(stack, ctx);
+    talloc_set_type(stack, struct handlebars_stack);
+    stack->ctx = ctx;
+    stack->capacity = capacity;
+    stack->flags = HANDLEBARS_STACK_TALLOCATED;
+    return stack;
+}
 
 void handlebars_stack_dtor(struct handlebars_stack * stack)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
     size_t i;
     for( i = 0; i < stack->i; i++ ) {
-        struct handlebars_value * value = stack->v[i];
-        handlebars_value_delref(value);
+        handlebars_value_delref(stack->v[i]);
     }
 #endif
-    handlebars_talloc_free(stack);
+    if (stack->flags & HANDLEBARS_STACK_TALLOCATED) {
+        handlebars_talloc_free(stack);
+    }
 }
 
 size_t handlebars_stack_length(struct handlebars_stack * stack)
@@ -70,32 +95,41 @@ size_t handlebars_stack_length(struct handlebars_stack * stack)
     return stack->i;
 }
 
-struct handlebars_value * handlebars_stack_push(struct handlebars_stack * stack, struct handlebars_value * value)
+static void handlebars_stack_dump(struct handlebars_stack * stack) {
+    size_t i;
+    for (i = 0; i < stack->i; i++) {
+        fprintf(stderr, "STACK[%lu]: %s\n", i, handlebars_value_dump(stack->v[i], 0));
+    }
+}
+
+struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack, struct handlebars_value * value)
 {
-    size_t s;
-    struct handlebars_value ** nv;
+    size_t capacity;
 
     assert(stack != NULL);
     assert(value != NULL);
 
-    s = stack->s;
+    capacity = stack->capacity;
 
     // Resize array if necessary
-    if( stack->i <= s ) {
-        do {
-            s += 32;
-        } while( s <= stack->i );
-        nv = MC(handlebars_talloc_realloc(stack, stack->v, struct handlebars_value *, s));
-        stack->s = s;
-        stack->v = nv;
+    if( capacity <= stack->i ) {
+        // Cannot resize if this stack was stack allocated
+        if (!(stack->flags & HANDLEBARS_STACK_TALLOCATED)) {
+            handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Stack overflow");
+        }
+        // @TODO this is unsafe if the refcount of the stack is greater than one - but we need refcounting for that
+        capacity += 32;
+        stack = handlebars_talloc_realloc_size(NULL, stack, handlebars_stack_size(capacity));
+        HANDLEBARS_MEMCHECK(stack, stack->ctx);
+        stack->capacity = capacity;
     }
-
-    stack->v[stack->i++] = value;
 
     handlebars_value_addref(value);
 
-    return value;
+    stack->v[stack->i++] = value;
+    stack->v[stack->i] = NULL; // we don't *really* need to null-terminate
 
+    return stack;
 }
 
 struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack)
@@ -104,7 +138,13 @@ struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack)
         return NULL;
     }
 
-    return stack->v[--stack->i];
+    if (stack->i < stack->protect) {
+        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to pop protected stack segment i=%lu protect=%lu", stack->i, stack->protect);
+    }
+
+    struct handlebars_value * value = stack->v[--stack->i];
+    stack->v[stack->i] = NULL; // we don't *really* need to null-terminate
+    return value;
 }
 
 struct handlebars_value * handlebars_stack_top(struct handlebars_stack * stack)
@@ -115,9 +155,7 @@ struct handlebars_value * handlebars_stack_top(struct handlebars_stack * stack)
         return NULL;
     }
 
-    value = stack->v[stack->i - 1];
-    handlebars_value_addref(value);
-    return value;
+    return stack->v[stack->i - 1];
 }
 
 struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, size_t offset)
@@ -128,9 +166,7 @@ struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, 
         return NULL;
     }
 
-    value = stack->v[offset];
-    handlebars_value_addref(value);
-    return value;
+    return stack->v[offset];
 }
 
 struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, size_t offset, struct handlebars_value * value)
@@ -139,14 +175,21 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
 
     assert(value != NULL);
 
-    // As a special case, push
-    if( offset == stack->i ) {
-        return handlebars_stack_push(stack, value);
+    // As a special case, push if it does not require a reallocation
+    if( offset == stack->i && offset < stack->capacity ) {
+        // @TODO should allow realloc here?
+        handlebars_stack_push(stack, value);
+        return value;
     }
 
     // Out-of-bounds
     if( offset >= stack->i ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds");
+        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds %lu/%lu", offset, stack->i);
+    }
+
+    // Protect
+    if (offset < stack->protect) {
+        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to set protected stack segment offset=%lu protect=%lu", offset, stack->protect);
     }
 
     // As a special case, ignore
@@ -163,17 +206,34 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
     return value;
 }
 
-void handlebars_stack_reverse(struct handlebars_stack * stack)
-{
-    size_t start = 0;
-    size_t end = stack->i - 1;
-    struct handlebars_value * tmp;
+size_t handlebars_stack_protect(
+    struct handlebars_stack * stack,
+    size_t num
+) {
+    size_t old = stack->protect;
+    stack->protect = num;
+    return old;
+};
 
-    while( start < end ) {
-        tmp = stack->v[start];
-        stack->v[start] = stack->v[end];
-        stack->v[end] = tmp;
-        start++;
-        end--;
+void handlebars_stack_truncate(
+    struct handlebars_stack * stack,
+    size_t num
+) {
+    while (handlebars_stack_count(stack) > num) {
+        handlebars_stack_pop(stack);
     }
+}
+
+struct handlebars_stack_save_buf handlebars_stack_save(struct handlebars_stack * stack)
+{
+    struct handlebars_stack_save_buf buf;
+    buf.count = handlebars_stack_count(stack);
+    buf.protect = handlebars_stack_protect(stack, buf.count);
+    return buf;
+}
+
+void handlebars_stack_restore(struct handlebars_stack * stack, struct handlebars_stack_save_buf buf)
+{
+    handlebars_stack_protect(stack, buf.protect);
+    handlebars_stack_truncate(stack, buf.count);
 }

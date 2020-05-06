@@ -56,12 +56,14 @@
 #define HBS_ATTR_UNUSED  __attribute__((__unused__))
 #define HBS_ATTR_NONNULL(...) __attribute__((nonnull (__VA_ARGS__)))
 #define HBS_ATTR_NONNULL_ALL __attribute__((nonnull))
+#define HBS_ATTR_NOINLINE __attribute__((__noinline__))
 #else
 #define HBS_ATTR_NORETURN
 #define HBS_ATTR_PRINTF(a1, a2)
 #define HBS_ATTR_UNUSED
 #define HBS_ATTR_NONNULL(...)
 #define HBS_ATTR_NONNULL_ALL
+#define HBS_ATTR_NOINLINE
 #endif
 
 // returns_nonnull

@@ -26,7 +26,6 @@
 
 #define HANDLEBARS_HELPERS_PRIVATE
 #define HANDLEBARS_MAP_PRIVATE
-#define HANDLEBARS_STACK_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
@@ -111,7 +110,7 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 
     key = handlebars_value_ctor(CONTEXT);
     block_params = handlebars_value_ctor(CONTEXT);
-    handlebars_value_array_init(block_params);
+    handlebars_value_array_init(block_params, 2);
 
     if( use_data ) {
         data = handlebars_value_ctor(CONTEXT);
@@ -375,7 +374,7 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
         result = handlebars_vm_execute_program(options->vm, options->inverse, context);
     } else {
         block_params = handlebars_value_ctor(CONTEXT);
-        handlebars_value_array_init(block_params);
+        handlebars_value_array_init(block_params, 2);
         handlebars_stack_set(handlebars_value_get_stack(block_params), 0, context);
 
         result = handlebars_vm_execute_program_ex(options->vm, options->program, context, options->data, block_params);

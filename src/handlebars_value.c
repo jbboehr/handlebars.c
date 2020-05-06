@@ -40,7 +40,6 @@
 #endif
 
 #define HANDLEBARS_MAP_PRIVATE
-#define HANDLEBARS_STACK_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
@@ -84,7 +83,7 @@ extern inline void handlebars_value_string(struct handlebars_value * value, cons
 extern inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval);
 extern inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen);
 extern inline void handlebars_value_map_init(struct handlebars_value * value);
-extern inline void handlebars_value_array_init(struct handlebars_value * value);
+extern inline void handlebars_value_array_init(struct handlebars_value * value, size_t capacity);
 extern inline void handlebars_value_ptr(struct handlebars_value * value, void * ptr);
 
 
@@ -490,10 +489,11 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             new_value = handlebars_value_ctor(CONTEXT);
-            handlebars_value_array_init(new_value);
+            handlebars_value_array_init(new_value, handlebars_value_count(value));
             handlebars_value_iterator_init(&it, value);
             for( ; it.current != NULL; it.next(&it) ) {
-                handlebars_stack_set(new_value->v.stack, it.index, handlebars_value_copy(it.current));
+                // @todo double-check index?
+                new_value->v.stack = handlebars_stack_push(new_value->v.stack, handlebars_value_copy(it.current));
             }
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:

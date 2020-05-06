@@ -417,7 +417,7 @@ void handlebars_value_map_init(struct handlebars_value * value) HBS_ATTR_NONNULL
  * @param[in] value
  * @return void
  */
-void handlebars_value_array_init(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+void handlebars_value_array_init(struct handlebars_value * value, size_t capacity) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_value_ptr(struct handlebars_value * value, void * ptr) HBS_ATTR_NONNULL_ALL;
 
@@ -624,10 +624,10 @@ inline void handlebars_value_map_init(struct handlebars_value * value) {
 }
 
 HBS_ATTR_NONNULL_ALL
-inline void handlebars_value_array_init(struct handlebars_value * value) {
+inline void handlebars_value_array_init(struct handlebars_value * value, size_t capacity) {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
-    value->v.stack = /*talloc_steal(value,*/ handlebars_stack_ctor(value->ctx)/*)*/;
+    value->v.stack = /*talloc_steal(value,*/ handlebars_stack_ctor(value->ctx, capacity)/*)*/;
 }
 
 HBS_ATTR_NONNULL_ALL

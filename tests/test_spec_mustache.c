@@ -58,6 +58,7 @@
 
 
 struct mustache_test {
+    const char * suite_name;
     char * name;
     char * desc;
     struct handlebars_value * data;
@@ -91,7 +92,7 @@ static bool loadSpecTestPartials(yaml_document_t * document, yaml_node_t * node,
     return true;
 }
 
-static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node)
+static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node, const char * spec)
 {
     yaml_node_pair_t * pair;
     struct mustache_test * test;
@@ -103,6 +104,7 @@ static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node)
 
     test = &(tests[tests_len++]);
     memset(test, 0, sizeof(struct mustache_test));
+    test->suite_name = spec;
     test->ctx = handlebars_context_ctor_ex(rootctx);
     test->flags = handlebars_compiler_flag_compat | handlebars_compiler_flag_mustache_style_lambdas;
 
@@ -136,7 +138,7 @@ static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node)
     return true;
 }
 
-static bool loadSpecTests(yaml_document_t * document, yaml_node_t * node)
+static bool loadSpecTests(yaml_document_t * document, yaml_node_t * node, const char * spec)
 {
     yaml_node_item_t * item;
     size_t length;
@@ -154,7 +156,7 @@ static bool loadSpecTests(yaml_document_t * document, yaml_node_t * node)
     // Load tests
     for( item = node->data.sequence.items.start; item < node->data.sequence.items.top; item ++) {
         yaml_node_t * value = yaml_document_get_node(document, *item);
-        loadSpecTest(document, value);
+        loadSpecTest(document, value, spec);
     }
 
     return true;
@@ -195,7 +197,7 @@ static int loadSpec(const char * spec)
         yaml_node_t * key = yaml_document_get_node(&document, pair->key);
         yaml_node_t * value = yaml_document_get_node(&document, pair->value);
         if( key->type == YAML_SCALAR_NODE && 0 == strcmp(key->data.scalar.value, "tests") ) {
-            loadSpecTests(&document, value);
+            loadSpecTests(&document, value, spec);
         }
     }
 
@@ -368,11 +370,26 @@ START_TEST(test_mustache_spec)
     ck_assert_ptr_ne(buffer, NULL);
 
     if (!hbs_str_eq_strl(buffer, test->expected, strlen(test->expected))) {
-        char *tmp = handlebars_talloc_asprintf(rootctx,
-                                               "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
-                                               "" /*test->suite_name*/,
-                                               test->name, test->desc, test->flags,
-                                               test->tmpl, test->expected, hbs_str_val(buffer));
+        char *tmp = handlebars_talloc_asprintf(
+            rootctx,
+            "Failed.\n"
+            "Num: %d\n"
+            "Suite: %s\n"
+            "Test: %s - %s\n"
+            "Flags: %ld\n"
+            "Template:\n%s\n"
+            "Data: %s\n"
+            "Expected:\n%s\n"
+            "Actual:\n%s\n",
+            _i,
+            test->suite_name,
+            test->name, test->desc,
+            test->flags,
+            test->tmpl,
+            handlebars_value_dump(test->data, 0),
+            test->expected,
+            hbs_str_val(buffer)
+        );
         ck_abort_msg(tmp);
     }
 

@@ -40,7 +40,6 @@
 #endif
 
 #define HANDLEBARS_MAP_PRIVATE
-#define HANDLEBARS_STACK_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
@@ -117,11 +116,13 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
         }
 
         case json_type_array: {
-            handlebars_value_array_init(value);
+            size_t l = json_object_array_length(intern);
+            handlebars_value_array_init(value, l);
 
-            for( i = 0, l = json_object_array_length(intern); i < l; i++ ) {
+            for( i = 0; i < l; i++ ) {
                 new_value = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, i));
-                handlebars_stack_set(value->v.stack, i, new_value);
+                // @TODO check index?
+                value->v.stack = handlebars_stack_push(value->v.stack, new_value);
                 if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
                     std_json_convert(new_value, recurse);
                 }
@@ -392,11 +393,11 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
             }
             break;
         case YAML_SEQUENCE_NODE:
-            handlebars_value_array_init(value);
-            for( item = node->data.sequence.items.start; item < node->data.sequence.items.top; item ++) {
+            handlebars_value_array_init(value, node->data.sequence.items.top - node->data.sequence.items.start);
+            for( item = node->data.sequence.items.start; item < node->data.sequence.items.top; item++) {
                 yaml_node_t * valueNode = yaml_document_get_node(document, *item);
                 tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
-                handlebars_stack_push(value->v.stack, tmp);
+                value->v.stack = handlebars_stack_push(value->v.stack, tmp);
             }
             break;
         case YAML_SCALAR_NODE:

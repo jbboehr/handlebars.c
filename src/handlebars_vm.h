@@ -68,7 +68,7 @@ struct handlebars_string * handlebars_vm_execute(
     struct handlebars_vm * vm,
     struct handlebars_module * module,
     struct handlebars_value * context
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_NOINLINE;
 
 struct handlebars_string * handlebars_vm_execute_program(
     struct handlebars_vm * vm,
@@ -102,11 +102,6 @@ void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache 
 
 #else /* HANDLEBARS_VM_PRIVATE */
 
-struct handlebars_vm_stack {
-    size_t i;
-    struct handlebars_value * v[HANDLEBARS_VM_STACK_SIZE];
-};
-
 struct handlebars_vm {
     struct handlebars_context ctx;
     struct handlebars_cache * cache;
@@ -129,10 +124,10 @@ struct handlebars_vm {
     struct handlebars_string * last_helper;
     struct handlebars_value * last_context;
 
-    struct handlebars_vm_stack stack;
-    struct handlebars_vm_stack contextStack;
-    struct handlebars_vm_stack hashStack;
-    struct handlebars_vm_stack blockParamStack;
+    struct handlebars_stack * stack;
+    struct handlebars_stack * contextStack;
+    struct handlebars_stack * hashStack;
+    struct handlebars_stack * blockParamStack;
 };
 
 HBS_ATTR_NONNULL_ALL

@@ -25,7 +25,6 @@
 #include <ctype.h>
 #include <string.h>
 
-#define HANDLEBARS_STACK_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_MAP_PRIVATE
 #define HANDLEBARS_HELPERS_PRIVATE
@@ -156,13 +155,13 @@ FIXTURE_FN(510017722)
     // "function (options) {\n          if( typeof value === 'undefined' ) { value = 1; } return options.fn({value: 'bar'}, {blockParams: options.fn.blockParams === 1 ? [value++, value++] : undefined});\n        }"
     struct handlebars_value * context = handlebars_value_from_json_string(CONTEXT, "{\"value\": \"bar\"}");
     struct handlebars_value * block_params = handlebars_value_ctor(CONTEXT);
-    handlebars_value_array_init(block_params);
+    handlebars_value_array_init(block_params, 2);
     struct handlebars_value * bp1 = handlebars_value_ctor(CONTEXT);
     struct handlebars_value * bp2 = handlebars_value_ctor(CONTEXT);
     handlebars_value_integer(bp1, value_for_510017722++);
     handlebars_value_integer(bp2, value_for_510017722++);
-    handlebars_stack_push(handlebars_value_get_stack(block_params), bp1);
-    handlebars_stack_push(handlebars_value_get_stack(block_params), bp2);
+    handlebars_stack_push(handlebars_value_get_stack(block_params), bp1); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    handlebars_stack_push(handlebars_value_get_stack(block_params), bp2); // @TODO ignoring return value - should probably make a handlebars_value_push()
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
