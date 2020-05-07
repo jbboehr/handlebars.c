@@ -240,7 +240,7 @@ static inline struct handlebars_value * merge_hash(struct handlebars_context * c
     if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
         hash && handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP ) {
         context2 = handlebars_value_ctor(context);
-        handlebars_value_map_init(context2);
+        handlebars_value_map_init(context2, handlebars_value_count(context1) + handlebars_value_count(hash));
         handlebars_value_iterator_init(&it, context1);
         for( ; it.current ; it.next(&it) ) {
             handlebars_map_update(handlebars_value_get_map(context2), it.key, it.current);
@@ -461,7 +461,7 @@ ACCEPT_FUNCTION(block_value)
 ACCEPT_FUNCTION(empty_hash)
 {
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(value);
+    handlebars_value_map_init(value, 0);
     PUSH(vm->stack, value);
 }
 
@@ -916,7 +916,7 @@ ACCEPT_FUNCTION(push_context)
 ACCEPT_FUNCTION(push_hash)
 {
     struct handlebars_value * hash = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(hash);
+    handlebars_value_map_init(hash, 4); // number of items might be available somewhere
     PUSH(vm->hashStack, hash);
 }
 

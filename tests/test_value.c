@@ -203,7 +203,7 @@ START_TEST(test_map_iterator)
     int i = 0;
 
     value = handlebars_value_ctor(context);
-    handlebars_value_map_init(value);
+    handlebars_value_map_init(value, 0); // zero may trigger extra rehashes possibly - good for testing
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);

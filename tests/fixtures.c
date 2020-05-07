@@ -179,7 +179,7 @@ FIXTURE_FN(585442881)
     struct handlebars_value * cruel = argv[0];
     struct handlebars_value * world = argv[1];
     struct handlebars_value * context = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(context);
+    handlebars_value_map_init(context, 0); // zero may trigger extra rehashes - good for testing
     struct handlebars_value * greeting = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(greeting, "Goodbye");
     handlebars_map_str_update(handlebars_value_get_map(context), HBS_STRL("greeting"), greeting);
@@ -404,7 +404,7 @@ FIXTURE_FN(931412676)
 {
     // "function (options) {\n            var frame = Handlebars.createFrame(options.data);\n            frame.depth = options.data.depth + 1;\n            return options.fn(this, {data: frame});\n          }"
     struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(frame);
+    handlebars_value_map_init(frame, 0);  // zero may trigger extra rehashes - good for testing
     struct handlebars_value_iterator it;
     handlebars_value_iterator_init(&it, options->data);
     for( ; it.current; it.next(&it) ) {
@@ -929,7 +929,7 @@ FIXTURE_FN(2736662431)
     struct handlebars_value * block_params = handlebars_value_from_json_string(CONTEXT, "[1, 2]");
     handlebars_value_convert(block_params);
     struct handlebars_value * context = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(context);
+    handlebars_value_map_init(context, 0); // zero may trigger extra rehashes - good for testing
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
@@ -988,7 +988,7 @@ FIXTURE_FN(2919388099)
 {
     // "function (options) {\n        var frame = Handlebars.createFrame(options.data);\n        for (var prop in options.hash) {\n          if (prop in options.hash) {\n            frame[prop] = options.hash[prop];\n          }\n        }\n        return options.fn(this, {data: frame});\n      }"
     struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(frame);
+    handlebars_value_map_init(frame, 0); // zero may trigger extra rehashes - good for testing
     struct handlebars_value_iterator it;
     handlebars_value_iterator_init(&it, options->data);
     for (; it.current; it.next(&it)) {
@@ -1127,7 +1127,7 @@ FIXTURE_FN(325991858)
 {
     // "function (options) {\n      var out = '';\n      var byes = ['Goodbye', 'goodbye', 'GOODBYE'];\n      for (var i = 0, j = byes.length; i < j; i++) {\n        out += byes[i] + ' ' + options.fn({}) + '! ';\n      }\n      return out;\n    }"
     struct handlebars_value * context = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(context);
+    handlebars_value_map_init(context, 0); // zero may trigger extra rehashes - good for testing
     struct handlebars_string * tmp1 = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_string * tmp2 = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_string * tmp3 = handlebars_vm_execute_program(options->vm, options->program, context);

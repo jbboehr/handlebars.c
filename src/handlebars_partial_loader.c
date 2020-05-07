@@ -227,7 +227,7 @@ struct handlebars_value * handlebars_value_partial_loader_ctor(
     obj->usr.handlers = handlebars_value_get_std_partial_loader_handlers();
     obj->base_path = talloc_steal(obj, handlebars_string_copy_ctor(context, base_path));
     obj->extension = talloc_steal(obj, handlebars_string_copy_ctor(context, extension));
-    obj->map = talloc_steal(obj, handlebars_map_ctor(context));
+    obj->map = talloc_steal(obj, handlebars_map_ctor(context, 32));
     talloc_set_destructor(obj, partial_loader_dtor);
 
     value->type = HANDLEBARS_VALUE_TYPE_USER;

@@ -121,7 +121,7 @@ static void execute_gc_test(struct handlebars_cache * cache)
     handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
 
     struct handlebars_value * partials = handlebars_value_ctor(context);
-    handlebars_value_map_init(partials);
+    handlebars_value_map_init(partials, 0);
     handlebars_map_str_add(handlebars_value_get_map(partials), HBS_STRL("foo"), partial);
 
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
@@ -130,7 +130,7 @@ static void execute_gc_test(struct handlebars_cache * cache)
     struct handlebars_module * module = handlebars_program_serialize(context, handlebars_compiler_get_program(compiler));
 
     struct handlebars_value * helpers = handlebars_value_ctor(context);
-    handlebars_value_map_init(helpers);
+    handlebars_value_map_init(helpers, 0);
     handlebars_vm_set_helpers(vm, helpers);
 
     handlebars_vm_set_partials(vm, partials);
@@ -168,7 +168,7 @@ static void execute_reset_test(struct handlebars_cache * cache)
     handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
 
     struct handlebars_value * partials = handlebars_value_ctor(context);
-    handlebars_value_map_init(partials);
+    handlebars_value_map_init(partials, 0);
     handlebars_map_str_add(handlebars_value_get_map(partials), HBS_STRL("foo"), partial);
 
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
@@ -177,7 +177,7 @@ static void execute_reset_test(struct handlebars_cache * cache)
     struct handlebars_module * module = handlebars_program_serialize(context, program);
 
     struct handlebars_value * helpers = handlebars_value_ctor(context);
-    handlebars_value_map_init(helpers);
+    handlebars_value_map_init(helpers, 0);
     handlebars_vm_set_helpers(vm, helpers);
 
     handlebars_vm_set_partials(vm, partials);

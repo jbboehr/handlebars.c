@@ -103,7 +103,7 @@ static void std_json_convert(struct handlebars_value * value, bool recurse)
 
     switch( json_object_get_type(intern) ) {
         case json_type_object: {
-            handlebars_value_map_init(value);
+            handlebars_value_map_init(value, json_object_object_length(intern));
             json_object_object_foreach(intern, k, v) {
                 new_value = handlebars_value_from_json_object(CONTEXT, v);
                 handlebars_map_str_update(value->v.map, k, strlen(k), new_value);
@@ -354,6 +354,7 @@ struct handlebars_value * handlebars_value_from_json_object(struct handlebars_co
 {
     struct handlebars_value * value = handlebars_value_ctor(ctx);
     handlebars_value_init_json_object(ctx, value, json);
+    // handlebars_value_convert_ex(value, true);
     return value;
 }
 
@@ -361,6 +362,7 @@ struct handlebars_value * handlebars_value_from_json_string(struct handlebars_co
 {
     struct handlebars_value * value = handlebars_value_ctor(ctx);
     handlebars_value_init_json_string(ctx, value, json);
+    // handlebars_value_convert_ex(value, true);
     return value;
 }
 
@@ -383,7 +385,7 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
 
     switch( node->type ) {
         case YAML_MAPPING_NODE:
-            handlebars_value_map_init(value);
+            handlebars_value_map_init(value, node->data.mapping.pairs.top - node->data.mapping.pairs.start);
             for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
                 yaml_node_t * keyNode = yaml_document_get_node(document, pair->key);
                 yaml_node_t * valueNode = yaml_document_get_node(document, pair->value);

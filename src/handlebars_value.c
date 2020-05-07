@@ -82,7 +82,7 @@ extern inline void handlebars_value_str_steal(struct handlebars_value * value, s
 extern inline void handlebars_value_string(struct handlebars_value * value, const char * strval);
 extern inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval);
 extern inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen);
-extern inline void handlebars_value_map_init(struct handlebars_value * value);
+extern inline void handlebars_value_map_init(struct handlebars_value * value, size_t capacity);
 extern inline void handlebars_value_array_init(struct handlebars_value * value, size_t capacity);
 extern inline void handlebars_value_ptr(struct handlebars_value * value, void * ptr);
 
@@ -498,7 +498,7 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
             new_value = handlebars_value_ctor(CONTEXT);
-            handlebars_value_map_init(new_value);
+            handlebars_value_map_init(new_value, handlebars_value_count(value));
             handlebars_value_iterator_init(&it, value);
             for( ; it.current != NULL; it.next(&it) ) {
                 handlebars_map_update(new_value->v.map, it.key, handlebars_value_copy(it.current));

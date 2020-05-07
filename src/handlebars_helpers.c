@@ -114,12 +114,14 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 
     if( use_data ) {
         data = handlebars_value_ctor(CONTEXT);
-        handlebars_value_map_init(data);
         if( handlebars_value_get_type(options->data) == HANDLEBARS_VALUE_TYPE_MAP ) {
+            handlebars_value_map_init(data, handlebars_value_count(options->data) + 4);
             handlebars_value_iterator_init(&it, options->data);
             for (; it.current != NULL; it.next(&it)) {
                 handlebars_map_update(handlebars_value_get_map(data), it.key, it.current);
             }
+        } else {
+            handlebars_value_map_init(data, 4);
         }
         index = handlebars_value_ctor(CONTEXT);
         first = handlebars_value_ctor(CONTEXT);

@@ -338,7 +338,7 @@ START_TEST(test_mustache_spec)
 
     // Setup partials
     struct handlebars_value * partials = handlebars_value_ctor(ctx);
-    handlebars_value_map_init(partials);
+    handlebars_value_map_init(partials, 0); // zero will trigger extra rehashes possibly - good for testing
     if( test->partials ) {
         handlebars_value_iterator_init(&it, test->partials);
         for (; it.current != NULL; it.next(&it)) {

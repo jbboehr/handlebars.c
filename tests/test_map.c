@@ -41,45 +41,91 @@ char mkchar(unsigned long i) {
 START_TEST(test_map)
 {
 #define STRSIZE 128
-    size_t i, j;
+    size_t i;
     size_t pos = 0;
     size_t count = 10000;
-    char tmp[STRSIZE];
-    struct handlebars_map * map = handlebars_map_ctor(context);
+    struct handlebars_map * map = handlebars_map_ctor(context, 0);
     struct handlebars_value * value;
     struct handlebars_map_entry * entry;
     struct handlebars_map_entry * tmp_entry;
+    struct handlebars_string ** strings = handlebars_talloc_array(context, struct handlebars_string *, count);
+    struct handlebars_string * key;
 
+    // Seed so it's determinisitic
     srand(0x5d0);
 
+    // Generate a bunch of random strings
     for( i = 0; i < count; i++ ) {
-        for( j = 0; j < (rand() % STRSIZE); j++ ) {
+        char tmp[STRSIZE];
+        size_t l = (rand() % (STRSIZE - 4)) + 4;
+        size_t j;
+        for( j = 0; j < l; j++ ) {
             tmp[j] = mkchar(rand());
         }
         tmp[j] = 0;
-
-        if( !handlebars_map_str_find(map, tmp, strlen(tmp)) ) {
-            value = talloc_steal(map, handlebars_value_ctor(context));
-            handlebars_value_integer(value, pos++);
-            handlebars_map_str_add(map, tmp, strlen(tmp), value);
-        }
+        strings[i] = handlebars_string_ctor(context, tmp, j - 1);
     }
 
-    fprintf(stderr, "ENTRIES: %ld, TABLE SIZE: %ld, COLLISIONS: %ld\n", map->i, map->table_size, map->collisions);
+    // Add them all to the map
+    for( i = 0; i < count; i++ ) {
+        key = strings[i];
 
+        // There can be duplicate strings - skip those
+        if (handlebars_map_find(map, key)) {
+            continue;
+        }
+
+        value = talloc_steal(map, handlebars_value_ctor(context));
+        handlebars_value_integer(value, pos++);
+        handlebars_map_add(map, key, value);
+    }
+
+    fprintf(
+        stderr,
+        "ENTRIES: %ld, "
+        "TABLE SIZE: %ld, "
+        "COLLISIONS: %ld, "
+        "LOADFACTOR: %d\n",
+        map->i,
+        map->table_size,
+        map->collisions,
+        handlebars_map_load_factor(map)
+    );
+
+    // Make sure we can iterate over the map in insertion order
     pos = 0;
     handlebars_map_foreach(map, entry, tmp_entry) {
         ck_assert_uint_eq(pos++, handlebars_value_get_intval(entry->value));
     }
 
-    while( map->first ) {
-        struct handlebars_value * entry = handlebars_map_find(map, map->first->key);
-        ck_assert_ptr_ne(NULL, entry);
-        handlebars_map_remove(map, map->first->key);
-        ck_assert_uint_eq(--pos, map->i);
-    }
+    // Remove everything
+    i = 0;
+    do {
+        struct handlebars_string *key = handlebars_map_get_key_at_index(map, 0);
+        struct handlebars_string *key2 = handlebars_map_get_key_at_index(map, 1);
+        if (!key) break;
+        struct handlebars_value * value = handlebars_map_find(map, key);
+        ck_assert_ptr_ne(NULL, value);
+        handlebars_map_remove(map, key);
 
+        // make sure the count of items in the map is accurate
+        ck_assert_uint_eq(--pos, handlebars_map_count(map));
 
+        // make sure the right element was removed
+        ck_assert_int_eq(i++, handlebars_value_get_intval(value));
+
+        if (key2) {
+            value = handlebars_map_find(map, key2);
+            ck_assert_ptr_ne(NULL, value);
+            ck_assert_int_eq(i, handlebars_value_get_intval(value));
+        }
+    } while(1);
+
+    // Make sure it's empty
+    ck_assert_uint_eq(handlebars_map_count(map), 0);
+    ck_assert_ptr_eq(handlebars_map_get_key_at_index(map, 0), NULL);
+
+    // Free
     handlebars_map_dtor(map);
 }
 END_TEST

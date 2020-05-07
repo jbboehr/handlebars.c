@@ -183,7 +183,7 @@ static void cache_reset(struct handlebars_cache * cache)
 {
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
     handlebars_talloc_free(intern->map);
-    intern->map = handlebars_map_ctor(HBSCTX(cache));
+    intern->map = handlebars_map_ctor(HBSCTX(cache), 32);
 
     memset(&intern->stat, 0, sizeof(intern->stat));
 }
@@ -207,7 +207,7 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_cache_simple * intern = MC(handlebars_talloc_zero(cache, struct handlebars_cache_simple));
     cache->internal = intern;
 
-    intern->map = handlebars_map_ctor(HBSCTX(cache));
+    intern->map = handlebars_map_ctor(HBSCTX(cache), 32);
 
     return cache;
 }

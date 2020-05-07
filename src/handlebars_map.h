@@ -29,14 +29,15 @@ struct handlebars_map;
 struct handlebars_string;
 struct handlebars_value;
 
-extern size_t HANDLEBARS_MAP_SIZE;
+extern size_t handlebars_map_size();
 
 /**
  * @brief Construct a new map
  * @param[in] ctx The handlebars context
+ * @param[in] capacity The desired number of values to be stored
  * @return The new map
  */
-struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, size_t capacity) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Destruct a map
@@ -61,6 +62,8 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struc
  * @return The found value, or NULL
  */
 struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
+
+struct handlebars_string * handlebars_map_get_key_at_index(struct handlebars_map * map, size_t index) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Add a value to a map. Adding a key twice is an error, use #handlebars_map_update instead. (#handlebars_string variant)
@@ -119,6 +122,13 @@ bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, si
 
 size_t handlebars_map_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Returns the load factor in percent of the map
+ * @param[in] map
+ * @return The load factor
+ */
+short handlebars_map_load_factor(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
+
 #ifndef HANDLEBARS_MAP_PRIVATE
 
 #else /* HANDLEBARS_MAP_PRIVATE */
@@ -128,8 +138,6 @@ struct handlebars_map_entry {
     struct handlebars_value * value;
     struct handlebars_map_entry * next;
     struct handlebars_map_entry * prev;
-    struct handlebars_map_entry * parent;
-    struct handlebars_map_entry * child;
 };
 
 struct handlebars_map {
