@@ -21,8 +21,12 @@
 #include "config.h"
 #endif
 
+#define _GNU_SOURCE
+#include <stdlib.h>
+
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 
 #define HANDLEBARS_MAP_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
@@ -44,6 +48,11 @@ struct ht_find_result {
     struct handlebars_map_entry * entry;
     int tombstones;
     int collisions;
+};
+
+struct map_sort_r_arg {
+    handlebars_map_kv_compare_r_func compare;
+    const void * arg;
 };
 
 static short HANDLEBARS_MAP_MIN_LOAD_FACTOR = 10;
@@ -79,7 +88,22 @@ static struct handlebars_map_entry * HANDLEBARS_MAP_TOMBSTONE = &HANDLEBARS_MAP_
 
 
 
-static inline size_t ht_choose_capacity(size_t elements) {
+static inline uint8_t ht_choose_vec_capacity_log2(size_t capacity) {
+#if defined(HAVE___BUILTIN_CLZLL)
+    return (sizeof(unsigned long long) * 8) - __builtin_clzll((unsigned long long) capacity | 3);
+#else
+    size_t i = capacity | 3;
+    uint8_t cap_log2 = 0;
+    while (i > 0) {
+        i >>= 1;
+        cap_log2++;
+    }
+    assert(pow(2.0f, (double) cap_log2) >= (double) capacity);
+    return cap_log2;
+#endif
+}
+
+static inline size_t ht_choose_table_capacity(size_t elements) {
     size_t target_capacity = elements * 100 / HANDLEBARS_MAP_MAX_LOAD_FACTOR;
     size_t i = 0;
     for (i = 0; i < sizeof(HANDLEBARS_MAP_CAPACITY_TABLE) - 1; i++) {
@@ -114,7 +138,7 @@ static inline struct ht_find_result ht_find_entry(
                 ret.empty_offset = true;
                 ret.empty_offset = pos;
             }
-        } else if( handlebars_string_eq_ex(table[pos]->key->val, table[pos]->key->len, table[pos]->key->hash, hbs_str_val(key), hbs_str_len(key), hbs_str_hash(key)) ) {
+        } else if( handlebars_string_eq(table[pos]->key, key) ) {
             ret.entry_found = true;
             ret.entry_offset = pos;
             ret.entry = table[pos];
@@ -142,6 +166,7 @@ static inline int ht_add_entry(
         handlebars_throw(ctx, HANDLEBARS_ERROR, "Failure to add hash element");
     }
     table[o.empty_offset] = entry;
+    entry->table_offset = o.empty_offset;
     return o.tombstones;
 }
 
@@ -159,6 +184,7 @@ static inline void map_add_at_table_offset(
     HANDLEBARS_MEMCHECK(entry->key, HBSCTX(map));
     entry->value = value;
     handlebars_value_addref(value);
+    entry->table_offset = offset;
 
     // Add to linked list
     if( !map->first ) {
@@ -175,12 +201,35 @@ static inline void map_add_at_table_offset(
     map->vec_offset++;
 }
 
+static void map_rebuild_references(struct handlebars_map * map)
+{
+    size_t i;
+    struct handlebars_map_entry * first = NULL;
+    struct handlebars_map_entry * last = NULL;
+
+    assert(map->vec_tombstones == 0);
+
+    if (map->vec_offset > 0) {
+        first = last = &map->vec[0];
+        map->table[map->vec[0].table_offset] = &map->vec[0];
+    }
+
+    for (i = 1; i < map->vec_offset; i++ ) {
+        struct handlebars_map_entry * entry = &map->vec[i];
+        last->next = entry;
+        entry->prev = last;
+        last = entry;
+        map->table[entry->table_offset] = entry;
+    }
+
+    map->first = first;
+    map->last = last;
+}
+
 static void map_rehash(struct handlebars_map * map)
 {
-    size_t vec_capacity = map->i >= 8 ? map->i * 2 : 8;
-    size_t table_capacity = ht_choose_capacity(vec_capacity);
-    struct handlebars_map_entry * entry;
-    struct handlebars_map_entry * tmp;
+    size_t vec_capacity = 1 << ht_choose_vec_capacity_log2(map->i + 1);
+    size_t table_capacity = ht_choose_table_capacity(vec_capacity);
     struct handlebars_map_entry ** table;
     struct handlebars_map_entry * vec;
 
@@ -219,37 +268,28 @@ static void map_rehash(struct handlebars_map * map)
     // Reimport entries
     size_t i;
     size_t vec_offset = 0;
-    struct handlebars_map_entry * first = NULL;
-    struct handlebars_map_entry * last = NULL;
     for (i = 0; i < map->vec_offset; i++) {
         if (0 != memcmp(&map->vec[i], &HANDLEBARS_MAP_TOMBSTONE_V, sizeof(HANDLEBARS_MAP_TOMBSTONE_V))) {
             struct handlebars_map_entry * entry = &vec[vec_offset];
 
-            *entry = map->vec[i]; // copy entry
+            entry->key = map->vec[i].key;
+            entry->value = map->vec[i].value;
             ht_add_entry(HBSCTX(map), table, table_capacity, entry);
             vec_offset++;
-
-            if( !first ) {
-                first = last = entry;
-            } else {
-                last->next = entry;
-                entry->prev = last;
-                last = entry;
-            }
         }
     }
 
     // Swap with old table
     handlebars_talloc_free(map->table);
     handlebars_talloc_free(map->vec);
-    map->first = first;
-    map->last = last;
     map->table = table;
     map->table_capacity = table_capacity;
     map->vec_offset = vec_offset;
     map->vec_capacity = vec_capacity;
     map->vec = vec;
     map->vec_tombstones = 0;
+
+    map_rebuild_references(map);
 }
 
 
@@ -260,24 +300,24 @@ size_t handlebars_map_size() {
 
 struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, size_t capacity)
 {
+    // Allocate map
     struct handlebars_map * map = handlebars_talloc_zero(ctx, struct handlebars_map);
     HANDLEBARS_MEMCHECK(map, ctx);
     handlebars_context_bind(ctx, HBSCTX(map));
 
-    if (capacity <= 0) {
-        capacity = 4;
-    }
+    // Allocate vector
+    size_t vec_capacity = capacity;
+    map->vec_capacity = vec_capacity;
+    map->vec = handlebars_talloc_array(ctx, struct handlebars_map_entry, vec_capacity);
+    HANDLEBARS_MEMCHECK(map->vec, ctx);
+    memset(map->vec, 0, sizeof(struct handlebars_map_entry) * vec_capacity);
 
-    map->table_capacity = ht_choose_capacity(capacity);
+    // Allocate table
+    map->table_capacity = ht_choose_table_capacity(vec_capacity);
     map->table = handlebars_talloc_array(ctx, struct handlebars_map_entry *, map->table_capacity);
     HANDLEBARS_MEMCHECK(map->table, ctx);
     map->table = talloc_steal(map, map->table);
     memset(map->table, 0, sizeof(struct handlebars_map_entry *) * map->table_capacity);
-
-    map->vec_capacity = capacity;
-    map->vec =  handlebars_talloc_array(ctx, struct handlebars_map_entry, map->vec_capacity);
-    HANDLEBARS_MEMCHECK(map->vec, ctx);
-    memset(map->vec, 0, sizeof(struct handlebars_map_entry) * map->vec_capacity);
 
     return map;
 }
@@ -304,9 +344,7 @@ void handlebars_map_dtor(struct handlebars_map * map)
 void handlebars_map_add(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
     // Rehash
-    if (map->vec_offset == map->vec_capacity || handlebars_map_load_factor(map) > HANDLEBARS_MAP_MAX_LOAD_FACTOR) {
-        map_rehash(map);
-    }
+    map = handlebars_map_rehash(map, false);
 
     // Add
     struct ht_find_result o = ht_find_entry(HBSCTX(map), map->table, map->table_capacity, key);
@@ -325,9 +363,7 @@ void handlebars_map_add(struct handlebars_map * map, struct handlebars_string * 
 bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
 {
     // Rehash
-    if (handlebars_map_load_factor(map) < HANDLEBARS_MAP_MIN_LOAD_FACTOR) {
-        map_rehash(map);
-    }
+    map = handlebars_map_rehash(map, handlebars_map_load_factor(map) < HANDLEBARS_MAP_MIN_LOAD_FACTOR);
 
     // Remove
     struct ht_find_result o = ht_find_entry(HBSCTX(map), map->table, map->table_capacity, key);
@@ -362,6 +398,8 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
     // Free
     map->i--;
     handlebars_value_delref(value);
+
+    return 1;
 }
 
 struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key)
@@ -377,9 +415,7 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struc
 void handlebars_map_update(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
     // Rehash
-    if (map->vec_offset == map->vec_capacity || handlebars_map_load_factor(map) > HANDLEBARS_MAP_MAX_LOAD_FACTOR) {
-        map_rehash(map);
-    }
+    map = handlebars_map_rehash(map, false);
 
     // Update
     struct ht_find_result o = ht_find_entry(CONTEXT, map->table, map->table_capacity, key);
@@ -437,7 +473,102 @@ struct handlebars_string * handlebars_map_get_key_at_index(struct handlebars_map
     return NULL;
 }
 
+bool handlebars_map_is_sparse(struct handlebars_map * map)
+{
+    return map->vec_tombstones > 0;
+}
 
+struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool force)
+{
+    short load_factor = handlebars_map_load_factor(map);
+
+    if (force || map->vec_offset == map->vec_capacity || load_factor > HANDLEBARS_MAP_MAX_LOAD_FACTOR) {
+        map_rehash(map);
+    }
+
+    return map;
+}
+
+static int map_entry_compare(const void * ptr1, const void * ptr2, void * arg)
+{
+    assert(ptr1 != NULL);
+    assert(ptr2 != NULL);
+    assert(arg != NULL);
+
+    handlebars_map_kv_compare_func compare = (handlebars_map_kv_compare_func) arg;
+    struct handlebars_map_entry * map_entry1 = (struct handlebars_map_entry *) ptr1;
+    struct handlebars_map_entry * map_entry2 = (struct handlebars_map_entry *) ptr2;
+
+    assert(map_entry1->key != NULL);
+    assert(map_entry1->value != NULL);
+    assert(map_entry2->key != NULL);
+    assert(map_entry2->value != NULL);
+
+    struct handlebars_map_kv_pair kv1 = {map_entry1->key, map_entry1->value};
+    struct handlebars_map_kv_pair kv2 = {map_entry2->key, map_entry2->value};
+    return compare(&kv1, &kv2);
+}
+
+struct handlebars_map * handlebars_map_sort(struct handlebars_map * map, handlebars_map_kv_compare_func compare)
+{
+#ifndef HAVE_QSORT_R
+    handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "qsort_r not available");
+#else
+    if (handlebars_map_is_sparse(map)) {
+        map = handlebars_map_rehash(map, true);
+    }
+
+    qsort_r(map->vec, map->i, sizeof(struct handlebars_map_entry), &map_entry_compare, (void *) compare);
+
+    map_rebuild_references(map);
+
+    return map;
+#endif
+}
+
+static int map_entry_compare_r(const void * ptr1, const void * ptr2, void * arg)
+{
+    assert(ptr1 != NULL);
+    assert(ptr2 != NULL);
+    assert(arg != NULL);
+
+    struct map_sort_r_arg * sort_r_arg = (struct map_sort_r_arg *) arg;
+    struct handlebars_map_entry * map_entry1 = (struct handlebars_map_entry *) ptr1;
+    struct handlebars_map_entry * map_entry2 = (struct handlebars_map_entry *) ptr2;
+
+    assert(sort_r_arg->compare != NULL);
+    assert(map_entry1->key != NULL);
+    assert(map_entry1->value != NULL);
+    assert(map_entry2->key != NULL);
+    assert(map_entry2->value != NULL);
+
+    struct handlebars_map_kv_pair kv1 = {map_entry1->key, map_entry1->value};
+    struct handlebars_map_kv_pair kv2 = {map_entry2->key, map_entry2->value};
+    return sort_r_arg->compare(&kv1, &kv2, sort_r_arg->arg);
+}
+
+struct handlebars_map * handlebars_map_sort_r(
+    struct handlebars_map * map,
+    handlebars_map_kv_compare_r_func compare,
+    const void * arg
+) {
+    // @TODO fix this for cmake
+#ifndef HAVE_QSORT_R
+    handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "qsort_r not available");
+#else
+    if (handlebars_map_is_sparse(map)) {
+        map = handlebars_map_rehash(map, true);
+    }
+
+    struct map_sort_r_arg sort_r_arg = {compare, arg};
+
+    qsort_r(map->vec, map->i, sizeof(struct handlebars_map_entry), &map_entry_compare_r, (void *) &sort_r_arg);
+
+    map_rebuild_references(map);
+
+    return map;
+#endif
+}
 
 
 // compat

@@ -101,6 +101,7 @@ AC_HEADER_STDC
 
 # Checks for functions
 AC_CHECK_FUNC(snprintf, , AC_MSG_ERROR([snprintf is required]))
+AC_CHECK_FUNCS([qsort_r])
 
 # Checks for typedefs, structures, and compiler characteristics
 AC_C_CONST
@@ -108,6 +109,7 @@ AC_C_INLINE
 AC_C_STRINGIZE
 AC_TYPE_SIZE_T
 AX_GCC_BUILTIN([__builtin_expect])
+AX_GCC_BUILTIN([__builtin_clzll])
 AX_GCC_VAR_ATTRIBUTE([unused])
 AX_GCC_FUNC_ATTRIBUTE(returns_nonnull)
 HBS_COMPUTED_GOTOS

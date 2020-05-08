@@ -65,13 +65,33 @@ static inline bool should_gc_entry(struct handlebars_cache * cache, struct handl
 static int cache_compare(const void * ptr1, const void * ptr2)
 {
     double delta;
-    struct handlebars_map_entry * map_entry1 = *(struct handlebars_map_entry **) ptr1; //talloc_get_type(*(struct handlebars_map_entry **) ptr1, struct handlebars_map_entry);
-    struct handlebars_map_entry * map_entry2 = *(struct handlebars_map_entry **) ptr2; //talloc_get_type(*(struct handlebars_map_entry **) ptr2, struct handlebars_map_entry);
+
+    struct handlebars_map_kv_pair * map_entry1 = (struct handlebars_map_kv_pair *) ptr1;
+    struct handlebars_map_kv_pair * map_entry2 = (struct handlebars_map_kv_pair *) ptr2;
     assert(map_entry1 != NULL);
     assert(map_entry2 != NULL);
 
     struct handlebars_module * entry1 = talloc_get_type(handlebars_value_get_ptr(map_entry1->value), struct handlebars_module);
     struct handlebars_module * entry2 = talloc_get_type(handlebars_value_get_ptr(map_entry2->value), struct handlebars_module);
+    assert(entry1 != NULL);
+    assert(entry2 != NULL);
+
+    delta = difftime(entry1->ts, entry2->ts);
+    return (delta > 0) - (delta < 0);
+}
+
+static int cache_compare2(const struct handlebars_map_kv_pair * pair1, const struct handlebars_map_kv_pair * pair2)
+{
+    double delta;
+
+    assert(pair1 != NULL);
+    assert(pair2 != NULL);
+    assert(pair1->value != NULL);
+    assert(pair2->value != NULL);
+
+    struct handlebars_module * entry1 = talloc_get_type(handlebars_value_get_ptr(pair1->value), struct handlebars_module);
+    struct handlebars_module * entry2 = talloc_get_type(handlebars_value_get_ptr(pair2->value), struct handlebars_module);
+
     assert(entry1 != NULL);
     assert(entry2 != NULL);
 
@@ -85,29 +105,22 @@ int cache_gc(struct handlebars_cache * cache)
     struct handlebars_map * map = intern->map;
     struct handlebars_cache_stat * stat = &intern->stat;
     int removed = 0;
-    // struct handlebars_map_entry * arr[map->i];
-    struct handlebars_map_entry ** arr = alloca(sizeof(struct handlebars_map_entry *) * map->i);
-    struct handlebars_map_entry * item;
-    struct handlebars_map_entry * tmp;
     size_t i = 0;
     time_t now;
     time(&now);
 
-    handlebars_map_foreach(map, item, tmp) {
-        arr[i++] = item;
-    } handlebars_map_foreach_end();
+    intern->map = map = handlebars_map_sort(map, cache_compare2);
 
-    assert(i == map->i);
-
-    qsort(arr, map->i, sizeof(struct handlebars_map_entry *), &cache_compare);
-
-    for( i = 0; i < map->i; i++ ) {
-        struct handlebars_map_entry * map_entry = arr[i];
-        struct handlebars_module * module = talloc_get_type(handlebars_value_get_ptr(map_entry->value), struct handlebars_module);
+    // @TODO reimplement this with handlebars_map_foreach when it uses indexes
+    for( i = 0; i < handlebars_map_count(map); i++ ) {
+        struct handlebars_string * key = handlebars_map_get_key_at_index(map, i);
+        struct handlebars_value * value = handlebars_map_find(map, key);
+        struct handlebars_module * module = talloc_get_type(handlebars_value_get_ptr(value), struct handlebars_module);
         if( should_gc_entry(cache, module, now) ) {
             size_t oldsize = module->size;
             // Remove
-            handlebars_map_remove(map, map_entry->key);
+            handlebars_map_remove(map, key);
+            i--; // ugh
 #ifdef HANDLEBARS_NO_REFCOUNT
             // Delref should handle it if refcounting enabled - maybe?
             //handlebars_value_dtor(map_entry->value);

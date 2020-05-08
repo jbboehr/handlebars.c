@@ -130,11 +130,105 @@ START_TEST(test_map)
 }
 END_TEST
 
+int map_sort_test_compare(const struct handlebars_map_kv_pair * kv_pair1, const struct handlebars_map_kv_pair * kv_pair2)
+{
+    ck_assert_ptr_ne(kv_pair1, NULL);
+    ck_assert_ptr_ne(kv_pair2, NULL);
+    return handlebars_value_get_intval(kv_pair2->value) - handlebars_value_get_intval(kv_pair1->value);
+}
+
+static const void * COMPARE_R_ARG = (void *) 0x0F;
+
+int map_sort_test_compare_r(const struct handlebars_map_kv_pair * kv_pair1, const struct handlebars_map_kv_pair * kv_pair2, const void * arg)
+{
+    ck_assert_ptr_ne(kv_pair1, NULL);
+    ck_assert_ptr_ne(kv_pair2, NULL);
+    ck_assert_ptr_eq(arg, COMPARE_R_ARG);
+    return handlebars_value_get_intval(kv_pair1->value) - handlebars_value_get_intval(kv_pair2->value);
+}
+
+#ifdef HAVE_QSORT_R
+START_TEST(test_map_sort)
+{
+    size_t count = 33;
+    size_t capacity = 64;
+    size_t middle = count / 2;
+    struct handlebars_map * map = handlebars_map_ctor(context, capacity);
+    size_t i;
+
+    for ( i = 0; i < count; i++ ) {
+        char tmp[32];
+        snprintf(tmp, sizeof(tmp) - 1, "%lu", i);
+        struct handlebars_string * key = handlebars_string_ctor(HBSCTX(context), tmp, strlen(tmp));
+
+        struct handlebars_value * value = handlebars_value_ctor(context);
+        handlebars_value_integer(value, i);
+        ck_assert_ptr_ne(value, NULL);
+        handlebars_map_add(map, key, value);
+        handlebars_talloc_free(key);
+    }
+
+    do {
+        char tmp[32];
+        snprintf(tmp, sizeof(tmp) - 1, "%lu", middle);
+        struct handlebars_string * key = handlebars_string_ctor(HBSCTX(context), tmp, strlen(tmp));
+        handlebars_map_remove(map, key);
+        handlebars_talloc_free(key);
+    } while(0);
+
+    map = handlebars_map_sort(map, map_sort_test_compare);
+
+    size_t fudge = 0;
+    for ( i = 0; i < count; i++ ) {
+        if (i == middle) {
+            fudge = 1;
+            continue;
+        }
+
+        struct handlebars_string * key = handlebars_map_get_key_at_index(map, i - fudge);
+        ck_assert_ptr_ne(key, NULL);
+
+        char tmp[32];
+        snprintf(tmp, sizeof(tmp) - 1, "%lu", count - i - 1);
+        ck_assert_str_eq(tmp, hbs_str_val(key));
+
+        struct handlebars_value * value = handlebars_map_find(map, key);
+        ck_assert_ptr_ne(value, NULL);
+        ck_assert_int_eq(count - i - 1, handlebars_value_get_intval(value));
+    }
+
+    map = handlebars_map_sort_r(map, map_sort_test_compare_r, COMPARE_R_ARG);
+
+    fudge = 0;
+    for ( i = 0; i < count; i++ ) {
+        if (i == middle) {
+            fudge = 1;
+            continue;
+        }
+
+        struct handlebars_string * key = handlebars_map_get_key_at_index(map, i - fudge);
+        ck_assert_ptr_ne(key, NULL);
+
+        char tmp[32];
+        snprintf(tmp, sizeof(tmp) - 1, "%lu", i);
+        ck_assert_str_eq(tmp, hbs_str_val(key));
+
+        struct handlebars_value * value = handlebars_map_find(map, key);
+        ck_assert_ptr_ne(value, NULL);
+        ck_assert_int_eq(i, handlebars_value_get_intval(value));
+    }
+}
+END_TEST
+#endif
+
 Suite * parser_suite(void)
 {
     Suite * s = suite_create("Map");
 
     REGISTER_TEST_FIXTURE(s, test_map, "Map");
+#ifdef HAVE_QSORT_R
+    REGISTER_TEST_FIXTURE(s, test_map_sort, "handlebars_map_sort");
+#endif
 
     return s;
 }

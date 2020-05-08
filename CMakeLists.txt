@@ -22,6 +22,7 @@ project(handlebars C)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" "${CMAKE_MODULE_PATH}")
 include(GNUInstallDirs)
+include(CheckSymbolExists)
 
 set(HANDLEBARS_VERSION_MAJOR 0)
 set(HANDLEBARS_VERSION_MINOR 7)
@@ -70,6 +71,22 @@ endif()
 find_package(LibYaml REQUIRED)
 include_directories(${LIBYAML_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${LIBYAML_LIBRARIES})
+
+if(NOT MSVC)
+    check_symbol_exists(pow math.h HAVE_POW)
+    if(NOT HAVE_POW)
+        set(LIBS ${LIBS} m)
+        check_symbol_exists(pow math.h HAVE_POW)
+    endif()
+endif()
+
+set(CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+check_symbol_exists(qsort_r stdlib.h HAVE_QSORT_R)
+unset(CMAKE_REQUIRED_DEFINITIONS)
+
+# generate config.h
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/src/config.h)
+add_definitions(-DHAVE_CONFIG_H)
 
 # generate handlebars_config.h
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/handlebars_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/src/handlebars_config.h)

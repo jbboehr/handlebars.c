@@ -29,6 +29,22 @@ struct handlebars_map;
 struct handlebars_string;
 struct handlebars_value;
 
+struct handlebars_map_kv_pair {
+    struct handlebars_string * key;
+    struct handlebars_value * value;
+};
+
+typedef int (*handlebars_map_kv_compare_func)(
+    const struct handlebars_map_kv_pair *,
+    const struct handlebars_map_kv_pair *
+);
+
+typedef int (*handlebars_map_kv_compare_r_func)(
+    const struct handlebars_map_kv_pair *,
+    const struct handlebars_map_kv_pair *,
+    const void *
+);
+
 extern size_t handlebars_map_size();
 
 /**
@@ -37,7 +53,7 @@ extern size_t handlebars_map_size();
  * @param[in] capacity The desired number of values to be stored
  * @return The new map
  */
-struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, size_t capacity) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, size_t capacity) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Destruct a map
@@ -62,8 +78,6 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struc
  * @return The found value, or NULL
  */
 struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
-
-struct handlebars_string * handlebars_map_get_key_at_index(struct handlebars_map * map, size_t index) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Add a value to a map. Adding a key twice is an error, use #handlebars_map_update instead. (#handlebars_string variant)
@@ -120,7 +134,15 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
  */
 bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Returns the number of items in the nmap
+ * @param[in] map
+ * @return The number of items in the map
+ */
 size_t handlebars_map_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
+#define handlebars_map_length(map) handlebars_map_count(map)
+
+struct handlebars_string * handlebars_map_get_key_at_index(struct handlebars_map * map, size_t index) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Returns the load factor in percent of the map
@@ -128,6 +150,53 @@ size_t handlebars_map_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
  * @return The load factor
  */
 short handlebars_map_load_factor(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Rehashes the map if the table is not within the configured load factor. In the future,
+ *        may reallocate the map itself.
+ * @param[in] map
+ * @param[in] force
+ * @return The rehashed map
+ */
+struct handlebars_map * handlebars_map_rehash(
+    struct handlebars_map * map,
+    bool force
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Checks if the map's backing vector is sparse.
+ * @param[in] map
+ * @return true if the backing vector is sparse.
+ */
+bool handlebars_map_is_sparse(struct handlebars_map * map);
+
+/**
+ * @brief Sort the map's backing vector using a specified compare function. Will rehash
+ *        if the backing vector is sparse. In the future, may reallocate the map itself
+ *        if the backing vector is sparse. This function WILL ABORT if qsort_r was not
+ *        available at compile-time. Calling any map functions on the map being sorted
+ *        IS PROBABLY going to EXPLODE.
+ * @param[in] map
+ * @param[in] compare
+ * @return true if the backing vector is sparse.
+ */
+struct handlebars_map * handlebars_map_sort(
+    struct handlebars_map * map,
+    handlebars_map_kv_compare_func compare
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Like #handlebars_map_sort, but with a context pointer.
+ * @param[in] map
+ * @param[in] compare
+ * @param[in] arg
+ * @return true if the backing vector is sparse.
+ */
+struct handlebars_map * handlebars_map_sort_r(
+    struct handlebars_map * map,
+    handlebars_map_kv_compare_r_func compare,
+    const void * arg
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 #ifndef HANDLEBARS_MAP_PRIVATE
 
@@ -138,6 +207,7 @@ struct handlebars_map_entry {
     struct handlebars_value * value;
     struct handlebars_map_entry * next;
     struct handlebars_map_entry * prev;
+    size_t table_offset;
 };
 
 struct handlebars_map {
