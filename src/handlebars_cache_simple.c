@@ -65,8 +65,8 @@ static inline bool should_gc_entry(struct handlebars_cache * cache, struct handl
 static int cache_compare(const void * ptr1, const void * ptr2)
 {
     double delta;
-    struct handlebars_map_entry * map_entry1 = talloc_get_type(*(struct handlebars_map_entry **) ptr1, struct handlebars_map_entry);
-    struct handlebars_map_entry * map_entry2 = talloc_get_type(*(struct handlebars_map_entry **) ptr2, struct handlebars_map_entry);
+    struct handlebars_map_entry * map_entry1 = *(struct handlebars_map_entry **) ptr1; //talloc_get_type(*(struct handlebars_map_entry **) ptr1, struct handlebars_map_entry);
+    struct handlebars_map_entry * map_entry2 = *(struct handlebars_map_entry **) ptr2; //talloc_get_type(*(struct handlebars_map_entry **) ptr2, struct handlebars_map_entry);
     assert(map_entry1 != NULL);
     assert(map_entry2 != NULL);
 
@@ -95,7 +95,8 @@ int cache_gc(struct handlebars_cache * cache)
 
     handlebars_map_foreach(map, item, tmp) {
         arr[i++] = item;
-    }
+    } handlebars_map_foreach_end();
+
     assert(i == map->i);
 
     qsort(arr, map->i, sizeof(struct handlebars_map_entry *), &cache_compare);

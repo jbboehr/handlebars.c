@@ -87,7 +87,7 @@ START_TEST(test_map)
         "COLLISIONS: %ld, "
         "LOADFACTOR: %d\n",
         map->i,
-        map->table_size,
+        map->table_capacity,
         map->collisions,
         handlebars_map_load_factor(map)
     );
@@ -96,7 +96,7 @@ START_TEST(test_map)
     pos = 0;
     handlebars_map_foreach(map, entry, tmp_entry) {
         ck_assert_uint_eq(pos++, handlebars_value_get_intval(entry->value));
-    }
+    } handlebars_map_foreach_end();
 
     // Remove everything
     i = 0;

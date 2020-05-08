@@ -145,13 +145,22 @@ struct handlebars_map {
     size_t i;
     struct handlebars_map_entry * first;
     struct handlebars_map_entry * last;
-    size_t table_size;
+
+    size_t table_capacity;
     struct handlebars_map_entry ** table;
+
+    size_t vec_offset;
+    size_t vec_capacity;
+    size_t vec_tombstones;
+    struct handlebars_map_entry * vec;
+
     size_t collisions;
 };
 
 #define handlebars_map_foreach(list, el, tmp) \
     for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
+
+#define handlebars_map_foreach_end() ; do { ; } while(0)
 
 #endif /* HANDLEBARS_MAP_PRIVATE */
 
