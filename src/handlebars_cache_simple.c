@@ -109,29 +109,32 @@ int cache_gc(struct handlebars_cache * cache)
     time_t now;
     time(&now);
 
+    size_t remove_keys_i = 0;
+    struct handlebars_string ** remove_keys = handlebars_talloc_array(HBSCTX(cache), struct handlebars_string *, handlebars_map_count(map) + 1);
+    HANDLEBARS_MEMCHECK(remove_keys, HBSCTX(cache));
+
     intern->map = map = handlebars_map_sort(map, cache_compare2);
 
-    // @TODO reimplement this with handlebars_map_foreach when it uses indexes
-    for( i = 0; i < handlebars_map_count(map); i++ ) {
-        struct handlebars_string * key = handlebars_map_get_key_at_index(map, i);
-        struct handlebars_value * value = handlebars_map_find(map, key);
+    handlebars_map_foreach(map, index, key, value) {
         struct handlebars_module * module = talloc_get_type(handlebars_value_get_ptr(value), struct handlebars_module);
         if( should_gc_entry(cache, module, now) ) {
-            size_t oldsize = module->size;
-            // Remove
-            handlebars_map_remove(map, key);
-            i--; // ugh
-#ifdef HANDLEBARS_NO_REFCOUNT
-            // Delref should handle it if refcounting enabled - maybe?
-            //handlebars_value_dtor(map_entry->value);
-#endif
+            remove_keys[remove_keys_i++] = key;
             stat->current_entries--;
-            stat->current_size -= oldsize;
+            stat->current_size -= module->size;
             removed++;
         } else {
             break;
         }
+    } handlebars_map_foreach_end();
+
+    intern->map = map = handlebars_map_rehash(map, false);
+
+    for( i = 0; i < remove_keys_i; i++ ) {
+        struct handlebars_string * key = remove_keys[i];
+        handlebars_map_remove(map, key);
     }
+
+    handlebars_talloc_free(remove_keys);
 
     return removed;
 }

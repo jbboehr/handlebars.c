@@ -144,6 +144,8 @@ size_t handlebars_map_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_string * handlebars_map_get_key_at_index(struct handlebars_map * map, size_t index) HBS_ATTR_NONNULL_ALL;
 
+void handlebars_map_get_kv_at_index(struct handlebars_map * map, size_t index, struct handlebars_string ** key, struct handlebars_value ** value) HBS_ATTR_NONNULL_ALL;
+
 /**
  * @brief Returns the load factor in percent of the map
  * @param[in] map
@@ -163,12 +165,18 @@ struct handlebars_map * handlebars_map_rehash(
     bool force
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+void handlebars_map_sparse_array_compact(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
+
+size_t handlebars_map_sparse_array_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
+
 /**
  * @brief Checks if the map's backing vector is sparse.
  * @param[in] map
  * @return true if the backing vector is sparse.
  */
 bool handlebars_map_is_sparse(struct handlebars_map * map);
+
+bool handlebars_map_set_is_in_iteration(struct handlebars_map * map, bool is_in_iteration);
 
 /**
  * @brief Sort the map's backing vector using a specified compare function. Will rehash
@@ -225,12 +233,23 @@ struct handlebars_map {
     struct handlebars_map_entry * vec;
 
     size_t collisions;
+    bool is_in_iteration;
 };
 
-#define handlebars_map_foreach(list, el, tmp) \
-    for( (el) = (list->first); (el) && (tmp = (el)->next, 1); (el) = tmp)
+#define handlebars_map_foreach(map, index, key, value) \
+    do { \
+        size_t index = 0; \
+        struct handlebars_string * key = NULL; \
+        struct handlebars_value * value = NULL; \
+        bool old_is_in_iteration = handlebars_map_set_is_in_iteration(map, true); \
+        for (; index < handlebars_map_sparse_array_count(map); index++) { \
+            handlebars_map_get_kv_at_index(map, index, &key, &value); \
+            if (key == NULL || value == NULL) continue;
 
-#define handlebars_map_foreach_end() ; do { ; } while(0)
+#define handlebars_map_foreach_end() \
+        } \
+        handlebars_map_set_is_in_iteration(map, old_is_in_iteration); \
+    } while(0)
 
 #endif /* HANDLEBARS_MAP_PRIVATE */
 

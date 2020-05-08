@@ -94,18 +94,17 @@ START_TEST(test_map)
 
     // Make sure we can iterate over the map in insertion order
     pos = 0;
-    handlebars_map_foreach(map, entry, tmp_entry) {
-        ck_assert_uint_eq(pos++, handlebars_value_get_intval(entry->value));
+    handlebars_map_foreach(map, index, key, value) {
+        ck_assert_uint_eq(index, handlebars_value_get_intval(value));
     } handlebars_map_foreach_end();
 
     // Remove everything
     i = 0;
-    do {
-        struct handlebars_string *key = handlebars_map_get_key_at_index(map, 0);
-        struct handlebars_string *key2 = handlebars_map_get_key_at_index(map, 1);
-        if (!key) break;
-        struct handlebars_value * value = handlebars_map_find(map, key);
-        ck_assert_ptr_ne(NULL, value);
+    pos = handlebars_map_count(map);
+    handlebars_map_foreach(map, index, key, value) {
+        ck_assert_ptr_ne(key, NULL);
+        ck_assert_ptr_ne(value, NULL);
+
         handlebars_map_remove(map, key);
 
         // make sure the count of items in the map is accurate
@@ -113,17 +112,10 @@ START_TEST(test_map)
 
         // make sure the right element was removed
         ck_assert_int_eq(i++, handlebars_value_get_intval(value));
-
-        if (key2) {
-            value = handlebars_map_find(map, key2);
-            ck_assert_ptr_ne(NULL, value);
-            ck_assert_int_eq(i, handlebars_value_get_intval(value));
-        }
-    } while(1);
+    } handlebars_map_foreach_end();
 
     // Make sure it's empty
     ck_assert_uint_eq(handlebars_map_count(map), 0);
-    ck_assert_ptr_eq(handlebars_map_get_key_at_index(map, 0), NULL);
 
     // Free
     handlebars_map_dtor(map);

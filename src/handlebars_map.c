@@ -207,7 +207,7 @@ static void map_rebuild_references(struct handlebars_map * map)
     struct handlebars_map_entry * first = NULL;
     struct handlebars_map_entry * last = NULL;
 
-    assert(map->vec_tombstones == 0);
+    assert(map->vec_offset == map->i);
 
     if (map->vec_offset > 0) {
         first = last = &map->vec[0];
@@ -287,7 +287,6 @@ static void map_rehash(struct handlebars_map * map)
     map->vec_offset = vec_offset;
     map->vec_capacity = vec_capacity;
     map->vec = vec;
-    map->vec_tombstones = 0;
 
     map_rebuild_references(map);
 }
@@ -329,14 +328,9 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
 
 void handlebars_map_dtor(struct handlebars_map * map)
 {
-#ifndef HANDLEBARS_NO_REFCOUNT
-    struct handlebars_map_entry * entry;
-    struct handlebars_map_entry * tmp;
-
-    handlebars_map_foreach(map, entry, tmp) {
-        handlebars_value_delref(entry->value);
+    handlebars_map_foreach(map, index, key, value) {
+        handlebars_value_delref(value);
     } handlebars_map_foreach_end();
-#endif
 
     handlebars_talloc_free(map);
 }
@@ -349,7 +343,7 @@ void handlebars_map_add(struct handlebars_map * map, struct handlebars_string * 
     // Add
     struct ht_find_result o = ht_find_entry(HBSCTX(map), map->table, map->table_capacity, key);
     if (o.entry_found || !o.empty_found) {
-        // this should never happen
+        // this should never happen - unless rehash locked due to iteration
         handlebars_throw(HBSCTX(map), HANDLEBARS_ERROR, "Failed to add to hash table");
     }
 
@@ -393,7 +387,6 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
 
     // Remove from vector
     *entry = HANDLEBARS_MAP_TOMBSTONE_V;
-    map->vec_tombstones++;
 
     // Free
     map->i--;
@@ -449,37 +442,34 @@ extern inline short handlebars_map_load_factor(struct handlebars_map * map) {
 
 struct handlebars_string * handlebars_map_get_key_at_index(struct handlebars_map * map, size_t index)
 {
-    struct handlebars_map_entry * entry;
-    struct handlebars_map_entry * tmp;
-
-    if (index >= map->i) {
-        return NULL;
+    if (index >= map->vec_offset) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Out of bounds");
     }
 
-    // If the backing vector is not sparse, we can just get the entry out of it
-    if (map->vec_tombstones <= 0 && index < map->vec_offset) {
-        return map->vec[index].key;
+    return map->vec[index].key;
+}
+
+void handlebars_map_get_kv_at_index(struct handlebars_map * map, size_t index, struct handlebars_string ** key, struct handlebars_value ** value)
+{
+    if (index >= map->vec_offset) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Out of bounds");
     }
 
-    // Otherwise we have to iterator over it to get the proper key
-    size_t i = 0;
-    handlebars_map_foreach(map, entry, tmp) {
-        if (i == index) {
-            return entry->key;
-        }
-        i++;
-    } handlebars_map_foreach_end();
-
-    return NULL;
+    *key = map->vec[index].key;
+    *value = map->vec[index].value;
 }
 
 bool handlebars_map_is_sparse(struct handlebars_map * map)
 {
-    return map->vec_tombstones > 0;
+    return map->vec_offset != map->i;
 }
 
 struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool force)
 {
+    if (map->is_in_iteration) { // this go go really wrong
+        return map;
+    }
+
     short load_factor = handlebars_map_load_factor(map);
 
     if (force || map->vec_offset == map->vec_capacity || load_factor > HANDLEBARS_MAP_MAX_LOAD_FACTOR) {
@@ -487,6 +477,47 @@ struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool 
     }
 
     return map;
+}
+
+void handlebars_map_sparse_array_compact(struct handlebars_map * map)
+{
+    // nothing to do
+    if (map->i == map->vec_offset) {
+        return;
+    }
+
+    size_t i;
+    size_t vec_offset = 0;
+
+    // Scan until the first tombstone
+    for (i = 0; i < map->vec_offset; i++) {
+        if (0 == memcmp(&map->vec[i], &HANDLEBARS_MAP_TOMBSTONE_V, sizeof(HANDLEBARS_MAP_TOMBSTONE_V))) {
+            i++;
+            break;
+        }
+    }
+
+    // Now patch everything
+    for (; i < map->vec_offset; i++) {
+        if (0 != memcmp(&map->vec[i], &HANDLEBARS_MAP_TOMBSTONE_V, sizeof(HANDLEBARS_MAP_TOMBSTONE_V))) {
+            map->vec[vec_offset] = map->vec[i];
+            vec_offset++;
+        }
+    }
+    map->vec_offset = vec_offset;
+    map_rebuild_references(map);
+}
+
+size_t handlebars_map_sparse_array_count(struct handlebars_map * map)
+{
+    return map->vec_offset;
+}
+
+bool handlebars_map_set_is_in_iteration(struct handlebars_map * map, bool is_in_iteration)
+{
+    bool old = map->is_in_iteration;
+    map->is_in_iteration = is_in_iteration;
+    return old;
 }
 
 static int map_entry_compare(const void * ptr1, const void * ptr2, void * arg)
