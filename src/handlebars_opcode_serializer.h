@@ -37,7 +37,7 @@ struct handlebars_module;
 struct handlebars_module * handlebars_program_serialize(
     struct handlebars_context * context,
     struct handlebars_program * program
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Adjust pointers by the offset between the specified base address and handlebars_module#addr

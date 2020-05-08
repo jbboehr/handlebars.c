@@ -36,7 +36,7 @@ extern size_t HANDLEBARS_PARSER_SIZE;
  */
 struct handlebars_parser * handlebars_parser_ctor(
     struct handlebars_context * ctx
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Free a parser and it's resources.
@@ -48,7 +48,7 @@ void handlebars_parser_dtor(struct handlebars_parser * parser) HBS_ATTR_NONNULL_
 struct handlebars_token ** handlebars_lex_ex(
     struct handlebars_parser * parser,
     struct handlebars_string * tmpl
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Convenience function for lexing to a token list
@@ -57,13 +57,13 @@ struct handlebars_token ** handlebars_lex_ex(
  */
 struct handlebars_token ** handlebars_lex(
     struct handlebars_parser * parser
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_ast_node * handlebars_parse_ex(
     struct handlebars_parser * parser,
     struct handlebars_string * tmpl,
     unsigned flags
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Parser a template. The template is stored in handlebars_parser#tmpl and the resultant

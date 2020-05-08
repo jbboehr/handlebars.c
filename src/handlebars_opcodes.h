@@ -117,7 +117,7 @@ extern size_t HANDLEBARS_OPERAND_SIZE;
 struct handlebars_opcode * handlebars_opcode_ctor(
     struct handlebars_context * context,
     enum handlebars_opcode_type type
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Set the value of an operand to null

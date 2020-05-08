@@ -193,7 +193,7 @@ struct handlebars_value * handlebars_value_map_str_find(
 struct handlebars_string * handlebars_value_expression(
     struct handlebars_value * value,
     bool escape
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Convert a value to string and append to the given buffer, following handlebars (javascript)
@@ -207,7 +207,7 @@ struct handlebars_string * handlebars_value_expression_append(
     struct handlebars_string * string,
     struct handlebars_value * value,
     bool escape
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
@@ -218,7 +218,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBS_
  */
 struct handlebars_value * handlebars_value_ctor(
     struct handlebars_context * ctx
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Create a copy of a value
@@ -227,7 +227,7 @@ struct handlebars_value * handlebars_value_ctor(
  */
 struct handlebars_value * handlebars_value_copy(
     struct handlebars_value * value
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Destruct a value. Does not free the value object itself. Frees any child resources and sets the value to null.
@@ -269,7 +269,7 @@ struct handlebars_value * handlebars_value_call(
     int argc,
     struct handlebars_value * argv[],
     struct handlebars_options * options
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 #define handlebars_value_addref(value) ((void) value)
 #define handlebars_value_addref2(value) (value)

@@ -38,7 +38,7 @@ struct handlebars_value * handlebars_value_partial_loader_ctor(
     struct handlebars_context * context,
     struct handlebars_string * base_path,
     struct handlebars_string * extension
-);
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 HBS_EXTERN_C_END
 

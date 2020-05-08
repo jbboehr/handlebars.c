@@ -158,8 +158,8 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
             handlebars_value_boolean(last, i == len);
         }
 
-        handlebars_stack_set(handlebars_value_get_stack(block_params), 0, it.current);
-        handlebars_stack_set(handlebars_value_get_stack(block_params), 1, key);
+        block_params->v.stack = handlebars_stack_set(block_params->v.stack, 0, it.current);
+        block_params->v.stack = handlebars_stack_set(block_params->v.stack, 1, key);
 
         tmp = handlebars_vm_execute_program_ex(options->vm, options->program, it.current, data, block_params);
         result->v.string = handlebars_string_append(HBSCTX(options->vm), result->v.string, HBS_STR_STRL(tmp));
@@ -377,7 +377,7 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
     } else {
         block_params = handlebars_value_ctor(CONTEXT);
         handlebars_value_array_init(block_params, 2);
-        handlebars_stack_set(handlebars_value_get_stack(block_params), 0, context);
+        block_params->v.stack = handlebars_stack_set(block_params->v.stack, 0, context);
 
         result = handlebars_vm_execute_program_ex(options->vm, options->program, context, options->data, block_params);
     }

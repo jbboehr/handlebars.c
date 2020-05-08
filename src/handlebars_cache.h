@@ -42,7 +42,7 @@ struct handlebars_string;
  */
 struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a new LMDB cache. The file specified by path does not have
@@ -54,7 +54,7 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
 struct handlebars_cache * handlebars_cache_lmdb_ctor(
     struct handlebars_context * context,
     const char * path
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a new mmap cache
@@ -67,7 +67,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     struct handlebars_context * context,
     size_t size,
     size_t entries
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Destruct a cache
@@ -87,7 +87,7 @@ void handlebars_cache_dtor(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL
 struct handlebars_module * handlebars_cache_find(
     struct handlebars_cache * cache,
     struct handlebars_string * key
-);
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Add a program to the cache. Adding the same key twice is an error.
@@ -100,27 +100,27 @@ void handlebars_cache_add(
     struct handlebars_cache * cache,
     struct handlebars_string * key,
     struct handlebars_module * module
-);
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Garbage collect the cache
  * @param[in] cache The cache
  * @return The number of entries removed
  */
-int handlebars_cache_gc(struct handlebars_cache * cache);
+int handlebars_cache_gc(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Reset the cache
  * @param[in] cache The cache
  * @return void
  */
-void handlebars_cache_reset(struct handlebars_cache * cache);
+void handlebars_cache_reset(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_cache_release(
     struct handlebars_cache * cache,
     struct handlebars_string * key,
     struct handlebars_module * module
-);
+) HBS_ATTR_NONNULL_ALL;
 
 #else /* HANDLEBARS_CACHE_PRIVATE */
 

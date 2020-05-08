@@ -62,7 +62,7 @@ size_t handlebars_ast_list_count(struct handlebars_ast_list * list);
  */
 struct handlebars_ast_list * handlebars_ast_list_ctor(
     struct handlebars_context * context
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Destruct an AST node list

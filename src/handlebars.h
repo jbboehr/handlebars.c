@@ -220,12 +220,13 @@ const char * handlebars_mustache_spec_version_string(void) HBS_ATTR_RETURNS_NONN
  * @param[in] ctx The talloc memory context
  * @return the context pointer
  */
-struct handlebars_context * handlebars_context_ctor_ex(void * ctx);
+struct handlebars_context * handlebars_context_ctor_ex(void * ctx) HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a root context object. Used as the root talloc pointer.
  * @return the context pointer
  */
+HBS_ATTR_WARN_UNUSED_RESULT
 static inline struct handlebars_context * handlebars_context_ctor(void) {
     return handlebars_context_ctor_ex(NULL);
 }
@@ -304,14 +305,14 @@ jmp_buf * handlebars_error_jmp(struct handlebars_context * context, jmp_buf * bu
  * @param[in] context The handlebars context
  * @return The error message
  */
-char * handlebars_error_message(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
+char * handlebars_error_message(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Get a copy the error message from a context, or NULL (compatibility for handlebars specification)
  * @param[in] context
  * @return the error message
  */
-char * handlebars_error_message_js(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
+char * handlebars_error_message_js(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Used to check for memory allocation failure. If `ptr` is `NULL`, handlebars_throw() will be called.

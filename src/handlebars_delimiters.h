@@ -27,6 +27,6 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     struct handlebars_string * tmpl,
     struct handlebars_string * open,
     struct handlebars_string * close
-) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 #endif /* HANDLEBARS_DELIMITERS_H */

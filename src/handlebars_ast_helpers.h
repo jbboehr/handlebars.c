@@ -46,7 +46,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_ast_node * close,
     int inverted,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
     struct handlebars_parser * parser,
@@ -54,7 +54,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
     struct handlebars_ast_node * program,
     struct handlebars_ast_node * inverse_chain,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     struct handlebars_parser * parser,
@@ -62,7 +62,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
     struct handlebars_string * open,
     unsigned strip,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
     struct handlebars_parser * parser,
@@ -70,14 +70,14 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
     struct handlebars_ast_node * program,
     struct handlebars_ast_node * close,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     struct handlebars_parser * parser,
     struct handlebars_ast_list * list,
     bool data,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     struct handlebars_parser * parser,
@@ -85,7 +85,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     struct handlebars_string * content,
     struct handlebars_string * close,
     struct handlebars_locinfo * locinfo
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_string * handlebars_ast_helper_strip_comment(struct handlebars_string * comment) HBS_ATTR_RETURNS_NONNULL;
 

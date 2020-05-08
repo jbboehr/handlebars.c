@@ -55,7 +55,7 @@ typedef void (*handlebars_log_func)(
  */
 struct handlebars_vm * handlebars_vm_ctor(
     struct handlebars_context * ctx
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Destruct a VM
@@ -74,7 +74,7 @@ struct handlebars_string * handlebars_vm_execute_program(
     struct handlebars_vm * vm,
     long program,
     struct handlebars_value * context
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_vm * vm,
@@ -82,7 +82,7 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_value * context,
     struct handlebars_value * data,
     struct handlebars_value * block_params
-) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_value * handlebars_vm_call_helper_str(
     const char * name,
@@ -90,7 +90,7 @@ struct handlebars_value * handlebars_vm_call_helper_str(
     int argc,
     struct handlebars_value * argv[],
     struct handlebars_options * options
-) HBS_ATTR_NONNULL(1, 4, 5);
+) HBS_ATTR_NONNULL(1, 4, 5) HBS_ATTR_WARN_UNUSED_RESULT;
 
 #ifndef HANDLEBARS_VM_PRIVATE
 

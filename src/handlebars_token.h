@@ -60,7 +60,7 @@ struct handlebars_token * handlebars_token_ctor(
     struct handlebars_context * context,
     int token_int,
     struct handlebars_string * string
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Destruct a token
@@ -116,7 +116,7 @@ struct handlebars_string * handlebars_token_print_append(
     struct handlebars_string * string,
     struct handlebars_token * token,
     int flags
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Print a token into a human-readable string
@@ -130,7 +130,7 @@ struct handlebars_string * handlebars_token_print(
     struct handlebars_context * context,
     struct handlebars_token * token,
     int flags
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 #ifdef HANDLEBARS_TOKEN_PRIVATE
 

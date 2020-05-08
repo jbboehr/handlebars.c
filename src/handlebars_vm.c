@@ -71,7 +71,7 @@ static inline struct handlebars_value * _get(struct handlebars_stack * stack, si
 #define TOP(stack) handlebars_stack_top(stack)
 #define POP(stack) handlebars_stack_pop(stack)
 #define GET(stack, pos) _get(stack, pos)
-#define PUSH(stack, value) handlebars_stack_push(stack, value)
+#define PUSH(stack, value) (stack = handlebars_stack_push(stack, value))
 #define TOPCONTEXT TOP(vm->contextStack)
 
 ACCEPT_FUNCTION(push_context);
@@ -1134,10 +1134,16 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
 
     // Restore stacks
     if( pushed_context ) {
-        POP(vm->contextStack);
+        struct handlebars_value * value = POP(vm->contextStack);
+        if (value) {
+            handlebars_value_delref(value);
+        }
     }
     if( pushed_block_param ) {
-        POP(vm->blockParamStack);
+        struct handlebars_value * value = POP(vm->blockParamStack);
+        if (value) {
+            handlebars_value_delref(value);
+        }
     }
     handlebars_stack_restore(vm->stack, st);
     handlebars_stack_restore(vm->hashStack, hst);

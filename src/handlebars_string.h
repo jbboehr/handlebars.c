@@ -89,11 +89,11 @@ struct handlebars_string * handlebars_str_replace(
     const struct handlebars_string * string,
     const char * search, size_t search_len,
     const char * replacement, size_t replacement_len
-) HBS_ATTR_NONNULL(1, 2, 3, 5);
+) HBS_ATTR_NONNULL(1, 2, 3, 5) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Adds slashes to as string for a list of specified characters. Returns a
- *        newly allocated string, or NULL on failure.
+ *        newly allocated string.
  * @param[in] context The handlebars context
  * @param[in] string The string to which to add slashes
  * @param[in] what A list of characters to escape
@@ -104,7 +104,7 @@ struct handlebars_string * handlebars_string_addcslashes(
     struct handlebars_context * context,
     struct handlebars_string * string,
     const char * what, size_t what_length
-) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Strip slashes in place
@@ -126,7 +126,7 @@ struct handlebars_string * handlebars_string_asprintf(
     struct handlebars_context * context,
     const char * fmt,
     ...
-) HBS_ATTR_PRINTF(2, 3) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_PRINTF(2, 3) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Implements `asprintf` by appending for #handlebars_string
@@ -140,7 +140,7 @@ struct handlebars_string * handlebars_string_asprintf_append(
     struct handlebars_string * string,
     const char * fmt,
     ...
-) HBS_ATTR_PRINTF(3, 4) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_PRINTF(3, 4) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Implements `vasprintf` for #handlebars_string
@@ -154,7 +154,7 @@ struct handlebars_string * handlebars_string_vasprintf(
     struct handlebars_context * context,
     const char * fmt,
     va_list ap
-) HBS_ATTR_PRINTF(2, 0) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_PRINTF(2, 0) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Implements `vasprintf` by appending for #handlebars_string
@@ -169,7 +169,7 @@ struct handlebars_string * handlebars_string_vasprintf_append(
     struct handlebars_string * string,
     const char * fmt,
     va_list ap
-) HBS_ATTR_PRINTF(3, 0) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_PRINTF(3, 0) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Escapes HTML control characters using the handlebars (not PHP) escape sequences
@@ -181,7 +181,7 @@ struct handlebars_string * handlebars_string_vasprintf_append(
 struct handlebars_string * handlebars_string_htmlspecialchars(
     struct handlebars_context * context,
     const char * str, size_t len
-) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Escapes HTML control characters using the handlebars (not PHP) escape sequences appended to the
@@ -196,7 +196,7 @@ struct handlebars_string * handlebars_string_htmlspecialchars_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
     const char * str, size_t len
-) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Concat an array of strings with the specified separator
@@ -211,7 +211,7 @@ struct handlebars_string * handlebars_string_implode(
     const char * sep,
     size_t sep_len,
     /*const*/ struct handlebars_string** parts
-) HBS_ATTR_NONNULL(1, 2, 4) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2, 4) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Indent all text by the specified indent
@@ -226,7 +226,7 @@ struct handlebars_string * handlebars_string_indent(
     struct handlebars_context * context,
     const char * str, size_t str_len,
     const char * indent, size_t indent_len
-) HBS_ATTR_NONNULL(1, 2, 4) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2, 4) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Trims a set of characters off the left end of string. Trims in
@@ -269,7 +269,7 @@ unsigned long handlebars_string_hash(const char * str, size_t len) HBS_ATTR_NONN
  * @param[in] size
  * @return The newly allocated string
  */
-struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t length) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t length) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a string from the specified parameters, including hash
@@ -282,7 +282,7 @@ struct handlebars_string * handlebars_string_init(struct handlebars_context * co
 struct handlebars_string * handlebars_string_ctor_ex(
     struct handlebars_context * context,
     const char * str, size_t len, unsigned long hash
-) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a string from the specified parameters
@@ -294,7 +294,7 @@ struct handlebars_string * handlebars_string_ctor_ex(
 struct handlebars_string * handlebars_string_ctor(
     struct handlebars_context * context,
     const char * str, size_t len
-) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a copy of a string
@@ -305,7 +305,7 @@ struct handlebars_string * handlebars_string_ctor(
 struct handlebars_string * handlebars_string_copy_ctor(
     struct handlebars_context * context,
     const struct handlebars_string * string
-) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Reserve the specified size with an existing string. Will not decrease the size of the buffer.
@@ -318,7 +318,7 @@ struct handlebars_string * handlebars_string_extend(
     struct handlebars_context * context,
     struct handlebars_string * string,
     size_t len
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Append to a string without checking length or reallocating
@@ -344,7 +344,7 @@ struct handlebars_string * handlebars_string_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
     const char * str, size_t len
-) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Append to a string
@@ -357,14 +357,16 @@ struct handlebars_string * handlebars_string_append_str(
     struct handlebars_context * context,
     struct handlebars_string * string,
     const struct handlebars_string * string2
-) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Resize a string buffer to match the size of it's contents
  * @param[in] string
  * @return The original string
  */
-struct handlebars_string * handlebars_string_compact(struct handlebars_string * string) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_string_compact(
+    struct handlebars_string * string
+) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Compare two strings (const char[] with length and hash variant)
@@ -443,7 +445,7 @@ inline unsigned long hbs_str_hash(struct handlebars_string * str) {
     return str->hash;
 }
 
-HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL
+HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 inline struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t length) {
     struct handlebars_string * st = handlebars_talloc_zero_size(context, HBS_STR_SIZE(length));
     HANDLEBARS_MEMCHECK(st, context);
@@ -451,7 +453,7 @@ inline struct handlebars_string * handlebars_string_init(struct handlebars_conte
     return st;
 }
 
-HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
+HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 inline struct handlebars_string * handlebars_string_ctor_ex(
     struct handlebars_context * context,
     const char * str, size_t len, unsigned long hash
@@ -465,7 +467,7 @@ inline struct handlebars_string * handlebars_string_ctor_ex(
     return st;
 }
 
-HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
+HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 inline struct handlebars_string * handlebars_string_ctor(
     struct handlebars_context * context,
     const char * str, size_t len
@@ -473,7 +475,7 @@ inline struct handlebars_string * handlebars_string_ctor(
     return handlebars_string_ctor_ex(context, str, len, 0);
 }
 
-HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
+HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 inline struct handlebars_string * handlebars_string_copy_ctor(
     struct handlebars_context * context,
     const struct handlebars_string * string
@@ -485,7 +487,7 @@ inline struct handlebars_string * handlebars_string_copy_ctor(
     return st;
 }
 
-HBS_ATTR_RETURNS_NONNULL
+HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 inline struct handlebars_string * handlebars_string_extend(
     struct handlebars_context * context,
     struct handlebars_string * string,
@@ -515,7 +517,7 @@ inline struct handlebars_string * handlebars_string_append_unsafe(
     return string;
 }
 
-HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL
+HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 inline struct handlebars_string * handlebars_string_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
@@ -526,7 +528,7 @@ inline struct handlebars_string * handlebars_string_append(
     return string;
 }
 
-HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL
+HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 inline struct handlebars_string * handlebars_string_append_str(
     struct handlebars_context * context,
     struct handlebars_string * string,
@@ -535,7 +537,7 @@ inline struct handlebars_string * handlebars_string_append_str(
     return handlebars_string_append(context, string, string2->val, string2->len);
 }
 
-HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL
+HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 inline struct handlebars_string * handlebars_string_compact(struct handlebars_string * string) {
     size_t size = HBS_STR_SIZE(string->len);
     if( talloc_get_size(string) > size ) {

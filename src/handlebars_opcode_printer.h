@@ -73,12 +73,12 @@ struct handlebars_string * handlebars_operand_print_append(
     struct handlebars_context * context,
     struct handlebars_string * string,
     struct handlebars_operand * operand
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_string * handlebars_operand_print(
     struct handlebars_context * context,
     struct handlebars_operand * operand
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Print an opcode and append it to the specified buffer
@@ -94,7 +94,7 @@ struct handlebars_string * handlebars_opcode_print_append(
     struct handlebars_string * string,
     struct handlebars_opcode * opcode,
     int flags
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Print an opcode and return the string
@@ -108,7 +108,7 @@ struct handlebars_string * handlebars_opcode_print(
     struct handlebars_context * context,
     struct handlebars_opcode * opcode,
     int flags
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Print a program
@@ -122,7 +122,7 @@ struct handlebars_string * handlebars_program_print(
     struct handlebars_context * context,
     struct handlebars_program * program,
     int flags
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 HBS_EXTERN_C_END
 

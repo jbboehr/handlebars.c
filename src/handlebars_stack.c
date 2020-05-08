@@ -169,17 +169,15 @@ struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, 
     return stack->v[offset];
 }
 
-struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, size_t offset, struct handlebars_value * value)
+struct handlebars_stack * handlebars_stack_set(struct handlebars_stack * stack, size_t offset, struct handlebars_value * value)
 {
     struct handlebars_value * old;
 
     assert(value != NULL);
 
-    // As a special case, push if it does not require a reallocation
-    if( offset == stack->i && offset < stack->capacity ) {
-        // @TODO should allow realloc here?
-        handlebars_stack_push(stack, value);
-        return value;
+    // As a special case, push
+    if( offset == stack->i ) {
+        return handlebars_stack_push(stack, value);
     }
 
     // Out-of-bounds
@@ -194,7 +192,7 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
 
     // As a special case, ignore
     if( value == stack->v[offset] ) {
-        return value;
+        return stack;
     }
 
     old = stack->v[offset];
@@ -203,7 +201,7 @@ struct handlebars_value * handlebars_stack_set(struct handlebars_stack * stack, 
     handlebars_value_addref(value);
     handlebars_value_delref(old);
 
-    return value;
+    return stack;
 }
 
 size_t handlebars_stack_protect(
@@ -220,7 +218,8 @@ void handlebars_stack_truncate(
     size_t num
 ) {
     while (handlebars_stack_count(stack) > num) {
-        handlebars_stack_pop(stack);
+        struct handlebars_value * value = handlebars_stack_pop(stack);
+        handlebars_value_delref(value);
     }
 }
 

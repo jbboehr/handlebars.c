@@ -160,8 +160,8 @@ FIXTURE_FN(510017722)
     struct handlebars_value * bp2 = handlebars_value_ctor(CONTEXT);
     handlebars_value_integer(bp1, value_for_510017722++);
     handlebars_value_integer(bp2, value_for_510017722++);
-    handlebars_stack_push(handlebars_value_get_stack(block_params), bp1); // @TODO ignoring return value - should probably make a handlebars_value_push()
-    handlebars_stack_push(handlebars_value_get_stack(block_params), bp2); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    block_params->v.stack = handlebars_stack_push(handlebars_value_get_stack(block_params), bp1); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    block_params->v.stack = handlebars_stack_push(handlebars_value_get_stack(block_params), bp2); // @TODO ignoring return value - should probably make a handlebars_value_push()
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);

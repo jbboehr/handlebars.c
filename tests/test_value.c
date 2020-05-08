@@ -26,6 +26,8 @@
 #include <talloc.h>
 
 #define HANDLEBARS_STRING_PRIVATE
+#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
+#define HANDLEBARS_VALUE_PRIVATE
 
 #include "handlebars_memory.h"
 #include "handlebars_value.h"
@@ -165,17 +167,17 @@ START_TEST(test_array_iterator)
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
-    handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    value->v.stack = handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
     handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
-    handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    value->v.stack = handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
     handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
-    handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    value->v.stack = handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
     handlebars_value_delref(tmp);
 
     handlebars_value_iterator_init(&it, value);
@@ -441,7 +443,7 @@ START_TEST(test_json_parse_error)
         return;
     }
 
-    handlebars_value_from_json_string(context, "{\"key\":1");
+    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"key\":1");
     ck_assert_msg(0, "Parse error should have longjmp'd");
 }
 END_TEST
@@ -458,7 +460,7 @@ START_TEST(test_yaml_parse_error)
         return;
     }
 
-    handlebars_value_from_yaml_string(context, "---\n'");
+    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\n'");
     ck_assert_msg(0, "Parse error should have longjmp'd");
 }
 END_TEST

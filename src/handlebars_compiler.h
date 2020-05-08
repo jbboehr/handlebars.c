@@ -126,7 +126,7 @@ extern size_t HANDLEBARS_PROGRAM_SIZE;
 struct handlebars_program * handlebars_compiler_compile_ex(
     struct handlebars_compiler * compiler,
     struct handlebars_ast_node * node
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Main compile function. Compiles an AST
@@ -147,7 +147,7 @@ void handlebars_compiler_compile(
  */
 struct handlebars_compiler * handlebars_compiler_ctor(
     struct handlebars_context * context
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Free a compiler context and it's resources.
