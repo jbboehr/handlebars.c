@@ -72,33 +72,6 @@ enum handlebars_value_flags
     HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED = 2
 };
 
-/**
- * @brief Value iterator context. Should be stack allocated. Must be initialized with #handlebars_value_iterator_init
- */
-struct handlebars_value_iterator
-{
-    //! The number of child elements
-    size_t length;
-
-    //! The current array index. Unused for map
-    size_t index;
-
-    //! The current map index. Unused for array
-    struct handlebars_string * key;
-
-    //! The element being iterated over
-    struct handlebars_value * value;
-
-    //! The current child element
-    struct handlebars_value * current;
-
-    //! Opaque pointer for user-defined types
-    void * usr;
-
-    //! A function pointer to move to the next child element
-    bool (*next)(struct handlebars_value_iterator * it);
-};
-
 //! Common header for user-defined types
 struct handlebars_user
 {
@@ -244,17 +217,6 @@ void handlebars_value_dtor(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL
  */
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse) HBS_ATTR_NONNULL_ALL;
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
-
-/**
- * @brief Initialize an iterator
- * @param[in] it The iterator to initialize
- * @param[in] value The value for iteration
- * @return true, or false if the value is empty or of an invalid type
- */
-bool handlebars_value_iterator_init(
-    struct handlebars_value_iterator * it,
-    struct handlebars_value * value
-) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Call a value, if the value is a callable type such as #HANDLEBARS_VALUE_TYPE_HELPER or
@@ -638,6 +600,91 @@ inline void handlebars_value_ptr(struct handlebars_value * value, void * ptr) {
 }
 
 #endif
+
+
+
+
+
+// Iteration
+
+/**
+ * @brief Value iterator context. Should be stack allocated. Must be initialized with #handlebars_value_iterator_init
+ */
+struct handlebars_value_iterator
+{
+    //! The number of child elements
+    size_t length;
+
+    //! The current array index. Unused for map
+    size_t index;
+
+    //! The current map index. Unused for array
+    struct handlebars_string * key;
+
+    //! The element being iterated over
+    struct handlebars_value * value;
+
+    //! The current child element
+    struct handlebars_value * current;
+
+    //! Opaque pointer for user-defined types
+    void * usr;
+
+    //! A function pointer to move to the next child element
+    bool (*next)(struct handlebars_value_iterator * it);
+};
+
+#define HANDLEBARS_VALUE_FOREACH(value, v) \
+    do { \
+        struct handlebars_value_iterator iter; \
+        if (handlebars_value_iterator_init(&iter, value)) { \
+            do { \
+                struct handlebars_value * v = iter.current;
+
+#define HANDLEBARS_VALUE_FOREACH_IDX(value, idx, v) \
+    do { \
+        struct handlebars_value_iterator iter; \
+        if (handlebars_value_iterator_init(&iter, value)) { \
+            do { \
+                size_t idx = iter.index; \
+                struct handlebars_value * v = iter.current;
+
+#define HANDLEBARS_VALUE_FOREACH_KV(value, k, v) \
+    do { \
+        struct handlebars_value_iterator iter; \
+        if (handlebars_value_iterator_init(&iter, value)) { \
+            do { \
+                struct handlebars_string * k = iter.key; \
+                struct handlebars_value * v = iter.current;
+
+#define HANDLEBARS_VALUE_FOREACH_IDX_KV(value, idx, k, v) \
+    do { \
+        struct handlebars_value_iterator iter; \
+        if (handlebars_value_iterator_init(&iter, value)) { \
+            do { \
+                size_t idx = iter.index; \
+                struct handlebars_string * k = iter.key; \
+                struct handlebars_value * v = iter.current;
+
+#define HANDLEBARS_VALUE_FOREACH_END() \
+            } while (iter.next(&iter)); \
+        } \
+    } while(0)
+
+/**
+ * @brief Initialize an iterator
+ * @param[in] it The iterator to initialize
+ * @param[in] value The value for iteration
+ * @return true, or false if the value is empty or of an invalid type
+ */
+bool handlebars_value_iterator_init(
+    struct handlebars_value_iterator * it,
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL;
+
+
+
+
 
 HBS_EXTERN_C_END
 

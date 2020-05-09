@@ -279,7 +279,6 @@ START_TEST(test_mustache_spec)
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
-    struct handlebars_value_iterator it;
     struct handlebars_string * tmpl;
     struct handlebars_module * module;
     TALLOC_CTX * memctx = talloc_new(rootctx);
@@ -337,13 +336,12 @@ START_TEST(test_mustache_spec)
     handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partials
-    struct handlebars_value * partials = handlebars_value_ctor(ctx);
-    handlebars_value_map_init(partials, 0); // zero will trigger extra rehashes possibly - good for testing
+    struct handlebars_value * partials;
     if( test->partials ) {
-        handlebars_value_iterator_init(&it, test->partials);
-        for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(handlebars_value_get_map(partials), it.key, it.current);
-        }
+        partials = test->partials; // @TODO this may have the wrong parent - might be bad
+    } else {
+        partials = handlebars_value_ctor(ctx);
+        handlebars_value_map_init(partials, 0);
     }
     handlebars_vm_set_partials(vm, partials);
 

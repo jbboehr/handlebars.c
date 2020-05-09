@@ -159,8 +159,7 @@ START_TEST(test_array_iterator)
 {
     struct handlebars_value * value;
     struct handlebars_value * tmp;
-    struct handlebars_value_iterator it;
-    int i = 0;
+    size_t i = 0;
 
     value = handlebars_value_ctor(context);
     handlebars_value_array_init(value, 3);
@@ -180,15 +179,12 @@ START_TEST(test_array_iterator)
     value->v.stack = handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
     handlebars_value_delref(tmp);
 
-    handlebars_value_iterator_init(&it, value);
-
-    ck_assert_ptr_ne(it.current, NULL);
-
-    for( ; it.current != NULL; it.next(&it) ) {
-        ck_assert_ptr_ne(it.current, NULL);
-        ck_assert_int_eq(handlebars_value_get_type(it.current), HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_int_eq(handlebars_value_get_intval(it.current), ++i);
-    }
+    HANDLEBARS_VALUE_FOREACH_IDX(value, index, child) {
+        ck_assert_ptr_ne(child, NULL);
+        ck_assert_int_eq(handlebars_value_get_type(child), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_uint_eq(index, i);
+        ck_assert_int_eq((size_t) handlebars_value_get_intval(child), ++i);
+    } HANDLEBARS_VALUE_FOREACH_END();
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     // ck_assert_int_eq(0, handlebars_value_delref(value));
@@ -201,7 +197,6 @@ START_TEST(test_map_iterator)
 {
     struct handlebars_value * value;
     struct handlebars_value * tmp;
-    struct handlebars_value_iterator it;
     int i = 0;
 
     value = handlebars_value_ctor(context);
@@ -222,22 +217,18 @@ START_TEST(test_map_iterator)
     handlebars_map_str_update(handlebars_value_get_map(value), HBS_STRL("b"), tmp);
     handlebars_value_delref(tmp);
 
-    handlebars_value_iterator_init(&it, value);
-
-    ck_assert_ptr_ne(it.current, NULL);
-
-    for( ; it.current != NULL; it.next(&it) ) {
+    HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
         ++i;
-        ck_assert_ptr_ne(it.current, NULL);
-        ck_assert_int_eq(handlebars_value_get_type(it.current), HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_ptr_ne(it.key, NULL);
+        ck_assert_ptr_ne(child, NULL);
+        ck_assert_int_eq(handlebars_value_get_type(child), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_ptr_ne(key, NULL);
         switch( i ) {
-            case 1: ck_assert_str_eq(it.key->val, "a"); break;
-            case 2: ck_assert_str_eq(it.key->val, "c"); break;
-            case 3: ck_assert_str_eq(it.key->val, "b"); break;
+            case 1: ck_assert_str_eq(key->val, "a"); break;
+            case 2: ck_assert_str_eq(key->val, "c"); break;
+            case 3: ck_assert_str_eq(key->val, "b"); break;
         }
-        ck_assert_int_eq(handlebars_value_get_intval(it.current), i);
-    }
+        ck_assert_int_eq(handlebars_value_get_intval(child), i);
+    } HANDLEBARS_VALUE_FOREACH_END();
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     // ck_assert_int_eq(0, handlebars_value_delref(value));
@@ -249,17 +240,14 @@ END_TEST
 START_TEST(test_array_iterator_json)
 {
     struct handlebars_value * value = handlebars_value_from_json_string(context, "[1, 2, 3]");
-    struct handlebars_value_iterator it;
     int i = 0;
 
-    handlebars_value_iterator_init(&it, value);
-    ck_assert_ptr_ne(it.current, NULL);
-
-    for( ; it.current != NULL; it.next(&it) ) {
-        ck_assert_ptr_ne(it.current, NULL);
-        ck_assert_int_eq(handlebars_value_get_type(it.current), HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_int_eq(handlebars_value_get_intval(it.current), ++i);
-    }
+    HANDLEBARS_VALUE_FOREACH_IDX(value, index, child) {
+        ck_assert_ptr_ne(child, NULL);
+        ck_assert_int_eq(handlebars_value_get_type(child), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(index, i);
+        ck_assert_int_eq(handlebars_value_get_intval(child), ++i);
+    } HANDLEBARS_VALUE_FOREACH_END();
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     // ck_assert_int_eq(0, handlebars_value_delref(value));
@@ -271,24 +259,20 @@ END_TEST
 START_TEST(test_map_iterator_json)
 {
     struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"a\": 1, \"c\": 2, \"b\": 3}");
-    struct handlebars_value_iterator it;
     int i = 0;
 
-    handlebars_value_iterator_init(&it, value);
-    ck_assert_ptr_ne(it.current, NULL);
-
-    for( ; it.current != NULL; it.next(&it) ) {
+    HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
         ++i;
-        ck_assert_ptr_ne(it.current, NULL);
-        ck_assert_int_eq(handlebars_value_get_type(it.current), HANDLEBARS_VALUE_TYPE_INTEGER);
-        ck_assert_ptr_ne(it.key, NULL);
+        ck_assert_ptr_ne(child, NULL);
+        ck_assert_int_eq(handlebars_value_get_type(child), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_ptr_ne(key, NULL);
         switch( i ) {
-            case 1: ck_assert_str_eq(it.key->val, "a"); break;
-            case 2: ck_assert_str_eq(it.key->val, "c"); break;
-            case 3: ck_assert_str_eq(it.key->val, "b"); break;
+            case 1: ck_assert_str_eq(key->val, "a"); break;
+            case 2: ck_assert_str_eq(key->val, "c"); break;
+            case 3: ck_assert_str_eq(key->val, "b"); break;
         }
-        ck_assert_int_eq(handlebars_value_get_intval(it.current), i);
-    }
+        ck_assert_int_eq(handlebars_value_get_intval(child), i);
+    } HANDLEBARS_VALUE_FOREACH_END();
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     // ck_assert_int_eq(0, handlebars_value_delref(value));

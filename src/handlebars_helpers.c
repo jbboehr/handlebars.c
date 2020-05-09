@@ -61,7 +61,6 @@ void handlebars_options_deinit(struct handlebars_options * options)
 struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_value * context;
-    struct handlebars_value_iterator it;
     struct handlebars_value * result = NULL;
     short use_data;
     struct handlebars_value * data = NULL;
@@ -116,10 +115,9 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         data = handlebars_value_ctor(CONTEXT);
         if( handlebars_value_get_type(options->data) == HANDLEBARS_VALUE_TYPE_MAP ) {
             handlebars_value_map_init(data, handlebars_value_count(options->data) + 4);
-            handlebars_value_iterator_init(&it, options->data);
-            for (; it.current != NULL; it.next(&it)) {
-                handlebars_map_update(handlebars_value_get_map(data), it.key, it.current);
-            }
+            HANDLEBARS_VALUE_FOREACH_KV(options->data, options_key, child) {
+                handlebars_map_update(handlebars_value_get_map(data), options_key, child);
+            } HANDLEBARS_VALUE_FOREACH_END();
         } else {
             handlebars_value_map_init(data, 4);
         }
@@ -132,25 +130,24 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         handlebars_map_str_update(handlebars_value_get_map(data), HBS_STRL("last"), last);
     }
 
-    handlebars_value_iterator_init(&it, context);
     len = handlebars_value_count(context) - 1;
 
-    for( ; it.current != NULL; it.next(&it) ) {
+    HANDLEBARS_VALUE_FOREACH_IDX_KV(context, it_index, it_key, it_child) {
         // Disabled for Regressions - Undefined helper context
         // if( it.current->type == HANDLEBARS_VALUE_TYPE_NULL ) {
         //     i++;
         //     continue;
         // }
 
-        if( it.key /*it->value->type == HANDLEBARS_VALUE_TYPE_MAP*/ ) {
-            handlebars_value_str(key, it.key);
+        if( it_key /*it->value->type == HANDLEBARS_VALUE_TYPE_MAP*/ ) {
+            handlebars_value_str(key, it_key);
         } else {
-            handlebars_value_integer(key, it.index);
+            handlebars_value_integer(key, it_index);
         }
 
         if( use_data ) {
-            if( it.index ) { // @todo zero?
-                handlebars_value_integer(index, it.index);
+            if( it_index ) { // @todo zero?
+                handlebars_value_integer(index, it_index);
             } else {
                 handlebars_value_integer(index, i);
             }
@@ -158,14 +155,14 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
             handlebars_value_boolean(last, i == len);
         }
 
-        block_params->v.stack = handlebars_stack_set(block_params->v.stack, 0, it.current);
+        block_params->v.stack = handlebars_stack_set(block_params->v.stack, 0, it_child);
         block_params->v.stack = handlebars_stack_set(block_params->v.stack, 1, key);
 
-        tmp = handlebars_vm_execute_program_ex(options->vm, options->program, it.current, data, block_params);
+        tmp = handlebars_vm_execute_program_ex(options->vm, options->program, it_child, data, block_params);
         result->v.string = handlebars_string_append(HBSCTX(options->vm), result->v.string, HBS_STR_STRL(tmp));
 
         i++;
-    }
+    } HANDLEBARS_VALUE_FOREACH_END();
 
 whoopsie:
     if( i == 0 ) {

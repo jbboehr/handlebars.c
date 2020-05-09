@@ -236,19 +236,16 @@ static inline void depthed_lookup(struct handlebars_vm * vm, struct handlebars_s
 static inline struct handlebars_value * merge_hash(struct handlebars_context * context, struct handlebars_value * hash, struct handlebars_value * context1)
 {
     struct handlebars_value * context2;
-    struct handlebars_value_iterator it;
     if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
         hash && handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP ) {
         context2 = handlebars_value_ctor(context);
         handlebars_value_map_init(context2, handlebars_value_count(context1) + handlebars_value_count(hash));
-        handlebars_value_iterator_init(&it, context1);
-        for( ; it.current ; it.next(&it) ) {
-            handlebars_map_update(handlebars_value_get_map(context2), it.key, it.current);
-        }
-        handlebars_value_iterator_init(&it, hash);
-        for( ; it.current ; it.next(&it) ) {
-            handlebars_map_update(handlebars_value_get_map(context2), it.key, it.current);
-        }
+        HANDLEBARS_VALUE_FOREACH_KV(context1, key, child) {
+            handlebars_map_update(handlebars_value_get_map(context2), key, child);
+        } HANDLEBARS_VALUE_FOREACH_END();
+        HANDLEBARS_VALUE_FOREACH_KV(hash, key, child) {
+            handlebars_map_update(handlebars_value_get_map(context2), key, child);
+        } HANDLEBARS_VALUE_FOREACH_END();
     } else if( !context1 || handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_NULL ) {
         context2 = hash;
         if( context2 ) {

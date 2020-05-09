@@ -423,7 +423,6 @@ static inline void run_test(struct generic_test * test, int _i)
     struct handlebars_parser * parser;
     struct handlebars_vm * vm;
     struct handlebars_value * context;
-    struct handlebars_value_iterator it;
     struct handlebars_module * module;
 
 #ifndef NDEBUG
@@ -484,12 +483,6 @@ static inline void run_test(struct generic_test * test, int _i)
     if( test->helpers ) {
         helpers = handlebars_value_from_json_object(ctx, test->helpers);
         load_fixtures(helpers);
-        handlebars_value_iterator_init(&it, helpers);
-        for (; it.current != NULL; it.next(&it)) {
-            //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-            handlebars_map_update(handlebars_value_get_map(helpers), it.key, it.current);
-            //}
-        }
     } else {
         helpers = handlebars_value_ctor(HBSCTX(vm));
         handlebars_value_map_init(helpers, 0);
@@ -501,10 +494,6 @@ static inline void run_test(struct generic_test * test, int _i)
     if( test->partials ) {
         partials = handlebars_value_from_json_object(ctx, test->partials);
         load_fixtures(partials);
-        handlebars_value_iterator_init(&it, partials);
-        for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(handlebars_value_get_map(partials), it.key, it.current);
-        }
     } else {
         partials = handlebars_value_ctor(ctx);
         handlebars_value_map_init(partials, 0);
