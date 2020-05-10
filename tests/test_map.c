@@ -46,8 +46,6 @@ START_TEST(test_map)
     size_t count = 10000;
     struct handlebars_map * map = handlebars_map_ctor(context, 0);
     struct handlebars_value * value;
-    struct handlebars_map_entry * entry;
-    struct handlebars_map_entry * tmp_entry;
     struct handlebars_string ** strings = handlebars_talloc_array(context, struct handlebars_string *, count);
     struct handlebars_string * key;
 

@@ -60,7 +60,6 @@ char lmdb_db_file[] = "./handlebars-lmdb-cache-test.mdb";
 struct cache_test_ctx {
     struct handlebars_string * tmpl;
     struct handlebars_compiler * compiler;
-    struct handlebars_map_entry * map_entry;
     struct handlebars_module * module;
 };
 

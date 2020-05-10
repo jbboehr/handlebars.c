@@ -483,34 +483,25 @@ static bool handlebars_value_iterator_next_stack(struct handlebars_value_iterato
 
 static bool handlebars_value_iterator_next_map(struct handlebars_value_iterator * it)
 {
-    //struct handlebars_map_entry * entry = talloc_get_type(it->usr, struct handlebars_map_entry);
-    struct handlebars_map_entry * entry = (struct handlebars_map_entry *) it->usr;
-
     assert(it->value != NULL);
     assert(it->value->type == HANDLEBARS_VALUE_TYPE_MAP);
     assert(it->current != NULL);
-    assert(entry != NULL);
 
     handlebars_value_delref(it->current);
     it->current = NULL;
 
-    if( !entry->next ) {
+    if( it->index >= handlebars_map_count(it->value->v.map) - 1 ) {
         handlebars_map_set_is_in_iteration(it->value->v.map, false); // @todo we should restore the previous flag?
         return false;
     }
 
-    it->usr = (void *) (entry = entry->next);
-    it->key = entry->key;
-    it->current = entry->value;
-    handlebars_value_addref(it->current);
-
+    it->index++;
+    handlebars_map_get_kv_at_index(it->value->v.map, it->index, &it->key, &it->current);
     return true;
 }
 
 bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
 {
-    struct handlebars_map_entry * entry;
-
     memset(it, 0, sizeof(struct handlebars_value_iterator));
 
     // @TODO make sure this works for type_user?
@@ -522,27 +513,23 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             it->value = value;
-            it->current = handlebars_stack_get(value->v.stack, 0);
-            it->length = handlebars_stack_length(value->v.stack);
+            it->index = 0;
+            it->length = handlebars_stack_count(value->v.stack);
+            it->current = handlebars_stack_get(value->v.stack, it->index);
             it->next = &handlebars_value_iterator_next_stack;
+            handlebars_value_addref(it->current);
             return true;
 
         case HANDLEBARS_VALUE_TYPE_MAP:
-            entry = value->v.map->first;
-            if( entry ) {
-                it->value = value;
-                it->usr = (void *) entry;
-                it->key = entry->key;
-                it->current = entry->value;
-                it->length = value->v.map->i;
-                it->next = &handlebars_value_iterator_next_map;
-                handlebars_value_addref(it->current);
-                handlebars_map_set_is_in_iteration(value->v.map, true); // @todo we should store the result
-                return true;
-            } else {
-                it->next = &handlebars_value_iterator_next_void;
-            }
-            break;
+            handlebars_map_sparse_array_compact(value->v.map); // meh
+            it->value = value;
+            it->index = 0;
+            it->length = handlebars_map_count(value->v.map);
+            handlebars_map_get_kv_at_index(value->v.map, it->index, &it->key, &it->current);
+            it->next = &handlebars_value_iterator_next_map;
+            handlebars_value_addref(it->current);
+            handlebars_map_set_is_in_iteration(value->v.map, true); // @todo we should store the result
+            return true;
 
         case HANDLEBARS_VALUE_TYPE_USER:
             return handlebars_value_get_handlers(value)->iterator(it, value);

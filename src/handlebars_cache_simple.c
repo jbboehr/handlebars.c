@@ -62,25 +62,7 @@ static inline bool should_gc_entry(struct handlebars_cache * cache, struct handl
     return should_gc(cache);
 }
 
-static int cache_compare(const void * ptr1, const void * ptr2)
-{
-    double delta;
-
-    struct handlebars_map_kv_pair * map_entry1 = (struct handlebars_map_kv_pair *) ptr1;
-    struct handlebars_map_kv_pair * map_entry2 = (struct handlebars_map_kv_pair *) ptr2;
-    assert(map_entry1 != NULL);
-    assert(map_entry2 != NULL);
-
-    struct handlebars_module * entry1 = talloc_get_type(handlebars_value_get_ptr(map_entry1->value), struct handlebars_module);
-    struct handlebars_module * entry2 = talloc_get_type(handlebars_value_get_ptr(map_entry2->value), struct handlebars_module);
-    assert(entry1 != NULL);
-    assert(entry2 != NULL);
-
-    delta = difftime(entry1->ts, entry2->ts);
-    return (delta > 0) - (delta < 0);
-}
-
-static int cache_compare2(const struct handlebars_map_kv_pair * pair1, const struct handlebars_map_kv_pair * pair2)
+static int cache_compare(const struct handlebars_map_kv_pair * pair1, const struct handlebars_map_kv_pair * pair2)
 {
     double delta;
 
@@ -113,7 +95,7 @@ int cache_gc(struct handlebars_cache * cache)
     struct handlebars_string ** remove_keys = handlebars_talloc_array(HBSCTX(cache), struct handlebars_string *, handlebars_map_count(map) + 1);
     HANDLEBARS_MEMCHECK(remove_keys, HBSCTX(cache));
 
-    intern->map = map = handlebars_map_sort(map, cache_compare2);
+    intern->map = map = handlebars_map_sort(map, cache_compare);
 
     handlebars_map_foreach(map, index, key, value) {
         struct handlebars_module * module = talloc_get_type(handlebars_value_get_ptr(value), struct handlebars_module);

@@ -148,25 +148,23 @@ static bool std_partial_loader_iterator_next_void(struct handlebars_value_iterat
 
 static bool std_partial_loader_iterator_next_map(struct handlebars_value_iterator * it)
 {
+    struct handlebars_partial_loader * intern = GET_INTERN(it->value);
+    struct handlebars_map * map = intern->map;
+
     assert(it->value != NULL);
-
-    struct handlebars_map_entry * entry = (struct handlebars_map_entry *) it->usr;
-
-    assert(it->value->type == HANDLEBARS_VALUE_TYPE_USER);
+    assert(it->value->type == HANDLEBARS_VALUE_TYPE_MAP);
     assert(it->current != NULL);
-    assert(entry != NULL);
 
     handlebars_value_delref(it->current);
     it->current = NULL;
 
-    if( !entry->next ) {
+    if( it->index >= handlebars_map_count(map) - 1 ) {
+        handlebars_map_set_is_in_iteration(map, false); // @todo we should restore the previous flag?
         return false;
     }
 
-    it->usr = (void *) (entry = entry->next);
-    it->key = entry->key;
-    it->current = entry->value;
-    handlebars_value_addref(it->current);
+    it->index++;
+    handlebars_map_get_kv_at_index(map, it->index, &it->key, &it->current);
     return true;
 }
 
@@ -174,20 +172,20 @@ bool std_partial_loader_iterator_init(struct handlebars_value_iterator * it, str
 {
     struct handlebars_partial_loader * intern = GET_INTERN(value);
     struct handlebars_map * map = intern->map;
-    struct handlebars_map_entry * entry = map->first;
 
-    if( entry ) {
-        it->value = value;
-        it->usr = (void *) entry;
-        it->key = entry->key;
-        it->current = entry->value;
-        it->length = map->i;
-        it->next = &std_partial_loader_iterator_next_map;
-        handlebars_value_addref(it->current);
-        return true;
-    } else {
+    if (handlebars_map_count(map) <= 0) {
         it->next = &std_partial_loader_iterator_next_void;
+        return false;
     }
+
+    handlebars_map_sparse_array_compact(map); // meh
+    it->value = value;
+    it->index = 0;
+    it->length = handlebars_map_count(map);
+    handlebars_map_get_kv_at_index(map, it->index, &it->key, &it->current);
+    it->next = &std_partial_loader_iterator_next_map;
+    handlebars_value_addref(it->current);
+    handlebars_map_set_is_in_iteration(map, true); // @todo we should store the result
 
     return true;
 }
