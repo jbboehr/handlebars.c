@@ -35,6 +35,8 @@ struct handlebars_map;
 struct handlebars_module;
 struct handlebars_string;
 
+extern const size_t HANDLEBARS_CACHE_SIZE;
+
 /**
  * @brief Construct a new simple cache
  * @param[in] context The handlebars context
@@ -77,8 +79,6 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 void handlebars_cache_dtor(
     struct handlebars_cache * cache
 ) HBS_ATTR_NONNULL_ALL;
-
-#ifndef HANDLEBARS_CACHE_PRIVATE
 
 /**
  * @brief Lookup a program from the cache.
@@ -128,36 +128,9 @@ void handlebars_cache_release(
     struct handlebars_module * module
 ) HBS_ATTR_NONNULL_ALL;
 
-#else /* HANDLEBARS_CACHE_PRIVATE */
-
-typedef void (*handlebars_cache_add_func)(
-    struct handlebars_cache * cache,
-    struct handlebars_string * tmpl,
-    struct handlebars_module * module
-);
-
-typedef struct handlebars_module * (*handlebars_cache_find_func)(
-    struct handlebars_cache * cache,
-    struct handlebars_string * tmpl
-);
-
-typedef int (*handlebars_cache_gc_func)(
+struct handlebars_cache_stat handlebars_cache_stat(
     struct handlebars_cache * cache
-);
-
-typedef void (*handlebars_cache_release_func)(
-        struct handlebars_cache * cache,
-        struct handlebars_string * tmpl,
-        struct handlebars_module * module
-);
-
-typedef struct handlebars_cache_stat (*handlebars_cache_stat_func)(
-    struct handlebars_cache * cache
-);
-
-typedef void (*handlebars_cache_reset_func)(
-    struct handlebars_cache * cache
-);
+) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_cache_stat {
     const char * name;
@@ -198,83 +171,6 @@ struct handlebars_cache_stat {
     //! The number of hash table collisions
     size_t collisions;
 };
-
-/**
- * @brief In-memory opcode cache.
- */
-struct handlebars_cache {
-    //! Common header
-    struct handlebars_context ctx;
-
-    //! Opaque pointer for implementation use
-    void * internal;
-
-    handlebars_cache_add_func add;
-
-    handlebars_cache_find_func find;
-
-    handlebars_cache_gc_func gc;
-
-    handlebars_cache_release_func release;
-
-    handlebars_cache_stat_func stat;
-
-    handlebars_cache_reset_func reset;
-
-    //! The max amount of time to keep an entry, in seconds, or zero to disable
-    double max_age;
-
-    //! The max number of entries to keep, or zero to disable
-    size_t max_entries;
-
-    //! The max size of all entries, or zero to disable
-    size_t max_size;
-};
-
-/**
- * @brief Fetch cache statistics
- * @param[in] cache The cache
- * @return The cache statistics
- */
-inline struct handlebars_cache_stat handlebars_cache_stat(struct handlebars_cache * cache)
-{
-    return cache->stat(cache);
-}
-
-inline struct handlebars_module * handlebars_cache_find(
-    struct handlebars_cache * cache,
-    struct handlebars_string * key
-) {
-    return cache->find(cache, key);
-}
-
-inline void handlebars_cache_add(
-    struct handlebars_cache * cache,
-    struct handlebars_string * tmpl,
-    struct handlebars_module * module
-) {
-    cache->add(cache, tmpl, module);
-}
-
-inline int handlebars_cache_gc(struct handlebars_cache * cache)
-{
-    return cache->gc(cache);
-}
-
-inline void handlebars_cache_reset(struct handlebars_cache * cache)
-{
-    cache->gc(cache);
-}
-
-inline void handlebars_cache_release(
-    struct handlebars_cache * cache,
-    struct handlebars_string * key,
-    struct handlebars_module * module
-) {
-    cache->release(cache, key, module);
-}
-
-#endif /* HANDLEBARS_CACHE_PRIVATE */
 
 HBS_EXTERN_C_END
 

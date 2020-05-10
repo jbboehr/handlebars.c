@@ -28,12 +28,12 @@
 #include <lmdb.h>
 #endif
 
-#define HANDLEBARS_CACHE_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_cache.h"
+#include "handlebars_cache_private.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcode_serializer.h"
@@ -280,6 +280,15 @@ static void cache_reset(struct handlebars_cache * cache)
 #undef CONTEXT
 #define CONTEXT context
 
+static const struct handlebars_cache_handlers hbs_cache_handlers_lmdb = {
+    &cache_add,
+    &cache_find,
+    &cache_gc,
+    &cache_release,
+    &cache_stat,
+    &cache_reset
+};
+
 struct handlebars_cache * handlebars_cache_lmdb_ctor(
     struct handlebars_context * context,
     const char * path
@@ -288,12 +297,7 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     handlebars_context_bind(context, HBSCTX(cache));
 
     cache->max_age = -1;
-    cache->add = &cache_add;
-    cache->find = &cache_find;
-    cache->gc = &cache_gc;
-    cache->release = &cache_release;
-    cache->stat = &cache_stat;
-    cache->reset = &cache_reset;
+    cache->hnd = &hbs_cache_handlers_lmdb;
 
     struct handlebars_cache_lmdb * intern = MC(handlebars_talloc_zero(context, struct handlebars_cache_lmdb));
     cache->internal = intern;

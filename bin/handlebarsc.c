@@ -32,6 +32,7 @@
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
+#include "handlebars_cache.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
 #include "handlebars_memory.h"
@@ -303,6 +304,8 @@ static int do_version(void)
 static int do_debug(void)
 {
     fprintf(stderr, "sizeof(void *): %lu\n", (long unsigned) sizeof(void *));
+    fprintf(stderr, "sizeof(struct handlebars_cache): %lu\n", (long unsigned) HANDLEBARS_CACHE_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_cache_stat): %lu\n", (long unsigned) sizeof(struct handlebars_cache_stat));
     fprintf(stderr, "sizeof(struct handlebars_context): %lu\n", (long unsigned) sizeof(struct handlebars_context));
     fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) HANDLEBARS_COMPILER_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_map): %lu\n", (long unsigned) handlebars_map_size());

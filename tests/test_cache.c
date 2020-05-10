@@ -29,7 +29,6 @@
 #include <unistd.h>
 #endif
 
-#define HANDLEBARS_CACHE_PRIVATE
 #define HANDLEBARS_COMPILER_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
@@ -48,13 +47,8 @@
 #include "handlebars.lex.h"
 #include "utils.h"
 
+#include "handlebars_cache_private.h"
 
-
-static int memdebug;
-char lmdb_db_file[] = "./handlebars-lmdb-cache-test.mdb";
-// static const char * tmpl1 = "{{foo}}";
-// static const char * tmpl2 = "{{bar}}";
-// static const char * tmpl3 = "{{baz}}";
 
 
 struct cache_test_ctx {
@@ -63,8 +57,11 @@ struct cache_test_ctx {
     struct handlebars_module * module;
 };
 
+static int memdebug;
+char lmdb_db_file[] = "./handlebars-lmdb-cache-test.mdb";
+
 static const char * tmpls[] = {
-        "{{foo}}", "{{bar}}", "{{baz}}"
+    "{{foo}}", "{{bar}}", "{{baz}}"
 };
 
 static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cache * cache)
@@ -149,7 +146,7 @@ static void execute_gc_test(struct handlebars_cache * cache)
 
     // Test GC
     cache->max_age = 0;
-    cache->gc(cache);
+    handlebars_cache_gc(cache);
 
     // @todo fixme
     //ck_assert_int_eq(0, handlebars_cache_stat(cache).current_entries);

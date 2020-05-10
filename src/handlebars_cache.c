@@ -21,42 +21,55 @@
 #include "config.h"
 #endif
 
-#define HANDLEBARS_CACHE_IMPL
-#define HANDLEBARS_CACHE_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_cache.h"
+#include "handlebars_cache_private.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 
 
+
+const size_t HANDLEBARS_CACHE_SIZE = sizeof(struct handlebars_cache);
 
 void handlebars_cache_dtor(struct handlebars_cache * cache)
 {
     handlebars_talloc_free(cache);
 }
 
-extern inline struct handlebars_module * handlebars_cache_find(
+struct handlebars_cache_stat handlebars_cache_stat(struct handlebars_cache * cache)
+{
+    return cache->hnd->stat(cache);
+}
+
+struct handlebars_module * handlebars_cache_find(
     struct handlebars_cache * cache,
     struct handlebars_string * key
-);
+) {
+    return cache->hnd->find(cache, key);
+}
 
-extern inline void handlebars_cache_add(
+void handlebars_cache_add(
     struct handlebars_cache * cache,
     struct handlebars_string * tmpl,
     struct handlebars_module * module
-);
+) {
+    cache->hnd->add(cache, tmpl, module);
+}
 
-extern inline int handlebars_cache_gc(struct handlebars_cache * cache);
+int handlebars_cache_gc(struct handlebars_cache * cache)
+{
+    return cache->hnd->gc(cache);
+}
 
-extern inline void handlebars_cache_reset(struct handlebars_cache * cache);
+void handlebars_cache_reset(struct handlebars_cache * cache)
+{
+    cache->hnd->reset(cache);
+}
 
-extern inline struct handlebars_cache_stat handlebars_cache_stat(struct handlebars_cache * cache);
-
-extern inline void handlebars_cache_dtor(struct handlebars_cache * cache);
-
-extern inline void handlebars_cache_release(
+void handlebars_cache_release(
     struct handlebars_cache * cache,
     struct handlebars_string * key,
     struct handlebars_module * module
-);
+) {
+    cache->hnd->release(cache, key, module);
+}

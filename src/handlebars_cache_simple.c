@@ -24,11 +24,11 @@
 #include <assert.h>
 #include <time.h>
 
-#define HANDLEBARS_CACHE_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_cache.h"
+#include "handlebars_cache_private.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -189,18 +189,22 @@ static void cache_reset(struct handlebars_cache * cache)
 #undef CONTEXT
 #define CONTEXT context
 
+static const struct handlebars_cache_handlers hbs_cache_handlers_simple = {
+    &cache_add,
+    &cache_find,
+    &cache_gc,
+    &cache_release,
+    &cache_stat,
+    &cache_reset
+};
+
 struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
     handlebars_context_bind(context, HBSCTX(cache));
     cache->max_age = -1;
-    cache->add = &cache_add;
-    cache->find = &cache_find;
-    cache->gc = &cache_gc;
-    cache->release = &cache_release;
-    cache->stat = &cache_stat;
-    cache->reset = &cache_reset;
+    cache->hnd = &hbs_cache_handlers_simple;
 
     struct handlebars_cache_simple * intern = MC(handlebars_talloc_zero(cache, struct handlebars_cache_simple));
     cache->internal = intern;
