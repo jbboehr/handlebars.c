@@ -49,14 +49,14 @@ void handlebars_options_deinit(
  * @return The array
  */
 const char ** handlebars_builtins_names(void)
-    HBS_ATTR_RETURNS_NONNULL;
+    HBS_ATTR_RETURNS_NONNULL HBS_ATTR_PURE;
 
 /**
  * @brief Get a NULL-terminated array of all built-in helper functions
  * @return The array
  */
 handlebars_helper_func * handlebars_builtins(void)
-    HBS_ATTR_RETURNS_NONNULL;
+    HBS_ATTR_RETURNS_NONNULL HBS_ATTR_PURE;
 
 /**
  * @brief Get a built-in helper by name
@@ -67,7 +67,7 @@ handlebars_helper_func * handlebars_builtins(void)
 handlebars_helper_func handlebars_builtins_find(
     const char * str,
     unsigned int len
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_PURE;
 
 struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;
 struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;

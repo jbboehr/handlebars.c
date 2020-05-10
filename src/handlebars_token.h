@@ -100,7 +100,7 @@ struct handlebars_string * handlebars_token_get_text(
  */
 const char * handlebars_token_readable_type(
     int type
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_CONST;
 
 /**
  * @brief Get an integral type for the token name
@@ -110,7 +110,7 @@ const char * handlebars_token_readable_type(
  */
 int handlebars_token_reverse_readable_type(
     const char * type
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_CONST;
 
 /**
  * @brief Print a token into a human-readable string

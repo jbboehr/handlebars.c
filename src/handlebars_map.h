@@ -45,7 +45,8 @@ typedef int (*handlebars_map_kv_compare_r_func)(
     const void *
 );
 
-extern size_t handlebars_map_size();
+extern size_t handlebars_map_size()
+    HBS_ATTR_CONST;
 
 /**
  * @brief Construct a new map
@@ -176,7 +177,9 @@ bool handlebars_map_str_remove(
  * @param[in] map
  * @return The number of items in the map
  */
-size_t handlebars_map_count(struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
+size_t handlebars_map_count(
+    struct handlebars_map * map
+) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_string * handlebars_map_get_key_at_index(
     struct handlebars_map * map,

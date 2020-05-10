@@ -56,7 +56,8 @@ extern void *HANDLEBARS_STACK_ALLOC_PTR;
  * @param[in] capacity The number of desired elements
  * @return The size in bytes
  */
-size_t handlebars_stack_size(size_t capacity);
+size_t handlebars_stack_size(size_t capacity)
+    HBS_ATTR_CONST;
 
 /**
  * @brief Initialize a new stack allocated stack

@@ -46,7 +46,7 @@ typedef struct handlebars_value * (*handlebars_call_func)(
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
 
 struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void)
-    HBS_ATTR_RETURNS_NONNULL;
+    HBS_ATTR_RETURNS_NONNULL HBS_ATTR_PURE;
 
 /**
  * @brief Initialize a value from a JSON object

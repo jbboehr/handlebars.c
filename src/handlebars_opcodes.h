@@ -201,7 +201,7 @@ void handlebars_operand_set_arrayval_string(
  */
 const char * handlebars_opcode_readable_type(
     enum handlebars_opcode_type type
-) HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_CONST;
 
 /**
  * @brief Get the integral type of an opcode given a string of its type name
@@ -211,7 +211,7 @@ const char * handlebars_opcode_readable_type(
  */
 enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(
     const char * type
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_CONST;
 
 /**
  * @brief Get the number of operands a particular opcode type should have
@@ -221,7 +221,7 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(
  */
 short handlebars_opcode_num_operands(
     enum handlebars_opcode_type type
-);
+) HBS_ATTR_CONST;
 
 void handlebars_opcode_set_loc(
     struct handlebars_opcode * opcode,
