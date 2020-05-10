@@ -35,7 +35,6 @@ pkginclude_HEADERS = \
 	handlebars.lex.h \
 	handlebars.tab.h \
 	handlebars_ast.h \
-	handlebars_ast_helpers.h \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
 	handlebars_cache.h \
@@ -50,16 +49,20 @@ pkginclude_HEADERS = \
 	handlebars_opcodes.h \
 	handlebars_parser.h \
     handlebars_partial_loader.h \
-	handlebars_private.h \
-	handlebars_scanners.h \
 	handlebars_stack.h \
 	handlebars_string.h \
 	handlebars_token.h \
-	handlebars_utils.h \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
-	handlebars_vm.h \
-	handlebars_whitespace.h
+	handlebars_vm.h
+
+# these headers are not (currently) installed because they only contain private symbols:
+# handlebars_ast_helpers.h
+# handlebars_helpers_ht.h
+# handlebars_private.h
+# handlebars_scanners.h
+# handlebars_utils.h
+# handlebars_whitespace.h
 
 CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
 BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)
