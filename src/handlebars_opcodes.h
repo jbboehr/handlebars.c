@@ -125,7 +125,9 @@ struct handlebars_opcode * handlebars_opcode_ctor(
  * @param[in] operand The operand of which to change the value
  * @return void
  */
-void handlebars_operand_set_null(struct handlebars_operand * operand);
+void handlebars_operand_set_null(
+    struct handlebars_operand * operand
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Set the value of an operand to a boolean
@@ -134,7 +136,10 @@ void handlebars_operand_set_null(struct handlebars_operand * operand);
  * @param[in] arg The boolean value
  * @return void
  */
-void handlebars_operand_set_boolval(struct handlebars_operand * operand, bool arg);
+void handlebars_operand_set_boolval(
+    struct handlebars_operand * operand,
+    bool arg
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Set the value of an operand to a long
@@ -143,7 +148,10 @@ void handlebars_operand_set_boolval(struct handlebars_operand * operand, bool ar
  * @param[in] arg The long value
  * @return void
  */
-void handlebars_operand_set_longval(struct handlebars_operand * operand, long arg);
+void handlebars_operand_set_longval(
+    struct handlebars_operand * operand,
+    long arg
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Set the value of an operand to a string
@@ -159,7 +167,7 @@ void handlebars_operand_set_stringval(
     struct handlebars_opcode * opcode,
     struct handlebars_operand * operand,
     struct handlebars_string * string
-);
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Set the value of an operand to an array
@@ -191,7 +199,9 @@ void handlebars_operand_set_arrayval_string(
  * @param[in] type The integral opcode type
  * @return The string name of the opcode
  */
-const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type) HBS_ATTR_RETURNS_NONNULL;
+const char * handlebars_opcode_readable_type(
+    enum handlebars_opcode_type type
+) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Get the integral type of an opcode given a string of its type name
@@ -199,7 +209,9 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type) H
  * @param[in] type The string type name
  * @return The integral type
  */
-enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char * type) HBS_ATTR_NONNULL_ALL;
+enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(
+    const char * type
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the number of operands a particular opcode type should have
@@ -207,13 +219,16 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
  * @param[in] type The opcode type
  * @return The number of operands
  */
-short handlebars_opcode_num_operands(enum handlebars_opcode_type type);
+short handlebars_opcode_num_operands(
+    enum handlebars_opcode_type type
+);
 
-#ifndef HANDLEBARS_OPCODES_PRIVATE
+void handlebars_opcode_set_loc(
+    struct handlebars_opcode * opcode,
+    struct handlebars_locinfo loc
+) HBS_ATTR_NONNULL_ALL;
 
-void handlebars_opcode_set_loc(struct handlebars_opcode * opcode, struct handlebars_locinfo loc) HBS_ATTR_NONNULL_ALL;
-
-#else
+#ifdef HANDLEBARS_OPCODES_PRIVATE
 
 struct handlebars_operand_string {
     struct handlebars_string * string;
@@ -243,11 +258,6 @@ struct handlebars_opcode {
     struct handlebars_operand op3;
     struct handlebars_operand op4;
     struct handlebars_locinfo loc;
-};
-
-HBS_ATTR_NONNULL_ALL
-inline void handlebars_opcode_set_loc(struct handlebars_opcode * opcode, struct handlebars_locinfo loc) {
-    opcode->loc = loc;
 };
 
 #endif /* HANDLEBARS_OPCODES_PRIVATE */

@@ -429,7 +429,7 @@ handlebars_helper_func * handlebars_builtins(void)
 
 handlebars_helper_func handlebars_builtins_find(const char * str, unsigned int len)
 {
-    const struct handlebars_builtin_pair * pair = in_word_set(str, len);
+    const struct handlebars_builtin_pair * pair = hbs_builtin_lut_lookup(str, len);
     handlebars_helper_func fn = NULL;
     if( pair ) {
         fn = builtins[pair->pos];

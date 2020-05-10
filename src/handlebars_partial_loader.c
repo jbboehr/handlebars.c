@@ -66,28 +66,28 @@ static int partial_loader_dtor(struct handlebars_partial_loader * obj)
 #undef CONTEXT
 #define CONTEXT HBSCTX(value->ctx)
 
-static struct handlebars_value * std_partial_loader_copy(struct handlebars_value * value)
+static struct handlebars_value * hbs_partial_loader_copy(struct handlebars_value * value)
 {
     return NULL;
 }
 
-static void std_partial_loader_dtor(struct handlebars_value * value)
+static void hbs_partial_loader_dtor(struct handlebars_value * value)
 {
     struct handlebars_partial_loader * intern = GET_INTERN(value);
     handlebars_talloc_free(intern);
 }
 
-static void std_partial_loader_convert(struct handlebars_value * value, bool recurse)
+static void hbs_partial_loader_convert(struct handlebars_value * value, bool recurse)
 {
     ;
 }
 
-static enum handlebars_value_type std_partial_loader_type(struct handlebars_value * value)
+static enum handlebars_value_type hbs_partial_loader_type(struct handlebars_value * value)
 {
     return HANDLEBARS_VALUE_TYPE_MAP;
 }
 
-static struct handlebars_value * std_partial_loader_map_find(struct handlebars_value * value, struct handlebars_string * key)
+static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_value * value, struct handlebars_string * key)
 {
     struct handlebars_partial_loader * intern = GET_INTERN(value);
     struct handlebars_value *retval = handlebars_map_find(intern->map, key);
@@ -135,17 +135,17 @@ static struct handlebars_value * std_partial_loader_map_find(struct handlebars_v
     return retval;
 }
 
-static struct handlebars_value * std_partial_loader_array_find(struct handlebars_value * value, size_t index)
+static struct handlebars_value * hbs_partial_loader_array_find(struct handlebars_value * value, size_t index)
 {
     return NULL;
 }
 
-static bool std_partial_loader_iterator_next_void(struct handlebars_value_iterator * it)
+static bool hbs_partial_loader_iterator_next_void(struct handlebars_value_iterator * it)
 {
     return false;
 }
 
-static bool std_partial_loader_iterator_next_map(struct handlebars_value_iterator * it)
+static bool hbs_partial_loader_iterator_next_map(struct handlebars_value_iterator * it)
 {
     struct handlebars_partial_loader * intern = GET_INTERN(it->value);
     struct handlebars_map * map = intern->map;
@@ -167,13 +167,13 @@ static bool std_partial_loader_iterator_next_map(struct handlebars_value_iterato
     return true;
 }
 
-bool std_partial_loader_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
+static bool hbs_partial_loader_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
 {
     struct handlebars_partial_loader * intern = GET_INTERN(value);
     struct handlebars_map * map = intern->map;
 
     if (handlebars_map_count(map) <= 0) {
-        it->next = &std_partial_loader_iterator_next_void;
+        it->next = &hbs_partial_loader_iterator_next_void;
         return false;
     }
 
@@ -182,35 +182,35 @@ bool std_partial_loader_iterator_init(struct handlebars_value_iterator * it, str
     it->index = 0;
     it->length = handlebars_map_count(map);
     handlebars_map_get_kv_at_index(map, it->index, &it->key, &it->current);
-    it->next = &std_partial_loader_iterator_next_map;
+    it->next = &hbs_partial_loader_iterator_next_map;
     handlebars_value_addref(it->current);
     handlebars_map_set_is_in_iteration(map, true); // @todo we should store the result
 
     return true;
 }
 
-long std_partial_loader_count(struct handlebars_value * value)
+static long hbs_partial_loader_count(struct handlebars_value * value)
 {
     struct handlebars_partial_loader * intern = GET_INTERN(value);
     return handlebars_map_count(intern->map);
 }
 
-static struct handlebars_value_handlers handlebars_value_std_partial_loader_handlers = {
+static struct handlebars_value_handlers handlebars_value_hbs_partial_loader_handlers = {
     "json",
-    &std_partial_loader_copy,
-    &std_partial_loader_dtor,
-    &std_partial_loader_convert,
-    &std_partial_loader_type,
-    &std_partial_loader_map_find,
-    &std_partial_loader_array_find,
-    &std_partial_loader_iterator_init,
+    &hbs_partial_loader_copy,
+    &hbs_partial_loader_dtor,
+    &hbs_partial_loader_convert,
+    &hbs_partial_loader_type,
+    &hbs_partial_loader_map_find,
+    &hbs_partial_loader_array_find,
+    &hbs_partial_loader_iterator_init,
     NULL, // call
-    &std_partial_loader_count
+    &hbs_partial_loader_count
 };
 
-struct handlebars_value_handlers * handlebars_value_get_std_partial_loader_handlers()
+struct handlebars_value_handlers * handlebars_value_get_hbs_partial_loader_handlers()
 {
-    return &handlebars_value_std_partial_loader_handlers;
+    return &handlebars_value_hbs_partial_loader_handlers;
 }
 
 struct handlebars_value * handlebars_value_partial_loader_ctor(
@@ -221,7 +221,7 @@ struct handlebars_value * handlebars_value_partial_loader_ctor(
     struct handlebars_value *value = handlebars_value_ctor(context);
 
     struct handlebars_partial_loader *obj = MC(handlebars_talloc(context, struct handlebars_partial_loader));
-    obj->usr.handlers = handlebars_value_get_std_partial_loader_handlers();
+    obj->usr.handlers = handlebars_value_get_hbs_partial_loader_handlers();
     obj->base_path = talloc_steal(obj, handlebars_string_copy_ctor(context, base_path));
     obj->extension = talloc_steal(obj, handlebars_string_copy_ctor(context, extension));
     obj->map = talloc_steal(obj, handlebars_map_ctor(context, 32));

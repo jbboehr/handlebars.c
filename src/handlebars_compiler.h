@@ -155,7 +155,9 @@ struct handlebars_compiler * handlebars_compiler_ctor(
  * @param[in] compiler
  * @return void
  */
-void handlebars_compiler_dtor(struct handlebars_compiler * compiler) HBS_ATTR_NONNULL_ALL;
+void handlebars_compiler_dtor(
+    struct handlebars_compiler * compiler
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the compiler flags.
@@ -163,7 +165,9 @@ void handlebars_compiler_dtor(struct handlebars_compiler * compiler) HBS_ATTR_NO
  * @param[in] compiler
  * @return the compiler flags
  */
-unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compiler) HBS_ATTR_NONNULL_ALL;
+unsigned long handlebars_compiler_get_flags(
+    struct handlebars_compiler * compiler
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Set the compiler flags, with handlebars_compiler_flag_all as a mask.
@@ -172,7 +176,10 @@ unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compile
  * @param[in] flags
  * @return void
  */
-void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsigned long flags) HBS_ATTR_NONNULL_ALL;
+void handlebars_compiler_set_flags(
+    struct handlebars_compiler * compiler,
+    unsigned long flags
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get an array of parts of an ID AST node.

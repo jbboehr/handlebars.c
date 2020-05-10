@@ -90,7 +90,7 @@ void handlebars_stack_dtor(struct handlebars_stack * stack)
     }
 }
 
-size_t handlebars_stack_length(struct handlebars_stack * stack)
+size_t handlebars_stack_count(struct handlebars_stack * stack)
 {
     return stack->i;
 }
@@ -149,8 +149,6 @@ struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack)
 
 struct handlebars_value * handlebars_stack_top(struct handlebars_stack * stack)
 {
-    struct handlebars_value * value;
-
     if( stack->i <= 0 ) {
         return NULL;
     }
@@ -160,8 +158,6 @@ struct handlebars_value * handlebars_stack_top(struct handlebars_stack * stack)
 
 struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, size_t offset)
 {
-    struct handlebars_value * value;
-
     if( offset >= stack->i ) {
         return NULL;
     }

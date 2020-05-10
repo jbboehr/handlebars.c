@@ -87,9 +87,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     struct handlebars_locinfo * locinfo
 ) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
-struct handlebars_string * handlebars_ast_helper_strip_comment(struct handlebars_string * comment) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_ast_helper_strip_comment(
+    struct handlebars_string * comment
+) HBS_ATTR_RETURNS_NONNULL;
 
-struct handlebars_string * handlebars_ast_helper_strip_id_literal(struct handlebars_string * comment) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_ast_helper_strip_id_literal(
+    struct handlebars_string * comment
+) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Set the strip flags of a node
@@ -112,13 +116,22 @@ void handlebars_ast_helper_set_strip_flags(
  * @param[in] close The close tag
  * @return unsigned
  */
-unsigned handlebars_ast_helper_strip_flags(struct handlebars_string * open, struct handlebars_string * close);
+unsigned handlebars_ast_helper_strip_flags(
+    struct handlebars_string * open,
+    struct handlebars_string * close
+);
 
-bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path);
+bool handlebars_ast_helper_scoped_id(
+    struct handlebars_ast_node * path
+);
 
-bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path);
+bool handlebars_ast_helper_simple_id(
+    struct handlebars_ast_node * path
+);
 
-bool handlebars_ast_helper_helper_expression(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
+bool handlebars_ast_helper_helper_expression(
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL_ALL;
 
 HBS_EXTERN_C_END
 

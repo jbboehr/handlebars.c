@@ -45,7 +45,11 @@ union YYSTYPE;
  * @param[in] err The error message
  * @return void
  */
-void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_parser * parser, const char * err) HBS_ATTR_NORETURN;
+void handlebars_yy_error(
+    struct handlebars_locinfo * lloc,
+    struct handlebars_parser * parser,
+    const char * err
+) HBS_ATTR_NORETURN;
 
 /**
  * @brief Handle a fatal error in the parser. Prints message to stderr and exits with code 2.
@@ -54,7 +58,10 @@ void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_par
  * @param[in] yyscanner The scanner object
  * @return void
  */
-void handlebars_yy_fatal_error(const char * msg, struct handlebars_parser * parser) HBS_ATTR_NORETURN;
+void handlebars_yy_fatal_error(
+    const char * msg,
+    struct handlebars_parser * parser
+) HBS_ATTR_NORETURN;
 
 /**
  * @brief Reads input for the lexer. Reads input from the tmpl field of the context object
@@ -65,7 +72,12 @@ void handlebars_yy_fatal_error(const char * msg, struct handlebars_parser * pars
  * @param[in] parser The handlebars parser
  * @return void
  */
-void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser);
+void handlebars_yy_input(
+    char * buffer,
+    int *numBytesRead,
+    int maxBytesToRead,
+    struct handlebars_parser * parser
+);
 
 /**
  * @brief Print a parser value
@@ -75,7 +87,11 @@ void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, s
  * @param[in] value The parser node value
  * @return void
  */
-void handlebars_yy_print(FILE *file, int type, union YYSTYPE value);
+void handlebars_yy_print(
+    FILE *file,
+    int type,
+    union YYSTYPE value
+);
 
 /**
  * @brief Custom alloc for use with flex/bison. Uses talloc with
@@ -85,7 +101,10 @@ void handlebars_yy_print(FILE *file, int type, union YYSTYPE value);
  * @param[in] yyscanner The scanner context. NULL if allocating the yyscanner itself.
  * @return A pointer to the newly allocated memory, or NULL on failure
  */
-void * handlebars_yy_alloc(size_t bytes, void * yyscanner);
+void * handlebars_yy_alloc(
+    size_t bytes,
+    void * yyscanner
+);
 
 /**
  * @brief Custom realloc for use with flex/bison. Uses talloc with
@@ -96,7 +115,11 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner);
  * @param[in] yyscanner The scanner context
  * @return The original pointer, or a new pointer, or NULL on failure
  */
-void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner);
+void * handlebars_yy_realloc(
+    void * ptr,
+    size_t bytes,
+    void * yyscanner
+);
 
 /**
  * @brief Custom free for use with flex/bison. Uses talloc with
@@ -106,7 +129,10 @@ void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner);
  * @param[in] yyscanner The scanner context
  * @return void
  */
-void handlebars_yy_free(void * ptr, void * yyscanner);
+void handlebars_yy_free(
+    void * ptr,
+    void * yyscanner
+);
 
 HBS_EXTERN_C_END
 

@@ -86,42 +86,54 @@ extern size_t HANDLEBARS_VALUE_SIZE;
  * @param[in] value
  * @return The string value
  */
-const char * handlebars_value_get_strval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+const char * handlebars_value_get_strval(
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Get the string length, or zero for invalid types
  * @param[in] value
  * @return The string length
  */
-size_t handlebars_value_get_strlen(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+size_t handlebars_value_get_strlen(
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the boolean value. Follows javascript boolean conversion rules.
  * @param[in] value
  * @return The boolean value
  */
-bool handlebars_value_get_boolval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+bool handlebars_value_get_boolval(
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the integer value
  * @param[in] value
  * @return The integer value, or zero if not a float type
  */
-long handlebars_value_get_intval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+long handlebars_value_get_intval(
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the float value
  * @param[in] value
  * @return The float value, or zero if not a float type
  */
-double handlebars_value_get_floatval(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+double handlebars_value_get_floatval(
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the value as a string (primitive types only)
  * @param[in] value The handlebars value
  * @return The value as a string
  */
-struct handlebars_string * handlebars_value_to_string(struct handlebars_value * value) HBS_ATTR_RETURNS_NONNULL;
+struct handlebars_string * handlebars_value_to_string(
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Lookup an index in an array
@@ -182,7 +194,10 @@ struct handlebars_string * handlebars_value_expression_append(
     bool escape
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
-char * handlebars_value_dump(struct handlebars_value * value, size_t depth) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+char * handlebars_value_dump(
+    struct handlebars_value * value,
+    size_t depth
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a new value
@@ -207,7 +222,9 @@ struct handlebars_value * handlebars_value_copy(
  * @param[in] value
  * @return void
  */
-void handlebars_value_dtor(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
+void handlebars_value_dtor(
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Convert a value from a user-defined type to an internal type
@@ -215,7 +232,11 @@ void handlebars_value_dtor(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL
  * @param[in] recurse
  * @return void
  */
-void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse) HBS_ATTR_NONNULL_ALL;
+void handlebars_value_convert_ex(
+    struct handlebars_value * value,
+    bool recurse
+) HBS_ATTR_NONNULL_ALL;
+
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 
 /**
@@ -505,7 +526,7 @@ HBS_ATTR_NONNULL_ALL
 inline long handlebars_value_count(struct handlebars_value * value) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            return handlebars_stack_length(value->v.stack);
+            return handlebars_stack_count(value->v.stack);
         case HANDLEBARS_VALUE_TYPE_MAP:
             return handlebars_map_count(value->v.map);
         case HANDLEBARS_VALUE_TYPE_USER:

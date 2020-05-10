@@ -42,7 +42,7 @@
 
 
 
-extern struct handlebars_parser * _handlebars_parser_init_current;
+HBS_LOCAL extern struct handlebars_parser * handlebars_parser_init_current;
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(parser)
@@ -99,7 +99,7 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
 {
     // Note: it looks like the yyscanner is allocated before we can pass in
     // a handlebars context...
-    struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_parser_init_current);
+    struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : handlebars_parser_init_current);
 #ifdef HANDLEBARS_MEMORY
     handlebars_memory_fail_counter_incr();
 #endif
@@ -109,7 +109,7 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
     // Going to skip wrappers for now
-    struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : _handlebars_parser_init_current);
+    struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : handlebars_parser_init_current);
 #ifdef HANDLEBARS_MEMORY
     handlebars_memory_fail_counter_incr();
 #endif

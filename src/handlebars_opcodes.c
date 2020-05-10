@@ -309,4 +309,6 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
     }
 }
 
-extern inline void handlebars_opcode_set_loc(struct handlebars_opcode * opcode, struct handlebars_locinfo loc);
+void handlebars_opcode_set_loc(struct handlebars_opcode * opcode, struct handlebars_locinfo loc) {
+    opcode->loc = loc;
+};

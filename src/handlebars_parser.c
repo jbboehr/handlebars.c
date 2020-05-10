@@ -38,7 +38,7 @@
 
 
 
-struct handlebars_parser * _handlebars_parser_init_current;
+HBS_LOCAL struct handlebars_parser * handlebars_parser_init_current;
 
 size_t HANDLEBARS_PARSER_SIZE = sizeof(struct handlebars_parser);
 
@@ -54,7 +54,7 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     handlebars_context_bind(ctx, HBSCTX(parser));
 
     // Set the current context in a variable for yyalloc >.>
-    _handlebars_parser_init_current = parser;
+    handlebars_parser_init_current = parser;
 
     // Initialize lexer
     // @todo set a destructor on the context object to deinit the lexer?
@@ -70,7 +70,7 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     // Set the extra on the lexer
     handlebars_yy_set_extra(parser, parser->scanner);
 
-    _handlebars_parser_init_current = NULL;
+    handlebars_parser_init_current = NULL;
     return parser;
 }
 

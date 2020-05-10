@@ -44,14 +44,19 @@ struct handlebars_module * handlebars_program_serialize(
  * @param[in] module
  * @return void
  */
-void handlebars_module_normalize_pointers(struct handlebars_module * module, void * baseaddr) HBS_ATTR_NONNULL_ALL;
+void handlebars_module_normalize_pointers(
+    struct handlebars_module * module,
+    void * baseaddr
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Fix any pointers by adjusting by the offset between the address of `module` and handlebars_module#addr
  * @param[in] module
  * @return void
  */
-void handlebars_module_patch_pointers(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+void handlebars_module_patch_pointers(
+    struct handlebars_module * module
+) HBS_ATTR_NONNULL_ALL;
 
 #ifdef HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 

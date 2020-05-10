@@ -85,7 +85,9 @@ struct handlebars_ast_node * handlebars_ast_node_ctor(
  * @param[in] ast_node The AST node to destruct
  * @return void
  */
-void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node) HBS_ATTR_NONNULL_ALL;
+void handlebars_ast_node_dtor(
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the first part of an ID name of an AST node. Returns NULL if not
@@ -94,7 +96,9 @@ void handlebars_ast_node_dtor(struct handlebars_ast_node * ast_node) HBS_ATTR_NO
  * @param[in] ast_node The AST node
  * @return The string
  */
-struct handlebars_string * handlebars_ast_node_get_id_part(struct handlebars_ast_node * ast_node) HBS_ATTR_NONNULL_ALL;
+struct handlebars_string * handlebars_ast_node_get_id_part(
+    struct handlebars_ast_node * ast_node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the string mode value of an AST node. Returns NULL if not
@@ -115,7 +119,9 @@ struct handlebars_string * handlebars_ast_node_get_string_mode_value(
  * @param[in] node The parent node
  * @return The path AST node, or NULL
  */
-struct handlebars_ast_node * handlebars_ast_node_get_path(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
+struct handlebars_ast_node * handlebars_ast_node_get_path(
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the params child of an AST node
@@ -123,7 +129,9 @@ struct handlebars_ast_node * handlebars_ast_node_get_path(struct handlebars_ast_
  * @param[in] node The parent node
  * @return The params node list, or NULL
  */
-struct handlebars_ast_list * handlebars_ast_node_get_params(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
+struct handlebars_ast_list * handlebars_ast_node_get_params(
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the hash child of an AST node
@@ -131,14 +139,18 @@ struct handlebars_ast_list * handlebars_ast_node_get_params(struct handlebars_as
  * @param[in] node The parent node
  * @return The hash AST node, or NULL
  */
-struct handlebars_ast_node * handlebars_ast_node_get_hash(struct handlebars_ast_node * node) HBS_ATTR_NONNULL_ALL;
+struct handlebars_ast_node * handlebars_ast_node_get_hash(
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get a string for the integral AST node type
  * @param[in] type The integral AST node type
  * @return The string name of the type
  */
-const char * handlebars_ast_node_readable_type(int type) HBS_ATTR_RETURNS_NONNULL;
+const char * handlebars_ast_node_readable_type(
+    int type
+) HBS_ATTR_RETURNS_NONNULL;
 
 // Specialized constructors
 
@@ -275,11 +287,12 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
     struct handlebars_locinfo * locinfo
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
-#ifndef HANDLEBARS_AST_PRIVATE
+void handlebars_ast_node_set_strip(
+    struct handlebars_ast_node * node,
+    unsigned flag
+) HBS_ATTR_NONNULL_ALL;
 
-void handlebars_ast_node_set_strip(struct handlebars_ast_node * node, unsigned flags) HBS_ATTR_NONNULL_ALL;
-
-#else
+#ifdef HANDLEBARS_AST_PRIVATE
 
 struct handlebars_ast_node_block {
     struct handlebars_ast_node * path;
@@ -430,12 +443,6 @@ struct handlebars_ast_node {
    */
   union handlebars_ast_internals node;
 };
-
-HBS_ATTR_NONNULL_ALL
-inline void handlebars_ast_node_set_strip(struct handlebars_ast_node * node, unsigned flags)
-{
-    node->strip = flags;
-}
 
 #endif /* HANDLEBARS_AST_PRIVATE */
 

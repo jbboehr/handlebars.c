@@ -80,7 +80,7 @@ static int cache_compare(const struct handlebars_map_kv_pair * pair1, const stru
     return (delta > 0) - (delta < 0);
 }
 
-int cache_gc(struct handlebars_cache * cache)
+static int cache_gc(struct handlebars_cache * cache)
 {
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
     struct handlebars_map * map = intern->map;

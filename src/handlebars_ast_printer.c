@@ -65,7 +65,7 @@
     } while(0)
 
 #define __PAD(str) \
-    _handlebars_ast_print_pad(str, ctx)
+    hbs_ast_print_pad(str, ctx)
 
 #define __PAD_HEAD() \
     do { \
@@ -99,14 +99,14 @@ struct handlebars_ast_printer_context {
 
 
 static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
-void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx);
+static void hbs_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx);
 
 
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(ctx->ctx)
 
-void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx)
+static void hbs_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx)
 {
     __PAD_HEAD();
     __APPEND(str);

@@ -43,7 +43,9 @@ struct handlebars_parser * handlebars_parser_ctor(
  * @param[in] parser The parser to free
  * @return void
  */
-void handlebars_parser_dtor(struct handlebars_parser * parser) HBS_ATTR_NONNULL_ALL;
+void handlebars_parser_dtor(
+    struct handlebars_parser * parser
+) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_token ** handlebars_lex_ex(
     struct handlebars_parser * parser,
@@ -71,7 +73,9 @@ struct handlebars_ast_node * handlebars_parse_ex(
  * @param[in] parser The parser
  * @return true on success
  */
-bool handlebars_parse(struct handlebars_parser * parser) HBS_ATTR_NONNULL_ALL;
+bool handlebars_parse(
+    struct handlebars_parser * parser
+) HBS_ATTR_NONNULL_ALL;
 
 // Flex/Bison prototypes
 int handlebars_yy_get_column(void * yyscanner);

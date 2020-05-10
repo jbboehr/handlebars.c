@@ -74,7 +74,9 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
  * @param[in] cache The cache
  * @return void
  */
-void handlebars_cache_dtor(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
+void handlebars_cache_dtor(
+    struct handlebars_cache * cache
+) HBS_ATTR_NONNULL_ALL;
 
 #ifndef HANDLEBARS_CACHE_PRIVATE
 
@@ -107,14 +109,18 @@ void handlebars_cache_add(
  * @param[in] cache The cache
  * @return The number of entries removed
  */
-int handlebars_cache_gc(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
+int handlebars_cache_gc(
+    struct handlebars_cache * cache
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Reset the cache
  * @param[in] cache The cache
  * @return void
  */
-void handlebars_cache_reset(struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
+void handlebars_cache_reset(
+    struct handlebars_cache * cache
+) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_cache_release(
     struct handlebars_cache * cache,

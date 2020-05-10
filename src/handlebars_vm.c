@@ -1109,7 +1109,7 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_stack_save_buf bst = handlebars_stack_save(vm->blockParamStack);
 
     // Push the context stack
-    if( context && (LEN(vm->contextStack) <= 0 || TOP(vm->contextStack) != context) ) {
+    if( /*context &&*/ (LEN(vm->contextStack) <= 0 || TOP(vm->contextStack) != context) ) {
         PUSH(vm->contextStack, context);
         pushed_context = true;
     }

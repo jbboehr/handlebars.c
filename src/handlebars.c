@@ -75,6 +75,10 @@ struct handlebars_context * handlebars_context_ctor_ex(void * ctx)
     return context;
 }
 
+struct handlebars_context * handlebars_context_ctor(void) {
+    return handlebars_context_ctor_ex(NULL);
+}
+
 void handlebars_context_bind(struct handlebars_context * parent, struct handlebars_context * child)
 {
     if( child->e ) {

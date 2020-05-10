@@ -52,7 +52,9 @@ void handlebars_ast_list_append(
  * @param[in] list The list to count
  * @return The number of items in the list
  */
-size_t handlebars_ast_list_count(struct handlebars_ast_list * list);
+size_t handlebars_ast_list_count(
+    struct handlebars_ast_list * list
+);
 
 /**
  * @brief Contruct a new AST node list
@@ -70,7 +72,9 @@ struct handlebars_ast_list * handlebars_ast_list_ctor(
  * @param[in] list The list to destruct
  * @return void
  */
-void handlebars_ast_list_dtor(struct handlebars_ast_list * list) HBS_ATTR_NONNULL_ALL;
+void handlebars_ast_list_dtor(
+    struct handlebars_ast_list * list
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Find a linked list node by its AST node

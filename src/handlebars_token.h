@@ -68,7 +68,9 @@ struct handlebars_token * handlebars_token_ctor(
  * @param[in] token Token type
  * @return void
  */
-void handlebars_token_dtor(struct handlebars_token * token) HBS_ATTR_NONNULL_ALL;
+void handlebars_token_dtor(
+    struct handlebars_token * token
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the token type
@@ -76,7 +78,9 @@ void handlebars_token_dtor(struct handlebars_token * token) HBS_ATTR_NONNULL_ALL
  * @param[in] token Token
  * @return void
  */
-int handlebars_token_get_type(struct handlebars_token * token) HBS_ATTR_NONNULL_ALL;
+int handlebars_token_get_type(
+    struct handlebars_token * token
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the token text.
@@ -84,7 +88,9 @@ int handlebars_token_get_type(struct handlebars_token * token) HBS_ATTR_NONNULL_
  * @param[in] token Token
  * @return The token text
  */
-struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token);
+struct handlebars_string * handlebars_token_get_text(
+    struct handlebars_token * token
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get a string for the integral token type
@@ -92,7 +98,9 @@ struct handlebars_string * handlebars_token_get_text(struct handlebars_token * t
  * @param[in] type The integral token type
  * @return The string name of the type
  */
-const char * handlebars_token_readable_type(int type) HBS_ATTR_RETURNS_NONNULL;
+const char * handlebars_token_readable_type(
+    int type
+) HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Get an integral type for the token name
@@ -100,7 +108,9 @@ const char * handlebars_token_readable_type(int type) HBS_ATTR_RETURNS_NONNULL;
  * @param[in] type The token type name
  * @return The integral token type
  */
-int handlebars_token_reverse_readable_type(const char * type) HBS_ATTR_NONNULL_ALL;
+int handlebars_token_reverse_readable_type(
+    const char * type
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Print a token into a human-readable string
@@ -141,17 +151,6 @@ struct handlebars_token {
     int token;
     struct handlebars_string * string;
 };
-
-
-inline int handlebars_token_get_type(struct handlebars_token * token)
-{
-    return token->token;
-}
-
-inline struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token)
-{
-    return token->string;
-}
 
 #endif /* HANDLEBARS_TOKEN_PRIVATE */
 

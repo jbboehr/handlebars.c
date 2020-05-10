@@ -87,15 +87,18 @@ struct handlebars_stack * handlebars_stack_ctor(
  * @param[in] stack
  * @return void
  */
-void handlebars_stack_dtor(struct handlebars_stack * stack) HBS_ATTR_NONNULL_ALL;
+void handlebars_stack_dtor(
+    struct handlebars_stack * stack
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the number of elements in a stack
  * @param[in] stack
  * @return The number of elements
  */
-size_t handlebars_stack_length(struct handlebars_stack * stack) HBS_ATTR_NONNULL_ALL;
-#define handlebars_stack_count(stack) handlebars_stack_length(stack)
+size_t handlebars_stack_count(
+    struct handlebars_stack * stack
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Push a value onto the top of a stack
@@ -172,8 +175,13 @@ void handlebars_stack_truncate(
     size_t num
 ) HBS_ATTR_NONNULL_ALL;
 
-struct handlebars_stack_save_buf handlebars_stack_save(struct handlebars_stack * stack) HBS_ATTR_NONNULL_ALL;
+struct handlebars_stack_save_buf handlebars_stack_save(
+    struct handlebars_stack * stack
+) HBS_ATTR_NONNULL_ALL;
 
-void handlebars_stack_restore(struct handlebars_stack * stack, struct handlebars_stack_save_buf buf) HBS_ATTR_NONNULL_ALL;
+void handlebars_stack_restore(
+    struct handlebars_stack * stack,
+    struct handlebars_stack_save_buf buf
+) HBS_ATTR_NONNULL_ALL;
 
 #endif /* HANDLEBARS_STACK_H */

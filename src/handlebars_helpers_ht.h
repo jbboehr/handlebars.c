@@ -47,7 +47,7 @@ inline
 #endif
 #endif
 static unsigned int
-hash (register const char *str, register size_t len)
+hbs_builtin_lut_hash (register const char *str, register size_t len)
 {
   static const unsigned char asso_values[] =
     {
@@ -90,35 +90,35 @@ static const unsigned char lengthtable[] =
 static const struct handlebars_builtin_pair wordlist[] =
   {
     {""}, {""},
-#line 6 "handlebars_helpers_ht.gperf"
-    {"if",3},
-#line 9 "handlebars_helpers_ht.gperf"
-    {"log",6},
 #line 8 "handlebars_helpers_ht.gperf"
+    {"if",3},
+#line 11 "handlebars_helpers_ht.gperf"
+    {"log",6},
+#line 10 "handlebars_helpers_ht.gperf"
     {"with",5},
     {""},
-#line 10 "handlebars_helpers_ht.gperf"
+#line 12 "handlebars_helpers_ht.gperf"
     {"lookup",7},
     {""}, {""},
-#line 5 "handlebars_helpers_ht.gperf"
+#line 7 "handlebars_helpers_ht.gperf"
     {"each",2},
     {""},
-#line 7 "handlebars_helpers_ht.gperf"
+#line 9 "handlebars_helpers_ht.gperf"
     {"unless",4},
     {""},
-#line 4 "handlebars_helpers_ht.gperf"
+#line 6 "handlebars_helpers_ht.gperf"
     {"helperMissing",1},
     {""}, {""}, {""}, {""},
-#line 3 "handlebars_helpers_ht.gperf"
+#line 5 "handlebars_helpers_ht.gperf"
     {"blockHelperMissing",0}
   };
 
 const struct handlebars_builtin_pair *
-in_word_set (register const char *str, register size_t len)
+hbs_builtin_lut_lookup (register const char *str, register size_t len)
 {
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
     {
-      register unsigned int key = hash (str, len);
+      register unsigned int key = hbs_builtin_lut_hash (str, len);
 
       if (key <= MAX_HASH_VALUE)
         if (len == lengthtable[key])

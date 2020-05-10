@@ -536,4 +536,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_undefined(
     return ast_node;
 }
 
-extern inline void handlebars_ast_node_set_strip(struct handlebars_ast_node * node, unsigned flags);
+void handlebars_ast_node_set_strip(struct handlebars_ast_node * node, unsigned flags)
+{
+    node->strip = flags;
+}

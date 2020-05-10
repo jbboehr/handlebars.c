@@ -62,7 +62,9 @@ struct handlebars_vm * handlebars_vm_ctor(
  * @param[in] vm The VM to destruct
  * @return The string array
  */
-void handlebars_vm_dtor(struct handlebars_vm * vm) HBS_ATTR_NONNULL_ALL;
+void handlebars_vm_dtor(
+    struct handlebars_vm * vm
+) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_string * handlebars_vm_execute(
     struct handlebars_vm * vm,

@@ -98,6 +98,15 @@
 #  define HANDLEBARS_ATTR_UNUSED
 #endif
 
+// visibility
+#if __GNUC__ >= 4
+#define HBS_PUBLIC __attribute__ ((visibility ("default")))
+#define HBS_LOCAL  __attribute__ ((visibility ("hidden")))
+#else
+#define HBS_PUBLIC
+#define HBS_LOCAL
+#endif
+
 // Macros
 #define HBS_STRL(str) str, sizeof(str) - 1
 #define HBS_S1(x) #x
@@ -201,44 +210,51 @@ int handlebars_version(void);
  * @brief Get the library version as a string
  * @return The version of handlebars as a string
  */
-const char * handlebars_version_string(void) HBS_ATTR_RETURNS_NONNULL;
+const char * handlebars_version_string(void)
+    HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Get the compatible handlebars spec version as a string
  * @return The version of the handlebars spec as a string
  */
-const char * handlebars_spec_version_string(void) HBS_ATTR_RETURNS_NONNULL;
+const char * handlebars_spec_version_string(void)
+    HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Get the compatible mustache spec version as a string
  * @return The version of the mustache spec as a string
  */
-const char * handlebars_mustache_spec_version_string(void) HBS_ATTR_RETURNS_NONNULL;
+const char * handlebars_mustache_spec_version_string(void)
+    HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Construct a context object. Used as the root talloc pointer.
  * @param[in] ctx The talloc memory context
  * @return the context pointer
  */
-struct handlebars_context * handlebars_context_ctor_ex(void * ctx) HBS_ATTR_WARN_UNUSED_RESULT;
+struct handlebars_context * handlebars_context_ctor_ex(void * ctx)
+    HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a root context object. Used as the root talloc pointer.
  * @return the context pointer
  */
-HBS_ATTR_WARN_UNUSED_RESULT
-static inline struct handlebars_context * handlebars_context_ctor(void) {
-    return handlebars_context_ctor_ex(NULL);
-}
+struct handlebars_context * handlebars_context_ctor(void)
+    HBS_ATTR_WARN_UNUSED_RESULT;
 
-void handlebars_context_bind(struct handlebars_context * parent, struct handlebars_context * child) HBS_ATTR_NONNULL_ALL;
+void handlebars_context_bind(
+    struct handlebars_context * parent,
+    struct handlebars_context * child
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Free a context and it's resources.
  * @param[in] context The parent handlebars and talloc context
  * @return void
  */
-void handlebars_context_dtor(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
+void handlebars_context_dtor(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Throw an error. If the context has a `jmp_buf`, `longjmp(context->jmp, num)` will be called, otherwise
@@ -275,44 +291,45 @@ void handlebars_throw_ex(
  * @param[in] context The handlebars context
  * @return The error code, or #HANDLEBARS_SUCCESS if no error
  */
-enum handlebars_error_type handlebars_error_num(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
+enum handlebars_error_type handlebars_error_num(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the error location for parse errors
  * @param[in] context The handlebars context
  * @return The error location
  */
-struct handlebars_locinfo handlebars_error_loc(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
+struct handlebars_locinfo handlebars_error_loc(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the error message for the specified context
  * @param[in] context The handlebars context
  * @return The error message, or NULL if no error has occurred.
  */
-const char * handlebars_error_msg(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Set the jump buffer for the specified context.
- * @see longjmp(3)
- * @param[in] context The handlebars context
- * @param[in] buf The jump buffer to use, or NULL to unset
- * @return The previous jump buffer, or NULL if none was set
- */
-jmp_buf * handlebars_error_jmp(struct handlebars_context * context, jmp_buf * buf);
+const char * handlebars_error_msg(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get a copy the error message from a context, or NULL.
  * @param[in] context The handlebars context
  * @return The error message
  */
-char * handlebars_error_message(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+char * handlebars_error_message(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Get a copy the error message from a context, or NULL (compatibility for handlebars specification)
  * @param[in] context
  * @return the error message
  */
-char * handlebars_error_message_js(struct handlebars_context * context) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+char * handlebars_error_message_js(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Used to check for memory allocation failure. If `ptr` is `NULL`, handlebars_throw() will be called.

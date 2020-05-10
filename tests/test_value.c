@@ -428,6 +428,7 @@ START_TEST(test_json_parse_error)
     }
 
     struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"key\":1");
+    (void) value;
     ck_assert_msg(0, "Parse error should have longjmp'd");
 }
 END_TEST
@@ -445,6 +446,7 @@ START_TEST(test_yaml_parse_error)
     }
 
     struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\n'");
+    (void) value;
     ck_assert_msg(0, "Parse error should have longjmp'd");
 }
 END_TEST

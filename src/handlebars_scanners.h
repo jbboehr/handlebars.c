@@ -38,7 +38,10 @@ HBS_EXTERN_C_START
  * @param[in] def The default return value
  * @return zero if not match, otherwise non-zero
  */
-bool handlebars_scanner_next_whitespace(const char * s, bool def) HBS_ATTR_NONNULL_ALL;
+bool handlebars_scanner_next_whitespace(
+    const char * s,
+    bool def
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_PURE;
 
 /**
  * @brief Implement the following regexes, def returned if end hit:
@@ -49,7 +52,10 @@ bool handlebars_scanner_next_whitespace(const char * s, bool def) HBS_ATTR_NONNU
  * @param[in] def The default return value
  * @return zero if not match, otherwise non-zero
  */
-bool handlebars_scanner_prev_whitespace(const char * s, bool def) HBS_ATTR_NONNULL_ALL;
+bool handlebars_scanner_prev_whitespace(
+    const char * s,
+    bool def
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_PURE;
 
 HBS_EXTERN_C_END
 

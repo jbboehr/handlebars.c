@@ -54,9 +54,15 @@ void handlebars_token_dtor(struct handlebars_token * token)
     handlebars_talloc_free(token);
 }
 
-extern int handlebars_token_get_type(struct handlebars_token * token);
+int handlebars_token_get_type(struct handlebars_token * token)
+{
+    return token->token;
+}
 
-extern struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token);
+struct handlebars_string * handlebars_token_get_text(struct handlebars_token * token)
+{
+    return token->string;
+}
 
 const char * handlebars_token_readable_type(int type)
 {

@@ -198,7 +198,7 @@ bool handlebars_value_get_boolval(struct handlebars_value * value)
         case HANDLEBARS_VALUE_TYPE_STRING:
             return value->v.string->len != 0 && strcmp(value->v.string->val, "0") != 0;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            return handlebars_stack_length(value->v.stack) != 0;
+            return handlebars_stack_count(value->v.stack) != 0;
         case HANDLEBARS_VALUE_TYPE_MAP:
             return handlebars_map_count(value->v.map) > 0;
         case HANDLEBARS_VALUE_TYPE_USER:
@@ -471,7 +471,7 @@ static bool handlebars_value_iterator_next_stack(struct handlebars_value_iterato
     handlebars_value_delref(it->current);
     it->current = NULL;
 
-    if( it->index >= handlebars_stack_length(value->v.stack) - 1 ) {
+    if( it->index >= handlebars_stack_count(value->v.stack) - 1 ) {
         return false;
     }
 
