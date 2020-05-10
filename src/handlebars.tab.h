@@ -107,7 +107,7 @@ extern int handlebars_yy_debug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 93 "handlebars.y"
+#line 92 "handlebars.y"
 
     struct handlebars_string * string;
     struct handlebars_ast_node * ast_node;

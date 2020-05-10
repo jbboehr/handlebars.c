@@ -5040,8 +5040,8 @@ static const flex_int32_t yy_rule_can_match_eol[52] =
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_parser.h"
+#include "handlebars_parser_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
 #undef CONTEXT

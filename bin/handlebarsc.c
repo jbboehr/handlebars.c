@@ -42,7 +42,6 @@
 #include "handlebars_partial_loader.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
-#include "handlebars_utils.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 

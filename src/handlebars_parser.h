@@ -77,33 +77,4 @@ bool handlebars_parse(
     struct handlebars_parser * parser
 ) HBS_ATTR_NONNULL_ALL;
 
-// Flex/Bison prototypes
-int handlebars_yy_get_column(void * yyscanner);
-void handlebars_yy_set_column(int column_no, void * yyscanner);
-int handlebars_yy_parse(struct handlebars_parser * parser);
-
-#ifdef HANDLEBARS_PARSER_PRIVATE
-
-/**
- * @brief Structure for parsing or lexing a template
- */
-struct handlebars_parser
-{
-    //! The internal context
-    struct handlebars_context ctx;
-
-    //! The template to parse
-    struct handlebars_string * tmpl;
-
-    int tmplReadOffset;
-    void * scanner;
-    struct handlebars_ast_node * program;
-    bool whitespace_root_seen;
-    unsigned flags;
-};
-
-#endif /* HANDLEBARS_PARSER_PRIVATE */
-
-HBS_EXTERN_C_END
-
 #endif /* HANDLEBARS_PARSER_H */

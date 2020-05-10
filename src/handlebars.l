@@ -30,8 +30,8 @@
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_parser.h"
+#include "handlebars_parser_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 #include "handlebars.tab.h"
 
 #undef CONTEXT

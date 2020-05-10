@@ -59,9 +59,9 @@ pkginclude_HEADERS = \
 # these headers are not (currently) installed because they only contain private symbols:
 # handlebars_ast_helpers.h
 # handlebars_helpers_ht.h
+# handlebars_parser_private.h
 # handlebars_private.h
 # handlebars_scanners.h
-# handlebars_utils.h
 # handlebars_whitespace.h
 
 CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
@@ -107,6 +107,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_opcodes.c \
 	handlebars_parser.h \
 	handlebars_parser.c \
+	handlebars_parser_private.h \
+	handlebars_parser_private.c \
     handlebars_partial_loader.h \
     handlebars_partial_loader.c \
 	handlebars_private.h \
@@ -118,8 +120,6 @@ libhandlebars_la_SOURCES = \
 	handlebars_string.c \
 	handlebars_token.h \
 	handlebars_token.c \
-	handlebars_utils.h \
-	handlebars_utils.c \
 	handlebars_value.h \
 	handlebars_value.c \
 	handlebars_value_handlers.h \

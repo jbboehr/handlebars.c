@@ -49,7 +49,6 @@
 
 #include "handlebars_map.h"
 #include "handlebars_stack.h"
-#include "handlebars_utils.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
@@ -146,9 +145,7 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 
 struct handlebars_string * handlebars_value_to_string(struct handlebars_value * value)
 {
-    enum handlebars_value_type type = value ? value->type : HANDLEBARS_VALUE_TYPE_NULL;
-
-    switch( type ) {
+    switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
             return handlebars_string_copy_ctor(CONTEXT, value->v.string);
         case HANDLEBARS_VALUE_TYPE_INTEGER:

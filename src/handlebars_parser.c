@@ -25,14 +25,12 @@
 #include <errno.h>
 #include <stdarg.h>
 
-#define HANDLEBARS_PARSER_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
+#include "handlebars_parser_private.h"
 #include "handlebars_private.h"
 #include "handlebars_token.h"
-#include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
@@ -116,7 +114,8 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
     }
 
     // Prepare token list
-    tokens = MC(talloc_array(parser, struct handlebars_token *, 32));
+    tokens = MC(handlebars_talloc_array(parser, struct handlebars_token *, 32));
+    HANDLEBARS_MEMCHECK(tokens, HBSCTX(parser));
 
     // Run
     do {
@@ -130,7 +129,8 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
         token = handlebars_token_ctor(HBSCTX(parser), token_int, lval->string);
 
         // Append
-        tokens = talloc_realloc(parser, tokens, struct handlebars_token *, i + 2);
+        tokens = handlebars_talloc_realloc(parser, tokens, struct handlebars_token *, i + 2);
+        HANDLEBARS_MEMCHECK(tokens, HBSCTX(parser));
         tokens[i] = talloc_steal(tokens, token);
         i++;
     } while( 1 );

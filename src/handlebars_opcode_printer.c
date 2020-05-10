@@ -34,7 +34,6 @@
 #include "handlebars_opcode_printer.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 
 
 

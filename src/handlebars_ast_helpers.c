@@ -37,7 +37,6 @@
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 #include "handlebars_whitespace.h"
 #include "handlebars.tab.h"
 

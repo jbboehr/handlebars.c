@@ -43,7 +43,6 @@
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 #include "utils.h"

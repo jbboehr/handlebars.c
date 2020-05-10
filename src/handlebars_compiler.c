@@ -42,7 +42,6 @@
 #include "handlebars_opcodes.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 
 
 

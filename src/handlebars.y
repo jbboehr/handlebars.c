@@ -63,7 +63,6 @@
 #include <string.h>
 
 #define HANDLEBARS_AST_PRIVATE
-#define HANDLEBARS_PARSER_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -71,9 +70,9 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
+#include "handlebars_parser_private.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 #include "handlebars_whitespace.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"

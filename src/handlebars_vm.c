@@ -43,7 +43,6 @@
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_stack.h"
-#include "handlebars_utils.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 

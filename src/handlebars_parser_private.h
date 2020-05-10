@@ -17,13 +17,8 @@
  * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/**
- * @file
- * @brief Utilities
- */
-
-#ifndef HANDLEBARS_UTILS_H
-#define HANDLEBARS_UTILS_H
+#ifndef HANDLEBARS_PARSER_PRIVATE_H
+#define HANDLEBARS_PARSER_PRIVATE_H
 
 #include "handlebars.h"
 
@@ -36,6 +31,24 @@ struct handlebars_context;
 struct handlebars_locinfo;
 struct handlebars_parser;
 union YYSTYPE;
+
+/**
+ * @brief Structure for parsing or lexing a template
+ */
+struct handlebars_parser
+{
+    //! The internal context
+    struct handlebars_context ctx;
+
+    //! The template to parse
+    struct handlebars_string * tmpl;
+
+    int tmplReadOffset;
+    void * scanner;
+    struct handlebars_ast_node * program;
+    bool whitespace_root_seen;
+    unsigned flags;
+};
 
 /**
  * @brief Handle an error in the parser. Prints message to stderr
@@ -134,6 +147,16 @@ void handlebars_yy_free(
     void * yyscanner
 );
 
+// Flex/Bison prototypes
+int handlebars_yy_get_column(void * yyscanner)
+    HBS_LOCAL;
+
+void handlebars_yy_set_column(int column_no, void * yyscanner)
+    HBS_LOCAL;
+
+int handlebars_yy_parse(struct handlebars_parser * parser)
+    HBS_LOCAL;
+
 HBS_EXTERN_C_END
 
-#endif /* HANDLEBARS_UTILS_H */
+#endif /* HANDLEBARS_PARSER_PRIVATE_H */

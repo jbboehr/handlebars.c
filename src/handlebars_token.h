@@ -142,18 +142,6 @@ struct handlebars_string * handlebars_token_print(
     int flags
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
-#ifdef HANDLEBARS_TOKEN_PRIVATE
-
-/**
- * @brief Token structure
- */
-struct handlebars_token {
-    int token;
-    struct handlebars_string * string;
-};
-
-#endif /* HANDLEBARS_TOKEN_PRIVATE */
-
 HBS_EXTERN_C_END
 
 #endif /* HANDLEBARS_TOKEN_H */

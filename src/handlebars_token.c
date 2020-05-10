@@ -39,6 +39,14 @@
 #undef CONTEXT
 #define CONTEXT context
 
+/**
+ * @brief Token structure
+ */
+struct handlebars_token {
+    int token;
+    struct handlebars_string * string;
+};
+
 struct handlebars_token * handlebars_token_ctor(struct handlebars_context * context, int token_int, struct handlebars_string * string)
 {
     struct handlebars_token * token = MC(handlebars_talloc_zero(context, struct handlebars_token));
