@@ -292,15 +292,15 @@ static inline struct handlebars_value * execute_template(
             // @TODO free old template
             tmpl = handlebars_preprocess_delimiters(HBSCTX(parser), tmpl, NULL, NULL);
         }
-        struct handlebars_ast_node * program = handlebars_parse_ex(parser, tmpl, vm->flags); // @todo fix setjmp
+        struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, vm->flags); // @todo fix setjmp
 
         // Compile
         compiler = handlebars_compiler_ctor(context);
         handlebars_compiler_set_flags(compiler, vm->flags);
-        handlebars_compiler_compile(compiler, program);
+        struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
 
         // Serialize
-        module = handlebars_program_serialize(context, handlebars_compiler_get_program(compiler));
+        module = handlebars_program_serialize(context, program);
 
         // Save cache entry
         if( vm->cache ) {

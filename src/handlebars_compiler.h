@@ -88,13 +88,10 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_alternate_decorators = (1 << 9),
 
     handlebars_compiler_flag_strict = (1 << 10),
-#define handlebars_compiler_flag_strict handlebars_compiler_flag_strict
 
     handlebars_compiler_flag_assume_objects = (1 << 11),
-#define handlebars_compiler_flag_assume_objects handlebars_compiler_flag_assume_objects
 
     handlebars_compiler_flag_mustache_style_lambdas = (1 << 12),
-#define handlebars_compiler_flag_mustache_style_lambdas handlebars_compiler_flag_mustache_style_lambdas
 
     // Composite option flags
 
@@ -193,8 +190,6 @@ struct handlebars_string ** handlebars_ast_node_get_id_parts(
     struct handlebars_ast_node * ast_node
 ) HBS_ATTR_NONNULL_ALL;
 
-#ifndef HANDLEBARS_COMPILER_PRIVATE
-
 struct handlebars_program * handlebars_compiler_get_program(
     struct handlebars_compiler * compiler
 ) HBS_ATTR_NONNULL_ALL;
@@ -204,36 +199,7 @@ void handlebars_compiler_set_known_helpers(
     const char ** known_helpers
 ) HBS_ATTR_NONNULL_ALL;
 
-#else /* HANDLEBARS_COMPILER_PRIVATE */
-
-struct handlebars_block_param_pair {
-    struct handlebars_string * block_param1;
-    struct handlebars_string * block_param2;
-};
-
-struct handlebars_block_param_stack {
-    /**
-     * @brief Block param stack
-     */
-    struct handlebars_block_param_pair s[HANDLEBARS_COMPILER_STACK_SIZE];
-
-    /**
-     * @brief Block param stack index
-     */
-    int i;
-};
-
-struct handlebars_source_node_stack {
-    /**
-     * @brief Source node stack
-     */
-    struct handlebars_ast_node * s[HANDLEBARS_COMPILER_STACK_SIZE];
-
-    /**
-     * @brief Source node stack index
-     */
-    int i;
-};
+#ifdef HANDLEBARS_COMPILER_PRIVATE
 
 struct handlebars_program {
     struct handlebars_program * main;
@@ -269,47 +235,6 @@ struct handlebars_program {
 
     struct handlebars_program ** programs;
     size_t programs_index;
-};
-
-/**
- * @brief Main compiler state struct
- */
-struct handlebars_compiler {
-    struct handlebars_context ctx;
-    struct handlebars_parser * parser;
-    struct handlebars_program * program;
-    struct handlebars_block_param_stack * bps;
-    struct handlebars_source_node_stack sns;
-
-    /**
-     * @brief Array of known helpers
-     */
-    const char ** known_helpers;
-
-    /**
-     * @brief Symbol index counter
-     */
-    long guid;
-
-    /**
-     * @brief Compiler flags
-     */
-    unsigned long flags;
-};
-
-HBS_ATTR_NONNULL_ALL
-inline struct handlebars_program * handlebars_compiler_get_program(
-    struct handlebars_compiler * compiler
-) {
-    return compiler->program;
-};
-
-HBS_ATTR_NONNULL_ALL
-inline void handlebars_compiler_set_known_helpers(
-    struct handlebars_compiler * compiler,
-    const char ** known_helpers
-) {
-    compiler->known_helpers = known_helpers;
 };
 
 #endif /* HANDLEBARS_COMPILER_PRIVATE */

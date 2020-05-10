@@ -681,7 +681,7 @@ START_TEST(handlebars_spec_compiler)
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
     if( test->known_helpers ) {
-        compiler->known_helpers = (const char **) test->known_helpers;
+        handlebars_compiler_set_known_helpers(compiler, (const char **) test->known_helpers);
     }
 
     struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);

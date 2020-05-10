@@ -124,9 +124,9 @@ static void execute_gc_test(struct handlebars_cache * cache)
     handlebars_map_str_add(handlebars_value_get_map(partials), HBS_STRL("foo"), partial);
 
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
-    handlebars_compiler_compile(compiler, ast);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
 
-    struct handlebars_module * module = handlebars_program_serialize(context, handlebars_compiler_get_program(compiler));
+    struct handlebars_module * module = handlebars_program_serialize(context, program);
 
     struct handlebars_value * helpers = handlebars_value_ctor(context);
     handlebars_value_map_init(helpers, 0);

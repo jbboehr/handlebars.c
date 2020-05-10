@@ -22,6 +22,7 @@
 #endif
 
 #include <assert.h>
+#include <alloca.h>
 #include <string.h>
 #include <talloc.h>
 
@@ -68,11 +69,55 @@
         __PUSH(opcode); \
     } while(0)
 
+#undef CONTEXT
+#define CONTEXT HBSCTX(compiler)
+
 enum handlebars_compiler_sexpr_type {
     SEXPR_AMBIG = 0,
     SEXPR_HELPER = 1,
     SEXPR_SIMPLE = 2
 };
+
+/**
+ * @brief Main compiler state struct
+ */
+struct handlebars_compiler {
+    struct handlebars_context ctx;
+    struct handlebars_program * program;
+    struct handlebars_block_param_stack * bps;
+    struct handlebars_source_node_stack * sns;
+
+    /**
+     * @brief Array of known helpers
+     */
+    const char ** known_helpers;
+
+    /**
+     * @brief Symbol index counter
+     */
+    long guid;
+
+    /**
+     * @brief Compiler flags
+     */
+    unsigned long flags;
+};
+
+struct handlebars_block_param_pair {
+    struct handlebars_string * block_param1;
+    struct handlebars_string * block_param2;
+};
+
+struct handlebars_block_param_stack {
+    struct handlebars_block_param_pair s[HANDLEBARS_COMPILER_STACK_SIZE];
+    int i;
+};
+
+struct handlebars_source_node_stack {
+    struct handlebars_ast_node * s[HANDLEBARS_COMPILER_STACK_SIZE];
+    int i;
+};
+
 
 
 
@@ -125,37 +170,22 @@ static inline void handlebars_compiler_accept_decorator(
         long inverseGuid
 );
 
-extern inline struct handlebars_program * handlebars_compiler_get_program(
-    struct handlebars_compiler * compiler
-);
-
-extern inline void handlebars_compiler_set_known_helpers(
-    struct handlebars_compiler * compiler,
-    const char ** known_helpers
-);
-
 size_t HANDLEBARS_COMPILER_SIZE = sizeof(struct handlebars_compiler);
 size_t HANDLEBARS_PROGRAM_SIZE = sizeof(struct handlebars_compiler);
 
 
 
-#undef CONTEXT
-#define CONTEXT HBSCTX(context)
-
 struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * context)
 {
     struct handlebars_compiler * compiler;
-    compiler = MC(handlebars_talloc_zero(CONTEXT, struct handlebars_compiler));
+    compiler = handlebars_talloc_zero(context, struct handlebars_compiler);
+    HANDLEBARS_MEMCHECK(compiler, context);
     handlebars_context_bind(context, HBSCTX(compiler));
     compiler->program = MC(handlebars_talloc_zero(compiler, struct handlebars_program));
     compiler->program->main = compiler->program;
     compiler->known_helpers = handlebars_builtins_names();
-    compiler->bps = MC(handlebars_talloc_zero(compiler, struct handlebars_block_param_stack));
     return compiler;
 };
-
-#undef CONTEXT
-#define CONTEXT HBSCTX(compiler)
 
 void handlebars_compiler_dtor(struct handlebars_compiler * compiler)
 {
@@ -180,6 +210,19 @@ void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsign
     compiler->flags = compiler->flags & ~handlebars_compiler_flag_all;
     compiler->flags = compiler->flags | flags;
 }
+
+struct handlebars_program * handlebars_compiler_get_program(
+    struct handlebars_compiler * compiler
+) {
+    return compiler->program;
+};
+
+void handlebars_compiler_set_known_helpers(
+    struct handlebars_compiler * compiler,
+    const char ** known_helpers
+) {
+    compiler->known_helpers = known_helpers;
+};
 
 
 
@@ -334,6 +377,7 @@ static inline long handlebars_compiler_compile_program(
     // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
     subcompiler->bps = compiler->bps;
+    subcompiler->sns = compiler->sns;
     subcompiler->known_helpers = compiler->known_helpers;
 
     // compile
@@ -375,8 +419,8 @@ extern inline void handlebars_compiler_opcode(
     }
 
     // Get location from source node stack
-    if( compiler->sns.i > 0 ) {
-        handlebars_opcode_set_loc(opcode, compiler->sns.s[compiler->sns.i - 1]->loc);
+    if (likely(compiler->sns && compiler->sns->i > 0)) {
+        handlebars_opcode_set_loc(opcode, compiler->sns->s[compiler->sns->i - 1]->loc);
     }
 
     // Append opcode
@@ -1309,11 +1353,11 @@ static void handlebars_compiler_accept(
     }
 
     // Add node to source node stack
-    if( compiler->sns.i > HANDLEBARS_COMPILER_STACK_SIZE ) {
+    if( compiler->sns->i > HANDLEBARS_COMPILER_STACK_SIZE ) {
         handlebars_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Source node stack blown");
     }
-    compiler->sns.s[compiler->sns.i] = node;
-    compiler->sns.i++;
+    compiler->sns->s[compiler->sns->i] = node;
+    compiler->sns->i++;
 
     // Accept node
     switch( node->type ) {
@@ -1373,7 +1417,7 @@ static void handlebars_compiler_accept(
     }
 
     // Pop source node stack
-    compiler->sns.i--;
+    compiler->sns->i--;
 }
 
 struct handlebars_program * handlebars_compiler_compile_ex(
@@ -1399,8 +1443,23 @@ void handlebars_compiler_compile(
         }
     }
 
+    // Allocate stacks
+    if (!compiler->bps) {
+        compiler->bps = alloca(sizeof(struct handlebars_block_param_stack));
+        compiler->bps->i = 0;
+    }
+    if (!compiler->sns) {
+        compiler->sns = alloca(sizeof(struct handlebars_source_node_stack));
+        compiler->sns->i = 0;
+    }
+
+    // Compile
     compiler->program->flags = compiler->flags;
     handlebars_compiler_accept(compiler, node);
+
+    // Reset stacks
+    compiler->bps = NULL;
+    compiler->sns = NULL;
 
 done:
     e->jmp = prev;
