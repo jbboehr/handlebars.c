@@ -25,7 +25,6 @@
 #include <time.h>
 
 #define HANDLEBARS_CACHE_PRIVATE
-#define HANDLEBARS_MAP_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
 #include "handlebars.h"

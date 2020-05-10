@@ -39,7 +39,6 @@
 #include <json/json_tokener.h>
 #endif
 
-#define HANDLEBARS_MAP_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
@@ -542,3 +541,10 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
 
     return false;
 }
+
+bool handlebars_value_iterator_next(
+    struct handlebars_value_iterator * it
+) {
+    assert(it->next != NULL);
+    return it->next(it);
+};

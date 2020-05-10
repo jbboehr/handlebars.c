@@ -24,8 +24,6 @@
 #include <check.h>
 #include <talloc.h>
 
-#define HANDLEBARS_MAP_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
@@ -81,12 +79,12 @@ START_TEST(test_map)
     fprintf(
         stderr,
         "ENTRIES: %ld, "
-        "TABLE SIZE: %ld, "
-        "COLLISIONS: %ld, "
+        // "TABLE SIZE: %ld, "
+        // "COLLISIONS: %ld, "
         "LOADFACTOR: %d\n",
-        map->i,
-        map->table_capacity,
-        map->collisions,
+        handlebars_map_count(map),
+        // map->table_capacity,
+        // map->collisions,
         handlebars_map_load_factor(map)
     );
 

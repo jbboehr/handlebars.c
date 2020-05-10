@@ -39,7 +39,6 @@
 #include <json/json_tokener.h>
 #endif
 
-#define HANDLEBARS_MAP_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE

@@ -28,7 +28,6 @@
 #include <string.h>
 #include <math.h>
 
-#define HANDLEBARS_MAP_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
@@ -40,6 +39,30 @@
 
 
 
+struct handlebars_map {
+    struct handlebars_context ctx;
+    size_t i;
+
+    size_t table_capacity;
+    struct handlebars_map_entry ** table;
+
+    size_t vec_offset;
+    size_t vec_capacity;
+    struct handlebars_map_entry * vec;
+
+    bool is_in_iteration;
+
+#ifndef NDEBUG
+    size_t collisions;
+#endif
+};
+
+struct handlebars_map_entry {
+    struct handlebars_string * key;
+    struct handlebars_value * value;
+    size_t table_offset;
+};
+
 struct ht_find_result {
     bool empty_found;
     bool entry_found;
@@ -47,7 +70,10 @@ struct ht_find_result {
     unsigned long entry_offset;
     struct handlebars_map_entry * entry;
     int tombstones;
+
+#ifndef NDEBUG
     int collisions;
+#endif
 };
 
 struct map_sort_r_arg {
@@ -144,7 +170,9 @@ static inline struct ht_find_result ht_find_entry(
             ret.entry = table[pos];
             break;
         } else {
+#ifndef NDEBUG
             ret.collisions++;
+#endif
         }
     }
 
@@ -186,15 +214,6 @@ static inline void map_add_at_table_offset(
     handlebars_value_addref(value);
     entry->table_offset = offset;
 
-    // Add to linked list
-    if( !map->first ) {
-        map->first = map->last = entry;
-    } else {
-        map->last->next = entry;
-        entry->prev = map->last;
-        map->last = entry;
-    }
-
     // Add to table
     map->table[offset] = entry;
     map->i++;
@@ -204,26 +223,12 @@ static inline void map_add_at_table_offset(
 static void map_rebuild_references(struct handlebars_map * map)
 {
     size_t i;
-    struct handlebars_map_entry * first = NULL;
-    struct handlebars_map_entry * last = NULL;
 
     assert(map->vec_offset == map->i);
 
-    if (map->vec_offset > 0) {
-        first = last = &map->vec[0];
-        map->table[map->vec[0].table_offset] = &map->vec[0];
+    for (i = 0; i < map->vec_offset; i++ ) {
+        map->table[map->vec[i].table_offset] = &map->vec[i];
     }
-
-    for (i = 1; i < map->vec_offset; i++ ) {
-        struct handlebars_map_entry * entry = &map->vec[i];
-        last->next = entry;
-        entry->prev = last;
-        last = entry;
-        map->table[entry->table_offset] = entry;
-    }
-
-    map->first = first;
-    map->last = last;
 }
 
 static void map_rehash(struct handlebars_map * map)
@@ -250,8 +255,10 @@ static void map_rehash(struct handlebars_map * map)
     );
 #endif
 
+#ifndef NDEBUG
     // Reset collisions
     map->collisions = 0;
+#endif
 
     // Allocate new entries
     vec = handlebars_talloc_array(HBSCTX(map), struct handlebars_map_entry, vec_capacity);
@@ -287,8 +294,6 @@ static void map_rehash(struct handlebars_map * map)
     map->vec_offset = vec_offset;
     map->vec_capacity = vec_capacity;
     map->vec = vec;
-
-    map_rebuild_references(map);
 }
 
 
@@ -349,9 +354,11 @@ void handlebars_map_add(struct handlebars_map * map, struct handlebars_string * 
 
     map_add_at_table_offset(map, key, value, o.empty_offset);
 
+#ifndef NDEBUG
     if (o.collisions > 0) {
         map->collisions++;
     }
+#endif
 }
 
 bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
@@ -367,20 +374,6 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
     }
 
     struct handlebars_value * value = entry->value;
-
-    // Remove from linked list
-    if( map->first == entry ) {
-        map->first = entry->next;
-    }
-    if( map->last == entry ) {
-        map->last = entry->prev;
-    }
-    if( entry->next ) {
-        entry->next->prev = entry->prev;
-    }
-    if( entry->prev ) {
-        entry->prev->next = entry->next;
-    }
 
     // Remove from hash table
     map->table[o.entry_offset] = HANDLEBARS_MAP_TOMBSTONE;
@@ -427,9 +420,11 @@ void handlebars_map_update(struct handlebars_map * map, struct handlebars_string
 
     map_add_at_table_offset(map, key, value, o.empty_offset);
 
+#ifndef NDEBUG
     if (o.collisions > 0) {
         map->collisions++;
     }
+#endif
 }
 
 extern inline size_t handlebars_map_count(struct handlebars_map * map) {
@@ -501,11 +496,12 @@ void handlebars_map_sparse_array_compact(struct handlebars_map * map)
     for (; i < map->vec_offset; i++) {
         if (0 != memcmp(&map->vec[i], &HANDLEBARS_MAP_TOMBSTONE_V, sizeof(HANDLEBARS_MAP_TOMBSTONE_V))) {
             map->vec[vec_offset] = map->vec[i];
+            map->table[map->vec[vec_offset].table_offset] = &map->vec[vec_offset];
             vec_offset++;
         }
     }
+
     map->vec_offset = vec_offset;
-    map_rebuild_references(map);
 }
 
 size_t handlebars_map_sparse_array_count(struct handlebars_map * map)

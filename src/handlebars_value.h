@@ -667,7 +667,7 @@ struct handlebars_value_iterator
                 struct handlebars_value * v = iter.current;
 
 #define HANDLEBARS_VALUE_FOREACH_END() \
-            } while (iter.next(&iter)); \
+            } while (handlebars_value_iterator_next(&iter)); \
         } \
     } while(0)
 
@@ -680,6 +680,10 @@ struct handlebars_value_iterator
 bool handlebars_value_iterator_init(
     struct handlebars_value_iterator * it,
     struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL;
+
+bool handlebars_value_iterator_next(
+    struct handlebars_value_iterator * it
 ) HBS_ATTR_NONNULL_ALL;
 
 

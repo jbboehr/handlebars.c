@@ -206,41 +206,11 @@ struct handlebars_map * handlebars_map_sort_r(
     const void * arg
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
-#ifndef HANDLEBARS_MAP_PRIVATE
-
-#else /* HANDLEBARS_MAP_PRIVATE */
-
-struct handlebars_map_entry {
-    struct handlebars_string * key;
-    struct handlebars_value * value;
-    struct handlebars_map_entry * next;
-    struct handlebars_map_entry * prev;
-    size_t table_offset;
-};
-
-struct handlebars_map {
-    struct handlebars_context ctx;
-    size_t i;
-    struct handlebars_map_entry * first;
-    struct handlebars_map_entry * last;
-
-    size_t table_capacity;
-    struct handlebars_map_entry ** table;
-
-    size_t vec_offset;
-    size_t vec_capacity;
-    size_t vec_tombstones;
-    struct handlebars_map_entry * vec;
-
-    size_t collisions;
-    bool is_in_iteration;
-};
-
 #define handlebars_map_foreach(map, index, key, value) \
     do { \
         size_t index = 0; \
-        struct handlebars_string * key = NULL; \
-        struct handlebars_value * value = NULL; \
+        struct handlebars_string * key; \
+        struct handlebars_value * value; \
         bool old_is_in_iteration = handlebars_map_set_is_in_iteration(map, true); \
         for (; index < handlebars_map_sparse_array_count(map); index++) { \
             handlebars_map_get_kv_at_index(map, index, &key, &value); \
@@ -250,8 +220,6 @@ struct handlebars_map {
         } \
         handlebars_map_set_is_in_iteration(map, old_is_in_iteration); \
     } while(0)
-
-#endif /* HANDLEBARS_MAP_PRIVATE */
 
 HBS_EXTERN_C_END
 

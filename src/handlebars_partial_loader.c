@@ -25,7 +25,6 @@
 #include <string.h>
 #include <talloc.h>
 
-#define HANDLEBARS_MAP_PRIVATE
 #define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
@@ -193,7 +192,7 @@ bool std_partial_loader_iterator_init(struct handlebars_value_iterator * it, str
 long std_partial_loader_count(struct handlebars_value * value)
 {
     struct handlebars_partial_loader * intern = GET_INTERN(value);
-    return intern->map->i;
+    return handlebars_map_count(intern->map);
 }
 
 static struct handlebars_value_handlers handlebars_value_std_partial_loader_handlers = {
