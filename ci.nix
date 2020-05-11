@@ -48,9 +48,14 @@ builtins.mapAttrs (k: _v:
     };
 
     # test once with cmake
-    n1909cmake = generateHandlebarsCTestsForPlatform2  {
+    n1909-cmake = generateHandlebarsCTestsForPlatform2  {
       inherit pkgs;
       handlebarscWithCmake = true;
+    };
+
+    # cross-compile for 32bit
+    n1909-32bit = generateHandlebarsCTestsForPlatform2  {
+      pkgs = pkgs.pkgsi686Linux;
     };
 
     n2003 = let

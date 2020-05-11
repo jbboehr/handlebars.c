@@ -43,6 +43,7 @@ branches:
   only:
     - master
     - travis
+    - dev-1.x
 
 before_install: travis_retry sudo ./.travis.sh before_install
 install: travis_retry sudo ./.travis.sh install
