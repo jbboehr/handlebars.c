@@ -34,11 +34,7 @@
 
 START_TEST(test_handlebars_string_hash)
 {
-#if ULONG_MAX <= 4294967295
-    ck_assert_uint_eq(3127933309, handlebars_string_hash(HBS_STRL("foobar\xFF")));
-#else
-    ck_assert_uint_eq(229466050689405, handlebars_string_hash(HBS_STRL("foobar\xFF")));
-#endif
+    ck_assert_uint_eq(14968681860324457947ull, handlebars_string_hash(HBS_STRL("foobar\xFF")));
 }
 END_TEST
 

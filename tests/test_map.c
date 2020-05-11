@@ -135,7 +135,6 @@ int map_sort_test_compare_r(const struct handlebars_map_kv_pair * kv_pair1, cons
     return handlebars_value_get_intval(kv_pair1->value) - handlebars_value_get_intval(kv_pair2->value);
 }
 
-#ifdef HAVE_QSORT_R
 START_TEST(test_map_sort)
 {
     size_t count = 33;
@@ -207,7 +206,6 @@ START_TEST(test_map_sort)
     }
 }
 END_TEST
-#endif
 
 Suite * parser_suite(void)
 {

@@ -80,9 +80,7 @@ if(NOT MSVC)
     endif()
 endif()
 
-set(CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
-check_symbol_exists(qsort_r stdlib.h HAVE_QSORT_R)
-unset(CMAKE_REQUIRED_DEFINITIONS)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/vendor/sort_r ${CMAKE_CURRENT_SOURCE_DIR}/vendor/xxhash)
 
 # generate config.h
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/src/config.h)

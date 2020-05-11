@@ -101,7 +101,6 @@ AC_HEADER_STDC
 
 # Checks for functions
 AC_CHECK_FUNC(snprintf, , AC_MSG_ERROR([snprintf is required]))
-AC_CHECK_FUNCS([qsort_r])
 
 # Checks for typedefs, structures, and compiler characteristics
 AC_C_CONST

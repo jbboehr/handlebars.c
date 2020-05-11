@@ -20,29 +20,43 @@
 #ifndef HANDLEBARS_STRING_H
 #define HANDLEBARS_STRING_H
 
-#include <assert.h>
-#include <stddef.h>
 #include <stdarg.h>
-#include <memory.h>
-#include <talloc.h>
+#include <stdint.h>
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
 
 HBS_EXTERN_C_START
 
 struct handlebars_string;
 
-#define HBS_STRVAL(str) hbs_str_val(str)
-#define HBS_STRLEN(str) hbs_str_len(str)
-
 #define HBS_STR_STRL(string) hbs_str_val(string), hbs_str_len(string)
 #define HBS_STR_HASH_EX(str, len, hash) (hash ? hash : handlebars_string_hash(str, len))
 #define HBS_STR_HASH(string) hbs_str_hash(string)
-//#define HBS_STR_SIZE(length) (offsetof(struct handlebars_string, val) + (length) + 1)
 #define HBS_STR_SIZE(length) ((HANDLEBARS_STRING_SIZE) + (length) + (1))
 
-extern size_t HANDLEBARS_STRING_SIZE;
+extern const size_t HANDLEBARS_STRING_SIZE;
+
+// {{{ Accessors
+char * hbs_str_val(struct handlebars_string * str)
+    HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+size_t hbs_str_len(struct handlebars_string * str)
+    HBS_ATTR_NONNULL_ALL;
+
+uint64_t hbs_str_hash(struct handlebars_string * str)
+    HBS_ATTR_NONNULL_ALL;
+// }}} Accessors
+
+// {{{ Hash functions
+uint64_t handlebars_hash_djbx33a(const char * str, size_t len)
+    HBS_ATTR_NONNULL_ALL;
+
+uint64_t handlebars_hash_xxh3(const char * str, size_t len)
+    HBS_ATTR_NONNULL_ALL;
+
+uint64_t handlebars_string_hash(const char * str, size_t len)
+    HBS_ATTR_NONNULL_ALL;
+// }}} Hash functions
 
 /**
  * @brief Implements `strnstr`
@@ -254,22 +268,8 @@ struct handlebars_string * handlebars_string_rtrim(
     const char * what, size_t what_length
 ) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
-char * hbs_str_val(struct handlebars_string * str)
-    HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-size_t hbs_str_len(struct handlebars_string * str)
-    HBS_ATTR_NONNULL_ALL;
-
-unsigned long hbs_str_hash(struct handlebars_string * str)
-    HBS_ATTR_NONNULL_ALL;
-
-unsigned long handlebars_string_hash_cont(
-    const char * str,
-    size_t len,
-    unsigned long hash
-) HBS_ATTR_NONNULL(1);
-
-unsigned long handlebars_string_hash(
+uint64_t handlebars_string_hash(
     const char * str,
     size_t len
 ) HBS_ATTR_NONNULL(1);
@@ -295,7 +295,9 @@ struct handlebars_string * handlebars_string_init(
  */
 struct handlebars_string * handlebars_string_ctor_ex(
     struct handlebars_context * context,
-    const char * str, size_t len, unsigned long hash
+    const char * str,
+    size_t len,
+    uint64_t hash
 ) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
@@ -393,8 +395,8 @@ struct handlebars_string * handlebars_string_compact(
  * @return Whether or not the strings are equal
  */
 bool handlebars_string_eq_ex(
-    const char * string1, size_t length1, unsigned long hash1,
-    const char * string2, size_t length2, unsigned long hash2
+    const char * string1, size_t length1, uint64_t hash1,
+    const char * string2, size_t length2, uint64_t hash2
 ) HBS_ATTR_NONNULL(1, 4);
 
 /**
@@ -423,3 +425,12 @@ bool hbs_str_eq_strl(
 HBS_EXTERN_C_END
 
 #endif /* HANDLEBARS_STRING_H */
+
+/*
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim600: fdm=marker
+ * vim: et sw=4 ts=4
+ */

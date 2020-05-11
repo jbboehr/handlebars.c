@@ -21,9 +21,17 @@
 #include "config.h"
 #endif
 
-#include <stdlib.h>
+#include <assert.h>
 #include <ctype.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <memory.h>
 #include <talloc.h>
+
+#define XXH_PRIVATE_API
+#define XXH_INLINE_ALL
+#include "xxhash.h"
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
@@ -34,7 +42,7 @@
 
 struct handlebars_string {
     size_t len;
-    unsigned long hash;
+    uint64_t hash;
     char val[];
 };
 
@@ -52,7 +60,7 @@ static const struct htmlspecialchars_pair htmlspecialchars[256] = {
     ['`']  = {HBS_STRL("&#x60;")},
 };
 
-size_t HANDLEBARS_STRING_SIZE = sizeof(struct handlebars_string);
+const size_t HANDLEBARS_STRING_SIZE = sizeof(struct handlebars_string);
 
 
 
@@ -66,7 +74,7 @@ size_t hbs_str_len(struct handlebars_string * str) {
     return str->len;
 }
 
-unsigned long hbs_str_hash(struct handlebars_string * str) {
+uint64_t hbs_str_hash(struct handlebars_string * str) {
     if (str->hash == 0) {
         str->hash = handlebars_string_hash(str->val, str->len);
     }
@@ -77,22 +85,40 @@ unsigned long hbs_str_hash(struct handlebars_string * str) {
 
 
 
-unsigned long handlebars_string_hash_cont(const char * str, size_t len, unsigned long hash)
+// {{{ Hash functions
+
+uint64_t handlebars_hash_djbx33a(const char * str, size_t len)
 {
-    unsigned long c;
+    uint64_t hash = 5381;
+    uint64_t c;
     const unsigned char * ptr = (const unsigned char *) str;
     const unsigned char * end = ptr + len;
-    for( c = *ptr++; ptr <= end && c; c = *ptr++ ) {
+    for (c = *ptr++; ptr <= end && c; c = *ptr++) {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     }
     return hash;
 }
 
-unsigned long handlebars_string_hash(const char * str, size_t len)
+uint64_t handlebars_hash_xxh3(const char * str, size_t len)
 {
-    unsigned long hash = 5381;
-    return handlebars_string_hash_cont(str, len, hash);
+    XXH3_state_t state;
+    XXH3_64bits_reset(&state);
+    XXH3_64bits_update(&state, str, len);
+    return XXH3_64bits_digest(&state);
 }
+
+uint64_t handlebars_string_hash(const char * str, size_t len)
+{
+#if 0
+    return handlebars_hash_djbx33a(str, len);
+#else
+    return handlebars_hash_xxh3(str, len);
+#endif
+}
+
+// }}} Hash functions
+
+
 
 struct handlebars_string * handlebars_string_init(
     struct handlebars_context * context,
@@ -108,7 +134,7 @@ struct handlebars_string * handlebars_string_ctor_ex(
     struct handlebars_context * context,
     const char * str,
     size_t len,
-    unsigned long hash
+    uint64_t hash
 ) {
     struct handlebars_string * st = handlebars_string_init(context, len + 1);
     HANDLEBARS_MEMCHECK(st, context);
@@ -194,8 +220,8 @@ struct handlebars_string * handlebars_string_compact(struct handlebars_string * 
 }
 
 bool handlebars_string_eq_ex(
-    const char * string1, size_t length1, unsigned long hash1,
-    const char * string2, size_t length2, unsigned long hash2
+    const char * string1, size_t length1, uint64_t hash1,
+    const char * string2, size_t length2, uint64_t hash2
 ) {
     if( length1 != length2 ) {
         return false;

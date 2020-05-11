@@ -21,12 +21,12 @@
 #include "config.h"
 #endif
 
-#define _GNU_SOURCE
-#include <stdlib.h>
-
 #include <assert.h>
-#include <string.h>
 #include <math.h>
+#include <string.h>
+#include <stdint.h>
+
+#include "sort_r.h"
 
 #include "handlebars.h"
 #include "handlebars_map.h"
@@ -64,8 +64,8 @@ struct handlebars_map_entry {
 struct ht_find_result {
     bool empty_found;
     bool entry_found;
-    unsigned long empty_offset;
-    unsigned long entry_offset;
+    size_t empty_offset;
+    size_t entry_offset;
     struct handlebars_map_entry * entry;
     int tombstones;
 
@@ -145,9 +145,9 @@ static inline struct ht_find_result ht_find_entry(
     size_t table_capacity,
     struct handlebars_string * key
 ) {
-    unsigned long start = HBS_STR_HASH(key) % (unsigned long) table_capacity;
-    unsigned long i;
-    unsigned long pos;
+    size_t start = (uint64_t) HBS_STR_HASH(key) % (uint64_t) table_capacity;
+    size_t i;
+    size_t pos;
     struct ht_find_result ret = {0};
 
     for (i = 0; i < table_capacity; i++) {
@@ -200,7 +200,7 @@ static inline void map_add_at_table_offset(
     struct handlebars_map * map,
     struct handlebars_string * key,
     struct handlebars_value * value,
-    unsigned long offset
+    size_t offset
 ) {
     assert(map->vec_offset < map->vec_capacity);
     assert(map->table[offset] == NULL || map->table[offset] == HANDLEBARS_MAP_TOMBSTONE);
@@ -536,19 +536,15 @@ static int map_entry_compare(const void * ptr1, const void * ptr2, void * arg)
 
 struct handlebars_map * handlebars_map_sort(struct handlebars_map * map, handlebars_map_kv_compare_func compare)
 {
-#ifndef HAVE_QSORT_R
-    handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "qsort_r not available");
-#else
     if (handlebars_map_is_sparse(map)) {
         map = handlebars_map_rehash(map, true);
     }
 
-    qsort_r(map->vec, map->i, sizeof(struct handlebars_map_entry), &map_entry_compare, (void *) compare);
+    sort_r(map->vec, map->i, sizeof(struct handlebars_map_entry), &map_entry_compare, (void *) compare);
 
     map_rebuild_references(map);
 
     return map;
-#endif
 }
 
 static int map_entry_compare_r(const void * ptr1, const void * ptr2, void * arg)
@@ -577,22 +573,17 @@ struct handlebars_map * handlebars_map_sort_r(
     handlebars_map_kv_compare_r_func compare,
     const void * arg
 ) {
-    // @TODO fix this for cmake
-#ifndef HAVE_QSORT_R
-    handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "qsort_r not available");
-#else
     if (handlebars_map_is_sparse(map)) {
         map = handlebars_map_rehash(map, true);
     }
 
     struct map_sort_r_arg sort_r_arg = {compare, arg};
 
-    qsort_r(map->vec, map->i, sizeof(struct handlebars_map_entry), &map_entry_compare_r, (void *) &sort_r_arg);
+    sort_r(map->vec, map->i, sizeof(struct handlebars_map_entry), &map_entry_compare_r, (void *) &sort_r_arg);
 
     map_rebuild_references(map);
 
     return map;
-#endif
 }
 
 
