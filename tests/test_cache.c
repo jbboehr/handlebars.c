@@ -31,7 +31,6 @@
 
 #define HANDLEBARS_COMPILER_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
-#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_cache.h"
@@ -133,12 +132,12 @@ static void execute_gc_test(struct handlebars_cache * cache)
     handlebars_vm_set_cache(vm, cache);
 
     struct handlebars_string * buffer = handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(buffer->val, "baz");
+    ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     int i;
     for( i = 0; i < 10; i++ ) {
         buffer = handlebars_vm_execute(vm, module, value);
-        ck_assert_str_eq(buffer->val, "baz");
+        ck_assert_str_eq(hbs_str_val(buffer), "baz");
     }
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 10);
@@ -181,14 +180,14 @@ static void execute_reset_test(struct handlebars_cache * cache)
 
     // This shouldn't use the cache
     buffer = handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(buffer->val, "baz");
+    ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
 
     // This should use the cache
     buffer = handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(buffer->val, "baz");
+    ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 1);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
@@ -198,7 +197,7 @@ static void execute_reset_test(struct handlebars_cache * cache)
 
     // This shouldn't use the cache
     buffer = handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(buffer->val, "baz");
+    ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);

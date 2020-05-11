@@ -28,7 +28,6 @@
 
 #define HANDLEBARS_AST_PRIVATE
 #define HANDLEBARS_AST_LIST_PRIVATE
-#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 
@@ -171,19 +170,21 @@ bool handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
         current->node.content.value = handlebars_string_ltrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));
     } else {
         current->node.content.value = handlebars_string_ltrim(current->node.content.value, HBS_STRL(" \t"));
-        if( current->node.content.value->val[0] == '\r' ) {
-            memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
-            current->node.content.value->len--;
-            current->node.content.value->hash = 0;
+        if( hbs_str_val(current->node.content.value)[0] == '\r' ) {
+            handlebars_string_truncate(current->node.content.value, 1, hbs_str_len(current->node.content.value));
+            // memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
+            // current->node.content.value->len--;
+            // current->node.content.value->hash = 0;
         }
-        if( current->node.content.value->val[0] == '\n' ) {
-            memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
-            current->node.content.value->len--;
-            current->node.content.value->hash = 0;
+        if( hbs_str_val(current->node.content.value)[0] == '\n' ) {
+            handlebars_string_truncate(current->node.content.value, 1, hbs_str_len(current->node.content.value));
+            // memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
+            // current->node.content.value->len--;
+            // current->node.content.value->hash = 0;
         }
     }
 
-    if( original_length == current->node.content.value->len ) {
+    if( original_length == hbs_str_len(current->node.content.value) ) {
         current->strip &= ~handlebars_ast_strip_flag_right_stripped;
     } else {
         current->strip |= handlebars_ast_strip_flag_right_stripped;
@@ -243,7 +244,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
                     struct handlebars_string * start = prev->node.content.original;
                     char * ptr;
                     char * match = NULL;
-                    for( ptr = start->val; *ptr; ++ptr ) {
+                    for( ptr = hbs_str_val(start); *ptr; ++ptr ) {
                         if( *ptr == ' ' || *ptr == '\t' ) {
                             if( !match ) {
                                 match = ptr;

@@ -39,7 +39,6 @@
 #include <json/json_tokener.h>
 #endif
 
-#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 
@@ -164,7 +163,7 @@ struct handlebars_string * handlebars_value_to_string(struct handlebars_value * 
 const char * handlebars_value_get_strval(struct handlebars_value * value)
 {
     if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
-        return value->v.string->val;
+        return hbs_str_val(value->v.string);
     } else {
         return NULL;
     }
@@ -173,7 +172,7 @@ const char * handlebars_value_get_strval(struct handlebars_value * value)
 size_t handlebars_value_get_strlen(struct handlebars_value * value)
 {
 	if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
-		return value->v.string->len;
+		return hbs_str_len(value->v.string);
 	}
 
 	return 0;
@@ -193,7 +192,7 @@ bool handlebars_value_get_boolval(struct handlebars_value * value)
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             return value->v.lval != 0;
         case HANDLEBARS_VALUE_TYPE_STRING:
-            return value->v.string->len != 0 && strcmp(value->v.string->val, "0") != 0;
+            return hbs_str_len(value->v.string) != 0 && strcmp(hbs_str_val(value->v.string), "0") != 0;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             return handlebars_stack_count(value->v.stack) != 0;
         case HANDLEBARS_VALUE_TYPE_MAP:
@@ -281,7 +280,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             buf = handlebars_talloc_asprintf_append_buffer(buf, "integer(%ld)", value->v.lval);
             break;
         case HANDLEBARS_VALUE_TYPE_STRING:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%.*s)", (int) value->v.string->len, value->v.string->val);
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%.*s)", (int) hbs_str_len(value->v.string), hbs_str_val(value->v.string));
             break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "[");
@@ -296,7 +295,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "{");
             HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
                 char * tmp = handlebars_value_dump(child, depth + 1);
-                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%.*s => %s\n", indent2, (int) key->len, key->val, tmp);
+                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%.*s => %s\n", indent2, (int) hbs_str_len(key), hbs_str_val(key), tmp);
                 handlebars_talloc_free(tmp);
             } HANDLEBARS_VALUE_FOREACH_END();
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "}");
@@ -342,7 +341,7 @@ struct handlebars_string * handlebars_value_expression_append(
             if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
                 string = handlebars_string_htmlspecialchars_append(value->ctx, string, HBS_STR_STRL(value->v.string));
             } else {
-                string = handlebars_string_append(value->ctx, string, value->v.string->val, value->v.string->len);
+                string = handlebars_string_append_str(value->ctx, string, value->v.string);
             }
             break;
 

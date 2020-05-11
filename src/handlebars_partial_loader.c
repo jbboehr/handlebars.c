@@ -25,7 +25,6 @@
 #include <string.h>
 #include <talloc.h>
 
-#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 
@@ -106,28 +105,28 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
     FILE * f;
     long size;
 
-    f = fopen(filename->val, "rb");
+    f = fopen(hbs_str_val(filename), "rb");
     if( !f ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "File to open partial: %s", filename->val);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "File to open partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
     fseek(f, 0, SEEK_END);
     size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    struct handlebars_string *buf = handlebars_string_init(CONTEXT, size);
-    size_t read = fread(buf->val, size, 1, f);
+    char * buf = handlebars_talloc_array(CONTEXT, char, size);
+    size_t read = fread(buf, size, 1, f);
     fclose(f);
 
     if (!read) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to read partial: %s", filename->val);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to read partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
-    buf->val[size] = 0;
-    buf->len = size - 1;
+    buf[size - 1] = 0;
 
     retval = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(retval, buf);
+    handlebars_value_str_steal(retval, handlebars_string_ctor(CONTEXT, buf, size - 1));
+    handlebars_talloc_free(buf);
 
     handlebars_map_add(intern->map, key, retval);
 

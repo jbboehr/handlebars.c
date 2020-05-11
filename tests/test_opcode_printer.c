@@ -26,7 +26,6 @@
 #include <talloc.h>
 
 #define HANDLEBARS_OPCODES_PRIVATE
-#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_compiler.h"
@@ -45,7 +44,7 @@ START_TEST(test_operand_print_append_null)
     handlebars_operand_set_null(&op);
     string = handlebars_operand_print(context, &op);
     ck_assert_ptr_ne(NULL, string);
-    ck_assert_str_eq("[NULL]", string->val);
+    ck_assert_str_eq("[NULL]", hbs_str_val(string));
     handlebars_talloc_free(string);
 }
 END_TEST
@@ -57,7 +56,7 @@ START_TEST(test_operand_print_append_boolean)
     handlebars_operand_set_boolval(&op, 1);
     string = handlebars_operand_print(context, &op);
     ck_assert_ptr_ne(NULL, string);
-    ck_assert_str_eq("[BOOLEAN:1]", string->val);
+    ck_assert_str_eq("[BOOLEAN:1]", hbs_str_val(string));
     handlebars_talloc_free(string);
 }
 END_TEST
@@ -69,7 +68,7 @@ START_TEST(test_operand_print_append_long)
     handlebars_operand_set_longval(&op, 2358);
     string = handlebars_operand_print(context, &op);
     ck_assert_ptr_ne(NULL, string);
-    ck_assert_str_eq("[LONG:2358]", string->val);
+    ck_assert_str_eq("[LONG:2358]", hbs_str_val(string));
     handlebars_talloc_free(string);
 }
 END_TEST
@@ -82,7 +81,7 @@ START_TEST(test_operand_print_append_string)
     handlebars_operand_set_stringval(context, opcode, &op, handlebars_string_ctor(context, HBS_STRL("baz")));
     string = handlebars_operand_print(context, &op);
     ck_assert_ptr_ne(NULL, string);
-    ck_assert_str_eq("[STRING:baz]", string->val);
+    ck_assert_str_eq("[STRING:baz]", hbs_str_val(string));
     handlebars_talloc_free(string);
 }
 END_TEST
@@ -98,7 +97,7 @@ START_TEST(test_opcode_print_1)
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_ambiguous_block_value);
     char * expected = "ambiguousBlockValue";
     struct handlebars_string * string = handlebars_opcode_print(context, opcode, 0);
-    ck_assert_str_eq(expected, string->val);
+    ck_assert_str_eq(expected, hbs_str_val(string));
     handlebars_talloc_free(opcode);
     handlebars_talloc_free(string);
 }
@@ -111,7 +110,7 @@ START_TEST(test_opcode_print_2)
     struct handlebars_string * string;
     handlebars_operand_set_longval(&opcode->op1, 2358);
     string = handlebars_opcode_print(context, opcode, 0);
-    ck_assert_str_eq(expected, string->val);
+    ck_assert_str_eq(expected, hbs_str_val(string));
     handlebars_talloc_free(opcode);
     handlebars_talloc_free(string);
 }
@@ -128,7 +127,7 @@ START_TEST(test_opcode_print_3)
     handlebars_operand_set_longval(&opcode->op3, 456);
 
     string = handlebars_opcode_print(context, opcode, 0);
-    ck_assert_str_eq(expected, string->val);
+    ck_assert_str_eq(expected, hbs_str_val(string));
     handlebars_talloc_free(opcode);
     handlebars_talloc_free(string);
 }
@@ -146,7 +145,7 @@ START_TEST(test_opcode_print_4)
     handlebars_operand_set_stringval(context, opcode, &opcode->op4, handlebars_string_ctor(context, HBS_STRL("bat")));
 
     string = handlebars_opcode_print(context, opcode, 0);
-    ck_assert_str_eq(expected, string->val);
+    ck_assert_str_eq(expected, hbs_str_val(string));
     handlebars_talloc_free(opcode);
     handlebars_talloc_free(string);
 }

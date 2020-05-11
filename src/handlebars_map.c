@@ -28,8 +28,6 @@
 #include <string.h>
 #include <math.h>
 
-#define HANDLEBARS_STRING_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"

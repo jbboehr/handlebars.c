@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <talloc.h>
 
-#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 
@@ -223,9 +222,9 @@ START_TEST(test_map_iterator)
         ck_assert_int_eq(handlebars_value_get_type(child), HANDLEBARS_VALUE_TYPE_INTEGER);
         ck_assert_ptr_ne(key, NULL);
         switch( i ) {
-            case 1: ck_assert_str_eq(key->val, "a"); break;
-            case 2: ck_assert_str_eq(key->val, "c"); break;
-            case 3: ck_assert_str_eq(key->val, "b"); break;
+            case 1: ck_assert_hbs_str_eq_cstr(key, "a"); break;
+            case 2: ck_assert_hbs_str_eq_cstr(key, "c"); break;
+            case 3: ck_assert_hbs_str_eq_cstr(key, "b"); break;
         }
         ck_assert_int_eq(handlebars_value_get_intval(child), i);
     } HANDLEBARS_VALUE_FOREACH_END();
@@ -267,9 +266,9 @@ START_TEST(test_map_iterator_json)
         ck_assert_int_eq(handlebars_value_get_type(child), HANDLEBARS_VALUE_TYPE_INTEGER);
         ck_assert_ptr_ne(key, NULL);
         switch( i ) {
-            case 1: ck_assert_str_eq(key->val, "a"); break;
-            case 2: ck_assert_str_eq(key->val, "c"); break;
-            case 3: ck_assert_str_eq(key->val, "b"); break;
+            case 1: ck_assert_hbs_str_eq_cstr(key, "a"); break;
+            case 2: ck_assert_hbs_str_eq_cstr(key, "c"); break;
+            case 3: ck_assert_hbs_str_eq_cstr(key, "b"); break;
         }
         ck_assert_int_eq(handlebars_value_get_intval(child), i);
     } HANDLEBARS_VALUE_FOREACH_END();

@@ -39,7 +39,6 @@
 #include <json/json_tokener.h>
 #endif
 
-#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 
@@ -149,7 +148,7 @@ static enum handlebars_value_type hbs_json_type(struct handlebars_value * value)
 static struct handlebars_value * hbs_json_map_find(struct handlebars_value * value, struct handlebars_string * key)
 {
     struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
-    struct json_object * item = json_object_object_get(intern, key->val);
+    struct json_object * item = json_object_object_get(intern, hbs_str_val(key));
     if( item == NULL ) {
         return NULL;
     }

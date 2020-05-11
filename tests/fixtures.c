@@ -25,7 +25,6 @@
 #include <ctype.h>
 #include <string.h>
 
-#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_HELPERS_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
@@ -69,7 +68,7 @@ FIXTURE_FN(49286285)
     struct handlebars_value * arg = argv[0];
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string_steal(result, handlebars_talloc_asprintf(
-            arg, "%s%s", "bar",  handlebars_value_to_string(arg)->val
+            arg, "%s%s", "bar",  hbs_str_val(handlebars_value_to_string(arg))
     ));
     handlebars_value_delref(arg);
     return result;
@@ -116,9 +115,9 @@ FIXTURE_FN(459219799)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "<a href=\"%s/%s\">%s</a>",
-            handlebars_value_to_string(prefix)->val,
-            handlebars_value_to_string(url)->val,
-            res->val
+            hbs_str_val(handlebars_value_to_string(prefix)),
+            hbs_str_val(handlebars_value_to_string(url)),
+            hbs_str_val(res)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -210,8 +209,8 @@ FIXTURE_FN(620640779)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "Hello %s %s times",
-            handlebars_value_to_string(times)->val,
-            handlebars_value_to_string(times2)->val
+            hbs_str_val(handlebars_value_to_string(times)),
+            hbs_str_val(handlebars_value_to_string(times2))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -228,8 +227,8 @@ FIXTURE_FN(620828131)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "Goodbye %s %s",
-            handlebars_value_to_string(cruel)->val,
-            handlebars_value_to_string(world)->val
+            hbs_str_val(handlebars_value_to_string(cruel)),
+            hbs_str_val(handlebars_value_to_string(world))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -261,8 +260,8 @@ FIXTURE_FN(690821881)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s (%s) ",
-            handlebars_value_to_string(name)->val,
-            handlebars_value_to_string(url)->val
+            hbs_str_val(handlebars_value_to_string(name)),
+            hbs_str_val(handlebars_value_to_string(url))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -280,8 +279,8 @@ FIXTURE_FN(666457330)
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "GOODBYE %s %s",
-                handlebars_value_to_string(cruel)->val,
-                res->val
+                hbs_str_val(handlebars_value_to_string(cruel)),
+                hbs_str_val(res)
         );
         handlebars_talloc_free(res);
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -304,9 +303,9 @@ FIXTURE_FN(730081660)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "GOODBYE %s %s %s TIMES",
-            handlebars_value_to_string(cruel)->val,
-            res->val,
-            handlebars_value_to_string(times)->val
+            hbs_str_val(handlebars_value_to_string(cruel)),
+            hbs_str_val(res),
+            hbs_str_val(handlebars_value_to_string(times))
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -317,12 +316,12 @@ FIXTURE_FN(730081660)
 
 FIXTURE_FN(730672213)
 {
-    if( 0 == strcmp(options->name->val, "link_to") ) {
+    if( 0 == strcmp(hbs_str_val(options->name), "link_to") ) {
         struct handlebars_value * mesg = argv[0];
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "<a>%s</a>",
-                handlebars_value_to_string(mesg)->val
+                hbs_str_val(handlebars_value_to_string(mesg))
         );
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(result, tmp);
@@ -348,8 +347,8 @@ FIXTURE_FN(748362646)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "<a href=\"%s\">%s</a>",
-            handlebars_value_to_string(name)->val,
-            res->val
+            hbs_str_val(handlebars_value_to_string(name)),
+            hbs_str_val(res)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -390,7 +389,7 @@ FIXTURE_FN(929767352)
     char * ret = handlebars_talloc_asprintf(
             options->vm,
             "%s world%s",
-            handlebars_value_to_string(adjective)->val,
+            hbs_str_val(handlebars_value_to_string(adjective)),
             handlebars_value_is_empty(exclaim) ? "" : "!"
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -406,7 +405,7 @@ FIXTURE_FN(931412676)
     handlebars_value_map_init(frame, 0);  // zero may trigger extra rehashes - good for testing
 
     HANDLEBARS_VALUE_FOREACH_KV(options->data, key, child) {
-        if( 0 == strcmp(key->val, "depth") ) {
+        if( 0 == strcmp(hbs_str_val(key), "depth") ) {
             struct handlebars_value * tmp = handlebars_value_ctor(CONTEXT);
             handlebars_value_integer(tmp, handlebars_value_get_intval(child) + 1);
             handlebars_map_update(frame->v.map, key, tmp);
@@ -438,7 +437,7 @@ FIXTURE_FN(1211570580)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "ran: %s",
-            options->name->val
+            hbs_str_val(options->name)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -454,7 +453,7 @@ FIXTURE_FN(1250888967)
 FIXTURE_FN(1091971719)
 {
     // "function (options) {\n          if (options.name === 'link_to') {\n            return new Handlebars.SafeString('<a>winning<\/a>');\n          }\n        }"
-    if( 0 == strcmp(options->name->val, "link_to") ) {
+    if( 0 == strcmp(hbs_str_val(options->name), "link_to") ) {
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "<a>%s</a>",
@@ -478,8 +477,8 @@ FIXTURE_FN(1041501180)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s%s",
-            handlebars_value_to_string(a)->val,
-            handlebars_value_to_string(b)->val
+            hbs_str_val(handlebars_value_to_string(a)),
+            hbs_str_val(handlebars_value_to_string(b))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -496,8 +495,8 @@ FIXTURE_FN(1102272015)
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "GOODBYE %s %s",
-                handlebars_value_to_string(cruel)->val,
-                handlebars_value_to_string(world)->val
+                hbs_str_val(handlebars_value_to_string(cruel)),
+                hbs_str_val(handlebars_value_to_string(world))
         );
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(result, tmp);
@@ -520,8 +519,8 @@ FIXTURE_FN(1198465479)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s %s%s",
-            handlebars_value_to_string(adjective)->val,
-            handlebars_value_to_string(noun)->val,
+            hbs_str_val(handlebars_value_to_string(adjective)),
+            hbs_str_val(handlebars_value_to_string(noun)),
             (handlebars_value_get_boolval(exclaim) ? "!" : "")
     );
     handlebars_value_string_steal(result, tmp);
@@ -557,11 +556,10 @@ FIXTURE_FN(1341397520)
 FIXTURE_FN(1582700088)
 {
     struct handlebars_value * fun = handlebars_value_map_str_find(options->hash, HBS_STRL("fun"));
-    char * tmp = handlebars_value_to_string(fun)->val;
     char * res = handlebars_talloc_asprintf(
             options->vm,
             "val is %s",
-            tmp
+            hbs_str_val(handlebars_value_to_string(fun))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, res);
@@ -572,7 +570,7 @@ FIXTURE_FN(1582700088)
 FIXTURE_FN(1623791204)
 {
     struct handlebars_value * noun = handlebars_value_map_str_find(options->hash, HBS_STRL("noun"));
-    char * tmp = handlebars_value_to_string(noun)->val;
+    char * tmp = hbs_str_val(handlebars_value_to_string(noun));
     char * res = handlebars_talloc_asprintf(
             options->vm,
             "Hello %s",
@@ -599,7 +597,7 @@ FIXTURE_FN(1644694756)
             y->type == HANDLEBARS_VALUE_TYPE_MAP ||
             y->type == HANDLEBARS_VALUE_TYPE_MAP ) {
         // nothing
-    } else if( 0 == strcmp(handlebars_value_to_string(x)->val, handlebars_value_to_string(y)->val) ) {
+    } else if (handlebars_string_eq(handlebars_value_to_string(x), handlebars_value_to_string(y))) {
         ret = true;
     }
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -614,7 +612,7 @@ FIXTURE_FN(1774917451)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "<form>%s</form>",
-            res->val
+            hbs_str_val(res)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -630,7 +628,7 @@ FIXTURE_FN(1818365722)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "Hello %s",
-            handlebars_value_to_string(param)->val
+            hbs_str_val(handlebars_value_to_string(param))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -653,10 +651,10 @@ FIXTURE_FN(1983911259)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s%s%s%s",
-            ret->val,
-            handlebars_value_to_string(argv[0])->val,
-            handlebars_value_to_string(argv[1])->val,
-            handlebars_value_to_string(argv[2])->val
+            hbs_str_val(ret),
+            hbs_str_val(handlebars_value_to_string(argv[0])),
+            hbs_str_val(handlebars_value_to_string(argv[1])),
+            hbs_str_val(handlebars_value_to_string(argv[2]))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -687,8 +685,8 @@ FIXTURE_FN(2089689191)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "<a href=\"/people/%s\">%s</a>",
-            handlebars_value_to_string(id)->val,
-            res->val
+            hbs_str_val(handlebars_value_to_string(id)),
+            hbs_str_val(res)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -712,9 +710,9 @@ FIXTURE_FN(2107645267)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "<a href=\"%s/%s\">%s</a>",
-            handlebars_value_to_string(prefix)->val,
-            handlebars_value_to_string(url)->val,
-            handlebars_value_to_string(text)->val
+            hbs_str_val(handlebars_value_to_string(prefix)),
+            hbs_str_val(handlebars_value_to_string(url)),
+            hbs_str_val(handlebars_value_to_string(text))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -729,8 +727,8 @@ FIXTURE_FN(2182811123)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s%s",
-            handlebars_value_to_string(value)->val,
-            handlebars_value_to_string(value)->val
+            hbs_str_val(handlebars_value_to_string(value)),
+            hbs_str_val(handlebars_value_to_string(value))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -755,8 +753,8 @@ FIXTURE_FN(2262633698)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s-%s",
-            handlebars_value_to_string(a)->val,
-            handlebars_value_to_string(b)->val
+            hbs_str_val(handlebars_value_to_string(a)),
+            hbs_str_val(handlebars_value_to_string(b))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -808,10 +806,10 @@ FIXTURE_FN(2515293198)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "Hello %s %s times: %s %s",
-            handlebars_value_to_string(param)->val,
-            handlebars_value_to_string(times)->val,
-            handlebars_value_to_string(bool1)->val,
-            handlebars_value_to_string(bool2)->val
+            hbs_str_val(handlebars_value_to_string(param)),
+            hbs_str_val(handlebars_value_to_string(times)),
+            hbs_str_val(handlebars_value_to_string(bool1)),
+            hbs_str_val(handlebars_value_to_string(bool2))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -835,7 +833,7 @@ FIXTURE_FN(2573932141)
 {
     // "function (world) {\n          return 'cruel ' + world.toUpperCase();\n        }"
     struct handlebars_value * value = argv[0];
-    char * tmp = handlebars_talloc_strdup(options->vm, handlebars_value_to_string(value)->val);
+    char * tmp = handlebars_talloc_strdup(options->vm, hbs_str_val(handlebars_value_to_string(value)));
     size_t i  = 0;
     while( tmp[i] ) {
         tmp[i] = toupper(tmp[i]);
@@ -868,7 +866,7 @@ FIXTURE_FN(2600345162)
     // "function (defaultString) {\n        return new Handlebars.SafeString(defaultString);\n      }"
     struct handlebars_value * context = argv[0];
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(value, handlebars_value_to_string(context)->val);
+    handlebars_value_string(value, hbs_str_val(handlebars_value_to_string(context)));
     value->flags |= HANDLEBARS_VALUE_FLAG_SAFE_STRING;
     return value;
 }
@@ -890,11 +888,11 @@ FIXTURE_FN(2632597106)
             options->vm,
             "%s %s! %s %s! %s %s! ",
             "Goodbye",
-            tmp1->val,
+            hbs_str_val(tmp1),
             "goodbye",
-            tmp2->val,
+            hbs_str_val(tmp2),
             "GOODBYE",
-            tmp3->val
+            hbs_str_val(tmp3)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -911,9 +909,9 @@ FIXTURE_FN(2659134105)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "GOODBYE %s %s %s TIMES",
-            handlebars_value_to_string(cruel)->val,
-            handlebars_value_to_string(world)->val,
-            handlebars_value_to_string(times)->val
+            hbs_str_val(handlebars_value_to_string(cruel)),
+            hbs_str_val(handlebars_value_to_string(world)),
+            hbs_str_val(handlebars_value_to_string(times))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -965,7 +963,7 @@ FIXTURE_FN(2842041837)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "helper missing: %s",
-            options->name->val
+            hbs_str_val(options->name)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1027,8 +1025,8 @@ FIXTURE_FN(2961119846)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s %s",
-            handlebars_value_to_string(adjective)->val,
-            handlebars_value_to_string(noun)->val
+            hbs_str_val(handlebars_value_to_string(adjective)),
+            hbs_str_val(handlebars_value_to_string(noun))
     );
     handlebars_value_string_steal(result, tmp);
     return result;
@@ -1062,14 +1060,14 @@ FIXTURE_FN(3065257350)
 {
     // "function (options) {\n          return this.goodbye.toUpperCase() + options.fn(this);\n        }"
     struct handlebars_value * goodbye = handlebars_value_map_str_find(options->scope, HBS_STRL("goodbye"));
-    char * tmp = handlebars_talloc_strdup(options->vm, handlebars_value_to_string(goodbye)->val);
+    char * tmp = handlebars_talloc_strdup(options->vm, hbs_str_val(handlebars_value_to_string(goodbye)));
     size_t i  = 0;
     while( tmp[i] ) {
         tmp[i] = toupper(tmp[i]);
         i++;
     }
     struct handlebars_string * tmp2 = handlebars_vm_execute_program(options->vm, options->program, options->scope);
-    tmp = handlebars_talloc_strdup_append(tmp, tmp2->val);
+    tmp = handlebars_talloc_strdup_append(tmp, hbs_str_val(tmp2));
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string_steal(result, tmp);
     handlebars_talloc_free(tmp2);
@@ -1114,7 +1112,7 @@ FIXTURE_FN(3206093801)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "<form>%s</form>",
-            res->val
+            hbs_str_val(res)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -1134,11 +1132,11 @@ FIXTURE_FN(325991858)
             options->vm,
             "%s %s! %s %s! %s %s! ",
             "Goodbye",
-            tmp1->val,
+            hbs_str_val(tmp1),
             "goodbye",
-            tmp2->val,
+            hbs_str_val(tmp2),
             "GOODBYE",
-            tmp3->val
+            hbs_str_val(tmp3)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string_steal(result, tmp);
@@ -1166,7 +1164,7 @@ FIXTURE_FN(3308130198)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "foo %s",
-            handlebars_value_to_string(value)->val
+            hbs_str_val(handlebars_value_to_string(value))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1183,9 +1181,9 @@ FIXTURE_FN(3325763044)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "val is %s, %s and %s",
-            handlebars_value_to_string(val)->val,
-            handlebars_value_to_string(that)->val,
-            handlebars_value_to_string(theOther)->val
+            hbs_str_val(handlebars_value_to_string(val)),
+            hbs_str_val(handlebars_value_to_string(that)),
+            hbs_str_val(handlebars_value_to_string(theOther))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1197,7 +1195,7 @@ FIXTURE_FN(3327136760)
 {
     // "function () {\n          return this.goodbye.toUpperCase();\n        }"
     struct handlebars_value * goodbye = handlebars_value_map_str_find(options->scope, HBS_STRL("goodbye"));
-    char * tmp = handlebars_talloc_strdup(options->vm, handlebars_value_to_string(goodbye)->val);
+    char * tmp = handlebars_talloc_strdup(options->vm, hbs_str_val(handlebars_value_to_string(goodbye)));
     size_t i  = 0;
     while( tmp[i] ) {
         tmp[i] = toupper(tmp[i]);
@@ -1231,7 +1229,7 @@ FIXTURE_FN(3407223629)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "missing: %s",
-            options->name->val
+            hbs_str_val(options->name)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1259,7 +1257,7 @@ FIXTURE_FN(3659403207)
     struct handlebars_value * arg = argv[0];
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string_steal(result, handlebars_talloc_asprintf(
-            arg, "%s%s", "bar ",  handlebars_value_to_string(arg)->val
+            arg, "%s%s", "bar ",  hbs_str_val(handlebars_value_to_string(arg))
     ));
     handlebars_value_delref(arg);
     return result;
@@ -1272,7 +1270,7 @@ FIXTURE_FN(3691188061)
     char * ret = handlebars_talloc_asprintf(
             options->vm,
             "val is %s",
-            handlebars_value_to_string(value)->val
+            hbs_str_val(handlebars_value_to_string(value))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, ret);
@@ -1302,8 +1300,8 @@ FIXTURE_FN(3728875550)
     char * ret2 = handlebars_talloc_asprintf(
             options->vm,
             "%s %s",
-            handlebars_value_to_string(access_data)->val,
-            ret->val
+            hbs_str_val(handlebars_value_to_string(access_data)),
+            hbs_str_val(ret)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string_steal(result, ret2);
@@ -1321,7 +1319,7 @@ FIXTURE_FN(3781305181)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "Hello %s times",
-            handlebars_value_to_string(times)->val
+            hbs_str_val(handlebars_value_to_string(times))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1341,7 +1339,7 @@ FIXTURE_FN(3878511480)
             tmp = handlebars_talloc_asprintf_append(
                     tmp,
                     "<li>%s</li>",
-                    tmp2->val
+                    hbs_str_val(tmp2)
             );
             handlebars_talloc_free(tmp2);
         } HANDLEBARS_VALUE_FOREACH_END();
@@ -1351,7 +1349,7 @@ FIXTURE_FN(3878511480)
         tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "<p>%s</p>",
-                tmp2->val
+                hbs_str_val(tmp2)
         );
         handlebars_talloc_free(tmp2);
     }
@@ -1375,8 +1373,8 @@ FIXTURE_FN(4005129518)
     char * tmp3 = handlebars_talloc_asprintf(
             options->vm,
             "<input aria-label=\"%s\" placeholder=\"%s\" />",
-            tmp1->val,
-            tmp2->val
+            hbs_str_val(tmp1),
+            hbs_str_val(tmp2)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp3);
@@ -1396,9 +1394,9 @@ FIXTURE_FN(4112130635)
     char * res = handlebars_talloc_asprintf(
             options->vm,
             "%s %s%s",
-            handlebars_value_to_string(adjective)->val,
-            handlebars_value_to_string(thing)->val,
-            handlebars_value_to_string(exclaim)->val
+            hbs_str_val(handlebars_value_to_string(adjective)),
+            hbs_str_val(handlebars_value_to_string(thing)),
+            hbs_str_val(handlebars_value_to_string(exclaim))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, res);
@@ -1409,7 +1407,7 @@ FIXTURE_FN(4112130635)
 FIXTURE_FN(4158918668)
 {
     struct handlebars_value * noun = argv[0];
-    char * tmp = handlebars_value_to_string(noun)->val;
+    char * tmp = hbs_str_val(handlebars_value_to_string(noun));
     char * res = handlebars_talloc_asprintf(
             options->vm,
             "Hello %s",
@@ -1468,8 +1466,8 @@ FIXTURE_FN(1569150712)
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "GOODBYE %s %s",
-                handlebars_value_to_string(cruel)->val,
-                handlebars_value_to_string(world)->val
+                hbs_str_val(handlebars_value_to_string(cruel)),
+                hbs_str_val(handlebars_value_to_string(world))
         );
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(result, tmp);
@@ -1540,7 +1538,7 @@ FIXTURE_FN(1561073198)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "val is %s",
-            handlebars_value_to_string(fun)->val
+            hbs_str_val(handlebars_value_to_string(fun))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1591,7 +1589,7 @@ FIXTURE_FN(401804363)
     }
     struct handlebars_value * context = argv[0];
     struct handlebars_string * str = handlebars_value_to_string(context);
-    if (0 == strncmp(str->val, "{{x}}", sizeof("{{x}}") - 1)) {
+    if (0 == strncmp(hbs_str_val(str), "{{x}}", sizeof("{{x}}") - 1)) {
         FIXTURE_STRING("yes");
     } else {
         FIXTURE_STRING("no");
@@ -1607,9 +1605,9 @@ FIXTURE_FN(3964931170)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s%s%s",
-            handlebars_value_to_string(argv[0])->val,
+            hbs_str_val(handlebars_value_to_string(argv[0])),
             "{{planet}}",
-            handlebars_value_to_string(argv[0])->val
+            hbs_str_val(handlebars_value_to_string(argv[0]))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1626,9 +1624,9 @@ FIXTURE_FN(2718175385)
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s%s%s",
-            handlebars_value_to_string(argv[0])->val,
+            hbs_str_val(handlebars_value_to_string(argv[0])),
             "{{planet}} => |planet|",
-            handlebars_value_to_string(argv[0])->val
+            hbs_str_val(handlebars_value_to_string(argv[0]))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
@@ -1646,7 +1644,7 @@ FIXTURE_FN(2000357317)
             options->vm,
             "%s%s%s",
             "__",
-            handlebars_value_to_string(argv[0])->val,
+            hbs_str_val(handlebars_value_to_string(argv[0])),
             "__"
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
@@ -1687,7 +1685,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
     }
     assert(jsvalue != NULL);
     assert(jsvalue->type == HANDLEBARS_VALUE_TYPE_STRING);
-    uint32_t hash = adler32((unsigned char *) handlebars_value_to_string(jsvalue)->val, handlebars_value_get_strlen(jsvalue));
+    uint32_t hash = adler32((unsigned char *) hbs_str_val(handlebars_value_to_string(jsvalue)), handlebars_value_get_strlen(jsvalue));
 
     switch( hash ) {
         FIXTURE_CASE(20974934);
@@ -1830,7 +1828,7 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         FIXTURE_CASE(617219335);
 
         default:
-            fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, handlebars_value_to_string(jsvalue)->val);
+            fprintf(stderr, "Unimplemented test fixture [%u]:\n%s\n", hash, hbs_str_val(handlebars_value_to_string(jsvalue)));
             return;
     }
 

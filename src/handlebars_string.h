@@ -254,14 +254,25 @@ struct handlebars_string * handlebars_string_rtrim(
     const char * what, size_t what_length
 ) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
-#ifndef HANDLEBARS_STRING_PRIVATE
+char * hbs_str_val(struct handlebars_string * str)
+    HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-char * hbs_str_val(struct handlebars_string * str) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-size_t hbs_str_len(struct handlebars_string * str) HBS_ATTR_NONNULL_ALL;
-unsigned long hbs_str_hash(struct handlebars_string * str) HBS_ATTR_NONNULL_ALL;
+size_t hbs_str_len(struct handlebars_string * str)
+    HBS_ATTR_NONNULL_ALL;
 
-unsigned long handlebars_string_hash_cont(const char * str, size_t len, unsigned long hash) HBS_ATTR_NONNULL(1);
-unsigned long handlebars_string_hash(const char * str, size_t len) HBS_ATTR_NONNULL(1);
+unsigned long hbs_str_hash(struct handlebars_string * str)
+    HBS_ATTR_NONNULL_ALL;
+
+unsigned long handlebars_string_hash_cont(
+    const char * str,
+    size_t len,
+    unsigned long hash
+) HBS_ATTR_NONNULL(1);
+
+unsigned long handlebars_string_hash(
+    const char * str,
+    size_t len
+) HBS_ATTR_NONNULL(1);
 
 /**
  * @brief Allocate a new, empty string of the specified length
@@ -269,7 +280,10 @@ unsigned long handlebars_string_hash(const char * str, size_t len) HBS_ATTR_NONN
  * @param[in] size
  * @return The newly allocated string
  */
-struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t length) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+struct handlebars_string * handlebars_string_init(
+    struct handlebars_context * context,
+    size_t length
+) HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Construct a string from the specified parameters, including hash
@@ -394,196 +408,17 @@ bool handlebars_string_eq(
     /*const*/ struct handlebars_string * string2
 ) HBS_ATTR_NONNULL(1, 2);
 
+void handlebars_string_truncate(
+    struct handlebars_string * string,
+    size_t start,
+    size_t end
+) HBS_ATTR_NONNULL_ALL;
+
 bool hbs_str_eq_strl(
     struct handlebars_string * string1,
     const char * str2,
     size_t len2
 ) HBS_ATTR_NONNULL(1, 2);
-
-#else /* HANDLEBARS_STRING_PRIVATE */
-
-struct handlebars_string {
-    size_t len;
-    unsigned long hash;
-    char val[];
-};
-
-HBS_ATTR_NONNULL(1)
-inline unsigned long handlebars_string_hash_cont(const char * str, size_t len, unsigned long hash)
-{
-    unsigned long c;
-    const unsigned char * ptr = (const unsigned char *) str;
-    const unsigned char * end = ptr + len;
-    for( c = *ptr++; ptr <= end && c; c = *ptr++ ) {
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    }
-    return hash;
-}
-
-HBS_ATTR_NONNULL(1)
-inline unsigned long handlebars_string_hash(const char * str, size_t len)
-{
-    unsigned long hash = 5381;
-    return handlebars_string_hash_cont(str, len, hash);
-}
-
-HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL
-inline char * hbs_str_val(struct handlebars_string * str) {
-    return str->val;
-}
-
-HBS_ATTR_NONNULL_ALL
-inline size_t hbs_str_len(struct handlebars_string * str) {
-    return str->len;
-}
-
-HBS_ATTR_NONNULL_ALL
-inline unsigned long hbs_str_hash(struct handlebars_string * str) {
-    if (str->hash == 0) {
-        str->hash = handlebars_string_hash(str->val, str->len);
-    }
-    return str->hash;
-}
-
-HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-inline struct handlebars_string * handlebars_string_init(struct handlebars_context * context, size_t length) {
-    struct handlebars_string * st = handlebars_talloc_zero_size(context, HBS_STR_SIZE(length));
-    HANDLEBARS_MEMCHECK(st, context);
-    st->val[0] = 0;
-    return st;
-}
-
-HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-inline struct handlebars_string * handlebars_string_ctor_ex(
-    struct handlebars_context * context,
-    const char * str, size_t len, unsigned long hash
-) {
-    struct handlebars_string * st = handlebars_string_init(context, len + 1);
-    HANDLEBARS_MEMCHECK(st, context);
-    st->len = len;
-    memcpy(st->val, str, len);
-    st->val[st->len] = 0;
-    st->hash = hash;
-    return st;
-}
-
-HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-inline struct handlebars_string * handlebars_string_ctor(
-    struct handlebars_context * context,
-    const char * str, size_t len
-) {
-    return handlebars_string_ctor_ex(context, str, len, 0);
-}
-
-HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-inline struct handlebars_string * handlebars_string_copy_ctor(
-    struct handlebars_context * context,
-    const struct handlebars_string * string
-) {
-    size_t size = HBS_STR_SIZE(string->len);
-    struct handlebars_string * st = handlebars_talloc_size(context, size);
-    HANDLEBARS_MEMCHECK(st, context);
-    memcpy(st, string, size);
-    return st;
-}
-
-HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-inline struct handlebars_string * handlebars_string_extend(
-    struct handlebars_context * context,
-    struct handlebars_string * string,
-    size_t len
-) {
-    size_t size;
-    if( string == NULL ) {
-        return handlebars_string_init(context, len);
-    }
-    size = HBS_STR_SIZE(len);
-    if( size > talloc_get_size(string) ) {
-        string = (struct handlebars_string *) handlebars_talloc_realloc_size(context, string, size);
-        HANDLEBARS_MEMCHECK(string, context);
-    }
-    return string;
-}
-
-HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL
-inline struct handlebars_string * handlebars_string_append_unsafe(
-    struct handlebars_string * string,
-    const char * str, size_t len
-) {
-    memcpy(string->val + string->len, str, len);
-    string->len += len;
-    string->val[string->len] = 0;
-    string->hash = 0;
-    return string;
-}
-
-HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-inline struct handlebars_string * handlebars_string_append(
-    struct handlebars_context * context,
-    struct handlebars_string * string,
-    const char * str, size_t len
-) {
-    string = handlebars_string_extend(context, string, string->len + len);
-    string = handlebars_string_append_unsafe(string, str, len);
-    return string;
-}
-
-HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-inline struct handlebars_string * handlebars_string_append_str(
-    struct handlebars_context * context,
-    struct handlebars_string * string,
-    const struct handlebars_string * string2
-) {
-    return handlebars_string_append(context, string, string2->val, string2->len);
-}
-
-HBS_ATTR_NONNULL(1) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-inline struct handlebars_string * handlebars_string_compact(struct handlebars_string * string) {
-    size_t size = HBS_STR_SIZE(string->len);
-    if( talloc_get_size(string) > size ) {
-        return (struct handlebars_string *) handlebars_talloc_realloc_size(NULL, string, size);
-    } else {
-        return string;
-    }
-}
-
-HBS_ATTR_NONNULL(1, 4)
-inline bool handlebars_string_eq_ex(
-    const char * string1, size_t length1, unsigned long hash1,
-    const char * string2, size_t length2, unsigned long hash2
-) {
-    if( length1 != length2 ) {
-        return false;
-    } else {
-        return HBS_STR_HASH_EX(string1, length1, hash1) == HBS_STR_HASH_EX(string2, length2, hash2);
-    }
-}
-
-HBS_ATTR_NONNULL(1, 2)
-inline bool handlebars_string_eq(
-    /*const*/ struct handlebars_string * string1,
-    /*const*/ struct handlebars_string * string2
-) {
-    if( string1->len != string2->len ) {
-        return false;
-    } else {
-        return HBS_STR_HASH(string1) == HBS_STR_HASH(string2);
-    }
-}
-
-HBS_ATTR_NONNULL(1, 2)
-inline bool hbs_str_eq_strl(
-    struct handlebars_string * string1,
-    const char * str2,
-    size_t len2
-) {
-    if (hbs_str_len(string1) != len2) {
-        return false;
-    }
-    return 0 == strncmp(hbs_str_val(string1), str2, len2);
-}
-
-#endif /* HANDLEBARS_STRING_PRIVATE */
 
 HBS_EXTERN_C_END
 

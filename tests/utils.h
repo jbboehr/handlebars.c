@@ -66,6 +66,10 @@
 #define ck_assert_uint_ne(a, b) ck_assert_int_ne(a, b)
 #endif
 
+#define ck_assert_hbs_str_eq(a, b) ck_assert_str_eq(hbs_str_val(a), hbs_str_val(b))
+#define ck_assert_hbs_str_eq_cstr(a, b) ck_assert_str_eq(hbs_str_val(a), b)
+#define ck_assert_cstr_eq_hbs_str(a, b) ck_assert_str_eq(a, hbs_str_val(b))
+
 struct handlebars_value;
 struct handlebars_string;
 

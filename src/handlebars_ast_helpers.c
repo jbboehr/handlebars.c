@@ -28,7 +28,6 @@
 
 #define HANDLEBARS_AST_PRIVATE
 #define HANDLEBARS_AST_LIST_PRIVATE
-#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -319,103 +318,108 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
     return handlebars_ast_node_ctor_raw_block(parser, open_raw_block, content_node, locinfo);
 }
 
-static inline void handlebars_ast_helper_strip_comment_left(struct handlebars_string * comment)
+static inline size_t handlebars_ast_helper_strip_comment_left(struct handlebars_string * comment)
 {
     char * c = hbs_str_val(comment);
+    size_t start = 0;
 
     if( *c == '{' ) {
         c++;
+        start++;
     } else {
-        return;
+        return 0;
     }
 
     if( *c == '{' ) {
         c++;
+        start++;
     } else {
-        return;
+        return 0;
     }
 
     if( *c == '~' ) {
         c++;
+        start++;
     } else if( !*c ) {
-        return;
+        return 0;
     }
 
     if( *c == '!' ) {
         c++;
+        start++;
     } else {
-        return;
+        return 0;
     }
 
     if( *c == '-' ) {
         c++;
+        start++;
     }
 
     if( *c == '-' ) {
         c++;
+        start++;
     }
 
-    if( c > hbs_str_val(comment) ) {
-        comment->len = strlen(c);
-        memmove(comment->val, c, comment->len);
-        comment->val[comment->len] = 0;
-    }
+    return start;
 }
 
-static void handlebars_ast_helper_strip_comment_right(struct handlebars_string * comment)
+static inline size_t handlebars_ast_helper_strip_comment_right(struct handlebars_string * comment)
 {
-    char * end = comment->val + comment->len;
-    char * c = end;
+    char * orig = hbs_str_val(comment);
+    char * c = orig + hbs_str_len(comment);
+    size_t len = hbs_str_len(comment);
 
-    if( comment->len < 2 ) {
-        return;
+    if( hbs_str_len(comment) < 2 ) {
+        return hbs_str_len(comment);
     }
 
     if( *--c != '}' ) {
-        return;
+        return hbs_str_len(comment);
     }
 
     if( *--c != '}' ) {
-        return;
+        return hbs_str_len(comment);
     }
+    len--;
+    len--;
 
-    if( c > comment->val && *(c - 1) == '~' ) {
+    if( c > orig && *(c - 1) == '~' ) {
         c--;
+        len--;
     }
 
-    if( c > comment->val && *(c - 1) == '-' ) {
+    if( c > orig && *(c - 1) == '-' ) {
         c--;
+        len--;
     }
 
-    if( c > comment->val && *(c - 1) == '-' ) {
+    if( c > orig && *(c - 1) == '-' ) {
         c--;
+        len--;
     }
 
-    if( c < end ) {
-        *c = 0;
-        comment->len = strlen(comment->val);
-    }
+    return len;
 }
 
 struct handlebars_string * handlebars_ast_helper_strip_comment(struct handlebars_string * comment)
 {
     assert(comment != NULL);
-    handlebars_ast_helper_strip_comment_left(comment);
-    handlebars_ast_helper_strip_comment_right(comment);
+    size_t start = handlebars_ast_helper_strip_comment_left(comment);
+    size_t len = handlebars_ast_helper_strip_comment_right(comment);
+    handlebars_string_truncate(comment, start, len);
     return comment;
 }
 
 struct handlebars_string * handlebars_ast_helper_strip_id_literal(struct handlebars_string * comment)
 {
-	if( comment && comment->val[0] == '[' && comment->val[comment->len - 1] == ']' ) {
-		if( comment->len <= 2 ) {
-			comment->val[0] = 0;
-            comment->len = 0;
-		} else {
-			memmove(comment->val, comment->val + 1, comment->len - 2);
-            comment->len -= 2;
-            comment->val[comment->len] = 0;
-		}
+    if (!comment) {
+        return comment;
+    }
+
+    char * val = hbs_str_val(comment);
+	if( val[0] == '[' && val[hbs_str_len(comment) - 1] == ']' ) {
+        handlebars_string_truncate(comment, 1, hbs_str_len(comment) - 1);
 	}
 
 	return comment;
@@ -433,12 +437,12 @@ void handlebars_ast_helper_set_strip_flags(
 unsigned handlebars_ast_helper_strip_flags(struct handlebars_string * open, struct handlebars_string * close)
 {
     unsigned strip = 0;
-    if( open && open->len >= 3 && *(open->val + 2) == '~' ) {
+    if( open && hbs_str_len(open) >= 3 && *(hbs_str_val(open) + 2) == '~' ) {
         strip |= handlebars_ast_strip_flag_left;
     } else {
         strip &= ~handlebars_ast_strip_flag_left;
     }
-    if( close && close->len >= 3 && *(close->val + close->len - 3) == '~' ) {
+    if( close && hbs_str_len(close) >= 3 && *(hbs_str_val(close) + hbs_str_len(close) - 3) == '~' ) {
         strip |= handlebars_ast_strip_flag_right;
     } else {
         strip &= ~handlebars_ast_strip_flag_right;
@@ -452,11 +456,11 @@ bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
     struct handlebars_string * original;
     char * found;
     if( path && (original = path->node.path.original) ) {
-        if( original->len >= 1 && original->val[0] == '.' ) {
+        if( hbs_str_len(original) >= 1 && hbs_str_val(original)[0] == '.' ) {
             return true;
-        } else if( original->len == 4 && 0 == strcmp(original->val, "this") ) {
+        } else if( hbs_str_len(original) == 4 && 0 == strcmp(hbs_str_val(original), "this") ) {
             return true;
-        } else if( original->len > 4 && NULL != (found = strstr(original->val, "this")) ) {
+        } else if( hbs_str_len(original) > 4 && NULL != (found = strstr(hbs_str_val(original), "this")) ) {
         //} else if( len > 4 && 0 == strncmp(original, "this", 4) ) {
             char c = *(found + 4);
             // [^a-zA-Z0-9_]

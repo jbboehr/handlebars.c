@@ -24,8 +24,6 @@
 #include <check.h>
 #include <talloc.h>
 
-#define HANDLEBARS_STRING_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_string.h"
@@ -43,8 +41,8 @@ START_TEST(test_token_ctor)
     ck_assert_ptr_ne(NULL, token);
     ck_assert_ptr_ne(NULL, handlebars_token_get_text(token));
     ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
-    ck_assert_str_eq(handlebars_token_get_text(token)->val, "{{");
-    ck_assert_uint_eq(sizeof("{{") - 1, handlebars_token_get_text(token)->len);
+    ck_assert_hbs_str_eq_cstr(handlebars_token_get_text(token), "{{");
+    ck_assert_uint_eq(sizeof("{{") - 1, hbs_str_len(handlebars_token_get_text(token)));
 
     handlebars_token_dtor(token);
 }
@@ -98,8 +96,8 @@ START_TEST(test_token_get_text)
 	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
     struct handlebars_token * token = handlebars_token_ctor(context, OPEN, string);
 
-    ck_assert_str_eq("{{", handlebars_token_get_text(token)->val);
-    ck_assert_uint_eq(sizeof("{{") - 1, handlebars_token_get_text(token)->len);
+    ck_assert_cstr_eq_hbs_str("{{", handlebars_token_get_text(token));
+    ck_assert_uint_eq(sizeof("{{") - 1, hbs_str_len(handlebars_token_get_text(token)));
 
     handlebars_token_dtor(token);
 }
@@ -209,7 +207,7 @@ START_TEST(test_token_print)
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
     struct handlebars_token * tok = handlebars_token_ctor(context, OPEN, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, 0);
-    ck_assert_str_eq("OPEN [{{] ", actual->val);
+    ck_assert_cstr_eq_hbs_str("OPEN [{{] ", actual);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
 }
@@ -220,7 +218,7 @@ START_TEST(test_token_print2)
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, 0);
-    ck_assert_str_eq("CONTENT [this\\nis\\ra\\ttest] ", actual->val);
+    ck_assert_cstr_eq_hbs_str("CONTENT [this\\nis\\ra\\ttest] ", actual);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
 }
@@ -231,7 +229,7 @@ START_TEST(test_token_print3)
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, handlebars_token_print_flag_newlines);
-    ck_assert_str_eq("CONTENT [this\\nis\\ra\\ttest]\n", actual->val);
+    ck_assert_cstr_eq_hbs_str("CONTENT [this\\nis\\ra\\ttest]\n", actual);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
 }

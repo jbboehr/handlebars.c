@@ -25,8 +25,6 @@
 #include <string.h>
 #include <talloc.h>
 
-#define HANDLEBARS_STRING_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
@@ -126,14 +124,14 @@ done:
 START_TEST(test_partial_loader_1)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}");
-    ck_assert_str_eq(rv->val, "|bar|");
+    ck_assert_hbs_str_eq_cstr(rv, "|bar|");
 }
 END_TEST
 
 START_TEST(test_partial_loader_2)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}{{> fixture1 .}}");
-    ck_assert_str_eq(rv->val, "|bar||bar|");
+    ck_assert_hbs_str_eq_cstr(rv, "|bar||bar|");
 }
 END_TEST
 

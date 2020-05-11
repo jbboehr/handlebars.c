@@ -29,7 +29,6 @@
 #endif
 
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
-#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_cache.h"
@@ -196,14 +195,14 @@ static void cache_add(
     if( err != 0 ) goto error;
 
     // Make key
-    if( tmpl->len > mdb_env_get_maxkeysize(intern->env) ) {
+    if( hbs_str_len(tmpl) > mdb_env_get_maxkeysize(intern->env) ) {
         unsigned long hash = HBS_STR_HASH(tmpl);
         snprintf(tmp, 256, "hash:%lu", hash);
         key.mv_size = strlen(tmp);
         key.mv_data = tmp;
     } else {
-        key.mv_size = tmpl->len + 1;
-        key.mv_data = tmpl->val;
+        key.mv_size = hbs_str_len(tmpl) + 1;
+        key.mv_data = hbs_str_val(tmpl);
     }
 
     // Make data

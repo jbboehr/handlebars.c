@@ -25,7 +25,6 @@
 #include <string.h>
 
 #define HANDLEBARS_HELPERS_PRIVATE
-#define HANDLEBARS_STRING_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 #define HANDLEBARS_VM_PRIVATE
@@ -221,7 +220,13 @@ done:
 struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_ARGS)
 {
     if( argc != 0 ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Missing helper: \"%s\"", options->name->val);
+        handlebars_throw(
+            CONTEXT,
+            HANDLEBARS_ERROR,
+            "Missing helper: \"%.*s\"",
+            (int) hbs_str_len(options->name),
+            hbs_str_val(options->name)
+        );
     }
     SAFE_RETURN(NULL);
 }

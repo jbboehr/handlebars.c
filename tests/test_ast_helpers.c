@@ -25,7 +25,6 @@
 #include <talloc.h>
 
 #define HANDLEBARS_AST_PRIVATE
-#define HANDLEBARS_STRING_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -64,51 +63,51 @@ START_TEST(test_ast_helper_strip_comment)
 
     tmp = handlebars_string_ctor(context, HBS_STRL(""));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("blah1"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "blah1");
+    ck_assert_str_eq(hbs_str_val(tmp), "blah1");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "{");
+    ck_assert_str_eq(hbs_str_val(tmp), "{");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{!"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{~!--"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{!-- blah"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, " blah");
+    ck_assert_str_eq(hbs_str_val(tmp), " blah");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("--}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{!}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{! foo }}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, " foo ");
+    ck_assert_str_eq(hbs_str_val(tmp), " foo ");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{!-- bar --}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, " bar ");
+    ck_assert_str_eq(hbs_str_val(tmp), " bar ");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{~!-- baz --~}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, " baz ");
+    ck_assert_str_eq(hbs_str_val(tmp), " baz ");
 }
 END_TEST
 
