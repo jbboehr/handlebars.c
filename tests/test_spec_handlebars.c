@@ -565,7 +565,6 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     // Memdebug
-    handlebars_value_delref(context);
     handlebars_vm_dtor(vm);
     if( memdebug ) {
         talloc_report_full(ctx, stderr);

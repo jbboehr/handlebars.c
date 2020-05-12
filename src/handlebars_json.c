@@ -49,7 +49,7 @@
 
 
 #define GET_INTERN_V(value) GET_INTERN(handlebars_value_get_user(value))
-#define GET_INTERN(user) ((struct handlebars_json *) talloc_get_type(user, struct handlebars_json))
+#define GET_INTERN(user) ((struct handlebars_json *) talloc_get_type_abort(user, struct handlebars_json))
 #define HANDLEBARS_JSON_OBJ(value) GET_INTERN_V(value)->object
 
 struct handlebars_json {
@@ -103,7 +103,6 @@ static void hbs_json_convert(struct handlebars_value * value, bool recurse)
                 if( recurse && handlebars_value_get_real_type(new_value) == HANDLEBARS_VALUE_TYPE_USER ) {
                     hbs_json_convert(new_value, recurse);
                 }
-                handlebars_value_delref(new_value);
             }
             handlebars_value_map(value, map);
             break;
@@ -120,7 +119,6 @@ static void hbs_json_convert(struct handlebars_value * value, bool recurse)
                 if( recurse && handlebars_value_get_real_type(new_value) == HANDLEBARS_VALUE_TYPE_USER ) {
                     hbs_json_convert(new_value, recurse);
                 }
-                handlebars_value_delref(new_value);
             }
             handlebars_value_array(value, stack);
             break;
@@ -234,6 +232,7 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
                 it->current = handlebars_value_from_json_object(CONTEXT, (json_object *) entry->v);
                 it->length = (size_t) json_object_object_length(intern);
                 it->next = &hbs_json_iterator_next_object;
+                handlebars_value_addref(it->current);
                 return true;
             } else {
                 it->next = &hbs_json_iterator_next_void;
@@ -244,6 +243,7 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
             it->current = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, (int) it->index));
             it->length = (size_t) json_object_array_length(intern);
             it->next = &hbs_json_iterator_next_array;
+            handlebars_value_addref(it->current);
             return true;
         default:
             it->next = &hbs_json_iterator_next_void;

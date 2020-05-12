@@ -54,10 +54,8 @@ FIXTURE_FN(20974934)
     // "function (arg) { return typeof arg; }"
     struct handlebars_value * arg = argv[0];
     if( handlebars_value_get_type(arg) == HANDLEBARS_VALUE_TYPE_NULL ) {
-        handlebars_value_delref(arg);
         FIXTURE_STRING("undefined");
     } else {
-        handlebars_value_delref(arg);
         FIXTURE_STRING("not undefined");
     }
 }
@@ -69,7 +67,6 @@ FIXTURE_FN(49286285)
     handlebars_value_string_steal(result, handlebars_talloc_asprintf(
             arg, "%s%s", "bar",  hbs_str_val(handlebars_value_to_string(arg))
     ));
-    handlebars_value_delref(arg);
     return result;
 }
 
@@ -121,8 +118,6 @@ FIXTURE_FN(459219799)
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp);
 
-    handlebars_value_delref(prefix);
-    handlebars_value_delref(url);
     handlebars_talloc_free(tmp);
     handlebars_talloc_free(res);
     return result;
@@ -165,10 +160,6 @@ FIXTURE_FN(510017722)
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
 
-    handlebars_value_delref(bp1);
-    handlebars_value_delref(bp2);
-    handlebars_value_delref(block_params);
-    handlebars_value_delref(context);
     return result;
 }
 
@@ -188,10 +179,6 @@ FIXTURE_FN(585442881)
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
 
-    handlebars_value_delref(greeting);
-    handlebars_value_delref(context);
-    handlebars_value_delref(cruel);
-    handlebars_value_delref(world);
     return result;
 }
 
@@ -411,7 +398,6 @@ FIXTURE_FN(931412676)
             struct handlebars_value * tmp = handlebars_value_ctor(CONTEXT);
             handlebars_value_integer(tmp, handlebars_value_get_intval(child) + 1);
             handlebars_map_update(map, key, tmp);
-            handlebars_value_delref(tmp);
         } else {
             handlebars_map_update(map, key, child);
         }
@@ -1133,10 +1119,12 @@ FIXTURE_FN(325991858)
 {
     // "function (options) {\n      var out = '';\n      var byes = ['Goodbye', 'goodbye', 'GOODBYE'];\n      for (var i = 0, j = byes.length; i < j; i++) {\n        out += byes[i] + ' ' + options.fn({}) + '! ';\n      }\n      return out;\n    }"
     struct handlebars_value * context = handlebars_value_ctor(CONTEXT);
+    handlebars_value_addref(context);
     handlebars_value_map_init(context, 0); // zero may trigger extra rehashes - good for testing
     struct handlebars_string * tmp1 = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_string * tmp2 = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_string * tmp3 = handlebars_vm_execute_program(options->vm, options->program, context);
+    handlebars_value_delref(context);
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
             "%s %s! %s %s! %s %s! ",
@@ -1268,7 +1256,6 @@ FIXTURE_FN(3659403207)
     handlebars_value_string_steal(result, handlebars_talloc_asprintf(
             arg, "%s%s", "bar ",  hbs_str_val(handlebars_value_to_string(arg))
     ));
-    handlebars_value_delref(arg);
     return result;
 }
 
@@ -1866,7 +1853,6 @@ void load_fixtures(struct handlebars_value * value)
             if( child ) {
                 // Convert to helper
                 convert_value_to_fixture(value);
-                handlebars_value_delref(child);
             } else {
                 // Recurse
                 HANDLEBARS_VALUE_FOREACH(value, child) {

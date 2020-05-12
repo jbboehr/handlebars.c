@@ -101,6 +101,8 @@ START_TEST(test_map)
         ck_assert_ptr_ne(key, NULL);
         ck_assert_ptr_ne(value, NULL);
 
+        handlebars_value_addref(value);
+
         handlebars_map_remove(map, key);
 
         // make sure the count of items in the map is accurate
@@ -108,6 +110,8 @@ START_TEST(test_map)
 
         // make sure the right element was removed
         ck_assert_int_eq(i++, handlebars_value_get_intval(value));
+
+        handlebars_value_delref(value);
     } handlebars_map_foreach_end();
 
     // Make sure it's empty

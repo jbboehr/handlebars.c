@@ -48,17 +48,18 @@ struct handlebars_partial_loader {
 
 static int partial_loader_dtor(struct handlebars_partial_loader * intern)
 {
-    if (intern->map) {
-        handlebars_map_delref(intern->map);
-        intern->map = NULL;
-    }
+    // When this gets run, the map has been already freed by talloc it appears
+    // if (intern->map) {
+    //     handlebars_map_delref(intern->map);
+    //     intern->map = NULL;
+    // }
 
     return 0;
 }
 
 
 #define GET_INTERN_V(value) GET_INTERN(handlebars_value_get_user(value))
-#define GET_INTERN(user) ((struct handlebars_partial_loader *) talloc_get_type(user, struct handlebars_partial_loader))
+#define GET_INTERN(user) ((struct handlebars_partial_loader *) talloc_get_type_abort(user, struct handlebars_partial_loader))
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(handlebars_value_get_ctx(value))
@@ -154,7 +155,6 @@ static bool hbs_partial_loader_iterator_next_map(struct handlebars_value_iterato
     assert(handlebars_value_get_type(it->value) == HANDLEBARS_VALUE_TYPE_MAP);
     assert(it->current != NULL);
 
-    handlebars_value_delref(it->current);
     it->current = NULL;
 
     if( it->index >= handlebars_map_count(map) - 1 ) {
@@ -183,7 +183,6 @@ static bool hbs_partial_loader_iterator_init(struct handlebars_value_iterator * 
     it->length = handlebars_map_count(map);
     handlebars_map_get_kv_at_index(map, it->index, &it->key, &it->current);
     it->next = &hbs_partial_loader_iterator_next_map;
-    handlebars_value_addref(it->current);
     handlebars_map_set_is_in_iteration(map, true); // @todo we should store the result
 
     return true;

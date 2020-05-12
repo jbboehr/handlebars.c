@@ -32,18 +32,30 @@
 #include "utils.h"
 
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+#define ASSERT_INIT_BLOCKS() \
+    do { \
+        handlebars_value_delref(value); \
+        if (init_blocks != talloc_total_blocks(context)) { \
+            talloc_report_full(context, stderr); \
+        } \
+        ck_assert_int_eq(init_blocks, talloc_total_blocks(context)); \
+    } while(0)
+#else
+#define ASSERT_INIT_BLOCKS() do { ; } while (0)
+#endif
 
-START_TEST(test_boolean_true)
-{
-    //struct handlebars_value * value = handlebars_value_ctor();
-}
-END_TEST
+// START_TEST(test_boolean_true)
+// {
+//     //struct handlebars_value * value = handlebars_value_ctor();
+// }
+// END_TEST
 
-START_TEST(test_boolean_false)
-{
+// START_TEST(test_boolean_false)
+// {
 
-}
-END_TEST
+// }
+// END_TEST
 
 START_TEST(test_boolean_json_true)
 {
@@ -51,10 +63,7 @@ START_TEST(test_boolean_json_true)
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_TRUE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -64,10 +73,7 @@ START_TEST(test_boolean_yaml_true)
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_TRUE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -77,10 +83,7 @@ START_TEST(test_boolean_json_false)
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FALSE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 0);
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -90,10 +93,7 @@ START_TEST(test_int)
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
     ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -103,10 +103,7 @@ START_TEST(test_int_yaml)
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
     ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -117,10 +114,7 @@ START_TEST(test_float)
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
     // Note: converting to int - precision issue
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -131,10 +125,7 @@ START_TEST(test_float_yaml)
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
     // Note: converting to int - precision issue
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -146,10 +137,7 @@ START_TEST(test_string)
     const char * tmp = handlebars_value_get_strval(value);
 	ck_assert_str_eq(tmp, "test");
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -165,17 +153,14 @@ START_TEST(test_array_iterator)
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
     handlebars_value_array_push(value, tmp);
-    handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
     handlebars_value_array_push(value, tmp);
-    handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
     handlebars_value_array_push(value, tmp);
-    handlebars_value_delref(tmp);
 
     HANDLEBARS_VALUE_FOREACH_IDX(value, index, child) {
         ck_assert_ptr_ne(child, NULL);
@@ -184,10 +169,7 @@ START_TEST(test_array_iterator)
         ck_assert_int_eq((size_t) handlebars_value_get_intval(child), ++i);
     } HANDLEBARS_VALUE_FOREACH_END();
 
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -203,17 +185,14 @@ START_TEST(test_map_iterator)
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
     handlebars_map_str_update(handlebars_value_get_map(value), HBS_STRL("a"), tmp);
-    handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
     handlebars_map_str_update(handlebars_value_get_map(value), HBS_STRL("c"), tmp);
-    handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
     handlebars_map_str_update(handlebars_value_get_map(value), HBS_STRL("b"), tmp);
-    handlebars_value_delref(tmp);
 
     HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
         ++i;
@@ -228,10 +207,7 @@ START_TEST(test_map_iterator)
         ck_assert_int_eq(handlebars_value_get_intval(child), i);
     } HANDLEBARS_VALUE_FOREACH_END();
 
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -247,10 +223,7 @@ START_TEST(test_array_iterator_json)
         ck_assert_int_eq(handlebars_value_get_intval(child), ++i);
     } HANDLEBARS_VALUE_FOREACH_END();
 
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -272,10 +245,7 @@ START_TEST(test_map_iterator_json)
         ck_assert_int_eq(handlebars_value_get_intval(child), i);
     } HANDLEBARS_VALUE_FOREACH_END();
 
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -303,10 +273,7 @@ START_TEST(test_array_find)
 	value2 = handlebars_value_array_find(value, 2);
 	ck_assert_ptr_eq(value2, NULL);
 
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -334,10 +301,7 @@ START_TEST(test_map_find)
 	value2 = handlebars_value_map_str_find(value, HBS_STRL("c"));
 	ck_assert_ptr_eq(value2, NULL);
 
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -370,6 +334,7 @@ START_TEST(test_complex)
         ck_assert_int_eq(handlebars_value_get_type(value3), HANDLEBARS_VALUE_TYPE_FLOAT);
         handlebars_value_delref(value3);
     } while(0);
+
     handlebars_value_delref(value2);
 
 	value2 = handlebars_value_map_str_find(value, HBS_STRL("c"));
@@ -384,12 +349,10 @@ START_TEST(test_complex)
         ck_assert_int_eq(handlebars_value_get_strlen(value3), 4);
         handlebars_value_delref(value3);
     } while(0);
+
     handlebars_value_delref(value2);
 
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
@@ -404,12 +367,8 @@ START_TEST(test_convert)
     value2 = handlebars_value_map_str_find(value, HBS_STRL("b"));
     ck_assert_ptr_ne(value2, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value2), HANDLEBARS_VALUE_TYPE_ARRAY);
-    handlebars_value_delref(value2);
 
-// #ifndef HANDLEBARS_NO_REFCOUNT
-//     // ck_assert_int_eq(0, handlebars_value_delref(value));
-//     ck_assert_int_eq(init_blocks, talloc_total_blocks(context));
-// #endif
+    ASSERT_INIT_BLOCKS();
 }
 END_TEST
 

@@ -70,8 +70,8 @@ static int cache_compare(const struct handlebars_map_kv_pair * pair1, const stru
     assert(pair1->value != NULL);
     assert(pair2->value != NULL);
 
-    struct handlebars_module * entry1 = talloc_get_type(handlebars_value_get_ptr(pair1->value), struct handlebars_module);
-    struct handlebars_module * entry2 = talloc_get_type(handlebars_value_get_ptr(pair2->value), struct handlebars_module);
+    struct handlebars_module * entry1 = talloc_get_type_abort(handlebars_value_get_ptr(pair1->value), struct handlebars_module);
+    struct handlebars_module * entry2 = talloc_get_type_abort(handlebars_value_get_ptr(pair2->value), struct handlebars_module);
 
     assert(entry1 != NULL);
     assert(entry2 != NULL);
@@ -97,7 +97,7 @@ static int cache_gc(struct handlebars_cache * cache)
     intern->map = map = handlebars_map_sort(map, cache_compare);
 
     handlebars_map_foreach(map, index, key, value) {
-        struct handlebars_module * module = talloc_get_type(handlebars_value_get_ptr(value), struct handlebars_module);
+        struct handlebars_module * module = talloc_get_type_abort(handlebars_value_get_ptr(value), struct handlebars_module);
         if( should_gc_entry(cache, module, now) ) {
             remove_keys[remove_keys_i++] = key;
             stat->current_entries--;
@@ -128,9 +128,9 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     struct handlebars_module * module = NULL;
     if( value ) {
         // module = (struct handlebars_module *) value->v.ptr;
-        module = talloc_get_type(handlebars_value_get_ptr(value), struct handlebars_module);
+        module = talloc_get_type_abort(handlebars_value_get_ptr(value), struct handlebars_module);
         assert(handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_PTR);
-        assert(talloc_get_type(module, struct handlebars_module) != NULL);
+        assert(talloc_get_type_abort(module, struct handlebars_module) != NULL);
         time(&module->ts);
         intern->stat.hits++;
     } else {

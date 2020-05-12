@@ -139,19 +139,19 @@ inline void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned flags) {
 
 HBS_ATTR_NONNULL_ALL
 inline void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_value * helpers) {
-    handlebars_value_try_addref(helpers);
+    handlebars_value_addref(helpers);
     vm->helpers = helpers;
 }
 
 HBS_ATTR_NONNULL_ALL
 inline void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * partials) {
-    handlebars_value_try_addref(partials);
+    handlebars_value_addref(partials);
     vm->partials = partials;
 }
 
 HBS_ATTR_NONNULL_ALL
 inline void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data) {
-    handlebars_value_try_addref(data);
+    handlebars_value_addref(data);
     vm->data = data;
 }
 

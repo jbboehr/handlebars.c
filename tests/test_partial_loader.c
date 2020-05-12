@@ -109,7 +109,6 @@ static struct handlebars_string * execute_template(const char *template)
     retval = talloc_steal(NULL, buffer);
 
     // Memdebug
-    handlebars_value_delref(context);
     handlebars_vm_dtor(vm);
     if( memdebug ) {
         talloc_report_full(ctx, stderr);

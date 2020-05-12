@@ -128,7 +128,7 @@ uint64_t handlebars_string_hash(const char * str, size_t len)
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void string_rc_dtor(struct handlebars_rc * rc)
 {
-    struct handlebars_string * string = talloc_get_type(hbs_container_of(rc, struct handlebars_string, rc), struct handlebars_string);
+    struct handlebars_string * string = talloc_get_type_abort(hbs_container_of(rc, struct handlebars_string, rc), struct handlebars_string);
     handlebars_talloc_free(string);
 }
 #endif
@@ -157,7 +157,11 @@ struct handlebars_string * handlebars_string_init(
 ) {
     struct handlebars_string * st = handlebars_talloc_zero_size(context, HBS_STR_SIZE(length));
     HANDLEBARS_MEMCHECK(st, context);
+    talloc_set_type(st, struct handlebars_string);
     st->val[0] = 0;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&st->rc, string_rc_dtor);
+#endif
     return st;
 }
 
@@ -173,9 +177,6 @@ struct handlebars_string * handlebars_string_ctor_ex(
     memcpy(st->val, str, len);
     st->val[st->len] = 0;
     st->hash = hash;
-#ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_init(&st->rc, string_rc_dtor);
-#endif
     return st;
 }
 
@@ -194,6 +195,7 @@ struct handlebars_string * handlebars_string_copy_ctor(
     size_t size = HBS_STR_SIZE(string->len);
     struct handlebars_string * st = handlebars_talloc_size(context, size);
     HANDLEBARS_MEMCHECK(st, context);
+    talloc_set_type(st, struct handlebars_string);
     memcpy(st, string, size);
     return st;
 }
@@ -211,6 +213,7 @@ struct handlebars_string * handlebars_string_extend(
     if( size > talloc_get_size(string) ) {
         string = (struct handlebars_string *) handlebars_talloc_realloc_size(context, string, size);
         HANDLEBARS_MEMCHECK(string, context);
+        talloc_set_type(string, struct handlebars_string);
     }
     return string;
 }

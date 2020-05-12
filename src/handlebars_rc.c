@@ -21,6 +21,8 @@
 #include "config.h"
 #endif
 
+#include <stdio.h>
+
 #include "handlebars.h"
 #include "handlebars_rc.h"
 

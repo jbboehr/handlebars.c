@@ -38,7 +38,7 @@
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void user_rc_dtor(struct handlebars_rc * rc)
 {
-    struct handlebars_user * user = /*talloc_get_type(*/hbs_container_of(rc, struct handlebars_user, rc)/*, struct handlebars_user)*/;
+    struct handlebars_user * user = /*talloc_get_type_abort(*/hbs_container_of(rc, struct handlebars_user, rc)/*, struct handlebars_user)*/;
     user->handlers->dtor(user);
     handlebars_talloc_free(user);
 }

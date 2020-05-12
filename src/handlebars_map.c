@@ -309,7 +309,7 @@ static void map_rehash(struct handlebars_map * map)
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void map_rc_dtor(struct handlebars_rc * rc)
 {
-    struct handlebars_map * map = talloc_get_type(hbs_container_of(rc, struct handlebars_map, rc), struct handlebars_map);
+    struct handlebars_map * map = talloc_get_type_abort(hbs_container_of(rc, struct handlebars_map, rc), struct handlebars_map);
     handlebars_map_dtor(map);
 }
 #endif
@@ -346,13 +346,13 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
     // Allocate vector
     size_t vec_capacity = capacity;
     map->vec_capacity = vec_capacity;
-    map->vec = handlebars_talloc_array(ctx, struct handlebars_map_entry, vec_capacity);
+    map->vec = handlebars_talloc_array(map, struct handlebars_map_entry, vec_capacity);
     HANDLEBARS_MEMCHECK(map->vec, ctx);
     memset(map->vec, 0, sizeof(struct handlebars_map_entry) * vec_capacity);
 
     // Allocate table
     map->table_capacity = ht_choose_table_capacity(vec_capacity);
-    map->table = handlebars_talloc_array(ctx, struct handlebars_map_entry *, map->table_capacity);
+    map->table = handlebars_talloc_array(map, struct handlebars_map_entry *, map->table_capacity);
     HANDLEBARS_MEMCHECK(map->table, ctx);
     map->table = talloc_steal(map, map->table);
     memset(map->table, 0, sizeof(struct handlebars_map_entry *) * map->table_capacity);

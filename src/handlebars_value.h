@@ -110,6 +110,13 @@ struct handlebars_value * handlebars_value_copy(
 
 // }}} Constructors and Destructors
 
+// {{{ Reference Counting
+
+void handlebars_value_addref(struct handlebars_value * value);
+
+void handlebars_value_delref(struct handlebars_value * value);
+
+// }}} Reference Counting
 // {{{ Getters
 
 /**
@@ -460,13 +467,6 @@ struct handlebars_value * handlebars_value_call(
     struct handlebars_value * argv[],
     struct handlebars_options * options
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
-
-#define handlebars_value_addref(value) ((void) value)
-#define handlebars_value_addref2(value) (value)
-#define handlebars_value_delref(value) ((void) value)
-#define handlebars_value_try_delref(value)
-#define handlebars_value_try_addref(value)
-#define handlebars_value_refcount(v) 999
 
 // }}} Misc
 

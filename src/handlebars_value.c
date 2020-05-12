@@ -79,6 +79,10 @@ struct handlebars_value
     //! The type of value from enum #handlebars_value_type
 	enum handlebars_value_type type;
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+    struct handlebars_rc rc;
+#endif
+
     //! Bitwise value flags from enum #handlebars_value_flags
     unsigned long flags;
 
@@ -94,6 +98,33 @@ const size_t HANDLEBARS_VALUE_INTERNALS_SIZE = sizeof(union handlebars_value_int
 
 // }}} Prototypes & Variables
 
+// {{{ Reference Counting
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+static void value_rc_dtor(struct handlebars_rc * rc)
+{
+    struct handlebars_value * value = talloc_get_type_abort(hbs_container_of(rc, struct handlebars_value, rc), struct handlebars_value);
+    handlebars_value_dtor(value);
+    handlebars_talloc_free(value);
+}
+#endif
+
+void handlebars_value_addref(struct handlebars_value * value)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_addref(&value->rc);
+#endif
+}
+
+void handlebars_value_delref(struct handlebars_value * value)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_delref(&value->rc);
+#endif
+}
+
+// }}} Reference Counting
+
 // {{{ Constructors and Destructors
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
@@ -102,6 +133,9 @@ struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
     HANDLEBARS_MEMCHECK(value, ctx);
     value->ctx = ctx;
     value->flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&value->rc, value_rc_dtor);
+#endif
     return value;
 }
 
@@ -611,15 +645,21 @@ void handlebars_value_array_push(struct handlebars_value * value, struct handleb
 
 struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index)
 {
+    struct handlebars_value * child = NULL;
+
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-			return handlebars_value_get_handlers(value)->array_find(value, index);
+			child = handlebars_value_get_handlers(value)->array_find(value, index);
 		}
 	} else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        return handlebars_stack_get(value->v.stack, index);
+        child = handlebars_stack_get(value->v.stack, index);
     }
 
-	return NULL;
+    if (child) {
+        handlebars_value_addref(child);
+    }
+
+	return child;
 }
 
 // }}} Array
@@ -636,15 +676,21 @@ void handlebars_value_map_init(struct handlebars_value * value, size_t capacity)
 
 struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key)
 {
+    struct handlebars_value * child = NULL;
+
     if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
         if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            return handlebars_value_get_handlers(value)->map_find(value, key);
+            child = handlebars_value_get_handlers(value)->map_find(value, key);
         }
     } else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        return handlebars_map_find(value->v.map, key);
+        child = handlebars_map_find(value->v.map, key);
     }
 
-    return NULL;
+    if (child) {
+        handlebars_value_addref(child);
+    }
+
+    return child;
 }
 
 struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len)
@@ -753,7 +799,6 @@ static bool handlebars_value_iterator_next_stack(struct handlebars_value_iterato
     assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
     assert(it->current != NULL);
 
-    handlebars_value_delref(it->current);
     it->current = NULL;
 
     if( it->index >= handlebars_stack_count(value->v.stack) - 1 ) {
@@ -771,7 +816,6 @@ static bool handlebars_value_iterator_next_map(struct handlebars_value_iterator 
     assert(it->value->type == HANDLEBARS_VALUE_TYPE_MAP);
     assert(it->current != NULL);
 
-    handlebars_value_delref(it->current);
     it->current = NULL;
 
     if( it->index >= handlebars_map_count(it->value->v.map) - 1 ) {
@@ -801,7 +845,6 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
             it->length = handlebars_stack_count(value->v.stack);
             it->current = handlebars_stack_get(value->v.stack, it->index);
             it->next = &handlebars_value_iterator_next_stack;
-            handlebars_value_addref(it->current);
             return true;
 
         case HANDLEBARS_VALUE_TYPE_MAP:
@@ -811,7 +854,6 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
             it->length = handlebars_map_count(value->v.map);
             handlebars_map_get_kv_at_index(value->v.map, it->index, &it->key, &it->current);
             it->next = &handlebars_value_iterator_next_map;
-            handlebars_value_addref(it->current);
             handlebars_map_set_is_in_iteration(value->v.map, true); // @todo we should store the result
             return true;
 

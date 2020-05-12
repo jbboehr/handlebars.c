@@ -70,7 +70,7 @@ size_t handlebars_stack_size(size_t capacity) {
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void stack_rc_dtor(struct handlebars_rc * rc)
 {
-    struct handlebars_stack * stack = talloc_get_type(hbs_container_of(rc, struct handlebars_stack, rc), struct handlebars_stack);
+    struct handlebars_stack * stack = talloc_get_type_abort(hbs_container_of(rc, struct handlebars_stack, rc), struct handlebars_stack);
     handlebars_stack_dtor(stack);
 }
 #endif
