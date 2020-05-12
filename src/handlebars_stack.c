@@ -31,6 +31,10 @@
 #include "handlebars_stack.h"
 #include "handlebars_value.h"
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
+
 
 
 enum handlebars_stack_flags {
@@ -40,6 +44,9 @@ enum handlebars_stack_flags {
 struct handlebars_stack {
     //! Handlebars context
     struct handlebars_context * ctx;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    struct handlebars_rc rc;
+#endif
     //! Number of elements in the stack
     size_t i;
     //! Currently available number of elements (size of the buffer)
@@ -58,11 +65,42 @@ size_t handlebars_stack_size(size_t capacity) {
     return (sizeof(struct handlebars_stack) + sizeof(struct handlebars_value *) * (capacity + 1));
 }
 
+// {{{ Reference Counting
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+static void stack_rc_dtor(struct handlebars_rc * rc)
+{
+    struct handlebars_stack * stack = talloc_get_type(hbs_container_of(rc, struct handlebars_stack, rc), struct handlebars_stack);
+    handlebars_stack_dtor(stack);
+}
+#endif
+
+void handlebars_stack_addref(struct handlebars_stack * stack)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_addref(&stack->rc);
+#endif
+}
+
+void handlebars_stack_delref(struct handlebars_stack * stack)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_delref(&stack->rc);
+#endif
+}
+
+// }}} Reference Counting
+
+// {{{ Constructors and Destructors
+
 struct handlebars_stack * handlebars_stack_init(struct handlebars_context * ctx, struct handlebars_stack * stack, size_t elem)
 {
     memset(stack, 0, handlebars_stack_size(elem));
     stack->ctx = ctx;
     stack->capacity = elem;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&stack->rc, stack_rc_dtor);
+#endif
     return stack;
 }
 
@@ -74,6 +112,9 @@ struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx,
     stack->ctx = ctx;
     stack->capacity = capacity;
     stack->flags = HANDLEBARS_STACK_TALLOCATED;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&stack->rc, stack_rc_dtor);
+#endif
     return stack;
 }
 
@@ -89,6 +130,8 @@ void handlebars_stack_dtor(struct handlebars_stack * stack)
         handlebars_talloc_free(stack);
     }
 }
+
+// }}} Constructors and Destructors
 
 size_t handlebars_stack_count(struct handlebars_stack * stack)
 {

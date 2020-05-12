@@ -38,9 +38,16 @@
 #include "handlebars_private.h"
 #include "handlebars_string.h"
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
+
 
 
 struct handlebars_string {
+#ifndef HANDLEBARS_NO_REFCOUNT
+    struct handlebars_rc rc;
+#endif
     size_t len;
     uint64_t hash;
     char val[];
@@ -83,8 +90,6 @@ uint64_t hbs_str_hash(struct handlebars_string * str) {
 
 // }}} Accessors
 
-
-
 // {{{ Hash functions
 
 uint64_t handlebars_hash_djbx33a(const char * str, size_t len)
@@ -118,6 +123,32 @@ uint64_t handlebars_string_hash(const char * str, size_t len)
 
 // }}} Hash functions
 
+// {{{ Reference Counting
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+static void string_rc_dtor(struct handlebars_rc * rc)
+{
+    struct handlebars_string * string = talloc_get_type(hbs_container_of(rc, struct handlebars_string, rc), struct handlebars_string);
+    handlebars_talloc_free(string);
+}
+#endif
+
+void handlebars_string_addref(struct handlebars_string * string)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_addref(&string->rc);
+#endif
+}
+
+void handlebars_string_delref(struct handlebars_string * string)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_delref(&string->rc);
+#endif
+}
+
+// }}} Reference Counting
+
 
 
 struct handlebars_string * handlebars_string_init(
@@ -142,6 +173,9 @@ struct handlebars_string * handlebars_string_ctor_ex(
     memcpy(st->val, str, len);
     st->val[st->len] = 0;
     st->hash = hash;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&st->rc, string_rc_dtor);
+#endif
     return st;
 }
 

@@ -36,11 +36,6 @@
 
 #include "handlebars_config.h"
 
-// @TODO FIXME
-#ifndef HANDLEBARS_NO_REFCOUNT
-#define HANDLEBARS_NO_REFCOUNT
-#endif
-
 #ifdef	__cplusplus
 #define HBS_EXTERN_C_START extern "C" {
 #define HBS_EXTERN_C_END }

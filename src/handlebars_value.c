@@ -111,13 +111,13 @@ void handlebars_value_dtor(struct handlebars_value * value)
     // Release old value
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            handlebars_stack_dtor(value->v.stack);
+            handlebars_stack_delref(value->v.stack);
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
-            handlebars_map_dtor(value->v.map);
+            handlebars_map_delref(value->v.map);
             break;
         case HANDLEBARS_VALUE_TYPE_STRING:
-            handlebars_talloc_free(value->v.string);
+            handlebars_string_delref(value->v.string);
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
             handlebars_value_get_handlers(value)->dtor(value);
@@ -473,6 +473,7 @@ void handlebars_value_string(struct handlebars_value * value, const char * strva
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
+    handlebars_string_addref(value->v.string);
 }
 
 void handlebars_value_string_steal(struct handlebars_value * value, char * strval)
@@ -481,6 +482,7 @@ void handlebars_value_string_steal(struct handlebars_value * value, char * strva
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
     talloc_free(strval); // meh
+    handlebars_string_addref(value->v.string);
 }
 
 void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen)
@@ -488,6 +490,7 @@ void handlebars_value_stringl(struct handlebars_value * value, const char * strv
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen)/*)*/;
+    handlebars_string_addref(value->v.string);
 }
 
 void handlebars_value_ptr(struct handlebars_value * value, void * ptr)
@@ -509,6 +512,7 @@ void handlebars_value_map(struct handlebars_value * value, struct handlebars_map
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_MAP;
     value->v.map = map;
+    handlebars_map_addref(value->v.map);
 }
 
 void handlebars_value_array(struct handlebars_value * value, struct handlebars_stack * stack)
@@ -516,6 +520,7 @@ void handlebars_value_array(struct handlebars_value * value, struct handlebars_s
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
     value->v.stack = stack;
+    handlebars_stack_addref(value->v.stack);
 }
 
 void handlebars_value_helper(struct handlebars_value * value, handlebars_helper_func helper)
@@ -584,6 +589,7 @@ void handlebars_value_array_init(struct handlebars_value * value, size_t capacit
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
     value->v.stack = /*talloc_steal(value,*/ handlebars_stack_ctor(value->ctx, capacity)/*)*/;
+    handlebars_stack_addref(value->v.stack);
 }
 
 void handlebars_value_array_set(struct handlebars_value * value, size_t index, struct handlebars_value * child)
@@ -624,6 +630,7 @@ void handlebars_value_map_init(struct handlebars_value * value, size_t capacity)
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_MAP;
     value->v.map = /*talloc_steal(value,*/ handlebars_map_ctor(value->ctx, capacity)/*)*/;
+    handlebars_map_addref(value->v.map);
 }
 
 struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key)

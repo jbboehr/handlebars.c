@@ -42,6 +42,7 @@ set(SOURCE_FILES
     handlebars_parser.c
     handlebars_parser_private.c
     handlebars_partial_loader.c
+    handlebars_rc.c
     handlebars_scanners.c
     handlebars_stack.c
     handlebars_string.c
@@ -70,6 +71,7 @@ set(HEADERS
     handlebars_opcodes.h
     handlebars_parser.h
     handlebars_partial_loader.h
+    handlebars_rc.h
     handlebars_stack.h
     handlebars_string.h
     handlebars_token.h

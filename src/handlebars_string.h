@@ -58,6 +58,14 @@ uint64_t handlebars_string_hash(const char * str, size_t len)
     HBS_ATTR_NONNULL_ALL;
 // }}} Hash functions
 
+// {{{ Reference Counting
+void handlebars_string_addref(struct handlebars_string * string)
+    HBS_ATTR_NONNULL_ALL;
+
+void handlebars_string_delref(struct handlebars_string * string)
+    HBS_ATTR_NONNULL_ALL;
+// }}} Reference Counting
+
 /**
  * @brief Implements `strnstr`
  * @param[in] haystack

@@ -4,6 +4,7 @@
   automake ? null,
   cmake ? null,
   handlebarscWithCmake ? false,
+  handlebarscRefcounting ? true,
   handlebarscVersion ? null,
   handlebarscSrc ? null,
   handlebarscSha256 ? null }:
@@ -32,10 +33,11 @@ stdenv.mkDerivation rec {
 
   doCheck = true;
   configureFlags = [
-    "--with-handlebars-spec=${handlebars_spec}/share/handlebars-spec/"
-    "--with-mustache-spec=${mustache_spec}/share/mustache-spec/"
-    "--bindir=$(bin)/bin"
-  ];
+      "--with-handlebars-spec=${handlebars_spec}/share/handlebars-spec/"
+      "--with-mustache-spec=${mustache_spec}/share/mustache-spec/"
+      "--bindir=$(bin)/bin"
+    ]
+    ++ (if handlebarscRefcounting then [] else ["--disable-refcounting"]);
 
   cmakeFlags = [
     "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}"

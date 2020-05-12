@@ -48,6 +48,8 @@ typedef int (*handlebars_map_kv_compare_r_func)(
 extern size_t handlebars_map_size()
     HBS_ATTR_CONST;
 
+// {{{ Constructors and Destructors
+
 /**
  * @brief Construct a new map
  * @param[in] ctx The handlebars context
@@ -67,6 +69,18 @@ struct handlebars_map * handlebars_map_ctor(
 void handlebars_map_dtor(
     struct handlebars_map * map
 ) HBS_ATTR_NONNULL_ALL;
+
+// }}} Constructors and Destructors
+
+// {{{ Reference Counting
+
+void handlebars_map_addref(struct handlebars_map * map)
+    HBS_ATTR_NONNULL_ALL;
+
+void handlebars_map_delref(struct handlebars_map * map)
+    HBS_ATTR_NONNULL_ALL;
+
+// }}} Reference Counting
 
 /**
  * @brief Find a value by key (#handlebars_string variant)

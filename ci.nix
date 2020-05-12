@@ -1,17 +1,17 @@
 let
-  generateHandlebarsCTestsForPlatform = { pkgs, stdenv, handlebarscWithCmake ? false }:
+  generateHandlebarsCTestsForPlatform = { pkgs, stdenv, handlebarscWithCmake ? false, handlebarscRefcounting ? true }:
     pkgs.callPackage ./default.nix {
-      inherit stdenv handlebarscWithCmake;
+      inherit stdenv handlebarscWithCmake handlebarscRefcounting;
 
       handlebarscSrc = builtins.filterSource
         (path: type: baseNameOf path != ".idea" && baseNameOf path != ".git" && baseNameOf path != "ci.nix")
         ./.;
     };
 
-  generateHandlebarsCTestsForPlatform2 = { pkgs, handlebarscWithCmake ? false }:
+  generateHandlebarsCTestsForPlatform2 = { pkgs, handlebarscWithCmake ? false, handlebarscRefcounting ? true }:
     pkgs.recurseIntoAttrs {
-      gcc = generateHandlebarsCTestsForPlatform { inherit pkgs handlebarscWithCmake; stdenv = pkgs.stdenv; };
-      clang = generateHandlebarsCTestsForPlatform { inherit pkgs handlebarscWithCmake; stdenv = pkgs.clangStdenv; };
+      gcc = generateHandlebarsCTestsForPlatform { inherit pkgs handlebarscWithCmake handlebarscRefcounting; stdenv = pkgs.stdenv; };
+      clang = generateHandlebarsCTestsForPlatform { inherit pkgs handlebarscWithCmake handlebarscRefcounting; stdenv = pkgs.clangStdenv; };
     };
 in
 builtins.mapAttrs (k: _v:
@@ -56,6 +56,12 @@ builtins.mapAttrs (k: _v:
     # cross-compile for 32bit
     n1909-32bit = generateHandlebarsCTestsForPlatform2  {
       pkgs = pkgs.pkgsi686Linux;
+    };
+
+    # with refcounting disabled
+    n1909-norc = generateHandlebarsCTestsForPlatform2  {
+      pkgs = pkgs.pkgsi686Linux;
+      handlebarscRefcounting = false;
     };
 
     n2003 = let

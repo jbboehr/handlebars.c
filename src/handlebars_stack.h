@@ -59,6 +59,8 @@ extern void *HANDLEBARS_STACK_ALLOC_PTR;
 size_t handlebars_stack_size(size_t capacity)
     HBS_ATTR_CONST;
 
+// {{{ Constructors and Destructors
+
 /**
  * @brief Initialize a new stack allocated stack
  * @param[in] ctx The handlebars context
@@ -91,6 +93,18 @@ struct handlebars_stack * handlebars_stack_ctor(
 void handlebars_stack_dtor(
     struct handlebars_stack * stack
 ) HBS_ATTR_NONNULL_ALL;
+
+// }}} Constructors and Destructors
+
+// {{{ Reference Counting
+
+void handlebars_stack_addref(struct handlebars_stack * stack)
+    HBS_ATTR_NONNULL_ALL;
+
+void handlebars_stack_delref(struct handlebars_stack * stack)
+    HBS_ATTR_NONNULL_ALL;
+
+// }}} Reference Counting
 
 /**
  * @brief Get the number of elements in a stack

@@ -35,10 +35,18 @@
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
+
 
 
 struct handlebars_map {
     struct handlebars_context ctx;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    struct handlebars_rc rc;
+#endif
+
     size_t i;
 
     size_t table_capacity;
@@ -296,6 +304,34 @@ static void map_rehash(struct handlebars_map * map)
 
 
 
+// {{{ Reference Counting
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+static void map_rc_dtor(struct handlebars_rc * rc)
+{
+    struct handlebars_map * map = talloc_get_type(hbs_container_of(rc, struct handlebars_map, rc), struct handlebars_map);
+    handlebars_map_dtor(map);
+}
+#endif
+
+void handlebars_map_addref(struct handlebars_map * map)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_addref(&map->rc);
+#endif
+}
+
+void handlebars_map_delref(struct handlebars_map * map)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_delref(&map->rc);
+#endif
+}
+
+// }}} Reference Counting
+
+
+
 size_t handlebars_map_size() {
     return sizeof(struct handlebars_map);
 }
@@ -320,6 +356,10 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
     HANDLEBARS_MEMCHECK(map->table, ctx);
     map->table = talloc_steal(map, map->table);
     memset(map->table, 0, sizeof(struct handlebars_map_entry *) * map->table_capacity);
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&map->rc, map_rc_dtor);
+#endif
 
     return map;
 }

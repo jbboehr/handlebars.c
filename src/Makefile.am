@@ -51,6 +51,7 @@ pkginclude_HEADERS = \
 	handlebars_opcodes.h \
 	handlebars_parser.h \
     handlebars_partial_loader.h \
+    handlebars_rc.h \
 	handlebars_stack.h \
 	handlebars_string.h \
 	handlebars_token.h \
@@ -114,6 +115,8 @@ libhandlebars_la_SOURCES = \
     handlebars_partial_loader.h \
     handlebars_partial_loader.c \
 	handlebars_private.h \
+    handlebars_rc.c \
+    handlebars_rc.h \
 	handlebars_scanners.c \
 	handlebars_scanners.h \
 	handlebars_stack.h \
