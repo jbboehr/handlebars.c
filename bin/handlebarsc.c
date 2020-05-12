@@ -35,6 +35,7 @@
 #include "handlebars_cache.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
+#include "handlebars_json.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
@@ -45,6 +46,7 @@
 #include "handlebars_token.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
+#include "handlebars_yaml.h"
 
 #ifdef _MSC_VER
 #define BOOLEAN HBS_BOOLEAN

@@ -28,8 +28,10 @@
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 #define HANDLEBARS_VALUE_PRIVATE
 
+#include "handlebars_json.h"
 #include "handlebars_memory.h"
 #include "handlebars_value.h"
+#include "handlebars_yaml.h"
 #include "utils.h"
 
 

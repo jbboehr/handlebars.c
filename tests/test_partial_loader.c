@@ -28,6 +28,7 @@
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
+#include "handlebars_json.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_parser.h"
 #include "handlebars_partial_loader.h"

@@ -30,6 +30,7 @@
 #define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 
 #include "handlebars.h"
+#include "handlebars_json.h"
 #include "handlebars_map.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"

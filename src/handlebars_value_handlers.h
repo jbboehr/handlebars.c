@@ -22,13 +22,12 @@
 
 #include "handlebars.h"
 
-HBS_EXTERN_C_END
+HBS_EXTERN_C_START
 
+struct handlebars_options;
 struct handlebars_string;
 struct handlebars_value_iterator;
-struct json_object;
-struct yaml_document_s;
-struct yaml_node_s;
+struct handlebars_value_handlers;
 
 typedef struct handlebars_value * (*handlebars_copy_func)(struct handlebars_value * value);
 typedef void (*handlebars_value_dtor_func)(struct handlebars_value * value);
@@ -44,108 +43,6 @@ typedef struct handlebars_value * (*handlebars_call_func)(
     struct handlebars_options * options
 );
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
-
-struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void)
-    HBS_ATTR_RETURNS_NONNULL HBS_ATTR_PURE;
-
-/**
- * @brief Initialize a value from a JSON object
- * @param[in] ctx The handlebars context
- * @param[in] value The value to initialize
- * @param[in] json The JSON object
- * @return void
- */
-void handlebars_value_init_json_object(
-    struct handlebars_context * ctx,
-    struct handlebars_value * value,
-    struct json_object * json
-) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Initialize a value from a JSON string
- * @param[in] ctx The handlebars context
- * @param[in] value The value to initialize
- * @param[in] json The JSON string
- */
-void handlebars_value_init_json_string(
-    struct handlebars_context *ctx,
-    struct handlebars_value * value,
-    const char * json
-) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Construct a value from a JSON string
- * @param[in] ctx The handlebars context
- * @param[in] json The JSON string
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_json_string(
-    struct handlebars_context *ctx,
-    const char * json
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
-/**
- * @brief Construct a value from a JSON object
- * @param[in] ctx The handlebars context
- * @param[in] json The JSON object
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_json_object(
-    struct handlebars_context * ctx,
-    struct json_object * json
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
-/**
- * @brief Initialize a value from a YAML node
- * @param[in] ctx
- * @param[in] value
- * @param[in] document
- * @param[in] node
- * @return void
- */
-void handlebars_value_init_yaml_node(
-    struct handlebars_context *ctx,
-    struct handlebars_value * value,
-    struct yaml_document_s * document,
-    struct yaml_node_s * node
-) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Initialize a value from a YAML string
- * @param[in] ctx
- * @param[in] value
- * @param[in] yaml
- * @return void
- */
-void handlebars_value_init_yaml_string(
-    struct handlebars_context * ctx,
-    struct handlebars_value * value,
-    const char * yaml
-) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Construct a value from a YAML node
- * @param[in] ctx The handlebars context
- * @param[in] document
- * @param[in] node
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_yaml_node(
-    struct handlebars_context * ctx,
-    struct yaml_document_s * document,
-    struct yaml_node_s * node
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
-/**
- * @brief Initialize a value from a YAML string
- * @param[in] ctx The handlebars context
- * @param[in] yaml The YAML string
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_yaml_string(
-    struct handlebars_context * ctx,
-    const char * yaml
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 handlebars_count_func handlebars_value_handlers_get_count_fn(
     struct handlebars_value_handlers * handlers

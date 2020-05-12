@@ -35,6 +35,7 @@
 #include "handlebars.h"
 #include "handlebars_cache.h"
 #include "handlebars_compiler.h"
+#include "handlebars_json.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"

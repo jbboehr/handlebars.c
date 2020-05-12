@@ -51,6 +51,7 @@
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
+#include "handlebars_yaml.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 #include "utils.h"

@@ -44,6 +44,7 @@ pkginclude_HEADERS = \
 	handlebars_config.h \
 	handlebars_delimiters.h \
 	handlebars_helpers.h \
+	handlebars_json.h \
 	handlebars_map.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
@@ -57,7 +58,8 @@ pkginclude_HEADERS = \
 	handlebars_token.h \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
-	handlebars_vm.h
+	handlebars_vm.h \
+	handlebars_yaml.h
 
 # these headers are not (currently) installed because they only contain private symbols:
 # handlebars_ast_helpers.h
@@ -100,6 +102,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_delimiters.h \
 	handlebars_helpers.h \
 	handlebars_helpers.c \
+	handlebars_json.h \
+	handlebars_json.c \
 	handlebars_map.h \
 	handlebars_map.c \
 	handlebars_opcode_printer.h \
@@ -132,7 +136,9 @@ libhandlebars_la_SOURCES = \
 	handlebars_vm.h \
 	handlebars_vm.c \
 	handlebars_whitespace.h \
-	handlebars_whitespace.c
+	handlebars_whitespace.c \
+	handlebars_yaml.h \
+	handlebars_yaml.c
 
 if HANDLEBARS_MEMORY
 libhandlebars_la_SOURCES += handlebars_memory.c

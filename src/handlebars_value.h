@@ -29,7 +29,6 @@
 #include "handlebars_memory.h"
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
-#include "handlebars_value_handlers.h"
 
 HBS_EXTERN_C_START
 

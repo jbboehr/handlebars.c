@@ -39,6 +39,7 @@
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
+#include "handlebars_json.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
