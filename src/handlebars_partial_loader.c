@@ -60,10 +60,10 @@ static int partial_loader_dtor(struct handlebars_partial_loader * obj)
 }
 
 
-#define GET_INTERN(value) ((struct handlebars_partial_loader *) talloc_get_type(value->v.usr, struct handlebars_partial_loader))
+#define GET_INTERN(value) ((struct handlebars_partial_loader *) talloc_get_type(handlebars_value_get_usr(value), struct handlebars_partial_loader))
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(value->ctx)
+#define CONTEXT HBSCTX(handlebars_value_get_ctx(value))
 
 static struct handlebars_value * hbs_partial_loader_copy(struct handlebars_value * value)
 {
@@ -95,7 +95,7 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
         return retval;
     }
 
-    struct handlebars_string *filename = handlebars_string_copy_ctor(value->ctx, intern->base_path);
+    struct handlebars_string *filename = handlebars_string_copy_ctor(CONTEXT, intern->base_path);
     filename = handlebars_string_append(CONTEXT, filename, HBS_STRL("/"));
     filename = handlebars_string_append_str(CONTEXT, filename, key);
     if (intern->extension) {
@@ -150,7 +150,7 @@ static bool hbs_partial_loader_iterator_next_map(struct handlebars_value_iterato
     struct handlebars_map * map = intern->map;
 
     assert(it->value != NULL);
-    assert(it->value->type == HANDLEBARS_VALUE_TYPE_MAP);
+    assert(handlebars_value_get_type(it->value) == HANDLEBARS_VALUE_TYPE_MAP);
     assert(it->current != NULL);
 
     handlebars_value_delref(it->current);
@@ -226,8 +226,7 @@ struct handlebars_value * handlebars_value_partial_loader_ctor(
     obj->map = talloc_steal(obj, handlebars_map_ctor(context, 32));
     talloc_set_destructor(obj, partial_loader_dtor);
 
-    value->type = HANDLEBARS_VALUE_TYPE_USER;
-    value->v.usr = (struct handlebars_user *) obj;
+    handlebars_value_usr(value, obj);
 
     return value;
 }

@@ -152,14 +152,16 @@ FIXTURE_FN(510017722)
 {
     // "function (options) {\n          if( typeof value === 'undefined' ) { value = 1; } return options.fn({value: 'bar'}, {blockParams: options.fn.blockParams === 1 ? [value++, value++] : undefined});\n        }"
     struct handlebars_value * context = handlebars_value_from_json_string(CONTEXT, "{\"value\": \"bar\"}");
-    struct handlebars_value * block_params = handlebars_value_ctor(CONTEXT);
-    handlebars_value_array_init(block_params, 2);
     struct handlebars_value * bp1 = handlebars_value_ctor(CONTEXT);
     struct handlebars_value * bp2 = handlebars_value_ctor(CONTEXT);
     handlebars_value_integer(bp1, value_for_510017722++);
     handlebars_value_integer(bp2, value_for_510017722++);
-    block_params->v.stack = handlebars_stack_push(handlebars_value_get_stack(block_params), bp1); // @TODO ignoring return value - should probably make a handlebars_value_push()
-    block_params->v.stack = handlebars_stack_push(handlebars_value_get_stack(block_params), bp2); // @TODO ignoring return value - should probably make a handlebars_value_push()
+
+    struct handlebars_value * block_params = handlebars_value_ctor(CONTEXT);
+    handlebars_value_array_init(block_params, 2);
+    handlebars_value_array_push(block_params, bp1); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    handlebars_value_array_push(block_params, bp2); // @TODO ignoring return value - should probably make a handlebars_value_push()
+
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
@@ -326,7 +328,7 @@ FIXTURE_FN(730672213)
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(result, tmp);
         handlebars_talloc_free(tmp);
-        result->flags |= HANDLEBARS_VALUE_FLAG_SAFE_STRING;
+        handlebars_value_set_flag(result, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
         return result;
     } else {
         return NULL;
@@ -360,7 +362,7 @@ FIXTURE_FN(748362646)
 FIXTURE_FN(788468697)
 {
     assert(options->scope != NULL);
-    assert(options->scope->type == HANDLEBARS_VALUE_TYPE_STRING);
+    assert(handlebars_value_get_type(options->scope) == HANDLEBARS_VALUE_TYPE_STRING);
     FIXTURE_INTEGER(handlebars_value_get_strlen(options->scope));
 }
 
@@ -401,21 +403,25 @@ FIXTURE_FN(929767352)
 FIXTURE_FN(931412676)
 {
     // "function (options) {\n            var frame = Handlebars.createFrame(options.data);\n            frame.depth = options.data.depth + 1;\n            return options.fn(this, {data: frame});\n          }"
-    struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(frame, 0);  // zero may trigger extra rehashes - good for testing
+    // struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
+    // handlebars_value_map_init(frame, 0);  // zero may trigger extra rehashes - good for testing
+    struct handlebars_map * map = handlebars_map_ctor(CONTEXT, handlebars_value_count(options->data) + 1);
 
     HANDLEBARS_VALUE_FOREACH_KV(options->data, key, child) {
         if( 0 == strcmp(hbs_str_val(key), "depth") ) {
             struct handlebars_value * tmp = handlebars_value_ctor(CONTEXT);
             handlebars_value_integer(tmp, handlebars_value_get_intval(child) + 1);
-            handlebars_map_update(frame->v.map, key, tmp);
+            handlebars_map_update(map, key, tmp);
             handlebars_value_delref(tmp);
         } else {
-            handlebars_map_update(frame->v.map, key, child);
+            handlebars_map_update(map, key, child);
         }
     } HANDLEBARS_VALUE_FOREACH_END();
 
-    handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
+    handlebars_map_str_update(map, HBS_STRL("_parent"), options->data);
+    struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
+    handlebars_value_map(frame, map);
+
     struct handlebars_string * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, frame, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, res);
@@ -425,8 +431,8 @@ FIXTURE_FN(931412676)
 FIXTURE_FN(958795451)
 {
     struct handlebars_value * truthiness = handlebars_value_map_str_find(options->scope, HBS_STRL("truthiness"));
-    if( truthiness->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        return truthiness->v.helper(argc, argv, options);
+    if( handlebars_value_is_callable(truthiness) ) {
+        return handlebars_value_call(truthiness, argc, argv, options);
     }
     return truthiness;
 }
@@ -462,7 +468,7 @@ FIXTURE_FN(1091971719)
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
         handlebars_value_string(result, tmp);
         handlebars_talloc_free(tmp);
-        result->flags |= HANDLEBARS_VALUE_FLAG_SAFE_STRING;
+        handlebars_value_set_flag(result, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
         return result;
     } else {
         return NULL;
@@ -489,7 +495,7 @@ FIXTURE_FN(1041501180)
 FIXTURE_FN(1102272015)
 {
     struct handlebars_value * print = handlebars_value_map_str_find(options->hash, HBS_STRL("print"));
-    if( print->type == HANDLEBARS_VALUE_TYPE_TRUE ) {
+    if( handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_TRUE ) {
         struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
         struct handlebars_value * world = handlebars_value_map_str_find(options->hash, HBS_STRL("world"));
         char * tmp = handlebars_talloc_asprintf(
@@ -502,7 +508,7 @@ FIXTURE_FN(1102272015)
         handlebars_value_string(result, tmp);
         handlebars_talloc_free(tmp);
         return result;
-    } else if( print->type == HANDLEBARS_VALUE_TYPE_FALSE ) {
+    } else if( handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_FALSE ) {
         FIXTURE_STRING("NOT PRINTING");
     } else {
         FIXTURE_STRING("THIS SHOULD NOT HAPPEN");
@@ -588,15 +594,15 @@ FIXTURE_FN(1644694756)
     struct handlebars_value * x = argv[0];
     struct handlebars_value * y = argv[1];
     bool ret = false;
-    if( x->type != y->type ) {
+    if( handlebars_value_get_type(x) != handlebars_value_get_type(y) ) {
         // nothing
-    } else if( memcmp(&x->v, &y->v, sizeof(x->v)) ) {
-        ret = true;
-    } else if( x->type == HANDLEBARS_VALUE_TYPE_MAP ||
-            x->type == HANDLEBARS_VALUE_TYPE_ARRAY ||
-            y->type == HANDLEBARS_VALUE_TYPE_MAP ||
-            y->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        // nothing
+    // } else if( memcmp(&x->v, &y->v, sizeof(x->v)) ) {
+    //     ret = true;
+    // } else if( x->type == HANDLEBARS_VALUE_TYPE_MAP ||
+    //         x->type == HANDLEBARS_VALUE_TYPE_ARRAY ||
+    //         y->type == HANDLEBARS_VALUE_TYPE_MAP ||
+    //         y->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+    //     // nothing
     } else if (handlebars_string_eq(handlebars_value_to_string(x), handlebars_value_to_string(y))) {
         ret = true;
     }
@@ -668,8 +674,8 @@ FIXTURE_FN(2084318034)
     // "function (_undefined, _null, options) {\n            return (_undefined === undefined) + ' ' + (_null === null) + ' ' + (typeof options);\n          }"
     struct handlebars_value * arg1 = argv[0];
     char * res = handlebars_talloc_asprintf(options->vm, "%s %s %s",
-                                            (arg1->type == HANDLEBARS_VALUE_TYPE_NULL ? "true" : "false"),
-                                            (arg1->type == HANDLEBARS_VALUE_TYPE_NULL ? "true" : "false"),
+                                            (handlebars_value_get_type(arg1) == HANDLEBARS_VALUE_TYPE_NULL ? "true" : "false"),
+                                            (handlebars_value_get_type(arg1) == HANDLEBARS_VALUE_TYPE_NULL ? "true" : "false"),
                                             "object");
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(value, res);
@@ -741,7 +747,7 @@ FIXTURE_FN(2259424295)
 {
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(value, "&'\\<>");
-    value->flags |= HANDLEBARS_VALUE_FLAG_SAFE_STRING;
+    handlebars_value_set_flag(value, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
     return value;
 }
 
@@ -867,7 +873,7 @@ FIXTURE_FN(2600345162)
     struct handlebars_value * context = argv[0];
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(value, hbs_str_val(handlebars_value_to_string(context)));
-    value->flags |= HANDLEBARS_VALUE_FLAG_SAFE_STRING;
+    handlebars_value_set_flag(value, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
     return value;
 }
 
@@ -977,25 +983,29 @@ FIXTURE_FN(2857704189)
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
-    result->flags |= HANDLEBARS_VALUE_FLAG_SAFE_STRING;
+    handlebars_value_set_flag(result, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
     return result;
 }
 
 FIXTURE_FN(2919388099)
 {
     // "function (options) {\n        var frame = Handlebars.createFrame(options.data);\n        for (var prop in options.hash) {\n          if (prop in options.hash) {\n            frame[prop] = options.hash[prop];\n          }\n        }\n        return options.fn(this, {data: frame});\n      }"
-    struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(frame, 0); // zero may trigger extra rehashes - good for testing
+    struct handlebars_map * map = handlebars_map_ctor(CONTEXT, handlebars_value_count(options->data) + handlebars_value_count(options->hash) + 1);
 
     HANDLEBARS_VALUE_FOREACH_KV(options->data, key, child) {
-        handlebars_map_update(frame->v.map, key, child);
+        handlebars_map_update(map, key, child);
     } HANDLEBARS_VALUE_FOREACH_END();
 
     HANDLEBARS_VALUE_FOREACH_KV(options->hash, key, child) {
-        handlebars_map_update(frame->v.map, key, child);
+        handlebars_map_update(map, key, child);
     } HANDLEBARS_VALUE_FOREACH_END();
 
-    handlebars_map_str_update(frame->v.map, HBS_STRL("_parent"), options->data);
+    handlebars_map_str_update(map, HBS_STRL("_parent"), options->data);
+
+    struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
+    // handlebars_value_map_init(frame, 0); // zero may trigger extra rehashes - good for testing
+    handlebars_value_map(frame, map);
+
     struct handlebars_string * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, frame, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, res);
@@ -1378,7 +1388,7 @@ FIXTURE_FN(4005129518)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(result, tmp3);
-    result->flags |= HANDLEBARS_VALUE_FLAG_SAFE_STRING;
+    handlebars_value_set_flag(result, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
     handlebars_talloc_free(tmp1);
     handlebars_talloc_free(tmp2);
     handlebars_talloc_free(tmp3);
@@ -1462,7 +1472,7 @@ FIXTURE_FN(1569150712)
     struct handlebars_value * cruel = handlebars_value_map_str_find(options->hash, HBS_STRL("cruel"));
     struct handlebars_value * world = handlebars_value_map_str_find(options->hash, HBS_STRL("world"));
 
-    if (print && print->type == HANDLEBARS_VALUE_TYPE_TRUE) {
+    if (print && handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_TRUE) {
         char * tmp = handlebars_talloc_asprintf(
                 options->vm,
                 "GOODBYE %s %s",
@@ -1473,7 +1483,7 @@ FIXTURE_FN(1569150712)
         handlebars_value_string(result, tmp);
         handlebars_talloc_free(tmp);
         return result;
-    } else if (print && print->type == HANDLEBARS_VALUE_TYPE_FALSE) {
+    } else if (print && handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_FALSE) {
         FIXTURE_STRING("NOT PRINTING");
     } else {
         FIXTURE_STRING("THIS SHOULD NOT HAPPEN");
@@ -1522,7 +1532,7 @@ FIXTURE_FN(3568189707)
     assert(argc >= 2);
 
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    if (argv[0]->type == HANDLEBARS_VALUE_TYPE_TRUE && argv[1]->type == HANDLEBARS_VALUE_TYPE_TRUE) {
+    if (handlebars_value_get_type(argv[0]) == HANDLEBARS_VALUE_TYPE_TRUE && handlebars_value_get_type(argv[1]) == HANDLEBARS_VALUE_TYPE_TRUE) {
         handlebars_value_boolean(result, true);
     } else {
         handlebars_value_boolean(result, false);
@@ -1673,18 +1683,16 @@ static void convert_value_to_fixture(struct handlebars_value * value)
         break;
 
 #define SET_FUNCTION(func) \
-    handlebars_value_null(value); \
-    value->type = HANDLEBARS_VALUE_TYPE_HELPER; \
-    value->v.helper = &func;
+    handlebars_value_helper(value, func); \
 
-    assert(value->type == HANDLEBARS_VALUE_TYPE_MAP);
+    assert(handlebars_value_get_real_type(value) == HANDLEBARS_VALUE_TYPE_MAP);
 
     struct handlebars_value * jsvalue = handlebars_value_map_str_find(value, HBS_STRL("javascript"));
     if( !jsvalue ) {
         jsvalue = handlebars_value_map_str_find(value, HBS_STRL("php"));
     }
     assert(jsvalue != NULL);
-    assert(jsvalue->type == HANDLEBARS_VALUE_TYPE_STRING);
+    assert(handlebars_value_get_real_type(jsvalue) == HANDLEBARS_VALUE_TYPE_STRING);
     uint32_t hash = adler32((unsigned char *) hbs_str_val(handlebars_value_to_string(jsvalue)), handlebars_value_get_strlen(jsvalue));
 
     switch( hash ) {
@@ -1848,7 +1856,7 @@ void load_fixtures(struct handlebars_value * value)
 
     handlebars_value_convert(value);
 
-    switch( value->type ) {
+    switch( handlebars_value_get_type(value) ) {
         case HANDLEBARS_VALUE_TYPE_MAP:
             // Check if it contains a "!code" key
             child = handlebars_value_map_str_find(value, HBS_STRL("!code"));

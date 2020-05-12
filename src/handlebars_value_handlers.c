@@ -76,7 +76,7 @@ static int handlebars_json_dtor(struct handlebars_json * obj)
 
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(value->ctx)
+#define CONTEXT HBSCTX(handlebars_value_get_ctx(value))
 
 static struct handlebars_value * hbs_json_copy(struct handlebars_value * value)
 {
@@ -89,7 +89,8 @@ static void hbs_json_dtor(struct handlebars_value * value)
 {
     struct handlebars_json * json = HANDLEBARS_JSON(value);
     handlebars_talloc_free(json);
-    value->v.usr = NULL;
+    // @TODO FIXME?
+    // value->v.usr = NULL;
 }
 
 static void hbs_json_convert(struct handlebars_value * value, bool recurse)
@@ -99,32 +100,33 @@ static void hbs_json_convert(struct handlebars_value * value, bool recurse)
 
     switch( json_object_get_type(intern) ) {
         case json_type_object: {
-            handlebars_value_map_init(value, json_object_object_length(intern));
+            struct handlebars_map * map = handlebars_map_ctor(CONTEXT, json_object_object_length(intern));
             json_object_object_foreach(intern, k, v) {
                 new_value = handlebars_value_from_json_object(CONTEXT, v);
-                handlebars_map_str_update(value->v.map, k, strlen(k), new_value);
-                if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+                handlebars_map_str_update(map, k, strlen(k), new_value);
+                if( recurse && handlebars_value_get_real_type(new_value) == HANDLEBARS_VALUE_TYPE_USER ) {
                     hbs_json_convert(new_value, recurse);
                 }
                 handlebars_value_delref(new_value);
             }
+            handlebars_value_map(value, map);
             break;
         }
 
         case json_type_array: {
             size_t i;
             size_t l = json_object_array_length(intern);
-            handlebars_value_array_init(value, l);
-
+            struct handlebars_stack * stack = handlebars_stack_ctor(CONTEXT, l);
             for( i = 0; i < l; i++ ) {
                 new_value = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, i));
                 // @TODO check index?
-                value->v.stack = handlebars_stack_push(value->v.stack, new_value);
-                if( recurse && new_value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+                stack = handlebars_stack_push(stack, new_value);
+                if( recurse && handlebars_value_get_real_type(new_value) == HANDLEBARS_VALUE_TYPE_USER ) {
                     hbs_json_convert(new_value, recurse);
                 }
                 handlebars_value_delref(new_value);
             }
+            handlebars_value_array(value, stack);
             break;
         }
 
@@ -177,7 +179,7 @@ static bool hbs_json_iterator_next_object(struct handlebars_value_iterator * it)
     char * tmp;
 
     assert(value != NULL);
-    assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
+    assert(handlebars_value_get_real_type(value) == HANDLEBARS_VALUE_TYPE_USER);
     assert(it->current != NULL);
     assert(it->key != NULL);
 
@@ -193,7 +195,7 @@ static bool hbs_json_iterator_next_object(struct handlebars_value_iterator * it)
 
     it->usr = (void *) (entry = entry->next);
     tmp = (char *) entry->k;
-    it->key = handlebars_string_ctor(value->ctx, tmp, strlen(tmp));
+    it->key = handlebars_string_ctor(CONTEXT, tmp, strlen(tmp));
     it->current = handlebars_value_from_json_object(CONTEXT, (struct json_object *) entry->v);
     return true;
 }
@@ -204,7 +206,7 @@ static bool hbs_json_iterator_next_array(struct handlebars_value_iterator * it)
     struct json_object * intern = HANDLEBARS_JSON_OBJ(value);
 
     assert(value != NULL);
-    assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
+    assert(handlebars_value_get_real_type(value) == HANDLEBARS_VALUE_TYPE_USER);
     assert(it->current != NULL);
 
     handlebars_value_delref(it->current);
@@ -232,7 +234,7 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
             if( entry ) {
                 char * tmp = (char *) entry->k;
                 it->usr = (void *) entry;
-                it->key = handlebars_string_ctor(value->ctx, tmp, strlen(tmp));
+                it->key = handlebars_string_ctor(CONTEXT, tmp, strlen(tmp));
                 it->current = handlebars_value_from_json_object(CONTEXT, (json_object *) entry->v);
                 it->length = (size_t) json_object_object_length(intern);
                 it->next = &hbs_json_iterator_next_object;
@@ -299,23 +301,16 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
             // do nothing
             break;
         case json_type_boolean:
-            if( json_object_get_boolean(json) ) {
-                value->type = HANDLEBARS_VALUE_TYPE_TRUE;
-            } else {
-                value->type = HANDLEBARS_VALUE_TYPE_FALSE;
-            }
+            handlebars_value_boolean(value, json_object_get_boolean(json));
             break;
         case json_type_double:
-            value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
-            value->v.dval = json_object_get_double(json);
+            handlebars_value_float(value, json_object_get_double(json));
             break;
         case json_type_int:
-            value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
             // @todo make sure sizing is correct
-            value->v.lval = json_object_get_int64(json);
+            handlebars_value_integer(value, json_object_get_int64(json));
             break;
         case json_type_string:
-            value->type = HANDLEBARS_VALUE_TYPE_STRING;
             handlebars_value_stringl(value, json_object_get_string(json), json_object_get_string_len(json));
             break;
 
@@ -329,8 +324,7 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
             obj->object = json;
             talloc_set_destructor(obj, handlebars_json_dtor);
 
-            value->type = HANDLEBARS_VALUE_TYPE_USER;
-            value->v.usr = (struct handlebars_user *) obj;
+            handlebars_value_usr(value, obj);
             break;
     }
 }
@@ -381,24 +375,28 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
     char * end = NULL;
 
     switch( node->type ) {
-        case YAML_MAPPING_NODE:
-            handlebars_value_map_init(value, node->data.mapping.pairs.top - node->data.mapping.pairs.start);
+        case YAML_MAPPING_NODE: {
+            struct handlebars_map * map = handlebars_map_ctor(ctx, node->data.mapping.pairs.top - node->data.mapping.pairs.start);
             for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
                 yaml_node_t * keyNode = yaml_document_get_node(document, pair->key);
                 yaml_node_t * valueNode = yaml_document_get_node(document, pair->value);
                 assert(keyNode->type == YAML_SCALAR_NODE);
                 tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
-                handlebars_map_str_update(value->v.map, (const char *) keyNode->data.scalar.value, keyNode->data.scalar.length, tmp);
+                handlebars_map_str_update(map, (const char *) keyNode->data.scalar.value, keyNode->data.scalar.length, tmp);
             }
+            handlebars_value_map(value, map);
             break;
-        case YAML_SEQUENCE_NODE:
-            handlebars_value_array_init(value, node->data.sequence.items.top - node->data.sequence.items.start);
+        }
+        case YAML_SEQUENCE_NODE: {
+            struct handlebars_stack * stack = handlebars_stack_ctor(ctx, node->data.sequence.items.top - node->data.sequence.items.start);
             for( item = node->data.sequence.items.start; item < node->data.sequence.items.top; item++) {
                 yaml_node_t * valueNode = yaml_document_get_node(document, *item);
                 tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
-                value->v.stack = handlebars_stack_push(value->v.stack, tmp);
+                stack = handlebars_stack_push(stack, tmp);
             }
+            handlebars_value_array(value, stack);
             break;
+        }
         case YAML_SCALAR_NODE:
             if( 0 == strcmp((const char *) node->data.scalar.value, "true") ) {
                 handlebars_value_boolean(value, 1);

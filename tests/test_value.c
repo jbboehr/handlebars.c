@@ -165,17 +165,17 @@ START_TEST(test_array_iterator)
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
-    value->v.stack = handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    handlebars_value_array_push(value, tmp);
     handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
-    value->v.stack = handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    handlebars_value_array_push(value, tmp);
     handlebars_value_delref(tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
-    value->v.stack = handlebars_stack_push(handlebars_value_get_stack(value), tmp); // @TODO ignoring return value - should probably make a handlebars_value_push()
+    handlebars_value_array_push(value, tmp);
     handlebars_value_delref(tmp);
 
     HANDLEBARS_VALUE_FOREACH_IDX(value, index, child) {

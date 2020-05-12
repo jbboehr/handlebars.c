@@ -51,113 +51,213 @@
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
-
-
-size_t HANDLEBARS_VALUE_SIZE = sizeof(struct handlebars_value);
-
-
-
-extern inline bool handlebars_value_is_callable(struct handlebars_value * value);
-extern inline bool handlebars_value_is_empty(struct handlebars_value * value);
-extern inline bool handlebars_value_is_scalar(struct handlebars_value * value);
-extern inline long handlebars_value_count(struct handlebars_value * value);
-
-extern inline struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value);
-extern inline struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value);
-extern inline void * handlebars_value_get_ptr(struct handlebars_value * value);
-extern inline struct handlebars_stack * handlebars_value_get_stack(struct handlebars_value * value);
-extern inline struct handlebars_string * handlebars_value_get_string(struct handlebars_value * value);
-extern inline void * handlebars_value_get_usr(struct handlebars_value * value);
-extern inline enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value);
-
-extern inline void handlebars_value_null(struct handlebars_value * value);
-extern inline void handlebars_value_boolean(struct handlebars_value * value, bool bval);
-extern inline void handlebars_value_integer(struct handlebars_value * value, long lval);
-extern inline void handlebars_value_float(struct handlebars_value * value, double dval);
-extern inline void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string);
-extern inline void handlebars_value_str_steal(struct handlebars_value * value, struct handlebars_string * string);
-extern inline void handlebars_value_string(struct handlebars_value * value, const char * strval);
-extern inline void handlebars_value_string_steal(struct handlebars_value * value, char * strval);
-extern inline void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen);
-extern inline void handlebars_value_map_init(struct handlebars_value * value, size_t capacity);
-extern inline void handlebars_value_array_init(struct handlebars_value * value, size_t capacity);
-extern inline void handlebars_value_ptr(struct handlebars_value * value, void * ptr);
-
-
-
 #undef CONTEXT
-#define CONTEXT HBSCTX(ctx)
+#define CONTEXT HBSCTX(value->ctx)
+
+
+
+// {{{ Prototypes & Variables
+
+//! Internal value union
+union handlebars_value_internals
+{
+    long lval;
+    double dval;
+    struct handlebars_string * string;
+    struct handlebars_map * map;
+    struct handlebars_stack * stack;
+    struct handlebars_user * usr;
+    void * ptr;
+    handlebars_helper_func helper;
+    struct handlebars_options * options;
+};
+
+//! Main value struct
+struct handlebars_value
+{
+    //! The type of value from enum #handlebars_value_type
+	enum handlebars_value_type type;
+
+    //! Bitwise value flags from enum #handlebars_value_flags
+    unsigned long flags;
+
+    //! Internal value union
+    union handlebars_value_internals v;
+
+    //! Handlebars context, used for error handling and memory allocation
+	struct handlebars_context * ctx;
+};
+
+const size_t HANDLEBARS_VALUE_SIZE = sizeof(struct handlebars_value);
+const size_t HANDLEBARS_VALUE_INTERNALS_SIZE = sizeof(union handlebars_value_internals);
+
+// }}} Prototypes & Variables
+
+// {{{ Constructors and Destructors
 
 struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
 {
-    struct handlebars_value * value = MC(handlebars_talloc_zero(ctx, struct handlebars_value));
-    value->ctx = CONTEXT;
+    struct handlebars_value * value = handlebars_talloc_zero(ctx, struct handlebars_value);
+    HANDLEBARS_MEMCHECK(value, ctx);
+    value->ctx = ctx;
     value->flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
     return value;
 }
 
-#undef CONTEXT
-#define CONTEXT HBSCTX(value->ctx)
-
-struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key)
+void handlebars_value_dtor(struct handlebars_value * value)
 {
-    if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-        if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            return handlebars_value_get_handlers(value)->map_find(value, key);
-        }
-    } else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        return handlebars_map_find(value->v.map, key);
+    unsigned long restore_flags = 0;
+
+    // Release old value
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            handlebars_stack_dtor(value->v.stack);
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            handlebars_map_dtor(value->v.map);
+            break;
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            handlebars_talloc_free(value->v.string);
+            break;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            handlebars_value_get_handlers(value)->dtor(value);
+            break;
+        case HANDLEBARS_VALUE_TYPE_PTR:
+            handlebars_talloc_free(value->v.ptr);
+            break;
+        default:
+            // do nothing
+            break;
     }
 
-    return NULL;
-}
-
-struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len)
-{
-    struct handlebars_value * ret = NULL;
-    struct handlebars_string * str = handlebars_string_ctor(value->ctx, key, len);
-
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-			ret = handlebars_value_get_handlers(value)->map_find(value, str);
-		}
-	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        ret = handlebars_map_find(value->v.map, str);
+    if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
+        talloc_free_children(value);
+        restore_flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
     }
 
-    handlebars_talloc_free(str);
-	return ret;
+    // Initialize to null
+    value->type = HANDLEBARS_VALUE_TYPE_NULL;
+    memset(&value->v, 0, sizeof(value->v));
+    value->flags = restore_flags;
 }
 
-struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index)
+struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
 {
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-			return handlebars_value_get_handlers(value)->array_find(value, index);
-		}
-	} else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        return handlebars_stack_get(value->v.stack, index);
-    }
+    struct handlebars_value * new_value = NULL;
 
-	return NULL;
-}
+    assert(value != NULL);
 
-struct handlebars_string * handlebars_value_to_string(struct handlebars_value * value)
-{
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
-            return handlebars_string_copy_ctor(CONTEXT, value->v.string);
-        case HANDLEBARS_VALUE_TYPE_INTEGER:
-            return handlebars_string_asprintf(CONTEXT, "%ld", value->v.lval);
-        case HANDLEBARS_VALUE_TYPE_FLOAT:
-            return handlebars_string_asprintf(CONTEXT, "%g", value->v.dval);
-        case HANDLEBARS_VALUE_TYPE_TRUE:
-            return handlebars_string_ctor(CONTEXT, HBS_STRL("true"));
-        case HANDLEBARS_VALUE_TYPE_FALSE:
-            return handlebars_string_ctor(CONTEXT, HBS_STRL("false"));
+            new_value = handlebars_value_ctor(CONTEXT);
+            handlebars_value_str(new_value, value->v.string);
+            new_value->flags = (value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING);
+            break;
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            new_value = handlebars_value_ctor(CONTEXT);
+            handlebars_value_array_init(new_value, handlebars_value_count(value));
+            HANDLEBARS_VALUE_FOREACH(value, child) {
+                handlebars_value_array_push(new_value, handlebars_value_copy(child));
+            } HANDLEBARS_VALUE_FOREACH_END();
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            new_value = handlebars_value_ctor(CONTEXT);
+            handlebars_value_map_init(new_value, handlebars_value_count(value));
+            HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
+                handlebars_map_update(new_value->v.map, key, handlebars_value_copy(child));
+            } HANDLEBARS_VALUE_FOREACH_END();
+            break;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            new_value = handlebars_value_get_handlers(value)->copy(value);
+            break;
         default:
-            return handlebars_string_init(CONTEXT, 0);
+            new_value = handlebars_value_ctor(CONTEXT);
+            memcpy(&new_value->v, &value->v, sizeof(value->v));
+            break;
     }
+
+    return MC(new_value);
+}
+
+// }}} Constructors and Destructors
+
+// {{{ Getters
+
+enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * value)
+{
+	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+		return handlebars_value_get_handlers(value)->type(value);
+	} else {
+		return value->type;
+	}
+}
+
+enum handlebars_value_type handlebars_value_get_real_type(struct handlebars_value * value)
+{
+    return value->type;
+}
+
+unsigned long handlebars_value_get_flags(struct handlebars_value * value)
+{
+    return value->flags;
+}
+
+struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value)
+{
+    if (value->type != HANDLEBARS_VALUE_TYPE_USER) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid type");
+    }
+    return value->v.usr->handlers;
+}
+
+struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value)
+{
+    if (value->type == HANDLEBARS_VALUE_TYPE_MAP) {
+        return value->v.map;
+    } else {
+        return NULL;
+    }
+}
+
+void * handlebars_value_get_ptr(struct handlebars_value * value)
+{
+    if (value->type == HANDLEBARS_VALUE_TYPE_PTR) {
+        return value->v.ptr;
+    } else {
+        return NULL;
+    }
+}
+
+struct handlebars_stack * handlebars_value_get_stack(struct handlebars_value * value)
+{
+    if (value->type == HANDLEBARS_VALUE_TYPE_ARRAY) {
+        return value->v.stack;
+    } else {
+        return NULL;
+    }
+}
+
+struct handlebars_string * handlebars_value_get_string(struct handlebars_value * value)
+{
+    if (value->type == HANDLEBARS_VALUE_TYPE_STRING) {
+        return value->v.string;
+    } else {
+        return NULL;
+    }
+}
+
+void * handlebars_value_get_usr(struct handlebars_value * value)
+{
+    if (value->type == HANDLEBARS_VALUE_TYPE_USER) {
+        return value->v.usr;
+    } else {
+        return NULL;
+    }
+}
+
+struct handlebars_context * handlebars_value_get_ctx(struct handlebars_value * value)
+{
+    return value->ctx;
 }
 
 const char * handlebars_value_get_strval(struct handlebars_value * value)
@@ -222,6 +322,28 @@ double handlebars_value_get_floatval(struct handlebars_value * value)
 	return 0;
 }
 
+// }}} Getters
+
+// {{{ Conversion
+
+struct handlebars_string * handlebars_value_to_string(struct handlebars_value * value)
+{
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            return handlebars_string_copy_ctor(CONTEXT, value->v.string);
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            return handlebars_string_asprintf(CONTEXT, "%ld", value->v.lval);
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            return handlebars_string_asprintf(CONTEXT, "%g", value->v.dval);
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+            return handlebars_string_ctor(CONTEXT, HBS_STRL("true"));
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            return handlebars_string_ctor(CONTEXT, HBS_STRL("false"));
+        default:
+            return handlebars_string_init(CONTEXT, 0);
+    }
+}
+
 void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
 {
     switch( value->type ) {
@@ -239,6 +361,304 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
             break;
     }
 }
+
+struct handlebars_string * handlebars_value_expression(struct handlebars_value * value, bool escape)
+{
+    return handlebars_value_expression_append(handlebars_string_init(value->ctx, 0), value, escape);
+}
+
+struct handlebars_string * handlebars_value_expression_append(
+    struct handlebars_string * string,
+    struct handlebars_value * value,
+    bool escape
+) {
+    bool first;
+
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+            string = handlebars_string_append(value->ctx, string, HBS_STRL("true"));
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            string = handlebars_string_append(value->ctx, string, HBS_STRL("false"));
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            string = handlebars_string_asprintf_append(value->ctx, string, "%g", value->v.dval);
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            string = handlebars_string_asprintf_append(value->ctx, string, "%ld", value->v.lval);
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
+                string = handlebars_string_htmlspecialchars_append(value->ctx, string, HBS_STR_STRL(value->v.string));
+            } else {
+                string = handlebars_string_append_str(value->ctx, string, value->v.string);
+            }
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_USER:
+            if( handlebars_value_get_type(value) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
+                break;
+            }
+            // fall-through to array
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            first = true;
+            HANDLEBARS_VALUE_FOREACH(value, child) {
+                if( !first ) {
+                    string = handlebars_string_append(value->ctx, string, HBS_STRL(","));
+                }
+                string = handlebars_value_expression_append(string, child, escape);
+                first = false;
+            } HANDLEBARS_VALUE_FOREACH_END();
+            break;
+
+        default:
+            // nothing
+            break;
+    }
+
+    return string;
+}
+
+// }}} Conversion
+
+// {{{ Mutators
+
+void handlebars_value_null(struct handlebars_value * value)
+{
+    if( value->type != HANDLEBARS_VALUE_TYPE_NULL ) {
+        handlebars_value_dtor(value);
+    }
+}
+
+void handlebars_value_boolean(struct handlebars_value * value, bool bval)
+{
+    handlebars_value_null(value);
+    value->type = bval ? HANDLEBARS_VALUE_TYPE_TRUE : HANDLEBARS_VALUE_TYPE_FALSE;
+}
+
+void handlebars_value_integer(struct handlebars_value * value, long lval)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_INTEGER;
+    value->v.lval = lval;
+}
+
+void handlebars_value_float(struct handlebars_value * value, double dval)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_FLOAT;
+    value->v.dval = dval;
+}
+
+void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.string = handlebars_string_copy_ctor(value->ctx, string);
+}
+
+void handlebars_value_str_steal(struct handlebars_value * value, struct handlebars_string * string)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.string = talloc_steal(value->ctx, string);
+}
+
+void handlebars_value_string(struct handlebars_value * value, const char * strval)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
+}
+
+void handlebars_value_string_steal(struct handlebars_value * value, char * strval)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
+    talloc_free(strval); // meh
+}
+
+void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_STRING;
+    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen)/*)*/;
+}
+
+void handlebars_value_ptr(struct handlebars_value * value, void * ptr)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_PTR;
+    value->v.ptr = ptr;
+}
+
+void handlebars_value_usr(struct handlebars_value * value, void * usr)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_USER;
+    value->v.usr = usr;
+}
+
+void handlebars_value_map(struct handlebars_value * value, struct handlebars_map * map)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_MAP;
+    value->v.map = map;
+}
+
+void handlebars_value_array(struct handlebars_value * value, struct handlebars_stack * stack)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
+    value->v.stack = stack;
+}
+
+void handlebars_value_helper(struct handlebars_value * value, handlebars_helper_func helper)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_HELPER;
+    value->v.helper = helper;
+}
+
+void handlebars_value_set_flag(
+    struct handlebars_value * value,
+    unsigned long flag
+) {
+    value->flags |= flag;
+}
+
+// }}} Mutators
+
+// {{{ Misc
+
+bool handlebars_value_is_callable(struct handlebars_value * value)
+{
+    return handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_HELPER;
+}
+
+bool handlebars_value_is_empty(struct handlebars_value * value)
+{
+    return !handlebars_value_get_boolval(value);
+}
+
+bool handlebars_value_is_scalar(struct handlebars_value * value)
+{
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_NULL:
+        case HANDLEBARS_VALUE_TYPE_TRUE:
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            return true;
+        default:
+            return false;
+    }
+}
+
+long handlebars_value_count(struct handlebars_value * value)
+{
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            return handlebars_stack_count(value->v.stack);
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            return handlebars_map_count(value->v.map);
+        case HANDLEBARS_VALUE_TYPE_USER:
+            return (handlebars_value_handlers_get_count_fn(handlebars_value_get_handlers(value)))(value);
+        default:
+            return -1;
+    }
+}
+
+// }}} Misc
+
+// {{{ Array
+
+void handlebars_value_array_init(struct handlebars_value * value, size_t capacity)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
+    value->v.stack = /*talloc_steal(value,*/ handlebars_stack_ctor(value->ctx, capacity)/*)*/;
+}
+
+void handlebars_value_array_set(struct handlebars_value * value, size_t index, struct handlebars_value * child)
+{
+    if (value->type != HANDLEBARS_VALUE_TYPE_ARRAY) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid type");
+    }
+    value->v.stack = handlebars_stack_set(value->v.stack, index, child);
+}
+
+void handlebars_value_array_push(struct handlebars_value * value, struct handlebars_value * child)
+{
+    if (value->type != HANDLEBARS_VALUE_TYPE_ARRAY) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid type");
+    }
+    value->v.stack = handlebars_stack_push(value->v.stack, child);
+}
+
+struct handlebars_value * handlebars_value_array_find(struct handlebars_value * value, size_t index)
+{
+	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+			return handlebars_value_get_handlers(value)->array_find(value, index);
+		}
+	} else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        return handlebars_stack_get(value->v.stack, index);
+    }
+
+	return NULL;
+}
+
+// }}} Array
+
+// {{{ Map
+
+void handlebars_value_map_init(struct handlebars_value * value, size_t capacity)
+{
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_MAP;
+    value->v.map = /*talloc_steal(value,*/ handlebars_map_ctor(value->ctx, capacity)/*)*/;
+}
+
+struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key)
+{
+    if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+        if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
+            return handlebars_value_get_handlers(value)->map_find(value, key);
+        }
+    } else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        return handlebars_map_find(value->v.map, key);
+    }
+
+    return NULL;
+}
+
+struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len)
+{
+    struct handlebars_value * ret = NULL;
+    struct handlebars_string * str = handlebars_string_ctor(value->ctx, key, len);
+
+	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
+			ret = handlebars_value_get_handlers(value)->map_find(value, str);
+		}
+	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        ret = handlebars_map_find(value->v.map, str);
+    }
+
+    handlebars_talloc_free(str);
+	return ret;
+}
+
+// }}} Map
+
+// {{{ Misc
 
 struct handlebars_value * handlebars_value_call(struct handlebars_value * value, HANDLEBARS_HELPER_ARGS)
 {
@@ -308,148 +728,9 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
     return MC(buf);
 }
 
-struct handlebars_string * handlebars_value_expression(struct handlebars_value * value, bool escape)
-{
-    return handlebars_value_expression_append(handlebars_string_init(value->ctx, 0), value, escape);
-}
+// }}} Misc
 
-struct handlebars_string * handlebars_value_expression_append(
-    struct handlebars_string * string,
-    struct handlebars_value * value,
-    bool escape
-) {
-    bool first;
-
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_TRUE:
-            string = handlebars_string_append(value->ctx, string, HBS_STRL("true"));
-            break;
-
-        case HANDLEBARS_VALUE_TYPE_FALSE:
-            string = handlebars_string_append(value->ctx, string, HBS_STRL("false"));
-            break;
-
-        case HANDLEBARS_VALUE_TYPE_FLOAT:
-            string = handlebars_string_asprintf_append(value->ctx, string, "%g", value->v.dval);
-            break;
-
-        case HANDLEBARS_VALUE_TYPE_INTEGER:
-            string = handlebars_string_asprintf_append(value->ctx, string, "%ld", value->v.lval);
-            break;
-
-        case HANDLEBARS_VALUE_TYPE_STRING:
-            if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
-                string = handlebars_string_htmlspecialchars_append(value->ctx, string, HBS_STR_STRL(value->v.string));
-            } else {
-                string = handlebars_string_append_str(value->ctx, string, value->v.string);
-            }
-            break;
-
-        case HANDLEBARS_VALUE_TYPE_USER:
-            if( handlebars_value_get_type(value) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
-                break;
-            }
-            // fall-through to array
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            first = true;
-            HANDLEBARS_VALUE_FOREACH(value, child) {
-                if( !first ) {
-                    string = handlebars_string_append(value->ctx, string, HBS_STRL(","));
-                }
-                string = handlebars_value_expression_append(string, child, escape);
-                first = false;
-            } HANDLEBARS_VALUE_FOREACH_END();
-            break;
-
-        default:
-            // nothing
-            break;
-    }
-
-    return string;
-}
-
-struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
-{
-    struct handlebars_value * new_value = NULL;
-
-    assert(value != NULL);
-
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_STRING:
-            new_value = handlebars_value_ctor(CONTEXT);
-            handlebars_value_str(new_value, value->v.string);
-            new_value->flags = (value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING);
-            break;
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            new_value = handlebars_value_ctor(CONTEXT);
-            handlebars_value_array_init(new_value, handlebars_value_count(value));
-            HANDLEBARS_VALUE_FOREACH(value, child) {
-                // @todo double-check index?
-                new_value->v.stack = handlebars_stack_push(new_value->v.stack, handlebars_value_copy(child));
-            } HANDLEBARS_VALUE_FOREACH_END();
-            break;
-        case HANDLEBARS_VALUE_TYPE_MAP:
-            new_value = handlebars_value_ctor(CONTEXT);
-            handlebars_value_map_init(new_value, handlebars_value_count(value));
-            HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
-                handlebars_map_update(new_value->v.map, key, handlebars_value_copy(child));
-            } HANDLEBARS_VALUE_FOREACH_END();
-            break;
-        case HANDLEBARS_VALUE_TYPE_USER:
-            new_value = handlebars_value_get_handlers(value)->copy(value);
-            break;
-        default:
-            new_value = handlebars_value_ctor(CONTEXT);
-            memcpy(&new_value->v, &value->v, sizeof(value->v));
-            break;
-    }
-
-    return MC(new_value);
-}
-
-void handlebars_value_dtor(struct handlebars_value * value)
-{
-    unsigned long restore_flags = 0;
-
-    // Release old value
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            handlebars_stack_dtor(value->v.stack);
-            break;
-        case HANDLEBARS_VALUE_TYPE_MAP:
-            handlebars_map_dtor(value->v.map);
-            break;
-        case HANDLEBARS_VALUE_TYPE_STRING:
-            handlebars_talloc_free(value->v.string);
-            break;
-        case HANDLEBARS_VALUE_TYPE_USER:
-            handlebars_value_get_handlers(value)->dtor(value);
-            break;
-        case HANDLEBARS_VALUE_TYPE_PTR:
-            handlebars_talloc_free(value->v.ptr);
-            break;
-        default:
-            // do nothing
-            break;
-    }
-
-    if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
-        talloc_free_children(value);
-        restore_flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
-    }
-
-    // Initialize to null
-    value->type = HANDLEBARS_VALUE_TYPE_NULL;
-    memset(&value->v, 0, sizeof(value->v));
-    value->flags = restore_flags;
-}
-
-
-
-
-
-// Iteration
+// {{{ Iteration
 
 static bool handlebars_value_iterator_next_void(struct handlebars_value_iterator * it)
 {
@@ -544,3 +825,14 @@ bool handlebars_value_iterator_next(
     assert(it->next != NULL);
     return it->next(it);
 };
+
+// }}} Iteration
+
+/*
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim600: fdm=marker
+ * vim: et sw=4 ts=4
+ */
