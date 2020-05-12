@@ -25,9 +25,6 @@
 #include <stdio.h>
 #include <talloc.h>
 
-#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
-#define HANDLEBARS_VALUE_PRIVATE
-
 #include "handlebars_json.h"
 #include "handlebars_memory.h"
 #include "handlebars_value.h"

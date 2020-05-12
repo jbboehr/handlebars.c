@@ -26,8 +26,6 @@
 #include <string.h>
 
 #define HANDLEBARS_HELPERS_PRIVATE
-#define HANDLEBARS_VALUE_PRIVATE
-#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_json.h"

@@ -39,9 +39,6 @@
 #include <json/json_tokener.h>
 #endif
 
-#define HANDLEBARS_VALUE_PRIVATE
-#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -50,6 +47,10 @@
 #include "handlebars_stack.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(value->ctx)
@@ -66,7 +67,7 @@ union handlebars_value_internals
     struct handlebars_string * string;
     struct handlebars_map * map;
     struct handlebars_stack * stack;
-    struct handlebars_user * usr;
+    struct handlebars_user * user;
     void * ptr;
     handlebars_helper_func helper;
     struct handlebars_options * options;
@@ -120,7 +121,7 @@ void handlebars_value_dtor(struct handlebars_value * value)
             handlebars_string_delref(value->v.string);
             break;
         case HANDLEBARS_VALUE_TYPE_USER:
-            handlebars_value_get_handlers(value)->dtor(value);
+            handlebars_user_delref(value->v.user);
             break;
         case HANDLEBARS_VALUE_TYPE_PTR:
             handlebars_talloc_free(value->v.ptr);
@@ -202,12 +203,12 @@ unsigned long handlebars_value_get_flags(struct handlebars_value * value)
     return value->flags;
 }
 
-struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value)
+const struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value)
 {
     if (value->type != HANDLEBARS_VALUE_TYPE_USER) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid type");
     }
-    return value->v.usr->handlers;
+    return value->v.user->handlers;
 }
 
 struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value)
@@ -246,10 +247,10 @@ struct handlebars_string * handlebars_value_get_string(struct handlebars_value *
     }
 }
 
-void * handlebars_value_get_usr(struct handlebars_value * value)
+struct handlebars_user * handlebars_value_get_user(struct handlebars_value * value)
 {
     if (value->type == HANDLEBARS_VALUE_TYPE_USER) {
-        return value->v.usr;
+        return value->v.user;
     } else {
         return NULL;
     }
@@ -500,11 +501,11 @@ void handlebars_value_ptr(struct handlebars_value * value, void * ptr)
     value->v.ptr = ptr;
 }
 
-void handlebars_value_usr(struct handlebars_value * value, void * usr)
+void handlebars_value_user(struct handlebars_value * value, struct handlebars_user * user)
 {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_USER;
-    value->v.usr = usr;
+    value->v.user = user;
 }
 
 void handlebars_value_map(struct handlebars_value * value, struct handlebars_map * map)

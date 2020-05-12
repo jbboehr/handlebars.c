@@ -38,6 +38,7 @@ struct handlebars_context;
 struct handlebars_map;
 struct handlebars_options;
 struct handlebars_stack;
+struct handlebars_user;
 struct handlebars_value;
 struct handlebars_value_handlers;
 struct json_object;
@@ -71,13 +72,6 @@ enum handlebars_value_flags
     HANDLEBARS_VALUE_FLAG_SAFE_STRING = 1,
     //! Indicates that the value was not stack allocated, but allocated using talloc
     HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED = 2
-};
-
-//! Common header for user-defined types
-struct handlebars_user
-{
-    //! User-defined type handlers
-    struct handlebars_value_handlers * handlers;
 };
 
 extern const size_t HANDLEBARS_VALUE_SIZE;
@@ -137,7 +131,7 @@ unsigned long handlebars_value_get_flags(struct handlebars_value * value)
  * @param[in] value
  * @return The value handlers
  */
-struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value)
+const struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value)
@@ -152,7 +146,7 @@ struct handlebars_stack * handlebars_value_get_stack(struct handlebars_value * v
 struct handlebars_string * handlebars_value_get_string(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
-void * handlebars_value_get_usr(struct handlebars_value * value)
+struct handlebars_user * handlebars_value_get_user(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_context * handlebars_value_get_ctx(struct handlebars_value * value)
@@ -333,7 +327,7 @@ void handlebars_value_stringl(struct handlebars_value * value, const char * strv
 
 void handlebars_value_ptr(struct handlebars_value * value, void * ptr) HBS_ATTR_NONNULL_ALL;
 
-void handlebars_value_usr(struct handlebars_value * value, void * usr) HBS_ATTR_NONNULL_ALL;
+void handlebars_value_user(struct handlebars_value * value, struct handlebars_user * user) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_value_map(struct handlebars_value * value, struct handlebars_map * map) HBS_ATTR_NONNULL_ALL;
 

@@ -26,11 +26,12 @@ HBS_EXTERN_C_START
 
 struct handlebars_options;
 struct handlebars_string;
+struct handlebars_user;
 struct handlebars_value_iterator;
 struct handlebars_value_handlers;
 
 typedef struct handlebars_value * (*handlebars_copy_func)(struct handlebars_value * value);
-typedef void (*handlebars_value_dtor_func)(struct handlebars_value * value);
+typedef void (*handlebars_value_dtor_func)(struct handlebars_user * user);
 typedef void (*handlebars_value_convert_func)(struct handlebars_value * value, bool recurse);
 typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
 typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, struct handlebars_string * key);
@@ -45,10 +46,34 @@ typedef struct handlebars_value * (*handlebars_call_func)(
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
 
 handlebars_count_func handlebars_value_handlers_get_count_fn(
-    struct handlebars_value_handlers * handlers
+    const struct handlebars_value_handlers * handlers
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-#ifdef HANDLEBARS_VALUE_HANDLERS_PRIVATE
+void handlebars_user_init(struct handlebars_user * user, const struct handlebars_value_handlers * handlers)
+    HBS_ATTR_NONNULL_ALL;
+
+// {{{ Reference Counting
+
+void handlebars_user_addref(struct handlebars_user * user)
+    HBS_ATTR_NONNULL_ALL;
+
+void handlebars_user_delref(struct handlebars_user * user)
+    HBS_ATTR_NONNULL_ALL;
+
+// }}} Reference Counting
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
+
+//! Common header for user-defined types
+struct handlebars_user
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    struct handlebars_rc rc;
+#endif
+    const struct handlebars_value_handlers * handlers;
+};
 
 struct handlebars_value_handlers {
     const char * name;
@@ -62,8 +87,6 @@ struct handlebars_value_handlers {
     handlebars_call_func call;
     handlebars_count_func count;
 };
-
-#endif /* HANDLEBARS_VALUE_HANDLERS_PRIVATE */
 
 HBS_EXTERN_C_END
 

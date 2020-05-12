@@ -21,13 +21,55 @@
 #include "config.h"
 #endif
 
-#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
+#include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_value_handlers.h"
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
 
 
-handlebars_count_func handlebars_value_handlers_get_count_fn(struct handlebars_value_handlers * handlers) {
+
+// {{{ Reference Counting
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+static void user_rc_dtor(struct handlebars_rc * rc)
+{
+    struct handlebars_user * user = /*talloc_get_type(*/hbs_container_of(rc, struct handlebars_user, rc)/*, struct handlebars_user)*/;
+    user->handlers->dtor(user);
+    handlebars_talloc_free(user);
+}
+#endif
+
+void handlebars_user_addref(struct handlebars_user * user)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_addref(&user->rc);
+#endif
+}
+
+void handlebars_user_delref(struct handlebars_user * user)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_delref(&user->rc);
+#endif
+}
+
+// }}} Reference Counting
+
+
+
+void handlebars_user_init(struct handlebars_user * user, const struct handlebars_value_handlers * handlers)
+{
+    user->handlers = handlers;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&user->rc, user_rc_dtor);
+#endif
+}
+
+handlebars_count_func handlebars_value_handlers_get_count_fn(const struct handlebars_value_handlers * handlers) {
     return handlers->count;
 }

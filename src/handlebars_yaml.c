@@ -25,14 +25,10 @@
 #include <yaml.h>
 #endif
 
-#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
-#define HANDLEBARS_VALUE_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_private.h"
 #include "handlebars_memory.h"
 #include "handlebars_value.h"
-#include "handlebars_value_handlers.h"
 #include "handlebars_yaml.h"
 
 

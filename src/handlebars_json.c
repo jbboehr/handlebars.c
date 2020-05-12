@@ -35,9 +35,6 @@
 #include <json/json_tokener.h>
 #endif
 
-#define HANDLEBARS_VALUE_HANDLERS_PRIVATE
-#define HANDLEBARS_VALUE_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_json.h"
 #include "handlebars_private.h"
@@ -45,19 +42,27 @@
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
-#define HANDLEBARS_JSON(value) ((struct handlebars_json *) talloc_get_type(handlebars_value_get_usr(value), struct handlebars_json))
-#define HANDLEBARS_JSON_OBJ(value) HANDLEBARS_JSON(value)->object
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
+
+
+
+#define GET_INTERN_V(value) GET_INTERN(handlebars_value_get_user(value))
+#define GET_INTERN(user) ((struct handlebars_json *) talloc_get_type(user, struct handlebars_json))
+#define HANDLEBARS_JSON_OBJ(value) GET_INTERN_V(value)->object
 
 struct handlebars_json {
-    struct handlebars_user usr;
+    struct handlebars_user user;
     struct json_object * object;
 };
 
 
 static int handlebars_json_dtor(struct handlebars_json * obj)
 {
-    if( obj ) {
+    if( obj && obj->object ) {
         json_object_put(obj->object);
+        obj->object = NULL;
     }
 
     return 0;
@@ -75,12 +80,13 @@ static struct handlebars_value * hbs_json_copy(struct handlebars_value * value)
     return handlebars_value_from_json_string(CONTEXT, str);
 }
 
-static void hbs_json_dtor(struct handlebars_value * value)
+static void hbs_json_dtor(struct handlebars_user * user)
 {
-    struct handlebars_json * json = HANDLEBARS_JSON(value);
-    handlebars_talloc_free(json);
-    // @TODO FIXME?
-    // value->v.usr = NULL;
+    struct handlebars_json * json = GET_INTERN(user);
+    if( json && json->object ) {
+        json_object_put(json->object);
+        json->object = NULL;
+    }
 }
 
 static void hbs_json_convert(struct handlebars_value * value, bool recurse)
@@ -261,7 +267,7 @@ static long hbs_json_count(struct handlebars_value * value)
 
 }
 
-static struct handlebars_value_handlers handlebars_value_hbs_json_handlers = {
+static const struct handlebars_value_handlers handlebars_value_hbs_json_handlers = {
     "json",
     &hbs_json_copy,
     &hbs_json_dtor,
@@ -273,11 +279,6 @@ static struct handlebars_value_handlers handlebars_value_hbs_json_handlers = {
     NULL, // call
     &hbs_json_count
 };
-
-struct handlebars_value_handlers * handlebars_value_get_hbs_json_handlers()
-{
-    return &handlebars_value_hbs_json_handlers;
-}
 
 #undef CONTEXT
 #define CONTEXT ctx
@@ -310,11 +311,10 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
             json_object_get(json);
 
             obj = MC(handlebars_talloc(ctx, struct handlebars_json));
-            obj->usr.handlers = handlebars_value_get_hbs_json_handlers();
+            handlebars_user_init((struct handlebars_user *) obj, &handlebars_value_hbs_json_handlers);
             obj->object = json;
             talloc_set_destructor(obj, handlebars_json_dtor);
-
-            handlebars_value_usr(value, obj);
+            handlebars_value_user(value, (struct handlebars_user *) obj);
             break;
     }
 }
