@@ -33,10 +33,12 @@
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
+#include "utils.h"
+
+// @TODO FIXME
+#pragma GCC diagnostic ignored "-Wshadow"
 
 
-
-uint32_t adler32(unsigned char *data, size_t len);
 
 #define CONTEXT ((struct handlebars_context *)options->vm)
 #define FIXTURE_FN(hash) static struct handlebars_value * fixture_ ## hash(HANDLEBARS_HELPER_ARGS)
@@ -95,10 +97,13 @@ FIXTURE_FN(454102302)
     // "function (value) { return value + ''; }"
     // @todo implement undefined?
     struct handlebars_value * prefix = argv[0];
-    assert(handlebars_value_get_type(prefix) == HANDLEBARS_VALUE_TYPE_NULL);
-    const char * tmp = "undefined";
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    if (handlebars_value_get_type(prefix) == HANDLEBARS_VALUE_TYPE_NULL) {
+        const char * tmp = "undefined";
+        handlebars_value_string(result, tmp);
+    } else {
+        handlebars_value_str_steal(result, handlebars_value_expression(prefix, 1));
+    }
     return result;
 }
 

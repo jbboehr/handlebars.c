@@ -1,5 +1,9 @@
 
 EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml
+AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
+AM_LDFLAGS = $(WARN_LDFLAGS) -static  # for speed and Valgrind
+AM_CFLAGS = @CHECK_CFLAGS@ $(WARN_CFLAGS)
+LDADD = $(top_builddir)/src/libhandlebars.la @CHECK_LIBS@
 
 if CHECK_HAS_TAP
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
@@ -94,9 +98,3 @@ TESTS_ENVIRONMENT = \
 if CHECK_HAS_TAP
 TESTS_ENVIRONMENT += CK_TAP_LOG_FILE_NAME=-
 endif
-
-AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
-AM_LDFLAGS = -static  # for speed and Valgrind
-AM_CFLAGS = @CHECK_CFLAGS@
-LDADD = $(top_builddir)/src/libhandlebars.la @CHECK_LIBS@
-

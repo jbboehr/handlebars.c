@@ -45,56 +45,53 @@
 #endif
 
 // Attributes
-#if (__GNUC__ >= 3)
+#if (__GNUC__ >= 3) || defined(__clang__)
+#define HBS_ATTR_UNUSED  __attribute__((unused))
 #define HBS_ATTR_NORETURN __attribute__ ((noreturn))
 #define HBS_ATTR_PRINTF(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
-#define HBS_ATTR_UNUSED  __attribute__((__unused__))
+#define HBS_ATTR_NOINLINE __attribute__((noinline))
 #define HBS_ATTR_NONNULL(...) __attribute__((nonnull (__VA_ARGS__)))
 #define HBS_ATTR_NONNULL_ALL __attribute__((nonnull))
-#define HBS_ATTR_NOINLINE __attribute__((__noinline__))
 #define HBS_ATTR_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#else
+#define HBS_ATTR_UNUSED
+#define HBS_ATTR_NORETURN
+#define HBS_ATTR_PRINTF(a1, a2)
+#define HBS_ATTR_NOINLINE
+#define HBS_ATTR_NONNULL(...)
+#define HBS_ATTR_NONNULL_ALL
+#define HBS_ATTR_WARN_UNUSED_RESULT
+#endif
+
+#if (__GNUC__ >= 3)
 #define HBS_ATTR_PURE __attribute__((pure))
 #define HBS_ATTR_CONST __attribute__((const))
 #else
-#define HBS_ATTR_NORETURN
-#define HBS_ATTR_PRINTF(a1, a2)
-#define HBS_ATTR_UNUSED
-#define HBS_ATTR_NONNULL(...)
-#define HBS_ATTR_NONNULL_ALL
-#define HBS_ATTR_NOINLINE
-#define HBS_ATTR_WARN_UNUSED_RESULT
 #define HBS_ATTR_PURE
 #define HBS_ATTR_CONST
 #endif
 
 // returns_nonnull
-#if (__GNUC__ >= 5) || ((__GNUC__ >= 4) && (__GNUC_MINOR__ >= 9))
+#if ((__GNUC__ >= 5) || ((__GNUC__ >= 4) && (__GNUC_MINOR__ >= 9))) || defined(__clang__)
 #define HBS_ATTR_RETURNS_NONNULL  __attribute__((returns_nonnull))
 #else
 #define HBS_ATTR_RETURNS_NONNULL
 #endif
 
 // typeof
-#if (__GNUC__ >= 3)
+#if (__GNUC__ >= 3) || defined(__clang__)
 #define HBS_TYPEOF(ptr) __typeof__(ptr)
 #else
 #define HBS_TYPEOF(ptr) void *
 #endif
 
 // builtin_expect
-#ifdef HAVE___BUILTIN_EXPECT
+#if (__GNUC__ >= 4) || defined(__clang__)
 #  define handlebars_likely(x)   __builtin_expect(!!(x), 1)
 #  define handlebars_unlikely(x) __builtin_expect(!!(x), 0)
 #else
 #  define handlebars_likely(x) (x)
 #  define handlebars_unlikely(x) (x)
-#endif
-
-// unused
-#ifdef HAVE_VAR_ATTRIBUTE_UNUSED
-#  define HANDLEBARS_ATTR_UNUSED __attribute__((__unused__))
-#else
-#  define HANDLEBARS_ATTR_UNUSED
 #endif
 
 // visibility
@@ -181,7 +178,7 @@ struct handlebars_error
     enum handlebars_error_type num;
 
     //! The message of the error that has occurred
-    char * msg;
+    const char * msg;
 
     //! The location of the error that has occurred
     struct handlebars_locinfo loc;

@@ -143,7 +143,7 @@ static inline size_t ht_choose_table_capacity(size_t elements) {
             return HANDLEBARS_MAP_CAPACITY_TABLE[i];
         }
     }
-    fprintf(stderr, "Failed to obtain hash table capacity for minimum elements %lu (target capacity %lu)\n", elements, target_capacity);
+    fprintf(stderr, "Failed to obtain hash table capacity for minimum elements %zu (target capacity %zu)\n", elements, target_capacity);
     abort();
 }
 
@@ -332,7 +332,7 @@ void handlebars_map_delref(struct handlebars_map * map)
 
 
 
-size_t handlebars_map_size() {
+size_t handlebars_map_size(void) {
     return sizeof(struct handlebars_map);
 }
 

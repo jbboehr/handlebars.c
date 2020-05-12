@@ -189,9 +189,9 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
 
         // Special
         _RTYPE_CASE(return, return);
-    }
 
-    return "invalid";
+        default: return "invalid";
+    }
 }
 
 enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char * type)
@@ -250,6 +250,8 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
             _RTYPE_REV_CMP(resolve_possible_lambda, resolvePossibleLambda);
             _RTYPE_REV_CMP(register_decorator, registerDecorator);
             break;
+
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
 
     // Unknown :(

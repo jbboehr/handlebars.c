@@ -43,6 +43,9 @@
 #include "handlebars_private.h"
 #include "handlebars_string.h"
 
+// @TODO fix these?
+#pragma GCC diagnostic warning "-Winline"
+
 
 
 #define __MK(type) handlebars_opcode_type_ ## type
@@ -51,21 +54,21 @@
 #define __OPN(type) __PUSH(handlebars_opcode_ctor(CONTEXT, __MK(type)))
 
 #define __OPB(type, arg) do { \
-        struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
-        handlebars_operand_set_boolval(&opcode->op1, arg); \
-        __PUSH(opcode); \
+        struct handlebars_opcode * ____opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
+        handlebars_operand_set_boolval(&____opcode->op1, arg); \
+        __PUSH(____opcode); \
     } while(0)
 
 #define __OPL(type, arg) do { \
-        struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
-        handlebars_operand_set_longval(&opcode->op1, arg); \
-        __PUSH(opcode); \
+        struct handlebars_opcode * ____opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
+        handlebars_operand_set_longval(&____opcode->op1, arg); \
+        __PUSH(____opcode); \
     } while(0)
 
 #define __OPS(type, arg) do { \
-        struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
-        handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, arg); \
-        __PUSH(opcode); \
+        struct handlebars_opcode * ____opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
+        handlebars_operand_set_stringval(CONTEXT, ____opcode, &____opcode->op1, arg); \
+        __PUSH(____opcode); \
     } while(0)
 
 #undef CONTEXT
@@ -271,10 +274,7 @@ static inline void handlebars_compiler_add_depth(
     }
 }
 
-/**
- * We mark this as extern for the test suite...
- */
-extern inline bool handlebars_compiler_is_known_helper(
+bool handlebars_compiler_is_known_helper(
         struct handlebars_compiler * compiler,
         struct handlebars_ast_node * path
 ) {
@@ -284,9 +284,9 @@ extern inline bool handlebars_compiler_is_known_helper(
     const char ** ptr;
 
     assert(compiler != NULL);
+    assert(path != NULL);
 
-    if( NULL == path ||
-        path->type != HANDLEBARS_AST_NODE_PATH ||
+    if( path->type != HANDLEBARS_AST_NODE_PATH ||
         NULL == (parts = path->node.path.parts) ||
         NULL == parts->first ||
         NULL == (path_segment = parts->first->data) ||
@@ -404,7 +404,7 @@ static inline long handlebars_compiler_compile_program(
 /**
  * We mark this as extern for the test suite...
  */
-extern inline void handlebars_compiler_opcode(
+void handlebars_compiler_opcode(
         struct handlebars_compiler * compiler,
         struct handlebars_opcode * opcode
 ) {
@@ -530,7 +530,7 @@ static inline void handlebars_compiler_push_param(
                 __PUSH(opcode);
             } else {
                 string = handlebars_ast_node_get_string_mode_value(CONTEXT, param);
-                char * strval = hbs_str_val(string);
+                const char * strval = hbs_str_val(string);
                 if( strval == strstr(strval, "this") ) {
                 	strval += 4 + (*(strval + 4) == '.' || *(strval + 4) == '$' ? 1 : 0 );
                 }
@@ -755,6 +755,7 @@ static inline void handlebars_compiler_accept_block(
 				__OPN(empty_hash);
 				__OPN(ambiguous_block_value);
 				break;
+            default: assert(0); break; // LCOV_EXCL_LINE
 		}
 
 		__OPN(append);
@@ -1270,7 +1271,7 @@ static inline void handlebars_compiler_accept_boolean(
 
 static inline void handlebars_compiler_accept_nul(
         struct handlebars_compiler * compiler,
-        HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * node
+        HBS_ATTR_UNUSED struct handlebars_ast_node * node
 ) {
     struct handlebars_opcode * opcode;
 
@@ -1284,7 +1285,7 @@ static inline void handlebars_compiler_accept_nul(
 
 static inline void handlebars_compiler_accept_undefined(
         struct handlebars_compiler * compiler,
-        HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * node
+        HBS_ATTR_UNUSED struct handlebars_ast_node * node
 ) {
     struct handlebars_opcode * opcode;
 
@@ -1297,8 +1298,8 @@ static inline void handlebars_compiler_accept_undefined(
 }
 
 static inline void handlebars_compiler_accept_comment(
-        HANDLEBARS_ATTR_UNUSED struct handlebars_compiler * compiler,
-        HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * comment)
+        HBS_ATTR_UNUSED struct handlebars_compiler * compiler,
+        HBS_ATTR_UNUSED struct handlebars_ast_node * comment)
 {
     assert(comment != NULL);
     assert(comment->type == HANDLEBARS_AST_NODE_COMMENT);
@@ -1338,6 +1339,7 @@ static inline void handlebars_compiler_accept_raw_block(
             __OPN(empty_hash);
             __OPN(ambiguous_block_value);
             break;
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
 
     __OPN(append);

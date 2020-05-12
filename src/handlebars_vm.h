@@ -94,15 +94,13 @@ struct handlebars_value * handlebars_vm_call_helper_str(
     struct handlebars_options * options
 ) HBS_ATTR_NONNULL(1, 4, 5) HBS_ATTR_WARN_UNUSED_RESULT;
 
-#ifndef HANDLEBARS_VM_PRIVATE
-
 void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned flags) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_value * helpers) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * helpers) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 
-#else /* HANDLEBARS_VM_PRIVATE */
+#ifdef HANDLEBARS_VM_PRIVATE
 
 struct handlebars_vm {
     struct handlebars_context ctx;
@@ -131,34 +129,6 @@ struct handlebars_vm {
     struct handlebars_stack * hashStack;
     struct handlebars_stack * blockParamStack;
 };
-
-HBS_ATTR_NONNULL_ALL
-inline void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned flags) {
-    vm->flags = flags;
-}
-
-HBS_ATTR_NONNULL_ALL
-inline void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_value * helpers) {
-    handlebars_value_addref(helpers);
-    vm->helpers = helpers;
-}
-
-HBS_ATTR_NONNULL_ALL
-inline void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * partials) {
-    handlebars_value_addref(partials);
-    vm->partials = partials;
-}
-
-HBS_ATTR_NONNULL_ALL
-inline void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data) {
-    handlebars_value_addref(data);
-    vm->data = data;
-}
-
-HBS_ATTR_NONNULL_ALL
-inline void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache) {
-    vm->cache = cache;
-}
 
 #endif /* HANDLEBARS_VM_PRIVATE */
 

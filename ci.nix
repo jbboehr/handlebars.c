@@ -1,17 +1,18 @@
 let
-  generateHandlebarsCTestsForPlatform = { pkgs, stdenv, handlebarscWithCmake ? false, handlebarscRefcounting ? true }:
+  generateHandlebarsCTestsForPlatform = { pkgs, stdenv, handlebarscWithCmake ? false, handlebarscRefcounting ? true, handlebarscDebug ? false }:
     pkgs.callPackage ./default.nix {
-      inherit stdenv handlebarscWithCmake handlebarscRefcounting;
+      inherit stdenv handlebarscWithCmake handlebarscRefcounting handlebarscDebug;
+      handlebarscWerror = true;
 
       handlebarscSrc = builtins.filterSource
         (path: type: baseNameOf path != ".idea" && baseNameOf path != ".git" && baseNameOf path != "ci.nix")
         ./.;
     };
 
-  generateHandlebarsCTestsForPlatform2 = { pkgs, handlebarscWithCmake ? false, handlebarscRefcounting ? true }:
+  generateHandlebarsCTestsForPlatform2 = { pkgs, ... }@args:
     pkgs.recurseIntoAttrs {
-      gcc = generateHandlebarsCTestsForPlatform { inherit pkgs handlebarscWithCmake handlebarscRefcounting; stdenv = pkgs.stdenv; };
-      clang = generateHandlebarsCTestsForPlatform { inherit pkgs handlebarscWithCmake handlebarscRefcounting; stdenv = pkgs.clangStdenv; };
+      gcc = generateHandlebarsCTestsForPlatform (args // { stdenv = pkgs.stdenv; });
+      clang = generateHandlebarsCTestsForPlatform (args // { stdenv = pkgs.clangStdenv; });
     };
 in
 builtins.mapAttrs (k: _v:
@@ -47,21 +48,30 @@ builtins.mapAttrs (k: _v:
       inherit pkgs;
     };
 
-    # test once with cmake
-    n1909-cmake = generateHandlebarsCTestsForPlatform2  {
+    # cmake
+    n1909-cmake = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs;
       handlebarscWithCmake = true;
     };
 
-    # cross-compile for 32bit
-    n1909-32bit = generateHandlebarsCTestsForPlatform2  {
-      pkgs = pkgs.pkgsi686Linux;
+    # 32bit (gcc only)
+   n1909-32bit = pkgs.recurseIntoAttrs {
+      gcc = generateHandlebarsCTestsForPlatform {
+        pkgs = pkgs.pkgsi686Linux;
+        stdenv = pkgs.pkgsi686Linux.stdenv;
+      };
     };
 
-    # with refcounting disabled
-    n1909-norc = generateHandlebarsCTestsForPlatform2  {
-      pkgs = pkgs.pkgsi686Linux;
+    # refcounting disabled
+    n1909-norc = generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs;
       handlebarscRefcounting = false;
+    };
+
+    # debug/dev
+    n1909-debug = generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs;
+      handlebarscDebug = true;
     };
 
     n2003 = let
@@ -81,7 +91,7 @@ builtins.mapAttrs (k: _v:
        };
        pkgs = import (path) { system = k; };
     in generateHandlebarsCTestsForPlatform2 {
-     inherit pkgs;
+      inherit pkgs;
     };
   }
 ) {

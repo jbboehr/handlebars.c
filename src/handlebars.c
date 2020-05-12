@@ -131,7 +131,9 @@ char * handlebars_error_message(struct handlebars_context * context)
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( unlikely(errmsg == NULL) ) {
         // this might be a bad idea...
-        return e->msg;
+        // fprintf(stderr, "%s\n", e->msg);
+        // abort();
+        return (char *) e->msg;
     }
 
     return errmsg;
@@ -159,17 +161,26 @@ char * handlebars_error_message_js(struct handlebars_context * context)
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( unlikely(errmsg == NULL) ) {
         // this might be a bad idea...
-        return e->msg;
+        // fprintf(stderr, "%s\n", e->msg);
+        // abort();
+        return (char *) e->msg;
     }
 
     return errmsg;
 }
 
-static inline void _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
+
+static void _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
 {
     struct handlebars_error * e = context->e;
     e->num = num;
+
     e->msg = talloc_vasprintf(context, msg, ap);
+
     if( unlikely(e->msg == NULL) ) {
         e->num = HANDLEBARS_NOMEM;
         e->msg = HANDLEBARS_MEMCHECK_MSG;
@@ -210,6 +221,10 @@ void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_er
         abort();
     }
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 struct handlebars_context * handlebars_get_context(void * ctx, const char * loc)
 {

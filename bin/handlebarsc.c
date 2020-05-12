@@ -61,8 +61,8 @@ char * input_name = NULL;
 char * input_data_name = NULL;
 char * input_buf = NULL;
 size_t input_buf_length = 0;
-char * partial_path = ".";
-char * partial_extension = ".hbs";
+const char * partial_path = ".";
+const char * partial_extension = ".hbs";
 unsigned long compiler_flags = 0;
 short enable_partial_loader = 0;
 
@@ -191,12 +191,15 @@ start:
             break;
         case 'D':
             input_data_name = optarg;
+            break;
+
+        default: assert(0); break;
     }
 
     goto start;
 }
 
-static char * read_stdin()
+static char * read_stdin(void)
 {
     char buffer[__BUFF_SIZE];
     FILE * in = stdin;
@@ -329,15 +332,16 @@ static int do_lex(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_string * tmpl;
+    struct handlebars_token ** tokens;
     jmp_buf jmp;
-
 
     ctx = handlebars_context_ctor();
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
         fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
-        goto error;
+        handlebars_context_dtor(ctx);
+        return 1;
     }
 
     // Read
@@ -352,7 +356,7 @@ static int do_lex(void)
     parser = handlebars_parser_ctor(ctx);
 
     // Lex
-    struct handlebars_token ** tokens = handlebars_lex_ex(parser, tmpl);
+    tokens = handlebars_lex_ex(parser, tmpl);
 
     for ( ; *tokens; tokens++ ) {
         struct handlebars_string * tmp = handlebars_token_print(ctx, *tokens, 1);
@@ -361,7 +365,6 @@ static int do_lex(void)
         handlebars_talloc_free(tmp);
     }
 
-error:
     handlebars_context_dtor(ctx);
     return 0;
 }
@@ -371,16 +374,17 @@ static int do_parse(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_string * tmpl;
-    int error = 0;
-    jmp_buf jmp;
     struct handlebars_string * output;
+    struct handlebars_ast_node * ast;
+    jmp_buf jmp;
 
     ctx = handlebars_context_ctor();
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
         fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
-        goto error;
+        handlebars_context_dtor(ctx);
+        return 1;
     }
 
     // Read
@@ -395,14 +399,13 @@ static int do_parse(void)
     // Parse
     parser = handlebars_parser_ctor(ctx);
 
-    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
+    ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     output = handlebars_ast_print(HBSCTX(parser), ast);
     fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
 
-error:
     handlebars_context_dtor(ctx);
-    return error;
+    return 0;
 }
 
 static int do_compile(void)
@@ -412,7 +415,8 @@ static int do_compile(void)
     struct handlebars_compiler * compiler;
     struct handlebars_string * output;
     struct handlebars_string * tmpl;
-    int error = 0;
+    struct handlebars_ast_node * ast;
+    struct handlebars_program * program;
     jmp_buf jmp;
 
     ctx = handlebars_context_ctor();
@@ -420,7 +424,8 @@ static int do_compile(void)
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
         fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
-        goto error;
+        handlebars_context_dtor(ctx);
+        return 1;
     }
 
     parser = handlebars_parser_ctor(ctx);
@@ -438,18 +443,17 @@ static int do_compile(void)
     }
 
     // Parse
-    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
+    ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     // Compile
-    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
+    program = handlebars_compiler_compile_ex(compiler, ast);
 
     // Print
     output = handlebars_program_print(ctx, program, 0);
     fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
 
-error:
     handlebars_context_dtor(ctx);
-    return error;
+    return 0;
 }
 
 static int do_execute(void)
@@ -459,17 +463,17 @@ static int do_execute(void)
     struct handlebars_compiler * compiler;
     struct handlebars_vm * vm;
     struct handlebars_string * tmpl;
-    int error = 0;
+    struct handlebars_ast_node * ast;
+    struct handlebars_program * program;
     jmp_buf jmp;
-    struct handlebars_value * context = NULL;
-    struct handlebars_module * module = NULL;
 
     ctx = handlebars_context_ctor();
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
-        goto error;
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        handlebars_context_dtor(ctx);
+        return 1;
     }
 
     parser = handlebars_parser_ctor(ctx);
@@ -499,6 +503,7 @@ static int do_execute(void)
     }
 
     // Read context
+    struct handlebars_value * context = NULL;
     if( input_data_name ) {
         size_t input_data_name_len = strlen(input_data_name);
         char * context_str = file_get_contents(input_data_name);
@@ -517,23 +522,24 @@ static int do_execute(void)
     }
 
     // Parse
-    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
+    ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     // Compile
-    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
+    program = handlebars_compiler_compile_ex(compiler, ast);
 
     // Serialize
-    module = handlebars_program_serialize(ctx, program);
+    struct handlebars_module * module = handlebars_program_serialize(ctx, program);
 
     // Execute
     handlebars_vm_set_flags(vm, compiler_flags);
-    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, context);
 
-    fwrite(hbs_str_val(buffer), sizeof(char), hbs_str_len(buffer), stdout);
+    {
+        struct handlebars_string * buffer = handlebars_vm_execute(vm, module, context);
+        fwrite(hbs_str_val(buffer), sizeof(char), hbs_str_len(buffer), stdout);
+    }
 
-error:
     handlebars_context_dtor(ctx);
-    return error;
+    return 0;
 }
 
 int main(int argc, char * argv[])

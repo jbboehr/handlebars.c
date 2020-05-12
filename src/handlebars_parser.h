@@ -59,7 +59,7 @@ struct handlebars_token ** handlebars_lex_ex(
  */
 struct handlebars_token ** handlebars_lex(
     struct handlebars_parser * parser
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_ast_node * handlebars_parse_ex(
     struct handlebars_parser * parser,

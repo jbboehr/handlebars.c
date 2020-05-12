@@ -47,7 +47,7 @@ END_TEST
 
 START_TEST(test_ast_node_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     jmp_buf buf;
 
     context->e->jmp = &buf;
@@ -78,7 +78,7 @@ END_TEST
 
 START_TEST(test_ast_node_dtor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     int call_count;
 
@@ -132,8 +132,8 @@ START_TEST(test_ast_node_readable_type)
 }
 END_TEST
 
-
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("AST Node");
 
@@ -161,7 +161,7 @@ int main(void)
     }
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

@@ -166,7 +166,7 @@ struct handlebars_context * handlebars_value_get_ctx(struct handlebars_value * v
  */
 const char * handlebars_value_get_strval(
     struct handlebars_value * value
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Get the string length, or zero for invalid types

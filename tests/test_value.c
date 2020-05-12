@@ -203,6 +203,7 @@ START_TEST(test_map_iterator)
             case 1: ck_assert_hbs_str_eq_cstr(key, "a"); break;
             case 2: ck_assert_hbs_str_eq_cstr(key, "c"); break;
             case 3: ck_assert_hbs_str_eq_cstr(key, "b"); break;
+            default: ck_abort_msg("should never get here"); break; // LCOV_EXCL_LINE
         }
         ck_assert_int_eq(handlebars_value_get_intval(child), i);
     } HANDLEBARS_VALUE_FOREACH_END();
@@ -241,6 +242,7 @@ START_TEST(test_map_iterator_json)
             case 1: ck_assert_hbs_str_eq_cstr(key, "a"); break;
             case 2: ck_assert_hbs_str_eq_cstr(key, "c"); break;
             case 3: ck_assert_hbs_str_eq_cstr(key, "b"); break;
+            default: ck_abort_msg("should never get here"); break; // LCOV_EXCL_LINE
         }
         ck_assert_int_eq(handlebars_value_get_intval(child), i);
     } HANDLEBARS_VALUE_FOREACH_END();
@@ -408,7 +410,8 @@ START_TEST(test_yaml_parse_error)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Value");
 
@@ -449,7 +452,7 @@ int main(void)
     }
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

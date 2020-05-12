@@ -1,5 +1,7 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/vendor/sort_r -I$(top_srcdir)/vendor/xxhash
+AM_CFLAGS = $(WARN_CFLAGS)
+AM_LDFLAGS = $(WARN_LDFLAGS)
 
 EXTRA_DIST = handlebars.l handlebars.y handlebars_scanners.re handlebars_helpers_ht.gperf
 GENSOURCE = handlebars_config.h

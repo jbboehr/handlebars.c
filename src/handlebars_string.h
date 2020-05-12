@@ -276,12 +276,6 @@ struct handlebars_string * handlebars_string_rtrim(
     const char * what, size_t what_length
 ) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL;
 
-
-uint64_t handlebars_string_hash(
-    const char * str,
-    size_t len
-) HBS_ATTR_NONNULL(1);
-
 /**
  * @brief Allocate a new, empty string of the specified length
  * @param[in] context

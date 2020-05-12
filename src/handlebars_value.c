@@ -25,20 +25,6 @@
 #include <string.h>
 #include <talloc.h>
 
-#if defined(HAVE_LIBYAML)
-#include <yaml.h>
-#endif
-
-#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
-#include <json-c/json.h>
-#include <json-c/json_object.h>
-#include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
-#include <json/json.h>
-#include <json/json_object.h>
-#include <json/json_tokener.h>
-#endif
-
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -438,7 +424,7 @@ struct handlebars_string * handlebars_value_expression_append(
             if( handlebars_value_get_type(value) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
                 break;
             }
-            // fall-through to array
+            // fallthrough
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             first = true;
             HANDLEBARS_VALUE_FOREACH(value, child) {
@@ -760,7 +746,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "[");
             HANDLEBARS_VALUE_FOREACH_IDX(value, index, child) {
                 char * tmp = handlebars_value_dump(child, depth + 1);
-                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%ld => %s\n", indent2, index, tmp);
+                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%zd => %s\n", indent2, index, tmp);
                 handlebars_talloc_free(tmp);
             } HANDLEBARS_VALUE_FOREACH_END();
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "]");

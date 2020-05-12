@@ -208,9 +208,8 @@ const char * handlebars_ast_node_readable_type(int type)
     _RTYPE_CASE(STRING, StringLiteral);
     _RTYPE_CASE(UNDEFINED, UNDEFINED);
     case HANDLEBARS_AST_NODE_NUL: return "NULL";
+    default: return "UNKNOWN";
   }
-
-  return "UNKNOWN";
 }
 
 

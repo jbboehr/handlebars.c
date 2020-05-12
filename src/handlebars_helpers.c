@@ -28,13 +28,17 @@
 #define HANDLEBARS_VM_PRIVATE
 
 #include "handlebars.h"
-#include "handlebars_helpers_ht.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_stack.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-prototypes"
+#include "handlebars_helpers_ht.h"
+#pragma GCC diagnostic pop
 
 
 
@@ -70,7 +74,7 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     struct handlebars_value * block_params = NULL;
     struct handlebars_string * tmp;
     size_t i = 0;
-    long len;
+    size_t len;
     struct handlebars_value * ret = NULL;
     struct handlebars_value * key = NULL;
     struct handlebars_value * index = NULL;
@@ -139,7 +143,9 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     }
 
 
-    len = handlebars_value_count(context) - 1;
+    len = handlebars_value_count(context);
+    if (len <= 0) goto whoopsie;
+    len--;
 
     HANDLEBARS_VALUE_FOREACH_IDX_KV(context, it_index, it_key, it_child) {
         // Disabled for Regressions - Undefined helper context

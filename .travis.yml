@@ -17,7 +17,6 @@ env:
     - MYCC="gcc-9"
     - MYCC="gcc-5"
       ARCH="i386"
-      CFLAGS="-m32"
       COVERAGE="false"
     - MYCC="clang-3.8"
       COVERAGE="false"

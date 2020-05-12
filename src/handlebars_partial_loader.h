@@ -32,8 +32,6 @@ HBS_EXTERN_C_START
 struct handlebars_context;
 struct handlebars_string;
 
-struct handlebars_value_handlers * handlebars_value_get_std_partial_loader_handlers();
-
 struct handlebars_value * handlebars_value_partial_loader_ctor(
     struct handlebars_context * context,
     struct handlebars_string * base_path,

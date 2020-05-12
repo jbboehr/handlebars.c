@@ -138,10 +138,11 @@ size_t handlebars_stack_count(struct handlebars_stack * stack)
     return stack->i;
 }
 
+HBS_ATTR_UNUSED
 static void handlebars_stack_dump(struct handlebars_stack * stack) {
     size_t i;
     for (i = 0; i < stack->i; i++) {
-        fprintf(stderr, "STACK[%lu]: %s\n", i, handlebars_value_dump(stack->v[i], 0));
+        fprintf(stderr, "STACK[%zu]: %s\n", i, handlebars_value_dump(stack->v[i], 0));
     }
 }
 
@@ -162,8 +163,9 @@ struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack,
         }
         // @TODO this is unsafe if the refcount of the stack is greater than one - but we need refcounting for that
         capacity += 32;
+        struct handlebars_context * ctx = stack->ctx;
         stack = handlebars_talloc_realloc_size(NULL, stack, handlebars_stack_size(capacity));
-        HANDLEBARS_MEMCHECK(stack, stack->ctx);
+        HANDLEBARS_MEMCHECK(stack, ctx);
         stack->capacity = capacity;
     }
 
@@ -182,7 +184,7 @@ struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack)
     }
 
     if (stack->i < stack->protect) {
-        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to pop protected stack segment i=%lu protect=%lu", stack->i, stack->protect);
+        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to pop protected stack segment i=%zu protect=%zu", stack->i, stack->protect);
     }
 
     struct handlebars_value * value = stack->v[--stack->i];
@@ -221,12 +223,12 @@ struct handlebars_stack * handlebars_stack_set(struct handlebars_stack * stack, 
 
     // Out-of-bounds
     if( offset >= stack->i ) {
-        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds %lu/%lu", offset, stack->i);
+        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds %zu/%zu", offset, stack->i);
     }
 
     // Protect
     if (offset < stack->protect) {
-        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to set protected stack segment offset=%lu protect=%lu", offset, stack->protect);
+        handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to set protected stack segment offset=%zu protect=%zu", offset, stack->protect);
     }
 
     // As a special case, ignore

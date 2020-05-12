@@ -411,7 +411,7 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_pars
 {
     struct handlebars_ast_node * program;
     struct handlebars_ast_node * inverse;
-    struct handlebars_ast_node * firstInverse;
+    struct handlebars_ast_node * firstInverse = NULL;
     struct handlebars_ast_node * lastInverse;
     unsigned strip = 0;
 
@@ -525,6 +525,7 @@ void handlebars_whitespace_accept(struct handlebars_parser * parser,
         case HANDLEBARS_AST_NODE_INVERSE:
         case HANDLEBARS_AST_NODE_PATH_SEGMENT:
         case HANDLEBARS_AST_NODE_NIL:
+        default:
             assert(0);
             break;
         // LCOV_EXCL_STOP

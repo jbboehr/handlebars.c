@@ -29,9 +29,14 @@
 #include <memory.h>
 #include <talloc.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch-default"
+
 #define XXH_PRIVATE_API
 #define XXH_INLINE_ALL
 #include "xxhash.h"
+
+#pragma GCC diagnostic pop
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
@@ -474,7 +479,7 @@ struct handlebars_string * handlebars_string_stripcslashes(struct handlebars_str
                         *target++ = (char) strtol(numtmp, NULL, 16);
                         break;
                     }
-                    /* no break */
+                    /* fallthrough */
                 default:
                     i = 0;
                     while( source < end && *source >= '0' && *source <= '7' && i<3 ) {
@@ -504,6 +509,11 @@ struct handlebars_string * handlebars_string_stripcslashes(struct handlebars_str
 
     return handlebars_string_compact(string);
 }
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic warning "-Wformat-nonliteral"
+#endif
 
 struct handlebars_string * handlebars_string_asprintf(
     struct handlebars_context * context,
@@ -576,6 +586,10 @@ struct handlebars_string * handlebars_string_vasprintf_append(
 
     return string;
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 struct handlebars_string * handlebars_string_htmlspecialchars(
     struct handlebars_context * context,

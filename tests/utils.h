@@ -91,7 +91,7 @@ extern struct handlebars_context * context;
 extern struct handlebars_parser * parser;
 extern struct handlebars_compiler * compiler;
 extern struct handlebars_vm * vm;
-extern int init_blocks;
+extern size_t init_blocks;
 void default_setup(void);
 void default_teardown(void);
 

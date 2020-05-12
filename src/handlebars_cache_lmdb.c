@@ -127,7 +127,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     if( err != 0 ) goto error;
 
     // Make key
-    if( hbs_str_len(tmpl) > mdb_env_get_maxkeysize(intern->env) ) {
+    if( hbs_str_len(tmpl) > (size_t) mdb_env_get_maxkeysize(intern->env) ) {
         unsigned long hash = HBS_STR_HASH(tmpl);
         snprintf(tmp, 256, "hash:%lu", hash);
         key.mv_size = strlen(tmp);
@@ -195,7 +195,7 @@ static void cache_add(
     if( err != 0 ) goto error;
 
     // Make key
-    if( hbs_str_len(tmpl) > mdb_env_get_maxkeysize(intern->env) ) {
+    if( hbs_str_len(tmpl) > (size_t) mdb_env_get_maxkeysize(intern->env) ) {
         unsigned long hash = HBS_STR_HASH(tmpl);
         snprintf(tmp, 256, "hash:%lu", hash);
         key.mv_size = strlen(tmp);

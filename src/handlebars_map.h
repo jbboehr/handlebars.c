@@ -45,7 +45,7 @@ typedef int (*handlebars_map_kv_compare_r_func)(
     const void *
 );
 
-extern size_t handlebars_map_size()
+extern size_t handlebars_map_size(void)
     HBS_ATTR_CONST;
 
 // {{{ Constructors and Destructors

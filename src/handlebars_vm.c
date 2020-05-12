@@ -46,13 +46,14 @@
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 
+// @TODO fix these?
+#pragma GCC diagnostic warning "-Winline"
 
 
-#if INTELLIJ
+
+#if defined(INTELLIJ)
 #undef HAVE_COMPUTED_GOTOS
 #endif
-
-#define inline
 
 #define OPCODE_NAME(name) handlebars_opcode_type_ ## name
 #define ACCEPT_FN(name) accept_ ## name
@@ -79,11 +80,6 @@ ACCEPT_FUNCTION(push_context);
 
 size_t HANDLEBARS_VM_SIZE = sizeof(struct handlebars_vm);
 
-extern inline void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned flags) HBS_ATTR_NONNULL_ALL;
-extern inline void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_value * helpers) HBS_ATTR_NONNULL_ALL;
-extern inline void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * partials) HBS_ATTR_NONNULL_ALL;
-extern inline void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data) HBS_ATTR_NONNULL_ALL;
-extern inline void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 
 
 #undef CONTEXT
@@ -108,6 +104,35 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
     // handlebars_value_try_delref(vm->data);
     handlebars_talloc_free(vm);
 }
+
+void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned flags)
+{
+    vm->flags = flags;
+}
+
+void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_value * helpers)
+{
+    handlebars_value_addref(helpers);
+    vm->helpers = helpers;
+}
+
+void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * partials)
+{
+    handlebars_value_addref(partials);
+    vm->partials = partials;
+}
+
+void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data)
+{
+    handlebars_value_addref(data);
+    vm->data = data;
+}
+
+void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache)
+{
+    vm->cache = cache;
+}
+
 
 HBS_ATTR_NONNULL(1, 3, 4)
 static inline struct handlebars_value * call_helper(struct handlebars_string * string, int argc, struct handlebars_value * argv[], struct handlebars_options * options)
@@ -266,12 +291,15 @@ static inline struct handlebars_string * execute_template(
     struct handlebars_string * indent,
     int escape
 ) {
-    jmp_buf buf;
+    // jmp_buf buf;
+
+    // @TODO FIXME
+    // setjmp/long handling here is messed up
 
     // Save jump buffer
-    if( setjmp(buf) ) {
-        handlebars_rethrow(CONTEXT, context);
-    }
+    // if( setjmp(buf) ) {
+    //     handlebars_rethrow(CONTEXT, context);
+    // }
 
     // Get template
     if( !tmpl || !hbs_str_len(tmpl) ) {
@@ -281,7 +309,7 @@ static inline struct handlebars_string * execute_template(
     // Check for cached template, if available
     struct handlebars_compiler * compiler;
     struct handlebars_module * module = vm->cache ? handlebars_cache_find(vm->cache, tmpl) : NULL;
-    bool from_cache = module != NULL;
+    volatile bool from_cache = module != NULL;
     if( !from_cache ) {
         // Recompile
 
@@ -314,12 +342,12 @@ static inline struct handlebars_string * execute_template(
     struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
 
     // Save jump buffer
-    if( setjmp(buf) ) {
-        if( from_cache ) {
-            handlebars_cache_release(vm->cache, tmpl, module);
-        }
-        handlebars_rethrow(CONTEXT, HBSCTX(vm2));
-    }
+    // if( setjmp(buf) ) {
+    //     if( from_cache ) {
+    //         handlebars_cache_release(vm->cache, tmpl, module);
+    //     }
+    //     handlebars_rethrow(CONTEXT, HBSCTX(vm2));
+    // }
 
     // Setup new VM
     vm2->depth = vm->depth + 1;
@@ -687,9 +715,9 @@ ACCEPT_FUNCTION(invoke_partial)
             handlebars_throw(
                 CONTEXT,
                 HANDLEBARS_ERROR,
-                "The partial %s was not a string, was %d",
+                "The partial %s was not a string, was %u",
                 name ? hbs_str_val(name) : "(NULL)",
-                partial ? handlebars_value_get_type(partial) : -1
+                partial ? handlebars_value_get_type(partial) : 0
             );
         }
 
@@ -723,7 +751,7 @@ ACCEPT_FUNCTION(lookup_block_param)
     sscanf(hbs_str_val(opcode->op1.data.array.array[0].string), "%ld", &blockParam1);
     sscanf(hbs_str_val(opcode->op1.data.array.array[1].string), "%ld", &blockParam2);
 
-    if( blockParam1 >= LEN(vm->blockParamStack) ) goto done;
+    if( blockParam1 >= (long) LEN(vm->blockParamStack) ) goto done;
 
     v1 = GET(vm->blockParamStack, blockParam1);
     if( !v1 || handlebars_value_get_type(v1) != HANDLEBARS_VALUE_TYPE_ARRAY ) goto done;
@@ -994,7 +1022,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     }
 }
 
-static inline void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_module_table_entry * entry)
+static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_module_table_entry * entry)
 {
 #define ACCEPT_ERROR handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
 #if HAVE_COMPUTED_GOTOS
@@ -1082,7 +1110,7 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
 
     if( program_num < 0 ) {
         return handlebars_string_init(CONTEXT, 0);
-    } else if( program_num >= vm->module->program_count ) {
+    } else if( program_num >= (long) vm->module->program_count ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program: %ld", program_num);
     }
 

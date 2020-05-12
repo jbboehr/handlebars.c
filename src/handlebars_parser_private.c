@@ -85,7 +85,7 @@ void handlebars_yy_fatal_error(const char * msg, struct handlebars_parser * pars
     handlebars_throw(CONTEXT, HANDLEBARS_PARSEERR, "%s", msg);
 }
 
-void handlebars_yy_print(FILE *file, int type, HANDLEBARS_ATTR_UNUSED YYSTYPE value)
+void handlebars_yy_print(FILE *file, int type, HBS_ATTR_UNUSED YYSTYPE value)
 {
     fprintf(file, "%d : \n", type);
 }
@@ -114,7 +114,7 @@ void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
     return _handlebars_yy_realloc(parser, ptr, sizeof(char) * bytes);
 }
 
-void handlebars_yy_free(void * ptr, HANDLEBARS_ATTR_UNUSED void * yyscanner)
+void handlebars_yy_free(void * ptr, HBS_ATTR_UNUSED void * yyscanner)
 {
     // Going to skip wrappers for now
     _handlebars_yy_free(ptr);

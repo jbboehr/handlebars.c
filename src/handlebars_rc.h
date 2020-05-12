@@ -25,7 +25,7 @@
 HBS_EXTERN_C_START
 
 #define hbs_container_of(ptr, type, member) \
-    ((type *)((char *)(ptr) - offsetof(type, member)))
+    ((type *) (void *) ((char *)(ptr) - offsetof(type, member)))
 
 struct handlebars_rc;
 

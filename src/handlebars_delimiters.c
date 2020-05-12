@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "handlebars.h"
+#include "handlebars_delimiters.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
@@ -46,7 +47,7 @@
 #else
 #define append(str, len) new_tmpl = handlebars_string_append(ctx, new_tmpl, str, len)
 #define move_forward(x) \
-    if( x > i ) { \
+    if( x > (size_t) i ) { \
         handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %lu", (unsigned long) x); \
     } \
     p += x; \
@@ -61,7 +62,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     struct handlebars_string * open,
     struct handlebars_string * close
 ) {
-    register long i = hbs_str_len(tmpl);
+    register ssize_t i = hbs_str_len(tmpl);
     register const char *p = hbs_str_val(tmpl);
 
     struct handlebars_string * new_open = NULL;
@@ -100,14 +101,14 @@ struct handlebars_string * handlebars_preprocess_delimiters(
 
                 // Remaining size needs to be at least:
                 // hbs_str_len(open) + hbs_str_len(close) + 2 (for equals) + 1 (minimum delimiter size) + 1 (space in the middle)
-                if( i >= hbs_str_len(open) + hbs_str_len(close) + 4 && strncmp(p, hbs_str_val(open), hbs_str_len(open)) == 0 && *(p + hbs_str_len(open)) == '=' ) {
+                if( (size_t) i >= hbs_str_len(open) + hbs_str_len(close) + 4 && strncmp(p, hbs_str_val(open), hbs_str_len(open)) == 0 && *(p + hbs_str_len(open)) == '=' ) {
                     // We are going into a delimiter switch
                     state = 1; goto state1;
                 }
 
                 // Remaining size needs to be at least:
                 // hbs_str_len(open) + hbs_str_len(close) + 1
-                if( i >= hbs_str_len(open) + hbs_str_len(close) + 1 && strncmp(p, hbs_str_val(open), hbs_str_len(open)) == 0 ) {
+                if( (size_t) i >= hbs_str_len(open) + hbs_str_len(close) + 1 && strncmp(p, hbs_str_val(open), hbs_str_len(open)) == 0 ) {
                     // We are going into a regular tag
                     append("{{", 2);
                     move_forward(hbs_str_len(open));
@@ -144,7 +145,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 }
 
                 // Not found
-                if( i == 0 ) {
+                if( i <= 0 ) {
                     handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must contain a space");
                 }
 
@@ -167,7 +168,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 }
 
                 // Not found
-                if( i == 0 ) {
+                if( i <= 0 ) {
                     handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must contain two equals");
                 }
 
@@ -184,7 +185,8 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 move_forward(1);
 
                 // The next sequence must be the closing delimiter, or error
-                if( i < hbs_str_len(close) || strncmp(p, hbs_str_val(close), hbs_str_len(close)) ) {
+                assert(i >= 0);
+                if( (size_t) i < hbs_str_len(close) || strncmp(p, hbs_str_val(close), hbs_str_len(close)) ) {
                     handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must end with an equals");
                 }
 
@@ -210,8 +212,10 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                     state = 0;
                     goto state0;
                 }
+                break; // FEAR
             case 2: state2: // In regular tag
-                if( i >= hbs_str_len(close) && strncmp(p, hbs_str_val(close), hbs_str_len(close)) == 0 ) {
+                assert(i >= 0);
+                if( (size_t) i >= hbs_str_len(close) && strncmp(p, hbs_str_val(close), hbs_str_len(close)) == 0 ) {
                     // Ending
                     append("}}", 2);
                     move_forward(hbs_str_len(close));

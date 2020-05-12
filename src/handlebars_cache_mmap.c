@@ -137,13 +137,13 @@ static inline size_t align_size(size_t size)
 
 static inline void * append(struct handlebars_cache_mmap * intern, void * source, size_t size)
 {
-    void * addr = intern->data + intern->data_length;
+    void * addr = (char *) intern->data + intern->data_length;
     if( intern->data_length + size + PADDING >= intern->data_size ) {
         return NULL;
     }
     intern->data_length += size + PADDING;
     memcpy(addr, source, size);
-    memset(addr + size, 0, PADDING);
+    memset((char *) addr + size, 0, PADDING);
     return addr;
 }
 
@@ -187,12 +187,6 @@ static inline void unlock(struct handlebars_cache * cache)
     if( rc != 0 ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "pthread unlock error: %s (%d)", strerror(rc), rc);
     }
-}
-
-static inline bool table_exists(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
-{
-    size_t offset = hbs_str_hash(string) % intern->table_count;
-    return NULL != intern->table[offset];
 }
 
 static inline struct table_entry * table_find(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
@@ -441,7 +435,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     talloc_set_destructor(cache, cache_dtor);
 
     // Get page size
-#if defined(_SC_PAGESIZE) && _SC_PAGESIZE != -1
+#if defined(_SC_PAGESIZE)
     page_size = (size_t) sysconf(_SC_PAGESIZE);
 #elif defined(PAGE_SIZE)
     page_size = PAGE_SIZE;
@@ -474,8 +468,8 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     intern->data_size = data_size;
     intern->table_count = entries; //table_size / sizeof(struct table_entry *);
 
-    intern->table = ((void *) intern) + intern_size;
-    intern->data = ((void *) intern) + intern_size + table_size;
+    intern->table = (struct table_entry **) (void *) ((char *) intern + intern_size);
+    intern->data = ((char *) intern) + intern_size + table_size;
 
 #if USE_SPINLOCK
     int rc = pthread_spin_init(&intern->write_lock, PTHREAD_PROCESS_SHARED);

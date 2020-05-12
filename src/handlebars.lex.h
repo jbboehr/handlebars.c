@@ -733,7 +733,7 @@ extern int yylex \
 #undef yyTABLES_NAME
 #endif
 
-#line 476 "handlebars.l"
+#line 480 "handlebars.l"
 
 
 #line 739 "handlebars.lex.h"

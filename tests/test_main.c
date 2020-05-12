@@ -91,22 +91,22 @@ END_TEST
 
 START_TEST(test_context_ctor_dtor)
 {
-    struct handlebars_context * context = handlebars_context_ctor();
-    ck_assert_ptr_ne(NULL, context);
-    handlebars_context_dtor(context);
+    struct handlebars_context * mycontext = handlebars_context_ctor();
+    ck_assert_ptr_ne(NULL, mycontext);
+    handlebars_context_dtor(mycontext);
 }
 END_TEST
 
 START_TEST(test_context_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
-    struct handlebars_context * context;
+#ifdef HANDLEBARS_MEMORY
+    struct handlebars_context * mycontext;
 
     handlebars_memory_fail_enable();
-    context = handlebars_context_ctor();
+    mycontext = handlebars_context_ctor();
     handlebars_memory_fail_disable();
 
-    ck_assert_ptr_eq(NULL, context);
+    ck_assert_ptr_eq(NULL, mycontext);
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
@@ -133,7 +133,7 @@ END_TEST
 
 START_TEST(test_context_get_errmsg_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     struct handlebars_locinfo loc;
     char * actual;
     loc.last_line = 1;
@@ -149,7 +149,7 @@ START_TEST(test_context_get_errmsg_failed_alloc)
     //ck_assert_ptr_eq(NULL, actual);
     ck_assert_ptr_eq(handlebars_error_msg(context), actual);
 #else
-        fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
 }
 END_TEST
@@ -177,7 +177,7 @@ END_TEST
 
 START_TEST(test_context_get_errmsg_js_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     struct handlebars_locinfo loc;
     char * actual;
     loc.last_line = 1;
@@ -198,7 +198,8 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Handlebars");
 
@@ -232,7 +233,7 @@ int main(void)
     }
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

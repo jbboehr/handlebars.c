@@ -28,6 +28,7 @@
 #include "handlebars.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
+#include "handlebars_partial_loader.h"
 #include "handlebars_private.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"

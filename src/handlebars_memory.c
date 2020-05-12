@@ -35,7 +35,7 @@ static int _handlebars_memory_fail_flags = handlebars_memory_fail_flag_all;
 static int _handlebars_memory_last_exit_code = -1;
 static int _handlebars_memory_call_counter = 0;
 
-static void _handlebars_exit(int exit_code);
+static void _handlebars_exit(int exit_code) HBS_ATTR_NORETURN;
 
 // Setup default memory function pointers
 handlebars_talloc_array_func _handlebars_talloc_array = &_talloc_array;
@@ -65,7 +65,7 @@ static void * _handlebars_memfail_talloc_array(const void * ctx, size_t el_size,
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -75,15 +75,21 @@ static void * _handlebars_memfail_talloc_array(const void * ctx, size_t el_size,
             return _talloc_array(ctx, el_size, count, name);
         }
     }
-    
+
     return NULL;
 }
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic warning "-Wformat-nonliteral"
+#endif
+
+HBS_ATTR_PRINTF(2,3)
 static char * _handlebars_memfail_talloc_asprintf(const void * t, const char * fmt, ...)
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -98,15 +104,16 @@ static char * _handlebars_memfail_talloc_asprintf(const void * t, const char * f
             return str;
         }
     }
-    
+
     return NULL;
 }
 
+HBS_ATTR_PRINTF(2,3)
 static char * _handlebars_memfail_talloc_asprintf_append(char * s, const char * fmt, ...)
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -121,15 +128,16 @@ static char * _handlebars_memfail_talloc_asprintf_append(char * s, const char * 
             return str;
         }
     }
-    
+
     return NULL;
 }
 
+HBS_ATTR_PRINTF(2,3)
 static char * _handlebars_memfail_talloc_asprintf_append_buffer(char * s, const char * fmt, ...)
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -144,15 +152,19 @@ static char * _handlebars_memfail_talloc_asprintf_append_buffer(char * s, const 
             return str;
         }
     }
-    
+
     return NULL;
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 static int _handlebars_memfail_talloc_free(void *ptr, const char *location)
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -162,7 +174,7 @@ static int _handlebars_memfail_talloc_free(void *ptr, const char *location)
             return _talloc_free(ptr, location);
         }
     }
-    
+
     return -1;
 }
 
@@ -170,7 +182,7 @@ static void * _handlebars_memfail_talloc_named_const(const void * context, size_
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -180,7 +192,7 @@ static void * _handlebars_memfail_talloc_named_const(const void * context, size_
             return talloc_named_const(context, size, name);
         }
     }
-    
+
     return NULL;
 }
 
@@ -188,7 +200,7 @@ static void * _handlebars_memfail_talloc_realloc_array(const void *ctx, void *pt
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -198,7 +210,7 @@ static void * _handlebars_memfail_talloc_realloc_array(const void *ctx, void *pt
             return _talloc_realloc_array(ctx, ptr, el_size, count, name);
         }
     }
-    
+
     return NULL;
 }
 
@@ -206,7 +218,7 @@ static char * _handlebars_memfail_talloc_strdup(const void *t, const char *p)
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -216,7 +228,7 @@ static char * _handlebars_memfail_talloc_strdup(const void *t, const char *p)
             return talloc_strdup(t, p);
         }
     }
-    
+
     return NULL;
 }
 
@@ -224,7 +236,7 @@ static char * _handlebars_memfail_talloc_strdup_append(char *s, const char *a)
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -234,7 +246,7 @@ static char * _handlebars_memfail_talloc_strdup_append(char *s, const char *a)
             return talloc_strdup_append(s, a);
         }
     }
-    
+
     return NULL;
 }
 
@@ -242,7 +254,7 @@ static char * _handlebars_memfail_talloc_strdup_append_buffer(char *s, const cha
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -252,7 +264,7 @@ static char * _handlebars_memfail_talloc_strdup_append_buffer(char *s, const cha
             return talloc_strdup_append_buffer(s, a);
         }
     }
-    
+
     return NULL;
 }
 
@@ -260,7 +272,7 @@ static char * _handlebars_memfail_talloc_strndup(const void * t, const char * p,
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -270,7 +282,7 @@ static char * _handlebars_memfail_talloc_strndup(const void * t, const char * p,
             return talloc_strndup(t, p, n);
         }
     }
-    
+
     return NULL;
 }
 
@@ -278,7 +290,7 @@ static char * _handlebars_memfail_talloc_strndup_append_buffer(char *s, const ch
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -288,7 +300,7 @@ static char * _handlebars_memfail_talloc_strndup_append_buffer(char *s, const ch
             return talloc_strndup(s, a, n);;
         }
     }
-    
+
     return NULL;
 }
 
@@ -296,7 +308,7 @@ static void * _handlebars_memfail_talloc_zero(const void * ctx, size_t size, con
 {
     // Increment call counter
     _handlebars_memory_call_counter++;
-    
+
     // Do counter, succeed unless last count
     if( _handlebars_memory_fail_counter > -1 ) {
         if( --_handlebars_memory_fail_counter == 0 ) {
@@ -306,29 +318,11 @@ static void * _handlebars_memfail_talloc_zero(const void * ctx, size_t size, con
             return _talloc_zero(ctx, size, name);
         }
     }
-    
+
     return NULL;
 }
 
-// Other function pointers
-// Disabling this for now
-static void _handlebars_memfail_exit(int exit_code)
-{
-    // Increment call counter
-    _handlebars_memory_call_counter++;
-    _handlebars_memory_last_exit_code = exit_code;
-
-    // Do counter, succeed unless last count
-    if( _handlebars_memory_fail_counter > -1 ) {
-        if( --_handlebars_memory_fail_counter == 0 ) {
-            handlebars_memory_fail_disable();
-            // fall through
-        } else {
-            _handlebars_exit(exit_code);
-        }
-    }
-}
-
+HBS_ATTR_NORETURN
 static void _handlebars_exit(int exit_code)
 {
     exit(exit_code);
@@ -362,9 +356,6 @@ void handlebars_memory_fail_enable(void)
     }
     if( _handlebars_memory_fail_flags & handlebars_memory_fail_flag_free ) {
         _handlebars_talloc_free = &_handlebars_memfail_talloc_free;
-    }
-    if( _handlebars_memory_fail_flags & handlebars_memory_fail_flag_exit ) {
-        handlebars_exit = &_handlebars_memfail_exit;
     }
     if( _handlebars_memory_fail_flags & handlebars_memory_fail_flag_yy ) {
         _handlebars_yy_alloc = &_handlebars_memfail_talloc_named_const;

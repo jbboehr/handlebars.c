@@ -77,7 +77,10 @@
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
-#ifdef YYDEBUG
+#pragma GCC diagnostic ignored "-Wswitch-default"
+#pragma GCC diagnostic ignored "-Wunused-function"
+
+#if defined(YYDEBUG) && YYDEBUG
 #define YYPRINT handlebars_yy_print
 int handlebars_yy_debug = 1;
 #else

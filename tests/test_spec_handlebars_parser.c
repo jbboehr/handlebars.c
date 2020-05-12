@@ -27,6 +27,10 @@
 #include <pcre.h>
 #include <talloc.h>
 
+// json-c undeprecated json_object_object_get, but the version in xenial
+// is too old, so let's silence deprecated warnings for json-c
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
 #include <json-c/json.h>
 #include <json-c/json_object.h>
@@ -36,6 +40,7 @@
 #include <json/json_object.h>
 #include <json/json_tokener.h>
 #endif
+#pragma GCC diagnostic pop
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -61,7 +66,6 @@ struct parser_test {
     const char * raw;
 };
 
-static TALLOC_CTX * rootctx;
 static struct parser_test * tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
@@ -80,19 +84,19 @@ static void loadSpecTest(json_object * object)
     // Get description
     cur = json_object_object_get(object, "description");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->description = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->description = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get it
     cur = json_object_object_get(object, "it");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->it = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->it = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get template
     cur = json_object_object_get(object, "template");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->tmpl = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->tmpl = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get expected
@@ -110,7 +114,7 @@ static void loadSpecTest(json_object * object)
         nreq++;
     } else if (cur && json_object_get_type(cur) == json_type_string) {
         test->exception = true;
-        test->exceptionMatcher = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->exceptionMatcher = handlebars_talloc_strdup(root, json_object_get_string(cur));
         nreq++;
     } else {
         test->exception = 0;
@@ -119,7 +123,7 @@ static void loadSpecTest(json_object * object)
     // Get message
     cur = json_object_object_get(object, "message");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->message = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->message = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Check
@@ -134,7 +138,7 @@ static int loadSpec(const char * filename) {
     size_t data_len = 0;
     struct json_object * result = NULL;
     struct json_object * array_item = NULL;
-    int array_len = 0;
+    size_t array_len = 0;
 
     // Read JSON file
     error = file_get_contents(filename, &data, &data_len);
@@ -164,10 +168,10 @@ static int loadSpec(const char * filename) {
 
     // Allocate tests array
     tests_size = array_len + 1;
-    tests = talloc_zero_array(rootctx, struct parser_test, tests_size);
+    tests = talloc_zero_array(root, struct parser_test, tests_size);
 
     // Iterate over array
-    for( int i = 0; i < array_len; i++ ) {
+    for( size_t i = 0; i < array_len; i++ ) {
         array_item = json_object_array_get_idx(result, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: test case was not an object\n");
@@ -190,7 +194,6 @@ START_TEST(handlebars_spec_parser)
 {
     struct parser_test * test = &tests[_i];
     struct handlebars_context * ctx = handlebars_context_ctor();
-    struct handlebars_parser * parser;
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
@@ -200,7 +203,6 @@ START_TEST(handlebars_spec_parser)
     fflush(stderr);
 #endif
 
-    parser = handlebars_parser_ctor(ctx);
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), 0);
 
     if( handlebars_error_num(HBSCTX(parser)) != HANDLEBARS_SUCCESS ) {
@@ -272,13 +274,14 @@ START_TEST(handlebars_spec_parser)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     const char * title = "Handlebars Parser Spec";
     Suite * s = suite_create(title);
 
     TCase * tc_handlebars_spec_parser = tcase_create(title);
-    // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
+    tcase_add_checked_fixture(tc_handlebars_spec_parser, default_setup, default_teardown);
     tcase_add_loop_test(tc_handlebars_spec_parser, handlebars_spec_parser, 0, tests_len - 1);
     suite_add_tcase(s, tc_handlebars_spec_parser);
 
@@ -304,7 +307,6 @@ int main(int argc, char *argv[])
     if( memdebug ) {
         talloc_enable_leak_report_full();
     }
-    rootctx = talloc_new(NULL);
 
     // Load the spec
     spec_filename = getenv("handlebars_parser_spec");
@@ -318,9 +320,9 @@ int main(int argc, char *argv[])
     if( error != 0 ) {
         goto error;
     }
-    fprintf(stderr, "Loaded %lu test cases\n", tests_len);
+    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
 
-    s = parser_suite();
+    s = suite();
     sr = srunner_create(s);
     if( iswin || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);
@@ -331,7 +333,7 @@ int main(int argc, char *argv[])
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 error:
-    talloc_free(rootctx);
+    talloc_free(root);
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }

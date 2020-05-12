@@ -111,9 +111,8 @@ const char * handlebars_token_readable_type(int type)
     // Added in v4
     _RTYPE_CASE(OPEN_PARTIAL_BLOCK);
     case NUL: return "NULL";
+    default: return "UNKNOWN";
   }
-
-  return "UNKNOWN";
 }
 
 int handlebars_token_reverse_readable_type(const char * type)
@@ -179,6 +178,8 @@ int handlebars_token_reverse_readable_type(const char * type)
         	// Added in v3
             _RTYPE_REV_CMP(UNDEFINED);
             break;
+
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
 
     // Unknown :(

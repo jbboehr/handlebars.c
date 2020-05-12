@@ -95,7 +95,7 @@ END_TEST
 START_TEST(test_opcode_print_1)
 {
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_ambiguous_block_value);
-    char * expected = "ambiguousBlockValue";
+    const char * expected = "ambiguousBlockValue";
     struct handlebars_string * string = handlebars_opcode_print(context, opcode, 0);
     ck_assert_str_eq(expected, hbs_str_val(string));
     handlebars_talloc_free(opcode);
@@ -106,7 +106,7 @@ END_TEST
 START_TEST(test_opcode_print_2)
 {
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_get_context);
-    char * expected = "getContext[LONG:2358]";
+    const char * expected = "getContext[LONG:2358]";
     struct handlebars_string * string;
     handlebars_operand_set_longval(&opcode->op1, 2358);
     string = handlebars_opcode_print(context, opcode, 0);
@@ -119,7 +119,7 @@ END_TEST
 START_TEST(test_opcode_print_3)
 {
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_invoke_helper);
-    char * expected = "invokeHelper[LONG:123][STRING:baz][LONG:456]";
+    const char * expected = "invokeHelper[LONG:123][STRING:baz][LONG:456]";
     struct handlebars_string * string;
 
     handlebars_operand_set_longval(&opcode->op1, 123);
@@ -136,7 +136,7 @@ END_TEST
 START_TEST(test_opcode_print_4)
 {
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_lookup_on_context);
-    char * expected = "lookupOnContext[LONG:123][STRING:baz][LONG:456][STRING:bat]";
+    const char * expected = "lookupOnContext[LONG:123][STRING:baz][LONG:456][STRING:bat]";
     struct handlebars_string * string;
 
     handlebars_operand_set_longval(&opcode->op1, 123);
@@ -151,8 +151,8 @@ START_TEST(test_opcode_print_4)
 }
 END_TEST
 
-
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Opcode Printer");
 
@@ -184,7 +184,7 @@ int main(void)
     }
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

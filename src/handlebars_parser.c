@@ -95,23 +95,25 @@ struct handlebars_token ** handlebars_lex_ex(
 
 struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
 {
-    YYSTYPE yylval_param;
-    YYLTYPE yylloc_param;
     struct handlebars_error * e = HBSCTX(parser)->e;
     jmp_buf * prev = e->jmp;
     jmp_buf buf;
-    YYSTYPE * lval;
-    struct handlebars_token ** tokens;
-    struct handlebars_token * token;
-    size_t i = 0;
 
     // Save jump buffer
     if( !prev ) {
         e->jmp = &buf;
         if (setjmp(buf)) {
-            goto done;
+            e->jmp = prev;
+            return NULL;
         }
     }
+
+    YYSTYPE yylval_param;
+    YYLTYPE yylloc_param;
+    YYSTYPE * lval;
+    struct handlebars_token ** tokens;
+    struct handlebars_token * token;
+    size_t i = 0;
 
     // Prepare token list
     tokens = MC(handlebars_talloc_array(parser, struct handlebars_token *, 32));
@@ -137,7 +139,6 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
 
     tokens[i] = NULL;
 
-done:
     e->jmp = prev;
     return tokens;
 }
@@ -151,7 +152,8 @@ struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * pars
     // Save jump buffer
     if( !prev ) {
         if( handlebars_setjmp_ex(parser, &buf) ) {
-            goto done;
+            e->jmp = prev;
+            return NULL;
         }
     }
 
@@ -160,7 +162,6 @@ struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * pars
 
     handlebars_yy_parse(parser);
 
-done:
     e->jmp = prev;
     return parser->program;
 }

@@ -34,6 +34,9 @@
 #include "handlebars_string.h"
 #include "handlebars.tab.h"
 
+#pragma GCC diagnostic ignored "-Wswitch-default"
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 #undef CONTEXT
 #define CONTEXT HBSCTX(yyextra)
 
@@ -149,9 +152,10 @@ BLOCKPARAM [\x7C]
 {EEMU} 								{
 										// v2.0.0 handlebars.l line 32
 										handlebars_yy_unput_n(2);
-										yytext = "\\";
-										yyleng = 1;
-										handlebars_yy_copy_lval();
+										//yytext = "\\";
+										//yyleng = 1;
+										//handlebars_yy_copy_lval();
+                                        yylval->string = handlebars_string_ctor(HBSCTX(yyextra), HBS_STRL("\\"));
 										yy_push_state(mu, yyscanner);
 										return CONTENT;
 									}

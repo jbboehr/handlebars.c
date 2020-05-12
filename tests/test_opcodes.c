@@ -49,7 +49,7 @@ END_TEST
 
 START_TEST(test_opcode_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     jmp_buf buf;
     struct handlebars_opcode * opcode;
 
@@ -241,7 +241,8 @@ START_TEST(test_operand_set_arrayval_string)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Opcodes");
 
@@ -276,7 +277,7 @@ int main(void)
     }
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

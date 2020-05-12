@@ -284,7 +284,8 @@ START_TEST(test_mmap_cache_error)
 END_TEST
 #endif
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     const char * title = "Handlebars Spec";
     Suite * s = suite_create(title);
@@ -324,7 +325,7 @@ int main(void)
     root = talloc_new(NULL);
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

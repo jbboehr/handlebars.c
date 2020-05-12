@@ -29,8 +29,14 @@ AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
 
-AX_CHECK_ENABLE_DEBUG([no])
+AX_IS_RELEASE([git-directory])
+AX_CHECK_ENABLE_DEBUG
 AX_CFLAGS_WARN_ALL
+AX_COMPILER_FLAGS(,,,,[-Wno-declaration-after-statement -Wno-error=declaration-after-statement -Wno-switch-enum -Wno-error=switch-enum -Wdeprecated-declarations -Wclobbered -Wmaybe-uninitialized])
+
+# Work around buggy handling in Nix
+# https://github.com/NixOS/nixpkgs/issues/18995
+AS_IF([test "x$enable_debug" = "xyes"], [AX_APPEND_COMPILE_FLAGS([-U_FORTIFY_SOURCE])])
 
 # Define macro variables for the package version numbers.
 AC_DEFINE(HANDLEBARS_VERSION_MAJOR, HANDLEBARS_MAJOR, [Define the major version number.])

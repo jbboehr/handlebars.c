@@ -4,11 +4,8 @@ SUBDIRS = src . doc bin tests
 EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor
 
 ACLOCAL_AMFLAGS = -I m4 --install
-
-# if GCC
-# export AM_CFLAGS = -Wall -Wextra -Wdeclaration-after-statement  \
-# 		-Wmissing-prototypes -Wstrict-prototypes -Wold-style-definition
-# endif
+AM_CFLAGS = $(WARN_CFLAGS)
+AM_LDFLAGS = $(WARN_LDFLAGS)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = handlebars.pc

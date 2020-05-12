@@ -1,11 +1,15 @@
 {
-  pkgs ? import <nixpkgs> {},
+  pkgs ? (import <nixpkgs> {}),
 
-  handlebarscWithCmake ? false,
-  handlebarscRefcounting ? true,
   handlebarscVersion ? "v0.7.2",
   handlebarscSrc ? ./.,
   handlebarscSha256 ? null,
+
+  handlebarscDebug ? false,
+  handlebarscDev ? false,
+  handlebarscRefcounting ? true,
+  handlebarscWerror ? false,
+  handlebarscWithCmake ? false,
 
   stdenv ? pkgs.stdenv,
 
@@ -21,6 +25,8 @@
 }:
 
 pkgs.callPackage ./derivation.nix {
-  inherit mustache_spec handlebars_spec handlebarscVersion handlebarscSrc handlebarscSha256 handlebarscWithCmake handlebarscRefcounting;
+  inherit stdenv;
+  inherit mustache_spec handlebars_spec;
+  inherit handlebarscVersion handlebarscSrc handlebarscSha256;
+  inherit handlebarscDebug handlebarscDev handlebarscWithCmake handlebarscRefcounting handlebarscWerror;
 }
-

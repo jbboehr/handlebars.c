@@ -66,7 +66,7 @@ static inline void patch_string(struct handlebars_string * str) {
 
 static void calculate_size_operand(struct handlebars_module * module, struct handlebars_operand * operand)
 {
-    int i;
+    size_t i;
 
     // Increment for children
     switch( operand->type ) {
@@ -98,7 +98,7 @@ static void calculate_size_opcode(struct handlebars_module * module, struct hand
 
 static void calculate_size_program(struct handlebars_module * module, struct handlebars_program * program)
 {
-    int i;
+    size_t i;
 
     // Increment for self
     module->size += sizeof(struct handlebars_module_table_entry);
@@ -122,7 +122,7 @@ static void calculate_size_program(struct handlebars_module * module, struct han
 
 static void serialize_operand(struct handlebars_module * module, struct handlebars_operand * operand)
 {
-    int i;
+    size_t i;
     size_t size;
 
     // Increment for children
@@ -249,9 +249,11 @@ struct handlebars_module * handlebars_program_serialize(
     module->data = PTR_ADD(module->opcodes, (sizeof(struct handlebars_opcode) * module->opcode_count));
 
     // Reset counts - use as index
+#ifndef NDEBUG
     size_t program_count = module->program_count;
     size_t opcode_count = module->opcode_count;
     size_t data_size = module->data_size;
+#endif
     module->program_count = module->opcode_count = module->data_size = 0;
 
     // Copy data
@@ -269,7 +271,7 @@ struct handlebars_module * handlebars_program_serialize(
 
 static inline void normalize_operand(struct handlebars_module * module, struct handlebars_operand * operand, void * baseaddr)
 {
-    int i;
+    size_t i;
 
     switch( operand->type ) {
         case handlebars_operand_type_string:
@@ -289,7 +291,7 @@ static inline void normalize_operand(struct handlebars_module * module, struct h
 
 void handlebars_module_normalize_pointers(struct handlebars_module * module, void *baseaddr)
 {
-    int i;
+    size_t i;
 
     if( module->addr == baseaddr ) {
         return;
@@ -316,7 +318,7 @@ void handlebars_module_normalize_pointers(struct handlebars_module * module, voi
 
 static inline void patch_operand(struct handlebars_module * module, struct handlebars_operand * operand, void * baseaddr)
 {
-    int i;
+    size_t i;
 
     switch( operand->type ) {
         case handlebars_operand_type_string:
@@ -336,7 +338,7 @@ static inline void patch_operand(struct handlebars_module * module, struct handl
 
 void handlebars_module_patch_pointers(struct handlebars_module * module)
 {
-    int i;
+    size_t i;
     void *baseaddr = (void *) module;
 
     if( module->addr == baseaddr ) {

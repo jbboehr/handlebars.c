@@ -32,6 +32,7 @@
 
 
 
+char mkchar(unsigned long i);
 char mkchar(unsigned long i) {
     return (char) (32 + (i % (126 - 32)));
 }
@@ -43,9 +44,7 @@ START_TEST(test_map)
     size_t pos = 0;
     size_t count = 10000;
     struct handlebars_map * map = handlebars_map_ctor(context, 0);
-    struct handlebars_value * value;
     struct handlebars_string ** strings = handlebars_talloc_array(context, struct handlebars_string *, count);
-    struct handlebars_string * key;
 
     // Seed so it's determinisitic
     srand(0x5d0);
@@ -64,21 +63,21 @@ START_TEST(test_map)
 
     // Add them all to the map
     for( i = 0; i < count; i++ ) {
-        key = strings[i];
+        struct handlebars_string * key = strings[i];
 
         // There can be duplicate strings - skip those
         if (handlebars_map_find(map, key)) {
             continue;
         }
 
-        value = talloc_steal(map, handlebars_value_ctor(context));
+        struct handlebars_value * value = talloc_steal(map, handlebars_value_ctor(context));
         handlebars_value_integer(value, pos++);
         handlebars_map_add(map, key, value);
     }
 
     fprintf(
         stderr,
-        "ENTRIES: %ld, "
+        "ENTRIES: %zu, "
         // "TABLE SIZE: %ld, "
         // "COLLISIONS: %ld, "
         "LOADFACTOR: %d\n",
@@ -122,6 +121,7 @@ START_TEST(test_map)
 }
 END_TEST
 
+int map_sort_test_compare(const struct handlebars_map_kv_pair * kv_pair1, const struct handlebars_map_kv_pair * kv_pair2);
 int map_sort_test_compare(const struct handlebars_map_kv_pair * kv_pair1, const struct handlebars_map_kv_pair * kv_pair2)
 {
     ck_assert_ptr_ne(kv_pair1, NULL);
@@ -131,6 +131,7 @@ int map_sort_test_compare(const struct handlebars_map_kv_pair * kv_pair1, const 
 
 static const void * COMPARE_R_ARG = (void *) 0x0F;
 
+int map_sort_test_compare_r(const struct handlebars_map_kv_pair * kv_pair1, const struct handlebars_map_kv_pair * kv_pair2, const void * arg);
 int map_sort_test_compare_r(const struct handlebars_map_kv_pair * kv_pair1, const struct handlebars_map_kv_pair * kv_pair2, const void * arg)
 {
     ck_assert_ptr_ne(kv_pair1, NULL);
@@ -149,7 +150,7 @@ START_TEST(test_map_sort)
 
     for ( i = 0; i < count; i++ ) {
         char tmp[32];
-        snprintf(tmp, sizeof(tmp) - 1, "%lu", i);
+        snprintf(tmp, sizeof(tmp) - 1, "%zu", i);
         struct handlebars_string * key = handlebars_string_ctor(HBSCTX(context), tmp, strlen(tmp));
 
         struct handlebars_value * value = handlebars_value_ctor(context);
@@ -161,7 +162,7 @@ START_TEST(test_map_sort)
 
     do {
         char tmp[32];
-        snprintf(tmp, sizeof(tmp) - 1, "%lu", middle);
+        snprintf(tmp, sizeof(tmp) - 1, "%zu", middle);
         struct handlebars_string * key = handlebars_string_ctor(HBSCTX(context), tmp, strlen(tmp));
         handlebars_map_remove(map, key);
         handlebars_talloc_free(key);
@@ -180,7 +181,7 @@ START_TEST(test_map_sort)
         ck_assert_ptr_ne(key, NULL);
 
         char tmp[32];
-        snprintf(tmp, sizeof(tmp) - 1, "%lu", count - i - 1);
+        snprintf(tmp, sizeof(tmp) - 1, "%zu", count - i - 1);
         ck_assert_str_eq(tmp, hbs_str_val(key));
 
         struct handlebars_value * value = handlebars_map_find(map, key);
@@ -201,7 +202,7 @@ START_TEST(test_map_sort)
         ck_assert_ptr_ne(key, NULL);
 
         char tmp[32];
-        snprintf(tmp, sizeof(tmp) - 1, "%lu", i);
+        snprintf(tmp, sizeof(tmp) - 1, "%zu", i);
         ck_assert_str_eq(tmp, hbs_str_val(key));
 
         struct handlebars_value * value = handlebars_map_find(map, key);
@@ -211,14 +212,13 @@ START_TEST(test_map_sort)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Map");
 
     REGISTER_TEST_FIXTURE(s, test_map, "Map");
-#ifdef HAVE_QSORT_R
     REGISTER_TEST_FIXTURE(s, test_map_sort, "handlebars_map_sort");
-#endif
 
     return s;
 }
@@ -238,7 +238,7 @@ int main(void)
     }
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

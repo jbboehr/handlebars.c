@@ -48,35 +48,36 @@ static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} 
 
 START_TEST(test_random_alloc_fail_tokenizer)
 {
-    size_t i;
-    int retval;
+    size_t i = _i;
+    // int retval;
     struct handlebars_token ** tokens;
 
-    for( i = 1; i < 300; i++ ) {
-        struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
-        struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+    // for( i = 1; i < 300; i++ ) {
+    //     struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+    //     struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
         struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
         tokens = handlebars_lex_ex(parser, tmpl_str);
+        (void) tokens;
         handlebars_memory_fail_disable();
 
-        handlebars_context_dtor(ctx);
-        ctx = NULL;
-    }
+    //     handlebars_context_dtor(ctx);
+    //     ctx = NULL;
+    // }
 }
 END_TEST
 
 START_TEST(test_random_alloc_fail_parser)
 {
-    size_t i;
-    int retval;
+    size_t i = _i;
+    // int retval;
 
-    for( i = 1; i < 300; i++ ) {
-        struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
-        struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+    // for( i = 1; i < 300; i++ ) {
+    //     struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+    //     struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
         struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
         struct handlebars_ast_node * ast;
 
@@ -87,21 +88,21 @@ START_TEST(test_random_alloc_fail_parser)
         (void) ast;
         handlebars_memory_fail_disable();
 
-        handlebars_context_dtor(ctx);
-        ctx = NULL;
-    }
+    //     handlebars_context_dtor(ctx);
+    //     ctx = NULL;
+    // }
 }
 END_TEST
 
 START_TEST(test_random_alloc_fail_compiler)
     {
-        size_t i;
-        int retval;
+        size_t i = _i;
+        // int retval;
 
-        for( i = 1; i < 300; i++ ) {
-            struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
-            struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
-            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
+        // for( i = 1; i < 300; i++ ) {
+        //     struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+        //     struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+        //     struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
             struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
             struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl_str, 0);
 
@@ -111,29 +112,29 @@ START_TEST(test_random_alloc_fail_compiler)
             handlebars_compiler_compile(compiler, ast);
             handlebars_memory_fail_disable();
 
-            handlebars_context_dtor(ctx);
-        }
+        //     handlebars_context_dtor(ctx);
+        // }
     }
 END_TEST
 
 START_TEST(test_random_alloc_fail_vm)
     {
-        size_t i;
-        int retval;
+        size_t i = _i;
+        // int retval;
 
-        for( i = 1; i < 300; i++ ) {
-            struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
-            struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
-            struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
-            struct handlebars_vm * vm = handlebars_vm_ctor(ctx);
-            struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"foo\": {\"bar\": 2}}");
+        // for( i = 1; i < 300; i++ ) {
+        //     struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
+        //     struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
+        //     struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
+        //     struct handlebars_vm * vm = handlebars_vm_ctor(ctx);
+            struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": 2}}");
             struct handlebars_string * result;
             handlebars_value_convert(value);
 
             struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
             struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl_str, 0);
             struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
-            struct handlebars_module * module = handlebars_program_serialize(ctx, program);
+            struct handlebars_module * module = handlebars_program_serialize(context, program);
 
             // For now, don't do yy alloc
             handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
@@ -142,19 +143,35 @@ START_TEST(test_random_alloc_fail_vm)
             (void) result;
             handlebars_memory_fail_disable();
 
-            handlebars_context_dtor(ctx);
-        }
+        //     handlebars_context_dtor(ctx);
+        // }
     }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Random Memory Allocation Failures");
 
-    REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_tokenizer, "Random Memory Allocation Failures (Tokenizer)");
-    REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_parser, "Random Memory Allocation Failures (Parser)");
-    REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_compiler, "Random Memory Allocation Failures (Compiler)");
-    REGISTER_TEST_FIXTURE(s, test_random_alloc_fail_vm, "Random Memory Allocation Failures (VM)");
+    TCase * tc_random_alloc_fail_tokenizer = tcase_create("Random Memory Allocation Failures (Tokenizer)");
+    tcase_add_checked_fixture(tc_random_alloc_fail_tokenizer, default_setup, default_teardown);
+    tcase_add_loop_test(tc_random_alloc_fail_tokenizer, test_random_alloc_fail_tokenizer, 1, 300);
+    suite_add_tcase(s, tc_random_alloc_fail_tokenizer);
+
+    TCase * tc_random_alloc_fail_parser = tcase_create("Random Memory Allocation Failures (Parser)");
+    tcase_add_checked_fixture(tc_random_alloc_fail_parser, default_setup, default_teardown);
+    tcase_add_loop_test(tc_random_alloc_fail_parser, test_random_alloc_fail_parser, 1, 300);
+    suite_add_tcase(s, tc_random_alloc_fail_parser);
+
+    TCase * tc_random_alloc_fail_compiler = tcase_create("Random Memory Allocation Failures (Compiler)");
+    tcase_add_checked_fixture(tc_random_alloc_fail_compiler, default_setup, default_teardown);
+    tcase_add_loop_test(tc_random_alloc_fail_compiler, test_random_alloc_fail_compiler, 1, 300);
+    suite_add_tcase(s, tc_random_alloc_fail_compiler);
+
+    TCase * tc_random_alloc_fail_vm = tcase_create("Random Memory Allocation Failures (VM)");
+    tcase_add_checked_fixture(tc_random_alloc_fail_vm, default_setup, default_teardown);
+    tcase_add_loop_test(tc_random_alloc_fail_vm, test_random_alloc_fail_vm, 1, 300);
+    suite_add_tcase(s, tc_random_alloc_fail_vm);
 
     return s;
 }
@@ -179,7 +196,7 @@ int main(void)
         talloc_enable_leak_report_full();
     }
 
-    s = parser_suite();
+    s = suite();
     sr = srunner_create(s);
     if( iswin || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);
@@ -189,7 +206,6 @@ int main(void)
     srunner_free(sr);
     error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 
-error:
     if( memdebug ) {
         talloc_report_full(NULL, stderr);
     }

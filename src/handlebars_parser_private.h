@@ -114,10 +114,10 @@ void handlebars_yy_print(
  * @param[in] yyscanner The scanner context. NULL if allocating the yyscanner itself.
  * @return A pointer to the newly allocated memory, or NULL on failure
  */
-void * handlebars_yy_alloc(
-    size_t bytes,
-    void * yyscanner
-);
+// void * handlebars_yy_alloc(
+//     size_t bytes,
+//     void * yyscanner
+// );
 
 /**
  * @brief Custom realloc for use with flex/bison. Uses talloc with
@@ -128,11 +128,11 @@ void * handlebars_yy_alloc(
  * @param[in] yyscanner The scanner context
  * @return The original pointer, or a new pointer, or NULL on failure
  */
-void * handlebars_yy_realloc(
-    void * ptr,
-    size_t bytes,
-    void * yyscanner
-);
+// void * handlebars_yy_realloc(
+//     void * ptr,
+//     size_t bytes,
+//     void * yyscanner
+// );
 
 /**
  * @brief Custom free for use with flex/bison. Uses talloc with
@@ -142,20 +142,20 @@ void * handlebars_yy_realloc(
  * @param[in] yyscanner The scanner context
  * @return void
  */
-void handlebars_yy_free(
-    void * ptr,
-    void * yyscanner
-);
+// void handlebars_yy_free(
+//     void * ptr,
+//     void * yyscanner
+// );
 
 // Flex/Bison prototypes
-int handlebars_yy_get_column(void * yyscanner)
-    HBS_LOCAL;
+// int handlebars_yy_get_column(void * yyscanner)
+//     HBS_LOCAL;
 
-void handlebars_yy_set_column(int column_no, void * yyscanner)
-    HBS_LOCAL;
+// void handlebars_yy_set_column(int column_no, void * yyscanner)
+//     HBS_LOCAL;
 
-int handlebars_yy_parse(struct handlebars_parser * parser)
-    HBS_LOCAL;
+// int handlebars_yy_parse(struct handlebars_parser * parser)
+//     HBS_LOCAL;
 
 HBS_EXTERN_C_END
 

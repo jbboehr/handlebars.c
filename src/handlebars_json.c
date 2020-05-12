@@ -25,6 +25,10 @@
 #include <string.h>
 #include <talloc.h>
 
+// json-c undeprecated json_object_object_get, but the version in xenial
+// is too old, so let's silence deprecated warnings for json-c
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
 #include <json-c/json.h>
 #include <json-c/json_object.h>
@@ -34,6 +38,7 @@
 #include <json/json_object.h>
 #include <json/json_tokener.h>
 #endif
+#pragma GCC diagnostic pop
 
 #include "handlebars.h"
 #include "handlebars_json.h"
@@ -206,11 +211,11 @@ static bool hbs_json_iterator_next_array(struct handlebars_value_iterator * it)
     handlebars_value_delref(it->current);
     it->current = NULL;
 
-    if( it->index >= json_object_array_length(intern) - 1 ) {
+    it->index++;
+    if( it->index >= (size_t) json_object_array_length(intern) ) {
         return false;
     }
 
-    it->index++;
     it->current = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, it->index));
     return true;
 }
@@ -316,6 +321,8 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
             talloc_set_destructor(obj, handlebars_json_dtor);
             handlebars_value_user(value, (struct handlebars_user *) obj);
             break;
+
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
 }
 

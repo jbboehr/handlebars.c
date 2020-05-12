@@ -50,7 +50,7 @@ END_TEST
 
 START_TEST(test_token_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
 	struct handlebars_string * string;
 	jmp_buf buf;
     struct handlebars_token * token;
@@ -239,7 +239,7 @@ END_TEST
 
 START_TEST(test_token_print_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("tok1"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
 	struct handlebars_string * actual;
@@ -263,7 +263,8 @@ START_TEST(test_token_print_failed_alloc)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
 	Suite * s = suite_create("Token");
 
@@ -297,7 +298,7 @@ int main(void)
     }
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

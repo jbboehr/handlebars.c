@@ -199,6 +199,20 @@ void handlebars_compiler_set_known_helpers(
     const char ** known_helpers
 ) HBS_ATTR_NONNULL_ALL;
 
+// {{{ Extern for test suite only
+
+bool handlebars_compiler_is_known_helper(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * path
+) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_compiler_opcode(
+    struct handlebars_compiler * compiler,
+    struct handlebars_opcode * opcode
+) HBS_ATTR_NONNULL_ALL;
+
+// }}} Extern for test suite only
+
 #ifdef HANDLEBARS_COMPILER_PRIVATE
 
 struct handlebars_program {

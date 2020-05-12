@@ -39,32 +39,23 @@
 
 
 
-bool handlebars_compiler_is_known_helper(
-    struct handlebars_compiler * compiler,
-    struct handlebars_ast_node * path
-);
-void handlebars_compiler_opcode(
-    struct handlebars_compiler * compiler,
-    struct handlebars_opcode * opcode
-);
-
 START_TEST(test_compiler_ctor)
 {
-    struct handlebars_compiler * compiler;
+    struct handlebars_compiler * mycompiler;
 
-    compiler = handlebars_compiler_ctor(context);
+    mycompiler = handlebars_compiler_ctor(context);
 
-    ck_assert_ptr_ne(NULL, compiler);
+    ck_assert_ptr_ne(NULL, mycompiler);
 
-    handlebars_compiler_dtor(compiler);
+    handlebars_compiler_dtor(mycompiler);
 }
 END_TEST
 
 START_TEST(test_compiler_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     jmp_buf buf;
-    struct handlebars_compiler * compiler;
+    struct handlebars_compiler * mycompiler;
 
     context->e->jmp = &buf;
     if( setjmp(buf) ) {
@@ -73,8 +64,8 @@ START_TEST(test_compiler_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    compiler = handlebars_compiler_ctor(context);
-    (void) compiler;
+    mycompiler = handlebars_compiler_ctor(context);
+    (void) mycompiler;
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -86,10 +77,10 @@ END_TEST
 
 START_TEST(test_compiler_dtor)
 {
-    struct handlebars_compiler * compiler;
+    struct handlebars_compiler * mycompiler;
 
-    compiler = handlebars_compiler_ctor(context);
-    handlebars_compiler_dtor(compiler);
+    mycompiler = handlebars_compiler_ctor(context);
+    handlebars_compiler_dtor(mycompiler);
 }
 END_TEST
 
@@ -173,7 +164,8 @@ START_TEST(test_compiler_opcode)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Compiler");
 
@@ -203,7 +195,7 @@ int main(void)
     }
 
     // Set up test suite
-    Suite * s = parser_suite();
+    Suite * s = suite();
     SRunner * sr = srunner_create(s);
     if( IS_WIN || memdebug ) {
         srunner_set_fork_status(sr, CK_NOFORK);

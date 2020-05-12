@@ -101,6 +101,7 @@ struct handlebars_string * handlebars_operand_print_append(
             string = handlebars_string_append(context, string, HBS_STRL("]"));
             break;
         }
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
     return string;
 }

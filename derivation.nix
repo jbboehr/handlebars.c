@@ -1,13 +1,20 @@
-{ stdenv, fetchurl, pkgconfig, glib, json_c, lmdb,
-  talloc, libyaml, libtool, m4, pcre, check, handlebars_spec, mustache_spec, autoreconfHook,
-  autoconf ? null,
-  automake ? null,
-  cmake ? null,
+{
+  stdenv, fetchurl, pkgconfig,
+  glib, json_c, lmdb, talloc, libyaml, pcre, # deps
+  check, # doc deps
+  handlebars_spec, mustache_spec, # my special stuff
+  autoconf-archive, bison, flex, gperf, re2c, valgrind, kcachegrind, # debug
+  autoconf, automake, autoreconfHook, libtool, m4, # autoconf
+  cmake, # cmake
+  handlebarscDebug ? false,
+  handlebarscDev ? false,
   handlebarscWithCmake ? false,
   handlebarscRefcounting ? true,
+  handlebarscWerror ? false,
   handlebarscVersion ? null,
   handlebarscSrc ? null,
-  handlebarscSha256 ? null }:
+  handlebarscSha256 ? null
+}:
 
 let
   debug = false;
@@ -28,8 +35,10 @@ stdenv.mkDerivation rec {
   enableParallelBuilding = true;
   buildInputs = [ glib json_c lmdb pcre libyaml ];
   propagatedBuildInputs = [ talloc pkgconfig ];
-  nativeBuildInputs = [  handlebars_spec mustache_spec check ]
-    ++ (if handlebarscWithCmake then [cmake] else [autoreconfHook autoconf automake libtool m4]);
+  nativeBuildInputs = [ handlebars_spec mustache_spec check ]
+    ++ (if handlebarscWithCmake then [ cmake ] else [ autoreconfHook autoconf automake libtool m4 ])
+    ++ (if handlebarscDebug then [ kcachegrind valgrind ] else [])
+    ++ (if handlebarscDev then [ autoconf-archive bison gperf flex re2c ] else []);
 
   doCheck = true;
   configureFlags = [
@@ -37,12 +46,16 @@ stdenv.mkDerivation rec {
       "--with-mustache-spec=${mustache_spec}/share/mustache-spec/"
       "--bindir=$(bin)/bin"
     ]
-    ++ (if handlebarscRefcounting then [] else ["--disable-refcounting"]);
+    ++ (if handlebarscRefcounting then [] else ["--disable-refcounting"])
+    ++ (if handlebarscWerror then ["--enable-compile-warnings=error"] else ["--enable-compile-warnings=yes --disable-Werror"])
+    ++ (if handlebarscDebug then ["--enable-debug"] else []);
 
   cmakeFlags = [
     "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}"
     "-DHANDLEBARS_ENABLE_TESTS=1"
   ];
+
+  hardeningDisable = if handlebarscDebug then [ "fortify" ] else [];
 
   preConfigure = ''
       export handlebars_export_dir=${handlebars_spec}/share/handlebars-spec/export/

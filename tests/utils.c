@@ -36,6 +36,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <check.h>
+
 #if defined(HAVE_LIBYAML)
 #include <yaml.h>
 #endif
@@ -60,18 +62,23 @@
 #include "utils.h"
 
 
-TALLOC_CTX * root;
+TALLOC_CTX * root = NULL;
 struct handlebars_context * context;
 struct handlebars_parser * parser;
 struct handlebars_compiler * compiler;
 struct handlebars_vm * vm;
-int init_blocks;
+size_t init_blocks;
+static size_t root_blocks;
 
 void default_setup(void)
 {
 #ifdef HANDLEBARS_MEMORY
     handlebars_memory_fail_disable();
 #endif
+    if (!root) {
+        root = talloc_init(NULL);
+    }
+    root_blocks = talloc_total_blocks(root);
     context = handlebars_context_ctor_ex(root);
     parser = handlebars_parser_ctor(context);
     compiler = handlebars_compiler_ctor(context);
@@ -92,6 +99,8 @@ void default_teardown(void)
     compiler = NULL;
     parser = NULL;
     context = NULL;
+    // Make sure we aren't leaking anything
+    ck_assert_uint_eq(root_blocks, talloc_total_blocks(root));
 }
 
 
