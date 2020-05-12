@@ -104,7 +104,8 @@ START_TEST(test_ast_list_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_ast_list_ctor(HBSCTX(parser));
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
+    (void) list;
     handlebars_memory_fail_disable();
 
     ck_assert(0);

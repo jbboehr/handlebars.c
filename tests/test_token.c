@@ -53,6 +53,7 @@ START_TEST(test_token_ctor_failed_alloc)
 #if HANDLEBARS_MEMORY
 	struct handlebars_string * string;
 	jmp_buf buf;
+    struct handlebars_token * token;
 
     if( handlebars_setjmp_ex(context, &buf) ) {
 		ck_assert(1);
@@ -62,7 +63,8 @@ START_TEST(test_token_ctor_failed_alloc)
 	string = handlebars_string_ctor(context, HBS_STRL("{{"));
 
     handlebars_memory_fail_enable();
-    handlebars_token_ctor(context, OPEN, string);
+    token = handlebars_token_ctor(context, OPEN, string);
+    (void) token;
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -240,7 +242,7 @@ START_TEST(test_token_print_failed_alloc)
 #if HANDLEBARS_MEMORY
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("tok1"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
-	struct handlebars_string * expected = NULL;
+	struct handlebars_string * actual;
     jmp_buf buf;
 
     if( !handlebars_setjmp_ex(context, &buf) ) {
@@ -249,7 +251,8 @@ START_TEST(test_token_print_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_token_print(context, tok, 0);
+    actual = handlebars_token_print(context, tok, 0);
+    (void) actual;
     handlebars_memory_fail_disable();
 
     ck_assert(0);

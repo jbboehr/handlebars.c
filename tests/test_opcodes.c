@@ -51,6 +51,7 @@ START_TEST(test_opcode_ctor_failed_alloc)
 {
 #if HANDLEBARS_MEMORY
     jmp_buf buf;
+    struct handlebars_opcode * opcode;
 
     if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
@@ -58,7 +59,8 @@ START_TEST(test_opcode_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_opcode_ctor(compiler, handlebars_opcode_type_append);
+    opcode = handlebars_opcode_ctor(HBSCTX(compiler), handlebars_opcode_type_append);
+    (void) opcode;
     handlebars_memory_fail_disable();
 
     ck_assert(0);

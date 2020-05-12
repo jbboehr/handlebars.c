@@ -64,6 +64,7 @@ START_TEST(test_compiler_ctor_failed_alloc)
 {
 #if HANDLEBARS_MEMORY
     jmp_buf buf;
+    struct handlebars_compiler * compiler;
 
     context->e->jmp = &buf;
     if( setjmp(buf) ) {
@@ -72,7 +73,8 @@ START_TEST(test_compiler_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_compiler_ctor(context);
+    compiler = handlebars_compiler_ctor(context);
+    (void) compiler;
     handlebars_memory_fail_disable();
 
     ck_assert(0);

@@ -58,7 +58,8 @@ START_TEST(test_ast_node_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
+    struct handlebars_ast_node * ast = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
+    (void) ast;
     handlebars_memory_fail_disable();
 
     ck_assert(0);

@@ -29,6 +29,7 @@
 #include "handlebars_compiler.h"
 #include "handlebars_json.h"
 #include "handlebars_memory.h"
+#include "handlebars_opcode_serializer.h"
 #include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -77,11 +78,13 @@ START_TEST(test_random_alloc_fail_parser)
         struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
         struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
         struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
+        struct handlebars_ast_node * ast;
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
         handlebars_memory_fail_counter(i);
-        handlebars_parse_ex(parser, tmpl_str, 0);
+        ast = handlebars_parse_ex(parser, tmpl_str, 0);
+        (void) ast;
         handlebars_memory_fail_disable();
 
         handlebars_context_dtor(ctx);
@@ -124,16 +127,19 @@ START_TEST(test_random_alloc_fail_vm)
             struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
             struct handlebars_vm * vm = handlebars_vm_ctor(ctx);
             struct handlebars_value * value = handlebars_value_from_json_string(ctx, "{\"foo\": {\"bar\": 2}}");
+            struct handlebars_string * result;
             handlebars_value_convert(value);
 
             struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
             struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl_str, 0);
             struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
+            struct handlebars_module * module = handlebars_program_serialize(ctx, program);
 
             // For now, don't do yy alloc
             handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
             handlebars_memory_fail_counter(i);
-            handlebars_vm_execute(vm, program, value);
+            result = handlebars_vm_execute(vm, module, value);
+            (void) result;
             handlebars_memory_fail_disable();
 
             handlebars_context_dtor(ctx);

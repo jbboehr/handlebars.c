@@ -464,7 +464,7 @@ static inline void run_test(struct generic_test * test, int _i)
         handlebars_compiler_set_known_helpers(compiler, (const char **) test->known_helpers);
     }
 
-    handlebars_compiler_compile(compiler, ast);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         // @todo check message
         ck_assert_int_eq(1, test->exception);
@@ -472,7 +472,7 @@ static inline void run_test(struct generic_test * test, int _i)
     }
 
     // Serialize
-    module = handlebars_program_serialize(ctx, handlebars_compiler_get_program(compiler));
+    module = handlebars_program_serialize(ctx, program);
     handlebars_compiler_dtor(compiler);
 
     // Setup VM
