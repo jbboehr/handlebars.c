@@ -25,7 +25,6 @@
 #include <string.h>
 
 #define HANDLEBARS_HELPERS_PRIVATE
-#define HANDLEBARS_VM_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_map.h"
@@ -260,19 +259,15 @@ struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_AR
 
 struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
 {
-    if( options->vm->log_func ) {
-        options->vm->log_func(argc, argv, options);
-    } else {
-        int i;
-        fprintf(stderr, "[INFO] ");
-        for (i = 0; i < argc; i++) {
-            char *tmp = handlebars_value_dump(argv[i], 0);
-            fprintf(stderr, "%s ", tmp);
-            handlebars_talloc_free(tmp);
-        }
-        fprintf(stderr, "\n");
-        //fflush(stderr);
+    int i;
+    fprintf(stderr, "[INFO] ");
+    for (i = 0; i < argc; i++) {
+        char *tmp = handlebars_value_dump(argv[i], 0);
+        fprintf(stderr, "%s ", tmp);
+        handlebars_talloc_free(tmp);
     }
+    fprintf(stderr, "\n");
+    //fflush(stderr);
     SAFE_RETURN(NULL);
 }
 

@@ -40,13 +40,7 @@ struct handlebars_vm;
 #define HANDLEBARS_VM_BUFFER_INIT_SIZE 128
 #endif
 
-extern size_t HANDLEBARS_VM_SIZE;
-
-typedef void (*handlebars_log_func)(
-    int argc,
-    struct handlebars_value * argv[],
-    struct handlebars_options * options
-);
+extern const size_t HANDLEBARS_VM_SIZE;
 
 /**
  * @brief Construct a VM
@@ -99,38 +93,6 @@ void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_valu
 void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * helpers) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
-
-#ifdef HANDLEBARS_VM_PRIVATE
-
-struct handlebars_vm {
-    struct handlebars_context ctx;
-    struct handlebars_cache * cache;
-
-    struct handlebars_module * module;
-
-    size_t guid_index;
-    long depth;
-    long flags;
-    handlebars_log_func log_func;
-    void * log_ctx;
-
-    struct handlebars_string * buffer;
-
-    struct handlebars_value * context;
-    struct handlebars_value * data;
-    struct handlebars_value * helpers;
-    struct handlebars_value * partials;
-
-    struct handlebars_string * last_helper;
-    struct handlebars_value * last_context;
-
-    struct handlebars_stack * stack;
-    struct handlebars_stack * contextStack;
-    struct handlebars_stack * hashStack;
-    struct handlebars_stack * blockParamStack;
-};
-
-#endif /* HANDLEBARS_VM_PRIVATE */
 
 HBS_EXTERN_C_END
 

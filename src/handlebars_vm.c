@@ -28,7 +28,6 @@
 #define HANDLEBARS_HELPERS_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 #define HANDLEBARS_OPCODES_PRIVATE
-#define HANDLEBARS_VM_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
@@ -49,7 +48,7 @@
 // @TODO fix these?
 #pragma GCC diagnostic warning "-Winline"
 
-
+// {{{ Macros
 
 #if defined(INTELLIJ)
 #undef HAVE_COMPUTED_GOTOS
@@ -76,24 +75,53 @@ static inline struct handlebars_value * _get(struct handlebars_stack * stack, si
 #define PUSH(stack, value) (stack = handlebars_stack_push(stack, value))
 #define TOPCONTEXT TOP(vm->contextStack)
 
+#undef CONTEXT
+#define CONTEXT HBSCTX(vm)
+
+// }}} Macros
+
+// {{{ Prototypes & Variables
+
 ACCEPT_FUNCTION(push_context);
 
-size_t HANDLEBARS_VM_SIZE = sizeof(struct handlebars_vm);
+struct handlebars_vm {
+    struct handlebars_context ctx;
+    struct handlebars_cache * cache;
 
+    struct handlebars_module * module;
 
+    long depth;
+    long flags;
 
-#undef CONTEXT
-#define CONTEXT ctx
+    struct handlebars_string * buffer;
+
+    struct handlebars_value * context;
+    struct handlebars_value * data;
+    struct handlebars_value * helpers;
+    struct handlebars_value * partials;
+
+    struct handlebars_string * last_helper;
+    struct handlebars_value * last_context;
+
+    struct handlebars_stack * stack;
+    struct handlebars_stack * contextStack;
+    struct handlebars_stack * hashStack;
+    struct handlebars_stack * blockParamStack;
+};
+
+const size_t HANDLEBARS_VM_SIZE = sizeof(struct handlebars_vm);
+
+// }}} Prototypes & Variables
+
+// {{{ Constructors & Destructors
 
 struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 {
-    struct handlebars_vm * vm =  MC(handlebars_talloc_zero(ctx, struct handlebars_vm));
+    struct handlebars_vm * vm = handlebars_talloc_zero(ctx, struct handlebars_vm);
+    HANDLEBARS_MEMCHECK(vm, ctx);
     handlebars_context_bind(ctx, HBSCTX(vm));
     return vm;
 }
-
-#undef CONTEXT
-#define CONTEXT HBSCTX(vm)
 
 
 void handlebars_vm_dtor(struct handlebars_vm * vm)
@@ -104,6 +132,10 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
     // handlebars_value_try_delref(vm->data);
     handlebars_talloc_free(vm);
 }
+
+// }}} Constructors & Destructors
+
+// {{{ Getters & Setters
 
 void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned flags)
 {
@@ -133,6 +165,7 @@ void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache 
     vm->cache = cache;
 }
 
+// }}} Getters & Setters
 
 HBS_ATTR_NONNULL(1, 3, 4)
 static inline struct handlebars_value * call_helper(struct handlebars_string * string, int argc, struct handlebars_value * argv[], struct handlebars_options * options)
@@ -1239,7 +1272,6 @@ done:
 
     // Reset
     vm->module = NULL;
-    vm->guid_index = 0;
     e->jmp = prev;
 
     return vm->buffer;
