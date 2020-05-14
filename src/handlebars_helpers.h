@@ -29,7 +29,7 @@ struct handlebars_value;
 struct handlebars_vm;
 struct handlebars_options;
 
-extern size_t HANDLEBARS_OPTIONS_SIZE;
+extern const size_t HANDLEBARS_OPTIONS_SIZE;
 
 typedef struct handlebars_value * (*handlebars_helper_func)(
     int argc,

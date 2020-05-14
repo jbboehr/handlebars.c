@@ -41,7 +41,7 @@
 
 
 
-size_t HANDLEBARS_OPTIONS_SIZE = sizeof(struct handlebars_options);
+const size_t HANDLEBARS_OPTIONS_SIZE = sizeof(struct handlebars_options);
 
 #define SAFE_RETURN(val) return val ? val : handlebars_value_ctor(CONTEXT)
 

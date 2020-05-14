@@ -37,7 +37,7 @@ struct handlebars_ast_node;
 struct handlebars_ast_list;
 struct handlebars_parser;
 
-extern size_t HANDLEBARS_AST_NODE_SIZE;
+extern const size_t HANDLEBARS_AST_NODE_SIZE;
 
 /**
  * @brief An enumeration of AST node types

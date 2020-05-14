@@ -172,8 +172,8 @@ static inline void handlebars_compiler_accept_decorator(
         long inverseGuid
 );
 
-size_t HANDLEBARS_COMPILER_SIZE = sizeof(struct handlebars_compiler);
-size_t HANDLEBARS_PROGRAM_SIZE = sizeof(struct handlebars_compiler);
+const size_t HANDLEBARS_COMPILER_SIZE = sizeof(struct handlebars_compiler);
+const size_t HANDLEBARS_PROGRAM_SIZE = sizeof(struct handlebars_compiler);
 
 
 

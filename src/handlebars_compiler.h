@@ -117,8 +117,8 @@ enum handlebars_compiler_result_flag {
     handlebars_compiler_result_flag_all = ((1 << 4) - 1)
 };
 
-extern size_t HANDLEBARS_COMPILER_SIZE;
-extern size_t HANDLEBARS_PROGRAM_SIZE;
+extern const size_t HANDLEBARS_COMPILER_SIZE;
+extern const size_t HANDLEBARS_PROGRAM_SIZE;
 
 struct handlebars_program * handlebars_compiler_compile_ex(
     struct handlebars_compiler * compiler,

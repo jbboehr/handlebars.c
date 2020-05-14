@@ -39,7 +39,7 @@
 
 
 
-size_t HANDLEBARS_AST_NODE_SIZE = sizeof(struct handlebars_ast_node);
+const size_t HANDLEBARS_AST_NODE_SIZE = sizeof(struct handlebars_ast_node);
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(context)

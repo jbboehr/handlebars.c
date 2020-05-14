@@ -27,7 +27,7 @@ HBS_EXTERN_C_START
 struct handlebars_ast_node;
 struct handlebars_string;
 
-extern size_t HANDLEBARS_PARSER_SIZE;
+extern const size_t HANDLEBARS_PARSER_SIZE;
 
 /**
  * @brief Construct a parser

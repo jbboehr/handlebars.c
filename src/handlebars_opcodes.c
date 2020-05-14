@@ -35,8 +35,8 @@
 
 
 
-size_t HANDLEBARS_OPCODE_SIZE = sizeof(struct handlebars_opcode);
-size_t HANDLEBARS_OPERAND_SIZE = sizeof(struct handlebars_operand);
+const size_t HANDLEBARS_OPCODE_SIZE = sizeof(struct handlebars_opcode);
+const size_t HANDLEBARS_OPERAND_SIZE = sizeof(struct handlebars_operand);
 
 struct handlebars_opcode * handlebars_opcode_ctor(
         struct handlebars_context * context, enum handlebars_opcode_type type)

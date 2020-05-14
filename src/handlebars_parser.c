@@ -38,15 +38,13 @@
 
 HBS_LOCAL struct handlebars_parser * handlebars_parser_init_current;
 
-size_t HANDLEBARS_PARSER_SIZE = sizeof(struct handlebars_parser);
-
-#undef CONTEXT
-#define CONTEXT ctx
+const size_t HANDLEBARS_PARSER_SIZE = sizeof(struct handlebars_parser);
 
 struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ctx)
 {
     int lexerr = 0;
-    struct handlebars_parser * parser = MC(handlebars_talloc_zero(ctx, struct handlebars_parser));
+    struct handlebars_parser * parser = handlebars_talloc_zero(ctx, struct handlebars_parser);
+    HANDLEBARS_MEMCHECK(parser, ctx);
 
     // Bind error context
     handlebars_context_bind(ctx, HBSCTX(parser));

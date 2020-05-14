@@ -104,8 +104,8 @@ enum handlebars_operand_type {
     handlebars_operand_type_array = 4
 };
 
-extern size_t HANDLEBARS_OPCODE_SIZE;
-extern size_t HANDLEBARS_OPERAND_SIZE;
+extern const size_t HANDLEBARS_OPCODE_SIZE;
+extern const size_t HANDLEBARS_OPERAND_SIZE;
 
 /**
  * @brief Construct an opcode
