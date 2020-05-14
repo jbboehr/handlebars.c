@@ -57,6 +57,11 @@
 #include "handlebars.lex.h"
 #include "utils.h"
 
+#if (__GNUC__ >= 3) || defined(__clang__)
+typedef __typeof__(json_object_array_length(NULL)) json_array_length_t;
+#else
+typedef int json_array_length_t;
+#endif
 
 
 struct compiler_test {
@@ -122,13 +127,13 @@ static int loadTestOpcodeOperand(
             handlebars_operand_set_longval(operand, json_object_get_int(object));
             break;
         case json_type_array: {
-            size_t array_len = json_object_array_length(object);
+            json_array_length_t array_len = json_object_array_length(object);
             char ** arr = handlebars_talloc_array(opcode, char *, array_len + 1);
             char ** arrptr = arr;
             json_object * array_item;
 
             // Iterate over array
-            for( size_t i = 0; i < array_len; i++ ) {
+            for( json_array_length_t i = 0; i < array_len; i++ ) {
                 array_item = json_object_array_get_idx(object, i);
                 *arrptr++ = handlebars_talloc_strdup(opcode, json_object_get_string(array_item));
             }
@@ -211,7 +216,7 @@ static struct handlebars_opcode * loadTestOpcode(
     enum handlebars_opcode_type type;
     struct json_object * array_item = NULL;
     struct json_object * cur = NULL;
-    size_t array_len = 0;
+    json_array_length_t array_len = 0;
 
     // Get type
     cur = json_object_object_get(object, "opcode");
@@ -280,10 +285,10 @@ error:
 /*
 static int loadTestCompilerDepths(struct handlebars_compiler * compiler, json_object * object)
 {
-    int array_len = json_object_array_length(object);
+    json_array_length_t array_len = json_object_array_length(object);
     struct json_object * array_item = NULL;
     unsigned long depths = 0;
-    for( int i = 0; i < array_len; i++ ) {
+    for( json_array_length_t i = 0; i < array_len; i++ ) {
         array_item = json_object_array_get_idx(object, i);
         int32_t v = json_object_get_int(array_item);
         depths += (1 << v - 1);
@@ -297,7 +302,7 @@ static int loadTestProgram(struct handlebars_context * test_context, struct hand
     int error = 0;
     json_object * cur = NULL;
     struct json_object * array_item = NULL;
-    size_t array_len = 0;
+    json_array_length_t array_len = 0;
 
     // Load depths
     /*
@@ -329,7 +334,7 @@ static int loadTestProgram(struct handlebars_context * test_context, struct hand
     program->opcodes = talloc_zero_array(program, struct handlebars_opcode *, program->opcodes_size);
 
     // Iterate over array
-    for( size_t i = 0; i < array_len; i++ ) {
+    for( json_array_length_t i = 0; i < array_len; i++ ) {
         array_item = json_object_array_get_idx(cur, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: opcode was not an object, was: %s\n", json_object_get_string(array_item));
@@ -354,7 +359,7 @@ static int loadTestProgram(struct handlebars_context * test_context, struct hand
     program->children = talloc_zero_array(program, struct handlebars_program *, program->children_size);
 
     // Iterate over array
-    for( size_t i = 0; i < array_len; i++ ) {
+    for( json_array_length_t i = 0; i < array_len; i++ ) {
         struct handlebars_program * subprogram = handlebars_talloc_zero(program, struct handlebars_program);
 
         array_item = json_object_array_get_idx(cur, i);
@@ -595,7 +600,7 @@ static int loadSpec(const char * name)
     size_t data_len = 0;
     struct json_object * result = NULL;
     struct json_object * array_item = NULL;
-    int array_len = 0;
+    json_array_length_t array_len = 0;
 
     // Read JSON file
     error = file_get_contents((const char *) filename, &data, &data_len);
@@ -628,7 +633,7 @@ static int loadSpec(const char * name)
     tests = talloc_realloc(root, tests, struct compiler_test, tests_size);
 
     // Iterate over array
-    for( int i = 0; i < array_len; i++ ) {
+    for( json_array_length_t i = 0; i < array_len; i++ ) {
         array_item = json_object_array_get_idx(result, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: test case was not an object\n");

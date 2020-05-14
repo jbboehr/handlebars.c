@@ -13,8 +13,11 @@ env:
     - MYCC="gcc-5"
     - MYCC="gcc-6"
     - MYCC="gcc-7"
+# https://github.com/linux-test-project/lcov/issues/58
     - MYCC="gcc-8"
+      COVERAGE="false"
     - MYCC="gcc-9"
+      COVERAGE="false"
     - MYCC="gcc-5"
       ARCH="i386"
       COVERAGE="false"
@@ -44,10 +47,14 @@ branches:
     - travis
     - dev-1.x
 
-before_install: travis_retry sudo ./.travis.sh before_install
-install: travis_retry sudo ./.travis.sh install
-before_script: sudo ./.travis.sh before_script
-script: sudo ./.travis.sh script
-after_success: travis_retry sudo ./.travis.sh after_success
-after_failure: travis_retry sudo ./.travis.sh after_failure
+before_install:
+    - source ./.travis.sh
+    - travis_retry install_apt_packages
+    - travis_retry install_json_c
+    - travis_retry install_coveralls_lcov
 
+install: install
+before_script: before_script
+script: script
+after_success: after_success
+after_failure: after_failure

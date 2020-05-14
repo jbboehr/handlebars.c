@@ -37,8 +37,7 @@ stdenv.mkDerivation rec {
   propagatedBuildInputs = [ talloc pkgconfig ];
   nativeBuildInputs = [ handlebars_spec mustache_spec check ]
     ++ (if handlebarscWithCmake then [ cmake ] else [ autoreconfHook autoconf automake libtool m4 ])
-    ++ (if handlebarscDebug then [ kcachegrind valgrind ] else [])
-    ++ (if handlebarscDev then [ autoconf-archive bison gperf flex re2c ] else []);
+    ++ (if handlebarscDev then [ valgrind kcachegrind autoconf-archive bison gperf flex re2c ] else []);
 
   doCheck = true;
   configureFlags = [

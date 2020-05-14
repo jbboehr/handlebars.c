@@ -19,8 +19,8 @@
   }))) {},
 
   handlebars_spec ? pkgs.callPackage (import ((fetchTarball {
-    url = https://github.com/jbboehr/handlebars-spec/archive/v104.7.6.tar.gz;
-    sha256 = "0i2czm6yhiv5xbq93yj249xjxqrfv70mk1qgl0abkbm0qmmkc4vk";
+    url = https://github.com/jbboehr/handlebars-spec/archive/2dedb7ab0bb0088f2a8ea588759b1016ed37c82d.tar.gz;
+    sha256 = "0c4f0aydy5ni3skbyvsrg6yskvljmsrqhhpx54lk0jlwblqziah4";
   }))) {}
 }:
 
