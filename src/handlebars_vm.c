@@ -64,7 +64,9 @@ static inline struct handlebars_value * _get(struct handlebars_stack * stack, si
         return NULL;
     }
     struct handlebars_value * rv = handlebars_stack_get(stack, handlebars_stack_count(stack) - pos - 1);
-    handlebars_value_addref(rv); // @TODO double-check
+    if (rv) {
+        handlebars_value_addref(rv); // @TODO double-check
+    }
     return rv;
 }
 
@@ -214,10 +216,18 @@ static inline void setup_options(struct handlebars_vm * vm, int argc, struct han
     // programs
     inverse = POP(vm->stack);
     program = POP(vm->stack);
-    options->inverse = inverse ? handlebars_value_get_intval(inverse) : -1;
-    options->program = program ? handlebars_value_get_intval(program) : -1;
-    handlebars_value_delref(inverse);
-    handlebars_value_delref(program);
+    if (inverse) {
+        options->inverse = handlebars_value_get_intval(inverse);
+        handlebars_value_delref(inverse);
+    } else {
+        options->inverse = -1;
+    }
+    if (program) {
+        options->program = handlebars_value_get_intval(program);
+        handlebars_value_delref(program);
+    } else {
+        options->program = -1;
+    }
 
     i = argc;
     while( i-- ) {

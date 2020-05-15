@@ -38,11 +38,14 @@ struct handlebars_rc {
     handlebars_rc_dtor_func dtor;
 };
 
-void handlebars_rc_init(struct handlebars_rc * rc, handlebars_rc_dtor_func dtor);
+void handlebars_rc_init(struct handlebars_rc * rc, handlebars_rc_dtor_func dtor)
+    HBS_ATTR_NONNULL_ALL;
 
-void handlebars_rc_addref(struct handlebars_rc * rc);
+void handlebars_rc_addref(struct handlebars_rc * rc)
+    HBS_ATTR_NONNULL_ALL;
 
-void handlebars_rc_delref(struct handlebars_rc * rc);
+void handlebars_rc_delref(struct handlebars_rc * rc)
+    HBS_ATTR_NONNULL_ALL;
 
 HBS_EXTERN_C_END
 

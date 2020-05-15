@@ -107,14 +107,14 @@ static struct handlebars_string * execute_template(const char *template)
 START_TEST(test_partial_loader_1)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}");
-    ck_assert_hbs_str_eq_cstr(rv, "|bar|");
+    ck_assert_hbs_str_eq_cstr(rv, "|bar|\n");
 }
 END_TEST
 
 START_TEST(test_partial_loader_2)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}{{> fixture1 .}}");
-    ck_assert_hbs_str_eq_cstr(rv, "|bar||bar|");
+    ck_assert_hbs_str_eq_cstr(rv, "|bar|\n|bar|\n");
 }
 END_TEST
 

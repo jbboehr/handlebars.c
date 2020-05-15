@@ -196,6 +196,7 @@ static bool hbs_json_iterator_next_object(struct handlebars_value_iterator * it)
     tmp = (char *) entry->k;
     it->key = handlebars_string_ctor(CONTEXT, tmp, strlen(tmp));
     it->current = handlebars_value_from_json_object(CONTEXT, (struct json_object *) entry->v);
+    handlebars_value_addref(it->current);
     return true;
 }
 
@@ -217,6 +218,7 @@ static bool hbs_json_iterator_next_array(struct handlebars_value_iterator * it)
     }
 
     it->current = handlebars_value_from_json_object(CONTEXT, json_object_array_get_idx(intern, it->index));
+    handlebars_value_addref(it->current);
     return true;
 }
 

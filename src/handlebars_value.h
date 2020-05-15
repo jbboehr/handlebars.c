@@ -112,9 +112,11 @@ struct handlebars_value * handlebars_value_copy(
 
 // {{{ Reference Counting
 
-void handlebars_value_addref(struct handlebars_value * value);
+void handlebars_value_addref(struct handlebars_value * value)
+    HBS_ATTR_NONNULL_ALL;
 
-void handlebars_value_delref(struct handlebars_value * value);
+void handlebars_value_delref(struct handlebars_value * value)
+    HBS_ATTR_NONNULL_ALL;
 
 // }}} Reference Counting
 // {{{ Getters

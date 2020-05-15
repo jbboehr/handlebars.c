@@ -125,10 +125,10 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to read partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
-    buf[size - 1] = 0;
+    buf[size] = 0;
 
     retval = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(retval, handlebars_string_ctor(CONTEXT, buf, size - 1));
+    handlebars_value_str_steal(retval, handlebars_string_ctor(CONTEXT, buf, size));
     handlebars_talloc_free(buf);
 
     handlebars_map_add(intern->map, key, retval);
