@@ -12,6 +12,7 @@ pkgs.mkShell {
     autoconf-archive bison gperf flex re2c
     cmake
     kcachegrind valgrind
+    bc # bench
   ];
 }
 

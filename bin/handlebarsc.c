@@ -56,15 +56,18 @@
 
 
 
-TALLOC_CTX * root;
-char * input_name = NULL;
-char * input_data_name = NULL;
-char * input_buf = NULL;
-size_t input_buf_length = 0;
-const char * partial_path = ".";
-const char * partial_extension = ".hbs";
-unsigned long compiler_flags = 0;
-short enable_partial_loader = 0;
+static TALLOC_CTX * root;
+static char * input_name = NULL;
+static char * input_data_name = NULL;
+static char * input_buf = NULL;
+static size_t input_buf_length = 0;
+static const char * partial_path = ".";
+static const char * partial_extension = ".hbs";
+static unsigned long compiler_flags = 0;
+static short enable_partial_loader = 0;
+static long run_count = 1;
+static bool convert_input = true;
+static bool newline_at_eof = true;
 
 enum handlebarsc_mode {
     handlebarsc_mode_usage = 0,
@@ -106,6 +109,10 @@ static void readOpts(int argc, char * argv[])
         {"partial-loader", no_argument,         0,  'P' },
         {"partial-path",   required_argument,   0,  'A' },
         {"partial-ext",    required_argument,   0,  'X' },
+        // misc
+        {"run-count",    required_argument,     0,  'N' },
+        {"no-convert-input", no_argument,       0,  'C' },
+        {"no-newline", no_argument,             0,  'n' },
         // end
         {0,           0,                        0,  0   }
     };
@@ -193,7 +200,18 @@ start:
             input_data_name = optarg;
             break;
 
-        default: assert(0); break;
+        // misc
+        case 'N':
+            sscanf(optarg, "%ld", &run_count);
+            break;
+        case 'C':
+            convert_input = false;
+            break;
+        case 'n':
+            newline_at_eof = false;
+            break;
+
+        default: break;
     }
 
     goto start;
@@ -276,13 +294,16 @@ static int do_usage(void)
         "  -D, --data=FILE       The input data file. Supports JSON and YAML.\n"
         "\n"
         "Behavior options:\n"
+        "  -n, --no-newline      Do not print a newline after execution\n"
         "  --flags=FLAGS         The flags to pass to the compiler separated by commas. One or more of:\n"
-        "                        compat, known_helpers_only, string_params, track_ids ,no_escape,\n"
+        "                        compat, known_helpers_only, string_params, track_ids, no_escape,\n"
         "                        ignore_standalone, alternate_decorators, strict, assume_objects,\n"
         "                        mustache_style_lambdas\n"
+        "  --no-convert-input    Do not convert data to native types (use JSON wrapper)\n"
         "  --partial-loader      Specify to enable loading partials dynamically\n"
         "  --partial-path=DIR    The directory in which to look for partials\n"
         "  --partial-ext=EXT     The file extension of partials, including the '.'\n"
+        "  --run-count=NUM       The number of times to execute (for benchmarking)\n"
         "\n"
         "The partial loader will concat the partial-path, given partial name in the template,\n"
         "and the partial-extension to resolve the file from which to load the partial.\n"
@@ -461,10 +482,10 @@ static int do_execute(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
-    struct handlebars_vm * vm;
     struct handlebars_string * tmpl;
     struct handlebars_ast_node * ast;
     struct handlebars_program * program;
+    struct handlebars_value * partials;
     jmp_buf jmp;
 
     ctx = handlebars_context_ctor();
@@ -478,17 +499,15 @@ static int do_execute(void)
 
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
-    vm = handlebars_vm_ctor(ctx);
-    handlebars_vm_set_helpers(vm, handlebars_value_ctor(ctx));
 
     if (enable_partial_loader) {
         struct handlebars_string *partial_path_str = NULL;
         struct handlebars_string *partial_extension_str = NULL;
         partial_path_str = handlebars_string_ctor(ctx, partial_path, strlen(partial_path));
         partial_extension_str = handlebars_string_ctor(ctx, partial_extension, strlen(partial_extension));
-        handlebars_vm_set_partials(vm, handlebars_value_partial_loader_ctor(ctx, partial_path_str, partial_extension_str));
+        partials = handlebars_value_partial_loader_ctor(ctx, partial_path_str, partial_extension_str);
     } else {
-        handlebars_vm_set_partials(vm, handlebars_value_ctor(ctx));
+        partials = handlebars_value_ctor(ctx);
     }
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
@@ -514,12 +533,16 @@ static int do_execute(void)
             } else {
                 // assume json
                 context = handlebars_value_from_json_string(ctx, context_str);
+                if (convert_input) {
+                    handlebars_value_convert(context);
+                }
             }
         }
     }
     if( !context ) {
         context = handlebars_value_ctor(ctx);
     }
+    handlebars_value_addref(context); // need this for multiple runs
 
     // Parse
     ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
@@ -531,11 +554,31 @@ static int do_execute(void)
     struct handlebars_module * module = handlebars_program_serialize(ctx, program);
 
     // Execute
-    handlebars_vm_set_flags(vm, compiler_flags);
+    struct handlebars_string * buffer = NULL;
+    do {
+        if (buffer) {
+            handlebars_talloc_free(buffer);
+            buffer = NULL;
+        }
 
-    {
-        struct handlebars_string * buffer = handlebars_vm_execute(vm, module, context);
+        struct handlebars_vm * vm;
+        vm = handlebars_vm_ctor(ctx);
+        handlebars_vm_set_flags(vm, compiler_flags);
+        handlebars_vm_set_helpers(vm, handlebars_value_ctor(ctx));
+        handlebars_vm_set_partials(vm, partials);
+
+        buffer = handlebars_vm_execute(vm, module, context);
+        buffer = talloc_steal(ctx, buffer);
+
+        handlebars_vm_dtor(vm);
+    } while(--run_count > 0);
+
+    if (buffer) {
         fwrite(hbs_str_val(buffer), sizeof(char), hbs_str_len(buffer), stdout);
+    }
+
+    if (newline_at_eof) {
+        fwrite("\n", sizeof(char), 1, stdout);
     }
 
     handlebars_context_dtor(ctx);

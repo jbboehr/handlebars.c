@@ -74,6 +74,7 @@ case $1 in
 
 	script)
 		make check install
+		./bench/run.sh
 		;;
 
 	after_success)

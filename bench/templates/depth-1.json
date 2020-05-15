@@ -1,0 +1,17 @@
+{
+    "names": [
+        {
+            "name": "Moe"
+        },
+        {
+            "name": "Larry"
+        },
+        {
+            "name": "Curly"
+        },
+        {
+            "name": "Shemp"
+        }
+    ],
+    "foo": "bar"
+}

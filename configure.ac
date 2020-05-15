@@ -169,6 +169,23 @@ AS_IF([test "x$enable_json" != "xno"], [
   ])
 ])
 
+# lto
+AC_ARG_ENABLE([lto],
+	[AS_HELP_STRING([--enable-lto], [enable support for Link Time Optimization])], [])
+
+AS_IF([test "x$enable_lto" == "xyes"], [
+	AX_APPEND_COMPILE_FLAGS([-flto -O3])
+	AX_APPEND_LINK_FLAGS([-flto -O3])
+	# not sure why, but these errors only show up with LTO enabled
+	AX_APPEND_LINK_FLAGS([-Wno-inline -Wno-error=inline -Wno-null-dereference -Wno-error=null-dereference])
+	AS_IF([test "x$GCC" = "xyes"], [
+		LD=gcc
+		AR=gcc-ar
+		RANLIB=gcc-ranlib
+		NM=gcc-nm
+	])
+])
+
 # mustache-spec
 AC_ARG_WITH([mustache-spec],
 	[AS_HELP_STRING([--with-mustache-spec=SPEC_LOCATION], [location to find mustache specification @<:@default=./spec/mustache@>:@])],

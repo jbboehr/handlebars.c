@@ -1,0 +1,16 @@
+{
+    "peeps": [
+        {
+            "name": "Moe",
+            "count": 15
+        },
+        {
+            "name": "Larry",
+            "count": 5
+        },
+        {
+            "name": "Curly",
+            "count": 1
+        }
+    ]
+}
