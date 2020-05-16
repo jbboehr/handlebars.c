@@ -11,17 +11,15 @@ export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:/usr/lib/$ARCH-linux-gnu/pkgconfig
 export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
 export SUDO="sudo"
 
-mkdir -p $PREFIX/include $PREFIX/include/json-c $PREFIX/lib/pkgconfig
+mkdir -p "${PREFIX/include}" "${PREFIX}/include/json-c" "${PREFIX}/lib/pkgconfig"
+
+if [ -z "$ARCH" ]; then
+	export ARCH=amd64
+fi
 
 if [ "$ARCH" = "i386" ]; then
 	export CFLAGS="$CFLAGS -m32"
-fi
-
-if [ "$HARDENING" = "true" ]; then
-	export CFLAGS="$CFLAGS -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fexceptions -fstack-protector-strong -grecord-gcc-switches"
-	export CFLAGS="$CFLAGS -specs=`pwd`/tests/redhat-hardened-cc1 -specs=`pwd`/tests/redhat-hardened-ld"
-	export CFLAGS="$CFLAGS -fasynchronous-unwind-tables -fstack-clash-protection -fPIC -DPIC"
-	# this is not supported on travis: -fcf-protection
+	#export LDFLAGS="$LDFLAGS -m32"
 fi
 
 function install_apt_packages() (
@@ -29,9 +27,13 @@ function install_apt_packages() (
 
 	# we commit the generated files for these now:
 	# apt-get install -y bison flex gperf re2c
-	apt_packages_to_install="$MYCC automake pkg-config gcc-multilib cmake check:$ARCH liblmdb-dev:$ARCH libpcre3-dev:$ARCH libtalloc-dev:$ARCH libyaml-dev:$ARCH libsubunit-dev:$ARCH"
+	local apt_packages_to_install="${MYCC} automake pkg-config:${ARCH} gcc-multilib check:${ARCH} libpcre3-dev:${ARCH} libtalloc-dev:${ARCH} libsubunit-dev:${ARCH}"
 	if [ "$COVERAGE" = "true" ]; then
-		apt_packages_to_install="$apt_packages_to_install lcov"
+		apt_packages_to_install="${apt_packages_to_install} lcov"
+	fi
+	if [ "$MINIMAL" != "true" ]; then
+		# json-c might be having issues: https://bugs.launchpad.net/ubuntu/+source/json-c/+bug/1878738
+		apt_packages_to_install="${apt_packages_to_install} libjson-c-dev:${ARCH} liblmdb-dev:${ARCH} libyaml-dev:${ARCH}"
 	fi
 	$SUDO apt-add-repository -y ppa:ubuntu-toolchain-r/test
 	$SUDO apt-get update -y
@@ -39,41 +41,27 @@ function install_apt_packages() (
 	$SUDO apt-get install -y ${apt_packages_to_install}
 )
 
-function install_json_c() (
-	set -e -o pipefail
-
-	git clone -b json-c-0.14-20200419 https://github.com/json-c/json-c.git
-	mkdir json-c-build
-	cd json-c-build
-	cmake -DCMAKE_INSTALL_PREFIX=$PREFIX ../json-c
-	make install
-)
-
 function install_coveralls_lcov() (
 	set -e -o pipefail
 
-	gem install coveralls-lcov
+	if [ "$COVERAGE" = "true" ]; then
+		gem install coveralls-lcov
+	fi
 )
 
 function before_install() (
 	set -e -o pipefail
 
+	# currently not using this function, add to .travis.yml instead
 	install_apt_packages
 	install_coveralls_lcov
-	# build json-c from source to work around: https://bugs.launchpad.net/ubuntu/+source/json-c/+bug/1878738
-	# apt-get install -y libjson-c-dev:$ARCH
-	install_json_c
 )
 
-function install() (
+function configure_handlebars() {
 	set -e -o pipefail
 
+	# cflags
 	export CFLAGS="$CFLAGS -g -O2"
-
-	if [ "$COVERAGE" = "true" ]; then
-		export CFLAGS="$CFLAGS -fprofile-arcs -ftest-coverage"
-		export LDFLAGS="$LDFLAGS --coverage"
-	fi
 
 	# json-c undeprecated json_object_object_get, but the version in xenial
 	# is too old, so let's silence deprecated warnings. le sigh.
@@ -87,13 +75,57 @@ function install() (
 		export CFLAGS="$CFLAGS -Wno-missing-braces -Wno-error=missing-braces"
 	fi
 
+	# configure flags
+	local extra_configure_flags="--prefix=${PREFIX}"
+
+	if [ -n "$ARCH" ]; then
+		extra_configure_flags="${extra_configure_flags} --build=${ARCH}"
+	fi
+
+	if [ "$COVERAGE" = "true" ]; then
+		extra_configure_flags="$extra_configure_flags --enable-code-coverage"
+	fi
+
+	if [ "$HARDENING" = "true" ]; then
+		extra_configure_flags="$extra_configure_flags --enable-hardening"
+	fi
+
+	if [ "$LTO" = "true" ]; then
+		extra_configure_flags="${extra_configure_flags} --enable-lto"
+	fi
+
+	if [ "$MINIMAL" = "true" ]; then
+		extra_configure_flags="${extra_configure_flags} --disable-handlebars-memory --enable-check --disable-json --disable-lmdb --enable-pcre --disable-pthread --enable-subunit --disable-yaml"
+	else
+		extra_configure_flags="${extra_configure_flags} --enable-handlebars-memory --enable-check --enable-json --enable-lmdb --enable-pcre  --enable-pthread --enable-subunit --enable-yaml"
+	fi
+
 	./bootstrap
 
 	trap "cat config.log" ERR
-	./configure --build="$ARCH" --prefix="$PREFIX" --enable-handlebars-memory
+	./configure ${extra_configure_flags}
 	trap - ERR
+}
+
+function make_handlebars() (
+	set -e -o pipefail
 
 	make clean all
+)
+
+function install_handlebars() (
+	set -e -o pipefail
+
+	make install
+)
+
+function install() (
+	set -e -o pipefail
+
+	# currently not using this function, add to .travis.yml instead
+	configure_handlebars
+	make_handlebars
+	install_handlebars
 )
 
 function before_script() (
@@ -105,11 +137,26 @@ function before_script() (
 	fi
 )
 
+function test_handlebars() (
+	set -e -o pipefail
+
+	make check
+)
+
+function run_handlebars_benchmark() (
+	set -e -o pipefail
+
+	if [ "$MINIMAL" != "true" ]; then
+		./bench/run.sh
+	fi
+)
+
 function script() (
 	set -e -o pipefail
 
-	make check install
-	./bench/run.sh
+	# currently not using this function, add to .travis.yml instead
+	test_handlebars
+	run_handlebars_benchmark
 )
 
 function after_success() (
@@ -135,7 +182,7 @@ function after_failure() (
 	if [ "$COVERAGE" = "true" ]; then
 		for i in `find tests -name "*.log" 2>/dev/null`; do
 			echo "-- START ${i}";
-			cat $i;
+			cat "${i}";
 			echo "-- END";
 		done
 	fi

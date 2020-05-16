@@ -329,6 +329,18 @@ static int do_version(void)
 
 static int do_debug(void)
 {
+#ifdef HANDLEBARS_HAVE_JSON
+    fprintf(stderr, "JSON support: enabled\n");
+#else
+    fprintf(stderr, "JSON support: disabled\n");
+#endif
+
+#ifdef HANDLEBARS_HAVE_YAML
+    fprintf(stderr, "YAML support: enabled\n");
+#else
+    fprintf(stderr, "YAML support: disabled\n");
+#endif
+
     fprintf(stderr, "sizeof(void *): %lu\n", (long unsigned) sizeof(void *));
     fprintf(stderr, "sizeof(struct handlebars_cache): %lu\n", (long unsigned) HANDLEBARS_CACHE_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_cache_stat): %lu\n", (long unsigned) sizeof(struct handlebars_cache_stat));
@@ -527,15 +539,26 @@ static int do_execute(void)
         size_t input_data_name_len = strlen(input_data_name);
         char * context_str = file_get_contents(input_data_name);
         if (context_str && strlen(context_str)) {
-            if (input_data_name_len > 5 && (0 == strcmp(input_data_name + input_data_name_len - 5, ".yaml") ||
+            if (!context && input_data_name_len > 5 && (0 == strcmp(input_data_name + input_data_name_len - 5, ".yaml") ||
                     0 == strcmp(input_data_name + input_data_name_len - 4, ".yml"))) {
+#ifdef HANDLEBARS_HAVE_YAML
                 context = handlebars_value_from_yaml_string(ctx, context_str);
-            } else {
+#else
+                fprintf(stderr, "Failed to process input data: YAML support is disabled");
+                exit(1);
+#endif
+            }
+            if (!context) {
+#ifdef HANDLEBARS_HAVE_JSON
                 // assume json
                 context = handlebars_value_from_json_string(ctx, context_str);
                 if (convert_input) {
                     handlebars_value_convert(context);
                 }
+#else
+                fprintf(stderr, "Failed to process input data: JSON support is disabled");
+                exit(1);
+#endif
             }
         }
     }

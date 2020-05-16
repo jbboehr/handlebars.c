@@ -34,9 +34,15 @@ AX_CHECK_ENABLE_DEBUG
 AX_CFLAGS_WARN_ALL
 AX_COMPILER_FLAGS(,,,,[-Wno-declaration-after-statement -Wno-error=declaration-after-statement -Wno-switch-enum -Wno-error=switch-enum -Wdeprecated-declarations -Wclobbered -Wmaybe-uninitialized])
 
-# Work around buggy handling in Nix
-# https://github.com/NixOS/nixpkgs/issues/18995
-AS_IF([test "x$enable_debug" = "xyes"], [AX_APPEND_COMPILE_FLAGS([-U_FORTIFY_SOURCE])])
+# my custom hacked up ax_am_macros_static
+AC_DEFUN([AMINCLUDE_STATIC],[build/aminclude_static.am])
+AC_DEFUN([AX_AM_MACROS_STATIC],
+[
+AX_AC_PRINT_TO_FILE(AMINCLUDE_STATIC,[
+# ]AMINCLUDE_STATIC[ generated automatically by Autoconf
+# from AX_AM_MACROS_STATIC
+])
+])
 
 # Define macro variables for the package version numbers.
 AC_DEFINE(HANDLEBARS_VERSION_MAJOR, HANDLEBARS_MAJOR, [Define the major version number.])
@@ -56,12 +62,6 @@ AC_SUBST(HANDLEBARS_LT_REVISION)
 AC_SUBST(HANDLEBARS_LT_AGE)
 
 # Define variables for bison and flex flags
-AC_ARG_VAR([BISONFLAGS], [bison flags])
-AS_IF([test "x$BISONFLAGS" == "x"], [BISONFLAGS="-Wall"])
-AC_ARG_VAR([FLEXFLAGS], [flex flags])
-AS_IF([test "x$FLEXFLAGS" == "x"], [FLEXFLAGS="--noreject --fast --align"])
-AC_ARG_VAR([GPERFFLAGS], [gperf flags])
-AS_IF([test "x$GPERFFLAGS" == "x"], [GPERFFLAGS="--struct-type --readonly-tables --compare-strncmp --compare-lengths --global-table"])
 AC_ARG_VAR([RE2CFLAGS], [re2c flags])
 AS_IF([test "x$RE2CFLAGS" == "x"], [RE2CFLAGS="--no-generation-date -s8"])
 
@@ -79,28 +79,13 @@ AC_PROG_LEX
 AC_PROG_LIBTOOL
 AC_PROG_LN_S
 AC_PROG_YACC
-AC_PATH_PROGS(BISON, [bison], no)
-AC_PATH_PROGS(FLEX, [flex], no)
-AC_PATH_PROGS(GPERF, [gperf], no)
-AC_PATH_PROGS(DOXYGEN, [doxygen], no)
 AC_PATH_PROGS(LCOV, [lcov], no)
 AC_PATH_PROGS(RE2C, [re2c], no)
-AX_PROG_FLEX([
-	AX_PROG_FLEX_VERSION([2.5.35], , AC_MSG_ERROR([flex >= 2.5.35 is required]))
-])
-AX_PROG_BISON([
-	AX_PROG_BISON_VERSION([3.0.2], , AC_MSG_ERROR([bison >= 3.0.2 is required]))
-])
 
-AM_CONDITIONAL([BISON], [test x$BISON != xno])
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
-AM_CONDITIONAL([FLEX], [test x$FLEX != xno])
-AM_CONDITIONAL([GPERF], [test x$GPERF != xno])
 AM_CONDITIONAL([GCC], [test x$GCC = xyes])
 AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
 AM_CONDITIONAL([RE2C], [test x$RE2C != xno])
-AM_CONDITIONAL(HAVE_DOXYGEN, [test "x$DOXYGEN" != "xno"])
-AS_IF([test "x$DOXYGEN" = "xno"], [AC_MSG_WARN([Doxygen not found - continuing without Doxygen support])])
 
 # Checks for header files
 AC_HEADER_STDC
@@ -120,23 +105,66 @@ AX_GCC_FUNC_ATTRIBUTE(returns_nonnull)
 HBS_COMPUTED_GOTOS
 
 # Checks for libraries
-AX_PTHREAD
-AC_CHECK_LIB([lmdb], [mdb_version])
 AC_CHECK_LIB([m], [cos])
-AC_CHECK_LIB([pcre], [pcre_version])
 AC_CHECK_LIB([rt], [timer_create])
-AC_CHECK_LIB([subunit], [subunit_test_start])
-AC_CHECK_LIB([talloc], [talloc_version_major], [], [AC_MSG_FAILURE([talloc is required])])
-PKG_CHECK_MODULES(CHECK, [check >= 0.9.9], [], [AC_MSG_FAILURE([check >= 0.9.9 required])])
-PKG_CHECK_MODULES(CHECK0912, [check >= 0.9.12], [
-	AM_CONDITIONAL([CHECK_HAS_TAP], [true])
-], [
-	AM_CONDITIONAL([CHECK_HAS_TAP], [false])
-])
 
-LIBS="$PTHREAD_LIBS $LIBS"
-CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-LDFLAGS="$LDFLAGS $PTHREAD_CFLAGS"
+# bison
+AC_ARG_VAR([BISONFLAGS], [bison flags])
+AS_IF([test "x$BISONFLAGS" == "x"], [BISONFLAGS="-Wall"])
+
+AC_ARG_ENABLE([bison], [AS_HELP_STRING([--disable-bison], [disable support for bison])], [])
+AS_IF([test "x$enable_bison" != "xno"], [
+	AC_PATH_PROGS(BISON, [bison])
+	AX_PROG_BISON([
+		AX_PROG_BISON_VERSION([3.0.2], , AC_MSG_ERROR([bison >= 3.0.2 is required]))
+		enable_bison=yes
+	])
+])
+AM_CONDITIONAL([BISON], [test "x$BISON" != "x" && test "x$enable_bison" == "yes"])
+
+# check
+AC_ARG_ENABLE([check], [AS_HELP_STRING([--disable-check], [disable support for check])], [])
+AS_IF([test "x$enable_check" != "xno"], [
+	PKG_CHECK_MODULES(CHECK, [check], [enable_check=yes], [AC_MSG_WARN([check not found])])
+])
+AS_IF([test "x$enable_check" == "xyes"], [
+	AC_DEFINE([HANDLEBARS_HAVE_CHECK], [1], [Use check])
+])
+AM_CONDITIONAL([CHECK], [test "x$enable_check" == "xyes"])
+
+# code coverage
+AX_CODE_COVERAGE()
+
+# doxygen
+AC_ARG_ENABLE([doxygen], [AS_HELP_STRING([--disable-doxygen], [disable support for doxygen])], [])
+AS_IF([test "x$enable_doxygen" != "xno"], [
+	AC_PATH_PROGS(DOXYGEN, [doxygen])
+])
+AM_CONDITIONAL(DOXYGEN, [test "x$DOXYGEN" != "x"])
+
+# flex
+AC_ARG_VAR([FLEXFLAGS], [flex flags])
+AS_IF([test "x$FLEXFLAGS" == "x"], [FLEXFLAGS="--noreject --fast --align"])
+
+AC_ARG_ENABLE([flex], [AS_HELP_STRING([--disable-flex], [disable support for flex])], [])
+AS_IF([test "x$enable_flex" != "xno"], [
+	AC_PATH_PROGS(FLEX, [flex])
+	AX_PROG_FLEX([
+		AX_PROG_FLEX_VERSION([2.5.35], , AC_MSG_ERROR([flex >= 2.5.35 is required]))
+		enable_flex=yes
+	])
+])
+AM_CONDITIONAL([FLEX], [test "x$FLEX" != "x" && test "x$enable_flex" == "yes"])
+
+# gperf
+AC_ARG_VAR([GPERFFLAGS], [gperf flags])
+AS_IF([test "x$GPERFFLAGS" == "x"], [GPERFFLAGS="--struct-type --readonly-tables --compare-strncmp --compare-lengths --global-table"])
+
+AC_ARG_ENABLE([gperf], [AS_HELP_STRING([--disable-gperf], [disable support for gperf])], [])
+AS_IF([test "x$enable_gperf" != "xno"], [
+	AC_PATH_PROGS(GPERF, [gperf])
+])
+AM_CONDITIONAL([GPERF], [test "x$GPERF" != "x"])
 
 # handlebars-spec
 AC_ARG_WITH([handlebars-spec],
@@ -151,23 +179,46 @@ AS_IF([test "x$with_handlebars_spec" != "xno"], [
   ])
 ])
 
-# json
-AC_ARG_ENABLE([json],
-	[AS_HELP_STRING([--disable-json], [disable support for json])], [])
-
-AS_IF([test "x$enable_json" != "xno"], [
-  # it was renamed in trusty, detect if old or new name is available
-  AC_CHECK_LIB([json], [json_tokener_new], , [
-    AC_CHECK_LIB([json-c], [json_tokener_new], , [
-      AC_MSG_FAILURE([json test failed (--disable-json to disable)])
-    ])
-  ])
-  AC_CHECK_HEADERS([json/json.h json/json_object.h json/json_tokener.h], , [
-    AC_CHECK_HEADERS([json-c/json.h json-c/json_object.h json-c/json_tokener.h], , [
-      AC_MSG_FAILURE([json header missing (--disable-json to disable)])
-    ])
-  ])
+# hardening
+AC_ARG_ENABLE([hardening], [AS_HELP_STRING([--enable-hardening], [enable hardening])], [])
+AS_IF([test "x$enable_hardening" == "xyes"], [
+	AX_ADD_FORTIFY_SOURCE()
+	AX_APPEND_COMPILE_FLAGS([-fcf-protection -fstack-protector-strong -grecord-gcc-switches -fstack-clash-protection -fPIC -DPIC])
+	AX_APPEND_LINK_FLAGS([-fcf-protection -fstack-protector-strong -grecord-gcc-switches -fstack-clash-protection -fPIC -DPIC])
+	AX_APPEND_COMPILE_FLAGS([-specs=$(pwd)/build/redhat-hardened-cc1 -specs=$(pwd)/build/redhat-hardened-ld])
+	AX_APPEND_LINK_FLAGS([-specs=$(pwd)/build/redhat-hardened-cc1 -specs=$(pwd)/build/redhat-hardened-ld])
 ])
+
+# Work around buggy handling in Nix
+# https://github.com/NixOS/nixpkgs/issues/18995
+AS_IF([test "x$enable_debug" = "xyes"], [AX_APPEND_COMPILE_FLAGS([-U_FORTIFY_SOURCE])])
+
+# json
+AC_ARG_ENABLE([json], [AS_HELP_STRING([--disable-json], [disable support for json])], [])
+AS_IF([test "x$enable_json" != "xno"], [
+	PKG_CHECK_MODULES(JSON, [json-c], [enable_json=yes], [AC_MSG_WARN([json-c not found])])
+])
+AS_IF([test "x$enable_json" == "xyes"], [
+	AC_DEFINE([HANDLEBARS_HAVE_JSON], [1], [Use JSON])
+])
+AM_CONDITIONAL([JSON], [test "x$enable_json" == "xyes"])
+
+# lmdb
+AC_ARG_ENABLE([lmdb], [AS_HELP_STRING([--disable-lmdb], [disable support for LMDB])], [])
+AS_IF([test "x$enable_lmdb" != "xno"], [
+	PKG_CHECK_MODULES(LMDB, [lmdb], [enable_lmdb=yes], [
+		# xenial doesn't have a pkgconfig for lmdb
+		AC_CHECK_LIB([lmdb], [mdb_version], [
+			enable_lmdb=yes
+			AC_SUBST([LMDB_CFLAGS], [])
+			AC_SUBST([LMDB_LIBS], [-llmdb])
+		], [AC_MSG_WARN([lmdb not found])])
+	])
+])
+AS_IF([test "x$enable_lmdb" == "xyes"], [
+	AC_DEFINE([HANDLEBARS_HAVE_LMDB], [1], [Use LMDB])
+])
+AM_CONDITIONAL([LMDB], [test "x$enable_lmdb" == "xyes"])
 
 # lto
 AC_ARG_ENABLE([lto],
@@ -186,6 +237,15 @@ AS_IF([test "x$enable_lto" == "xyes"], [
 	])
 ])
 
+# memory
+AC_ARG_ENABLE([handlebars-memory],
+	[AS_HELP_STRING([--enable-handlebars-memory], [enable handlebars memory testing functions])], [])
+
+AS_IF([test "x$enable_handlebars_memory" == "xyes"], [
+    AC_DEFINE([HANDLEBARS_MEMORY], [1], [Enable handlebars memory testing functions])
+])
+AM_CONDITIONAL([HANDLEBARS_MEMORY], [test x$enable_handlebars_memory = xyes])
+
 # mustache-spec
 AC_ARG_WITH([mustache-spec],
 	[AS_HELP_STRING([--with-mustache-spec=SPEC_LOCATION], [location to find mustache specification @<:@default=./spec/mustache@>:@])],
@@ -199,6 +259,26 @@ AS_IF([test "x$with_mustache_spec" != "xno"], [
   ])
 ])
 
+# pcre
+AC_ARG_ENABLE([pcre], [AS_HELP_STRING([--disable-pcre], [disable support for pcre])], [])
+AS_IF([test "x$enable_pcre" != "xno"], [
+	PKG_CHECK_MODULES(PCRE, [libpcre], [enable_pcre=yes], [AC_MSG_WARN([libpcre not found])])
+])
+AS_IF([test "x$enable_pcre" == "xyes"], [
+	AC_DEFINE([HANDLEBARS_HAVE_PCRE], [1], [Use PCRE])
+])
+AM_CONDITIONAL([PCRE], [test "x$enable_pcre" == "xyes"])
+
+# pthread
+AC_ARG_ENABLE([pthread], [AS_HELP_STRING([--disable-pthread], [disable support for pthread])], [])
+AS_IF([test "x$enable_pthread" != "xno"], [
+	AX_PTHREAD([enable_pthread=yes], [AC_MSG_WARN([pthread not found])])
+])
+AS_IF([test "x$enable_pthread" == "xyes"], [
+	AC_DEFINE([HANDLEBARS_HAVE_PTHREAD], [1], [Use pthread])
+])
+AM_CONDITIONAL([PTHREAD], [test "x$enable_pthread" == "xyes"])
+
 # refcounting
 AC_ARG_ENABLE([refcounting],
 	[AS_HELP_STRING([--disable-refcounting], [disable refcounting of handlebars values])], [])
@@ -207,40 +287,28 @@ AS_IF([test "x$enable_refcounting" == "xno"], [
     AC_DEFINE([HANDLEBARS_NO_REFCOUNT], [1], [Disable refcounting of handlebars values])
 ])
 
-# memory
-AC_ARG_ENABLE([handlebars-memory],
-	[AS_HELP_STRING([--enable-handlebars-memory], [enable handlebars memory testing functions])], [])
-
-AS_IF([test "x$enable_handlebars_memory" == "xyes"], [
-    AC_DEFINE([HANDLEBARS_MEMORY], [1], [Enable handlebars memory testing functions])
+# subunit
+AC_ARG_ENABLE([subunit], [AS_HELP_STRING([--disable-subunit], [disable support for subunit])], [])
+AS_IF([test "x$enable_subunit" != "xno"], [
+	PKG_CHECK_MODULES(SUBUNIT, [libsubunit], [enable_subunit=yes], [AC_MSG_WARN([libsubunit not found])])
 ])
-AM_CONDITIONAL([HANDLEBARS_MEMORY], [test x$enable_handlebars_memory = xyes])
-
-# gcov
-AC_ARG_ENABLE([gcov], AS_HELP_STRING([--enable-gcov], [compile with gcov]))
-
-AS_IF([test "x$enable_gcov" == "xyes"], [
-  AC_CHECK_LIB(gcov, __gcov_open, , [
-    AC_MSG_FAILURE([gcov test failed (--disable-gcov to disable)])
-  ])
-
-  AC_SUBST([LIBGCOV_LIBS], ["-lgcov -coverage"])
-  LIBGCOV_CFLAGS="-g -O0 --coverage" # -disable-shared
-  LIBGCOV_LDFLAGS="--coverage"
-  CFLAGS+=" $LIBGCOV_CFLAGS"
-  LDFLAGS+=" $LIBGCOV_LDFLAGS"
+AS_IF([test "x$enable_subunit" == "xyes"], [
+	AC_DEFINE([HANDLEBARS_HAVE_SUBUNIT], [1], [Use subunit])
 ])
+AM_CONDITIONAL([SUBUNIT], [test "x$enable_subunit" == "xyes"])
 
-AM_CONDITIONAL([GCOV], [test x$enable_gcov = xyes])
+# talloc
+PKG_CHECK_MODULES(TALLOC, [talloc], [enable_talloc=yes])
 
 # yaml
-AC_ARG_ENABLE([yaml],
-	[AS_HELP_STRING([--disable-yaml], [disable support for yaml])], [])
-
+AC_ARG_ENABLE([yaml], [AS_HELP_STRING([--disable-yaml], [disable support for yaml])], [])
 AS_IF([test "x$enable_yaml" != "xno"], [
-  AC_CHECK_HEADERS(yaml.h)
-  AC_CHECK_LIB([yaml], [yaml_get_version_string])
+	PKG_CHECK_MODULES(YAML, [yaml-0.1], [enable_yaml=yes], [AC_MSG_WARN([libyaml not found])])
 ])
+AS_IF([test "x$enable_yaml" == "xyes"], [
+	AC_DEFINE([HANDLEBARS_HAVE_YAML], [1], [Use YAML])
+])
+AM_CONDITIONAL([YAML], [test "x$enable_yaml" == "xyes"])
 
 # Define Makefiles.
 AC_CONFIG_FILES([

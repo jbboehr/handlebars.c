@@ -29,15 +29,9 @@
 // is too old, so let's silence deprecated warnings for json-c
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
-#include <json-c/json.h>
-#include <json-c/json_object.h>
-#include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
-#include <json/json.h>
-#include <json/json_object.h>
-#include <json/json_tokener.h>
-#endif
+#include <json.h>
+#include <json_object.h>
+#include <json_tokener.h>
 #pragma GCC diagnostic pop
 
 #include "handlebars.h"

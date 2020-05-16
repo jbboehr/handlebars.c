@@ -21,9 +21,7 @@
 #include "config.h"
 #endif
 
-#if defined(HAVE_LIBYAML)
 #include <yaml.h>
-#endif
 
 #include <assert.h>
 #include <check.h>

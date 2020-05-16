@@ -5,27 +5,31 @@ sudo: required
 dist: xenial
 
 env:
-  global:
-    - ARCH="amd64"
-    - COVERAGE="true"
   matrix:
     - MYCC="gcc-4.9"
+      COVERAGE="true"
     - MYCC="gcc-5"
+      COVERAGE="true"
     - MYCC="gcc-6"
+      COVERAGE="true"
     - MYCC="gcc-7"
-# https://github.com/linux-test-project/lcov/issues/58
+      COVERAGE="true"
     - MYCC="gcc-8"
-      COVERAGE="false"
     - MYCC="gcc-9"
-      COVERAGE="false"
+# 32bit
     - MYCC="gcc-5"
       ARCH="i386"
-      COVERAGE="false"
+# clang
     - MYCC="clang-3.8"
-      COVERAGE="false"
+# hardened
     - MYCC="gcc-9"
-      COVERAGE="false"
       HARDENING="true"
+# lto
+    - MYCC="gcc-9"
+      LTO="true"
+# minimal
+    - MYCC="gcc-9"
+      MINIMAL="true"
 
 matrix:
   include:
@@ -50,11 +54,18 @@ branches:
 before_install:
     - source ./.travis.sh
     - travis_retry install_apt_packages
-    - travis_retry install_json_c
     - travis_retry install_coveralls_lcov
 
-install: install
+install:
+    - configure_handlebars
+    - make_handlebars
+    - install_handlebars
+
 before_script: before_script
-script: script
+
+script:
+    - test_handlebars
+    - run_handlebars_benchmark
+
 after_success: after_success
 after_failure: after_failure

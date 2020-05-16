@@ -28,7 +28,9 @@
 #define HANDLEBARS_HELPERS_PRIVATE
 
 #include "handlebars.h"
+#ifdef HANDLEBARS_HAVE_JSON
 #include "handlebars_json.h"
+#endif
 #include "handlebars_map.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -50,6 +52,18 @@
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT); \
     handlebars_value_integer(value, integer); \
     return value;
+
+#ifndef HANDLEBARS_HAVE_JSON
+static struct handlebars_value * handlebars_value_from_json_string(
+    struct handlebars_context *ctx,
+    const char * json
+) {
+    fprintf(stderr, "JSON is disabled");
+    abort();
+}
+#endif
+
+
 
 FIXTURE_FN(20974934)
 {

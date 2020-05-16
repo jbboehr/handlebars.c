@@ -4,13 +4,10 @@
 #!*.*
 
 # specific
-coverage.info
 doc/Doxyfile
 doc/html
 doc/man
-handlebars_c_test.info
 src/handlebars_config.h
-test_coverage
 handlebars-lmdb-cache-test.mdb*
 
 # hackey rules
@@ -56,6 +53,10 @@ configure
 libtool
 stamp-h1
 stamp-h2
+
+# coverage
+*.info
+*-coverage
 
 # distros
 *.tar.gz

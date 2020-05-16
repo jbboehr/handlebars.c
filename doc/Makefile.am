@@ -1,5 +1,5 @@
 
-if HAVE_DOXYGEN
+if DOXYGEN
 
 dist_man_MANS = man html
 #dist_html_MANS = html

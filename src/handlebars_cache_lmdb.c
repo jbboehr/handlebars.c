@@ -24,7 +24,7 @@
 #include <assert.h>
 #include <time.h>
 
-#if HAVE_LIBLMDB
+#ifdef HANDLEBARS_HAVE_LMDB
 #include <lmdb.h>
 #endif
 
@@ -41,8 +41,6 @@
 #include "handlebars_value.h"
 
 
-
-#if HAVE_LIBLMDB
 
 #define HANDLE_RC(err) if( err != 0 && err != MDB_NOTFOUND ) handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "%s", mdb_strerror(err));
 
@@ -309,14 +307,3 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
 
     return cache;
 }
-
-#else
-
-struct handlebars_cache * handlebars_cache_lmdb_ctor(
-    struct handlebars_context * context,
-    const char * path
-) {
-    handlebars_throw(context, HANDLEBARS_ERROR, "lmdb not available");
-}
-
-#endif

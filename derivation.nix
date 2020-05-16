@@ -1,13 +1,15 @@
 {
   stdenv, fetchurl, pkgconfig,
-  glib, json_c, lmdb, talloc, libyaml, pcre, # deps
-  check, # doc deps
-  handlebars_spec, mustache_spec, # my special stuff
-  autoconf-archive, bison, flex, gperf, re2c, valgrind, kcachegrind, # debug
   autoconf, automake, autoreconfHook, libtool, m4, # autoconf
   cmake, # cmake
+  glib, json_c, lmdb, talloc, libyaml, pcre, # deps
+  doxygen, # doc deps
+  check, subunit, # testing deps
+  autoconf-archive, bison, flex, gperf, lcov, re2c, valgrind, kcachegrind, # debug deps
+  handlebars_spec, mustache_spec, # my special stuff
   handlebarscDebug ? false,
   handlebarscDev ? false,
+  handlebarscDoc ? false,
   handlebarscWithCmake ? false,
   handlebarscRefcounting ? true,
   handlebarscWerror ? false,
@@ -30,24 +32,33 @@ stdenv.mkDerivation rec {
     sha256 = orDefault handlebarscSha256 "1irss3zbpjshmlp0ng1pr796hqzs151yhj8y6gp2jwgin9ha2dr8";
   });
 
-  outputs = [ "out" "dev" "bin" ];
+  outputs = [ "out" "dev" "bin" ]
+    ++ (if handlebarscDoc then [ "man" "doc" ] else []);
 
   enableParallelBuilding = true;
   buildInputs = [ glib json_c lmdb pcre libyaml ];
   propagatedBuildInputs = [ talloc pkgconfig ];
-  nativeBuildInputs = [ handlebars_spec mustache_spec check ]
+  nativeBuildInputs = [ handlebars_spec mustache_spec check subunit ]
     ++ (if handlebarscWithCmake then [ cmake ] else [ autoreconfHook autoconf automake libtool m4 ])
-    ++ (if handlebarscDev then [ valgrind kcachegrind autoconf-archive bison gperf flex re2c ] else []);
+    ++ (if handlebarscDev then [ valgrind kcachegrind autoconf-archive bison gperf flex lcov re2c ] else [])
+    ++ (if handlebarscDoc then [ doxygen ] else []);
 
   doCheck = true;
   configureFlags = [
       "--with-handlebars-spec=${handlebars_spec}/share/handlebars-spec/"
       "--with-mustache-spec=${mustache_spec}/share/mustache-spec/"
       "--bindir=$(bin)/bin"
+      "--enable-check"
+      "--enable-json"
+      "--enable-lmdb"
+      "--enable-pcre"
+      "--enable-subunit"
+      "--enable-yaml"
     ]
     ++ (if handlebarscRefcounting then [] else ["--disable-refcounting"])
     ++ (if handlebarscWerror then ["--enable-compile-warnings=error"] else ["--enable-compile-warnings=yes --disable-Werror"])
-    ++ (if handlebarscDebug then ["--enable-debug"] else []);
+    ++ (if handlebarscDebug then ["--enable-debug"] else [])
+    ++ (if handlebarscDoc then ["--mandir=$(man)/share/man --docdir=$(doc)/share/doc"] else []);
 
   cmakeFlags = [
     "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}"

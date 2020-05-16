@@ -46,6 +46,8 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+#ifdef HANDLEBARS_HAVE_LMDB
+
 /**
  * @brief Construct a new LMDB cache. The file specified by path does not have
  *        to exist, but must be writeable.
@@ -57,6 +59,10 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     struct handlebars_context * context,
     const char * path
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+#endif
+
+#ifdef HANDLEBARS_HAVE_PTHREAD
 
 /**
  * @brief Construct a new mmap cache
@@ -70,6 +76,8 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     size_t size,
     size_t entries
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+#endif
 
 /**
  * @brief Destruct a cache

@@ -70,6 +70,19 @@
 #define ck_assert_hbs_str_eq_cstr(a, b) ck_assert_str_eq(hbs_str_val(a), b)
 #define ck_assert_cstr_eq_hbs_str(a, b) ck_assert_str_eq(a, hbs_str_val(b))
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+#define ASSERT_INIT_BLOCKS() \
+    do { \
+        handlebars_value_delref(value); \
+        if (init_blocks != talloc_total_blocks(context)) { \
+            talloc_report_full(context, stderr); \
+        } \
+        ck_assert_int_eq(init_blocks, talloc_total_blocks(context)); \
+    } while(0)
+#else
+#define ASSERT_INIT_BLOCKS() do { ; } while (0)
+#endif
+
 struct handlebars_value;
 struct handlebars_string;
 

@@ -1,7 +1,7 @@
 
-AM_CPPFLAGS = -I$(top_srcdir)/vendor/sort_r -I$(top_srcdir)/vendor/xxhash
-AM_CFLAGS = $(WARN_CFLAGS)
-AM_LDFLAGS = $(WARN_LDFLAGS)
+AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_srcdir)/vendor/sort_r -I$(top_srcdir)/vendor/xxhash
+AM_CFLAGS = $(WARN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS)
+AM_LDFLAGS = $(WARN_LDFLAGS) $(CODE_COVERAGE_LIBS) $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS)
 
 EXTRA_DIST = handlebars.l handlebars.y handlebars_scanners.re handlebars_helpers_ht.gperf
 GENSOURCE = handlebars_config.h
@@ -33,6 +33,34 @@ handlebars_scanners.c: handlebars_scanners.re
 GENSOURCE2 += handlebars_scanners.c
 endif
 
+if LMDB
+LMDBSOURCES = handlebars_cache_lmdb.c
+else
+LMDBSOURCES =
+endif
+
+if PTHREAD
+PTHREADSOURCES = handlebars_cache_mmap.c
+else
+PTHREADSOURCES =
+endif
+
+if JSON
+JSONHEADERS = handlebars_json.h
+JSONSOURCES = $(JSON_HEADERS) handlebars_json.c
+else
+JSONHEADERS =
+JSONSOURCES =
+endif
+
+if YAML
+YAMLHEADERS = handlebars_yaml.h
+YAMLSOURCES = $(YAML_HEADERS) handlebars_yaml.c
+else
+YAMLHEADERS =
+YAMLSOURCES =
+endif
+
 # Main
 pkginclude_HEADERS = \
 	handlebars.h \
@@ -46,7 +74,7 @@ pkginclude_HEADERS = \
 	handlebars_config.h \
 	handlebars_delimiters.h \
 	handlebars_helpers.h \
-	handlebars_json.h \
+	$(JSONHEADERS) \
 	handlebars_map.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
@@ -61,7 +89,7 @@ pkginclude_HEADERS = \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
 	handlebars_vm.h \
-	handlebars_yaml.h
+	$(YAMLHEADERS)
 
 # these headers are not (currently) installed because they only contain private symbols:
 # handlebars_ast_helpers.h
@@ -95,8 +123,8 @@ libhandlebars_la_SOURCES = \
 	handlebars_ast_printer.c \
 	handlebars_cache.h \
 	handlebars_cache.c \
-	handlebars_cache_lmdb.c \
-	handlebars_cache_mmap.c \
+	$(LMDBSOURCES) \
+	$(PTHREADSOURCES) \
 	handlebars_cache_simple.c \
 	handlebars_compiler.h \
 	handlebars_compiler.c \
@@ -104,8 +132,7 @@ libhandlebars_la_SOURCES = \
 	handlebars_delimiters.h \
 	handlebars_helpers.h \
 	handlebars_helpers.c \
-	handlebars_json.h \
-	handlebars_json.c \
+	$(JSONSOURCES) \
 	handlebars_map.h \
 	handlebars_map.c \
 	handlebars_opcode_printer.h \
@@ -139,8 +166,7 @@ libhandlebars_la_SOURCES = \
 	handlebars_vm.c \
 	handlebars_whitespace.h \
 	handlebars_whitespace.c \
-	handlebars_yaml.h \
-	handlebars_yaml.c
+	$(YAMLSOURCES)
 
 if HANDLEBARS_MEMORY
 libhandlebars_la_SOURCES += handlebars_memory.c

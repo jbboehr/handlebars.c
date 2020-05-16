@@ -692,6 +692,10 @@ struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value 
         ret = handlebars_map_find(value->v.map, str);
     }
 
+    if (ret) {
+        handlebars_value_addref(ret);
+    }
+
     handlebars_talloc_free(str);
 	return ret;
 }
