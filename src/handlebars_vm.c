@@ -461,7 +461,7 @@ ACCEPT_FUNCTION(ambiguous_block_value)
         PUSH(vm->stack, result);
     } else if (hbs_str_eq_strl(vm->last_helper, HBS_STRL("lambda"))) {
         PUSH(vm->stack, current);
-        talloc_free(vm->last_helper);
+        handlebars_string_delref(vm->last_helper);
         vm->last_helper = NULL;
     }
 
@@ -606,9 +606,11 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         result = invoke_mustache_style_lambda(vm, opcode, value, &options);
         PUSH(vm->stack, result);
         vm->last_helper = handlebars_string_ctor(CONTEXT, HBS_STRL("lambda")); // hackey but it works
+        handlebars_string_addref(vm->last_helper);
     } else if( NULL != (result = call_helper(options.name, 0, argv, &options)) ) {
         append_to_buffer(vm, result, 0);
         vm->last_helper = options.name;
+        handlebars_string_addref(vm->last_helper);
     } else if( value && handlebars_value_is_callable(value) ) {
         result = handlebars_value_call(value, 0, argv, &options);
         PUSH(vm->stack, result);

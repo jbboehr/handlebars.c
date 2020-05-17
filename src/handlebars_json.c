@@ -176,8 +176,7 @@ static bool hbs_json_iterator_next_object(struct handlebars_value_iterator * it)
     assert(it->current != NULL);
     assert(it->key != NULL);
 
-    handlebars_talloc_free(it->key);
-
+    handlebars_string_delref(it->key);
     handlebars_value_delref(it->current);
     it->current = NULL;
 
@@ -190,6 +189,7 @@ static bool hbs_json_iterator_next_object(struct handlebars_value_iterator * it)
     tmp = (char *) entry->k;
     it->key = handlebars_string_ctor(CONTEXT, tmp, strlen(tmp));
     it->current = handlebars_value_from_json_object(CONTEXT, (struct json_object *) entry->v);
+    handlebars_string_addref(it->key);
     handlebars_value_addref(it->current);
     return true;
 }

@@ -99,6 +99,7 @@ static int cache_gc(struct handlebars_cache * cache)
     handlebars_map_foreach(map, index, key, value) {
         struct handlebars_module * module = talloc_get_type_abort(handlebars_value_get_ptr(value), struct handlebars_module);
         if( should_gc_entry(cache, module, now) ) {
+            handlebars_string_addref(key);
             remove_keys[remove_keys_i++] = key;
             stat->current_entries--;
             stat->current_size -= module->size;
@@ -113,6 +114,7 @@ static int cache_gc(struct handlebars_cache * cache)
     for( i = 0; i < remove_keys_i; i++ ) {
         struct handlebars_string * key = remove_keys[i];
         map = handlebars_map_remove(map, key);
+        handlebars_string_delref(key);
     }
 
     intern->map = map;

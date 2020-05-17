@@ -198,6 +198,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 handlebars_talloc_free(close);
                 open = new_open;
                 close = new_close;
+                new_open = new_close = NULL;
                 starts_with_bracket = hbs_str_val(open)[0] == '{';
 
 #if defined(YYDEBUG)
