@@ -171,16 +171,10 @@ bool handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
     } else {
         current->node.content.value = handlebars_string_ltrim(current->node.content.value, HBS_STRL(" \t"));
         if( hbs_str_val(current->node.content.value)[0] == '\r' ) {
-            handlebars_string_truncate(current->node.content.value, 1, hbs_str_len(current->node.content.value));
-            // memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
-            // current->node.content.value->len--;
-            // current->node.content.value->hash = 0;
+            current->node.content.value = handlebars_string_truncate(current->node.content.value, 1, hbs_str_len(current->node.content.value));
         }
         if( hbs_str_val(current->node.content.value)[0] == '\n' ) {
-            handlebars_string_truncate(current->node.content.value, 1, hbs_str_len(current->node.content.value));
-            // memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
-            // current->node.content.value->len--;
-            // current->node.content.value->hash = 0;
+            current->node.content.value = handlebars_string_truncate(current->node.content.value, 1, hbs_str_len(current->node.content.value));
         }
     }
 

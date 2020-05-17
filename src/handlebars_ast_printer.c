@@ -747,7 +747,7 @@ static void _handlebars_ast_to_string_content(struct handlebars_ast_node * ast_n
     } else {
         struct handlebars_string *escaped = handlebars_str_replace(CONTEXT, ast_node->node.content.original, HBS_STRL("{{"), HBS_STRL("\\{{"));
         __APPEND_STR(escaped);
-        handlebars_talloc_free(escaped);
+        handlebars_string_delref(escaped);
     }
 }
 

@@ -413,9 +413,7 @@ static inline struct handlebars_string * execute_template(
     assert(retval != NULL);
 
     if (indent) {
-        struct handlebars_string * tmp2 = handlebars_string_indent(HBSCTX(vm), HBS_STR_STRL(retval), HBS_STR_STRL(indent));
-        handlebars_string_delref(retval);
-        retval = tmp2;
+        retval = handlebars_string_indent(HBSCTX(vm), retval, indent);
     }
 
     talloc_steal(vm, retval);
@@ -752,11 +750,7 @@ ACCEPT_FUNCTION(invoke_partial)
         argv[0] = context2;
 
         struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
-        struct handlebars_string * tmp2 = handlebars_value_expression(ret, 0);
-        struct handlebars_string * tmp3 = handlebars_string_indent(HBSCTX(vm), hbs_str_val(tmp2), hbs_str_len(tmp2), HBS_STR_STRL(opcode->op3.data.string.string));
-        vm->buffer = handlebars_string_append(CONTEXT, vm->buffer, HBS_STR_STRL(tmp3));
-        handlebars_talloc_free(tmp3);
-        handlebars_talloc_free(tmp2);
+        vm->buffer = handlebars_string_indent_append(HBSCTX(vm), vm->buffer, handlebars_value_expression(ret, 0), opcode->op3.data.string.string);
         handlebars_value_delref(ret);
     } else {
 

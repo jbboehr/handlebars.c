@@ -424,7 +424,7 @@ END_TEST
 START_TEST(test_handlebars_string_truncate_1)
 {
     struct handlebars_string * str = handlebars_string_ctor(context, HBS_STRL(""));
-    handlebars_string_truncate(str, 0, 0);
+    str = handlebars_string_truncate(str, 0, 0);
     ck_assert_str_eq(hbs_str_val(str), "");
     ck_assert_uint_eq(hbs_str_len(str), 0);
     handlebars_talloc_free(str);
@@ -434,7 +434,7 @@ END_TEST
 START_TEST(test_handlebars_string_truncate_2)
 {
     struct handlebars_string * str = handlebars_string_ctor(context, HBS_STRL("a"));
-    handlebars_string_truncate(str, 0, 0);
+    str = handlebars_string_truncate(str, 0, 0);
     ck_assert_str_eq(hbs_str_val(str), "");
     ck_assert_uint_eq(hbs_str_len(str), 0);
     handlebars_talloc_free(str);
@@ -444,7 +444,7 @@ END_TEST
 START_TEST(test_handlebars_string_truncate_3)
 {
     struct handlebars_string * str = handlebars_string_ctor(context, HBS_STRL("a"));
-    handlebars_string_truncate(str, 0, 1);
+    str = handlebars_string_truncate(str, 0, 1);
     ck_assert_str_eq(hbs_str_val(str), "a");
     ck_assert_uint_eq(hbs_str_len(str), 1);
     handlebars_talloc_free(str);
@@ -454,7 +454,7 @@ END_TEST
 START_TEST(test_handlebars_string_truncate_4)
 {
     struct handlebars_string * str = handlebars_string_ctor(context, HBS_STRL("abcde"));
-    handlebars_string_truncate(str, 1, 4);
+    str = handlebars_string_truncate(str, 1, 4);
     ck_assert_str_eq(hbs_str_val(str), "bcd");
     ck_assert_uint_eq(hbs_str_len(str), 3);
     handlebars_talloc_free(str);

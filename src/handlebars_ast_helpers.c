@@ -407,7 +407,7 @@ struct handlebars_string * handlebars_ast_helper_strip_comment(struct handlebars
     assert(comment != NULL);
     size_t start = handlebars_ast_helper_strip_comment_left(comment);
     size_t len = handlebars_ast_helper_strip_comment_right(comment);
-    handlebars_string_truncate(comment, start, len);
+    comment = handlebars_string_truncate(comment, start, len);
     return comment;
 }
 
@@ -419,7 +419,7 @@ struct handlebars_string * handlebars_ast_helper_strip_id_literal(struct handleb
 
     char * val = hbs_str_val(comment);
 	if( val[0] == '[' && val[hbs_str_len(comment) - 1] == ']' ) {
-        handlebars_string_truncate(comment, 1, hbs_str_len(comment) - 1);
+        comment = handlebars_string_truncate(comment, 1, hbs_str_len(comment) - 1);
 	}
 
 	return comment;
