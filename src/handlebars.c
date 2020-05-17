@@ -255,16 +255,6 @@ struct handlebars_context * handlebars_get_context(void * ctx, const char * loc)
         return r;
     }
 
-    r = (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_map);
-    if( r ) {
-        return r;
-    }
-
-    r = (struct handlebars_context *) talloc_get_type(ctx, struct handlebars_stack);
-    if( r ) {
-        return r;
-    }
-
     fprintf(stderr, "Not a context at %s\n", loc);
     abort();
 }

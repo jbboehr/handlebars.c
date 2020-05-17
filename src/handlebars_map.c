@@ -42,7 +42,7 @@
 
 
 struct handlebars_map {
-    struct handlebars_context ctx;
+    struct handlebars_context * ctx;
 #ifndef HANDLEBARS_NO_REFCOUNT
     struct handlebars_rc rc;
 #endif
@@ -214,8 +214,8 @@ static inline void map_add_at_table_offset(
     assert(map->table[offset] == NULL || map->table[offset] == HANDLEBARS_MAP_TOMBSTONE);
 
     struct handlebars_map_entry * entry = &map->vec[map->vec_offset];
-    entry->key = talloc_steal(map, handlebars_string_copy_ctor(HBSCTX(map), (const struct handlebars_string *) key));
-    HANDLEBARS_MEMCHECK(entry->key, HBSCTX(map));
+    entry->key = talloc_steal(map, handlebars_string_copy_ctor(map->ctx, (const struct handlebars_string *) key));
+    HANDLEBARS_MEMCHECK(entry->key, map->ctx);
     entry->value = value;
     handlebars_value_addref(value);
     entry->table_offset = offset;
@@ -235,6 +235,18 @@ static void map_rebuild_references(struct handlebars_map * map)
     for (i = 0; i < map->vec_offset; i++ ) {
         map->table[map->vec[i].table_offset] = &map->vec[i];
     }
+}
+
+static inline struct handlebars_map * map_separate(struct handlebars_map * map) {
+#ifndef HANDLEBARS_NO_REFCOUNT
+    if (handlebars_rc_refcount(&map->rc) > 1) {
+        struct handlebars_map * prev_map = map;
+        map = handlebars_map_copy_ctor(map);
+        handlebars_map_delref(prev_map);
+    }
+#endif
+
+    return map;
 }
 
 static void map_rehash(struct handlebars_map * map)
@@ -267,14 +279,14 @@ static void map_rehash(struct handlebars_map * map)
 #endif
 
     // Allocate new entries
-    vec = handlebars_talloc_array(HBSCTX(map), struct handlebars_map_entry, vec_capacity);
-    HANDLEBARS_MEMCHECK(vec, HBSCTX(map));
+    vec = handlebars_talloc_array(map, struct handlebars_map_entry, vec_capacity);
+    HANDLEBARS_MEMCHECK(vec, map->ctx);
     vec = talloc_steal(map, vec);
     memset(vec, 0, sizeof(struct handlebars_map_entry) * vec_capacity);
 
     // Create new table
-    table = handlebars_talloc_array(HBSCTX(map), struct handlebars_map_entry *, table_capacity);
-    HANDLEBARS_MEMCHECK(table, HBSCTX(map));
+    table = handlebars_talloc_array(map, struct handlebars_map_entry *, table_capacity);
+    HANDLEBARS_MEMCHECK(table, map->ctx);
     table = talloc_steal(map, table);
     memset(table, 0, sizeof(struct handlebars_map_entry *) * table_capacity);
 
@@ -287,7 +299,7 @@ static void map_rehash(struct handlebars_map * map)
 
             entry->key = map->vec[i].key;
             entry->value = map->vec[i].value;
-            ht_add_entry(HBSCTX(map), table, table_capacity, entry);
+            ht_add_entry(map->ctx, table, table_capacity, entry);
             vec_offset++;
         }
     }
@@ -341,19 +353,19 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
     // Allocate map
     struct handlebars_map * map = handlebars_talloc_zero(ctx, struct handlebars_map);
     HANDLEBARS_MEMCHECK(map, ctx);
-    handlebars_context_bind(ctx, HBSCTX(map));
+    map->ctx = ctx;
 
     // Allocate vector
     size_t vec_capacity = capacity;
     map->vec_capacity = vec_capacity;
     map->vec = handlebars_talloc_array(map, struct handlebars_map_entry, vec_capacity);
-    HANDLEBARS_MEMCHECK(map->vec, ctx);
+    HANDLEBARS_MEMCHECK(map->vec, map->ctx);
     memset(map->vec, 0, sizeof(struct handlebars_map_entry) * vec_capacity);
 
     // Allocate table
     map->table_capacity = ht_choose_table_capacity(vec_capacity);
     map->table = handlebars_talloc_array(map, struct handlebars_map_entry *, map->table_capacity);
-    HANDLEBARS_MEMCHECK(map->table, ctx);
+    HANDLEBARS_MEMCHECK(map->table, map->ctx);
     map->table = talloc_steal(map, map->table);
     memset(map->table, 0, sizeof(struct handlebars_map_entry *) * map->table_capacity);
 
@@ -364,10 +376,21 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
     return map;
 }
 
+struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_map)
+{
+    struct handlebars_map * map = handlebars_map_ctor(prev_map->ctx, prev_map->vec_capacity);
+
+    handlebars_map_foreach(prev_map, index, key, value) {
+        map = handlebars_map_add(map, key, value);
+    } handlebars_map_foreach_end();
+
+    return map;
+}
+
 
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(map)
+#define CONTEXT (map->ctx)
 
 void handlebars_map_dtor(struct handlebars_map * map)
 {
@@ -378,16 +401,19 @@ void handlebars_map_dtor(struct handlebars_map * map)
     handlebars_talloc_free(map);
 }
 
-void handlebars_map_add(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
+struct handlebars_map * handlebars_map_add(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
+    // Separate if refcount > 1
+    map = map_separate(map);
+
     // Rehash
     map = handlebars_map_rehash(map, false);
 
     // Add
-    struct ht_find_result o = ht_find_entry(HBSCTX(map), map->table, map->table_capacity, key);
+    struct ht_find_result o = ht_find_entry(map->ctx, map->table, map->table_capacity, key);
     if (o.entry_found || !o.empty_found) {
         // this should never happen - unless rehash locked due to iteration
-        handlebars_throw(HBSCTX(map), HANDLEBARS_ERROR, "Failed to add to hash table");
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to add to hash table");
     }
 
     map_add_at_table_offset(map, key, value, o.empty_offset);
@@ -397,18 +423,23 @@ void handlebars_map_add(struct handlebars_map * map, struct handlebars_string * 
         map->collisions++;
     }
 #endif
+
+    return map;
 }
 
-bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
+struct handlebars_map * handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
 {
+    // Separate if refcount > 1
+    map = map_separate(map);
+
     // Rehash
     map = handlebars_map_rehash(map, handlebars_map_load_factor(map) < HANDLEBARS_MAP_MIN_LOAD_FACTOR);
 
     // Remove
-    struct ht_find_result o = ht_find_entry(HBSCTX(map), map->table, map->table_capacity, key);
+    struct ht_find_result o = ht_find_entry(map->ctx, map->table, map->table_capacity, key);
     struct handlebars_map_entry * entry = o.entry;
     if (!entry) {
-        return 0;
+        return map;
     }
 
     struct handlebars_value * value = entry->value;
@@ -423,7 +454,7 @@ bool handlebars_map_remove(struct handlebars_map * map, struct handlebars_string
     map->i--;
     handlebars_value_delref(value);
 
-    return 1;
+    return map;
 }
 
 struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struct handlebars_string * key)
@@ -436,8 +467,11 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struc
     }
 }
 
-void handlebars_map_update(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
+struct handlebars_map * handlebars_map_update(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
+    // Separate if refcount > 1
+    map = map_separate(map);
+
     // Rehash
     map = handlebars_map_rehash(map, false);
 
@@ -448,12 +482,12 @@ void handlebars_map_update(struct handlebars_map * map, struct handlebars_string
         handlebars_value_delref(entry->value);
         entry->value = value;
         handlebars_value_addref(entry->value);
-        return;
+        return map;
     }
 
     if (!o.empty_found) {
         // This should never happen
-        handlebars_throw(HBSCTX(map), HANDLEBARS_ERROR, "Failed to update to hash table");
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to update to hash table");
     }
 
     map_add_at_table_offset(map, key, value, o.empty_offset);
@@ -463,6 +497,8 @@ void handlebars_map_update(struct handlebars_map * map, struct handlebars_string
         map->collisions++;
     }
 #endif
+
+    return map;
 }
 
 extern inline size_t handlebars_map_count(struct handlebars_map * map) {
@@ -577,6 +613,10 @@ static int map_entry_compare(const void * ptr1, const void * ptr2, void * arg)
 struct handlebars_map * handlebars_map_sort(struct handlebars_map * map, handlebars_map_kv_compare_func compare)
 {
     if (handlebars_map_is_sparse(map)) {
+        // Separate if refcount > 1
+        map = map_separate(map);
+
+        // Rehash
         map = handlebars_map_rehash(map, true);
     }
 
@@ -614,6 +654,10 @@ struct handlebars_map * handlebars_map_sort_r(
     const void * arg
 ) {
     if (handlebars_map_is_sparse(map)) {
+        // Separate if refcount > 1
+        map = map_separate(map);
+
+        // Rehash
         map = handlebars_map_rehash(map, true);
     }
 
@@ -629,19 +673,20 @@ struct handlebars_map * handlebars_map_sort_r(
 
 // compat
 
-bool handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
+struct handlebars_map * handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
 {
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
-    bool removed = handlebars_map_remove(map, string);
+    map = handlebars_map_remove(map, string);
     handlebars_talloc_free(string);
-    return removed;
+    return map;
 }
 
-void handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+struct handlebars_map * handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
-    handlebars_map_add(map, string, value);
+    map = handlebars_map_add(map, string, value);
     handlebars_talloc_free(string);
+    return map;
 }
 
 struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len)
@@ -652,9 +697,10 @@ struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, c
     return value;
 }
 
-void handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
+struct handlebars_map * handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
-    handlebars_map_update(map, string, value);
+    map = handlebars_map_update(map, string, value);
     handlebars_talloc_free(string);
+    return map;
 }

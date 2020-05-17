@@ -46,3 +46,8 @@ void handlebars_rc_delref(struct handlebars_rc * rc)
         rc->refcount--;
     }
 }
+
+size_t handlebars_rc_refcount(struct handlebars_rc * rc)
+{
+    return rc->refcount;
+}

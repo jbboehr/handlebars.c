@@ -305,15 +305,17 @@ static inline struct handlebars_value * merge_hash(struct handlebars_context * c
 {
     struct handlebars_value * context2;
     if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
-        hash && handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP ) {
-        context2 = handlebars_value_ctor(context);
-        handlebars_value_map_init(context2, handlebars_value_count(context1) + handlebars_value_count(hash));
+            hash && handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP ) {
+        struct handlebars_map * new_map = handlebars_map_ctor(context, handlebars_value_count(context1) + handlebars_value_count(hash));
+        // handlebars_value_map_init(context2, handlebars_value_count(context1) + handlebars_value_count(hash));
         HANDLEBARS_VALUE_FOREACH_KV(context1, key, child) {
-            handlebars_map_update(handlebars_value_get_map(context2), key, child);
+            new_map = handlebars_map_update(new_map, key, child);
         } HANDLEBARS_VALUE_FOREACH_END();
         HANDLEBARS_VALUE_FOREACH_KV(hash, key, child) {
-            handlebars_map_update(handlebars_value_get_map(context2), key, child);
+            new_map = handlebars_map_update(new_map, key, child);
         } HANDLEBARS_VALUE_FOREACH_END();
+        context2 = handlebars_value_ctor(context);
+        handlebars_value_map(context2, new_map);
     } else if( !context1 || handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_NULL ) {
         context2 = hash;
         if( context2 ) {
@@ -497,7 +499,9 @@ ACCEPT_FUNCTION(assign_to_hash)
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP);
 
-    handlebars_map_update(handlebars_value_get_map(hash), opcode->op1.data.string.string, value);
+    struct handlebars_map * map = handlebars_value_get_map(hash);
+    map = handlebars_map_update(map, opcode->op1.data.string.string, value);
+    handlebars_value_map(hash, map);
 
     handlebars_value_delref(value);
 }

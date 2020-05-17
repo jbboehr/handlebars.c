@@ -98,7 +98,7 @@ static void hbs_json_convert(struct handlebars_value * value, bool recurse)
             struct handlebars_map * map = handlebars_map_ctor(CONTEXT, json_object_object_length(intern));
             json_object_object_foreach(intern, k, v) {
                 new_value = handlebars_value_from_json_object(CONTEXT, v);
-                handlebars_map_str_update(map, k, strlen(k), new_value);
+                map = handlebars_map_str_update(map, k, strlen(k), new_value);
                 if( recurse && handlebars_value_get_real_type(new_value) == HANDLEBARS_VALUE_TYPE_USER ) {
                     hbs_json_convert(new_value, recurse);
                 }

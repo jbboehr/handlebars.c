@@ -89,6 +89,18 @@ void handlebars_stack_delref(struct handlebars_stack * stack)
 #endif
 }
 
+static inline struct handlebars_stack * stack_separate(struct handlebars_stack * stack) {
+#ifndef HANDLEBARS_NO_REFCOUNT
+    if (handlebars_rc_refcount(&stack->rc) > 1) {
+        struct handlebars_stack * prev_stack = stack;
+        stack = handlebars_stack_copy_ctor(stack);
+        handlebars_stack_delref(prev_stack);
+    }
+#endif
+
+    return stack;
+}
+
 // }}} Reference Counting
 
 // {{{ Constructors and Destructors
@@ -115,6 +127,18 @@ struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx,
 #ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_rc_init(&stack->rc, stack_rc_dtor);
 #endif
+    return stack;
+}
+
+struct handlebars_stack * handlebars_stack_copy_ctor(struct handlebars_stack * prev_stack)
+{
+    struct handlebars_stack * stack = handlebars_stack_ctor(prev_stack->ctx, prev_stack->i);
+    for ( size_t i = 0; i < prev_stack->i; i++ ) {
+        stack->v[i] = prev_stack->v[i];
+        handlebars_value_addref(stack->v[i]);
+    }
+    stack->i = prev_stack->i;
+    stack->v[stack->i] = NULL;
     return stack;
 }
 
@@ -148,24 +172,24 @@ static void handlebars_stack_dump(struct handlebars_stack * stack) {
 
 struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack, struct handlebars_value * value)
 {
-    size_t capacity;
-
     assert(stack != NULL);
     assert(value != NULL);
 
-    capacity = stack->capacity;
+    // Separate if refcount > 1
+    stack = stack_separate(stack);
 
     // Resize array if necessary
-    if( capacity <= stack->i ) {
+    if( stack->capacity <= stack->i ) {
         // Cannot resize if this stack was stack allocated
         if (!(stack->flags & HANDLEBARS_STACK_TALLOCATED)) {
             handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Stack overflow");
         }
-        // @TODO this is unsafe if the refcount of the stack is greater than one - but we need refcounting for that
-        capacity += 32;
+
+        size_t capacity = (stack->capacity | 3) * 3 / 2;
         struct handlebars_context * ctx = stack->ctx;
         stack = handlebars_talloc_realloc_size(NULL, stack, handlebars_stack_size(capacity));
         HANDLEBARS_MEMCHECK(stack, ctx);
+        talloc_set_type(stack, struct handlebars_stack);
         stack->capacity = capacity;
     }
 
@@ -182,6 +206,13 @@ struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack)
     if( stack->i <= 0 ) {
         return NULL;
     }
+
+    // @TODO we need to change the API of pop to support separation
+#ifndef HANDLEBARS_NO_REFCOUNT
+    if (handlebars_rc_refcount(&stack->rc) > 1) {
+        handlebars_throw(stack->ctx, HANDLEBARS_ERROR, "Attempting to pop protected stack with refcout > 1");
+    }
+#endif
 
     if (stack->i < stack->protect) {
         handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to pop protected stack segment i=%zu protect=%zu", stack->i, stack->protect);

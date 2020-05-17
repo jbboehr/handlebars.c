@@ -73,7 +73,6 @@
 #ifndef HANDLEBARS_NO_REFCOUNT
 #define ASSERT_INIT_BLOCKS() \
     do { \
-        handlebars_value_delref(value); \
         if (init_blocks != talloc_total_blocks(context)) { \
             talloc_report_full(context, stderr); \
         } \

@@ -72,7 +72,7 @@ START_TEST(test_map)
 
         struct handlebars_value * value = talloc_steal(map, handlebars_value_ctor(context));
         handlebars_value_integer(value, pos++);
-        handlebars_map_add(map, key, value);
+        map = handlebars_map_add(map, key, value);
     }
 
     fprintf(
@@ -102,7 +102,7 @@ START_TEST(test_map)
 
         handlebars_value_addref(value);
 
-        handlebars_map_remove(map, key);
+        map = handlebars_map_remove(map, key);
 
         // make sure the count of items in the map is accurate
         ck_assert_uint_eq(--pos, handlebars_map_count(map));
@@ -156,7 +156,7 @@ START_TEST(test_map_sort)
         struct handlebars_value * value = handlebars_value_ctor(context);
         handlebars_value_integer(value, i);
         ck_assert_ptr_ne(value, NULL);
-        handlebars_map_add(map, key, value);
+        map = handlebars_map_add(map, key, value);
         handlebars_talloc_free(key);
     }
 
@@ -164,7 +164,7 @@ START_TEST(test_map_sort)
         char tmp[32];
         snprintf(tmp, sizeof(tmp) - 1, "%zu", middle);
         struct handlebars_string * key = handlebars_string_ctor(HBSCTX(context), tmp, strlen(tmp));
-        handlebars_map_remove(map, key);
+        map = handlebars_map_remove(map, key);
         handlebars_talloc_free(key);
     } while(0);
 
@@ -212,6 +212,109 @@ START_TEST(test_map_sort)
 }
 END_TEST
 
+START_TEST(test_map_copy_ctor)
+{
+    struct handlebars_map * map;
+    struct handlebars_map * map_copy;
+    struct handlebars_value * tmp;
+    struct  handlebars_string * str1;
+    struct  handlebars_string * str2;
+    struct  handlebars_string * str3;
+
+    map = handlebars_map_ctor(context, 3);
+    handlebars_map_addref(map);
+
+    tmp = handlebars_value_ctor(context);
+    handlebars_value_integer(tmp, 1);
+    str1 = handlebars_string_ctor(context, HBS_STRL("a"));
+    map = handlebars_map_update(map, str1, tmp);
+
+    tmp = handlebars_value_ctor(context);
+    handlebars_value_integer(tmp, 2);
+    str2 = handlebars_string_ctor(context, HBS_STRL("b"));
+    map = handlebars_map_update(map, str2, tmp);
+
+    tmp = handlebars_value_ctor(context);
+    handlebars_value_integer(tmp, 3);
+    str3 = handlebars_string_ctor(context, HBS_STRL("c"));
+    map = handlebars_map_update(map, str3, tmp);
+
+    ck_assert_uint_eq(handlebars_map_count(map), 3);
+
+    map_copy = handlebars_map_copy_ctor(map);
+
+    ck_assert_ptr_ne(map_copy, NULL);
+    ck_assert_ptr_ne(map, map_copy);
+    ck_assert_uint_eq(handlebars_map_count(map_copy), 3);
+
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_find(map, str1)), handlebars_value_get_intval(handlebars_map_find(map_copy, str1)));
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_find(map, str2)), handlebars_value_get_intval(handlebars_map_find(map_copy, str2)));
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_find(map, str3)), handlebars_value_get_intval(handlebars_map_find(map_copy, str3)));
+
+    handlebars_string_delref(str1);
+    handlebars_string_delref(str2);
+    handlebars_string_delref(str3);
+
+    handlebars_map_delref(map);
+    handlebars_map_delref(map_copy);
+
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_map_add_with_separation)
+{
+    struct handlebars_map * map;
+    struct handlebars_map * map_copy;
+    struct handlebars_value * tmp;
+    struct  handlebars_string * str1;
+    struct  handlebars_string * str2;
+    struct  handlebars_string * str3;
+
+    map = handlebars_map_ctor(context, 3);
+    handlebars_map_addref(map);
+
+    tmp = handlebars_value_ctor(context);
+    handlebars_value_integer(tmp, 1);
+    str1 = handlebars_string_ctor(context, HBS_STRL("a"));
+    map = handlebars_map_update(map, str1, tmp);
+
+    tmp = handlebars_value_ctor(context);
+    handlebars_value_integer(tmp, 2);
+    str2 = handlebars_string_ctor(context, HBS_STRL("b"));
+    map = handlebars_map_update(map, str2, tmp);
+
+    handlebars_map_addref(map);
+    map_copy = map;
+
+    tmp = handlebars_value_ctor(context);
+    handlebars_value_integer(tmp, 3);
+    str3 = handlebars_string_ctor(context, HBS_STRL("c"));
+    map = handlebars_map_update(map, str3, tmp);
+
+    ck_assert_uint_eq(handlebars_map_count(map), 3);
+
+    ck_assert_ptr_ne(map_copy, NULL);
+    ck_assert_ptr_ne(map, map_copy);
+    ck_assert_uint_eq(handlebars_map_count(map_copy), 2);
+
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_find(map, str1)), handlebars_value_get_intval(handlebars_map_find(map_copy, str1)));
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_find(map, str2)), handlebars_value_get_intval(handlebars_map_find(map_copy, str2)));
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_find(map, str3)), 3);
+
+    handlebars_string_delref(str1);
+    handlebars_string_delref(str2);
+    handlebars_string_delref(str3);
+
+    handlebars_map_delref(map);
+    handlebars_map_delref(map_copy);
+
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -219,6 +322,10 @@ static Suite * suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_map, "Map");
     REGISTER_TEST_FIXTURE(s, test_map_sort, "handlebars_map_sort");
+    REGISTER_TEST_FIXTURE(s, test_map_copy_ctor, "Map copy constructor");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_map_add_with_separation, "Map add with separation");
+#endif
 
     return s;
 }

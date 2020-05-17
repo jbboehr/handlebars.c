@@ -61,7 +61,7 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
                 yaml_node_t * valueNode = yaml_document_get_node(document, pair->value);
                 assert(keyNode->type == YAML_SCALAR_NODE);
                 tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
-                handlebars_map_str_update(map, (const char *) keyNode->data.scalar.value, keyNode->data.scalar.length, tmp);
+                map = handlebars_map_str_update(map, (const char *) keyNode->data.scalar.value, keyNode->data.scalar.length, tmp);
             }
             handlebars_value_map(value, map);
             break;

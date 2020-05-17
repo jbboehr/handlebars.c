@@ -131,7 +131,7 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
     handlebars_value_str_steal(retval, handlebars_string_ctor(CONTEXT, buf, size));
     handlebars_talloc_free(buf);
 
-    handlebars_map_add(intern->map, key, retval);
+    intern->map = handlebars_map_add(intern->map, key, retval);
 
     handlebars_talloc_free(filename);
     return retval;

@@ -118,21 +118,23 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         handlebars_value_array_init(block_params, 2);
 
         data = handlebars_value_ctor(CONTEXT);
+        struct handlebars_map * data_map;
         if( handlebars_value_get_type(options->data) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            handlebars_value_map_init(data, handlebars_value_count(options->data) + 4);
+            data_map = handlebars_map_ctor(CONTEXT, handlebars_value_count(options->data) + 4);
             HANDLEBARS_VALUE_FOREACH_KV(options->data, options_key, child) {
-                handlebars_map_update(handlebars_value_get_map(data), options_key, child);
+                data_map = handlebars_map_update(data_map, options_key, child);
             } HANDLEBARS_VALUE_FOREACH_END();
         } else {
-            handlebars_value_map_init(data, 4);
+            data_map = handlebars_map_ctor(CONTEXT, 4);
         }
         index = handlebars_value_ctor(CONTEXT);
         first = handlebars_value_ctor(CONTEXT);
         last = handlebars_value_ctor(CONTEXT);
-        handlebars_map_str_update(handlebars_value_get_map(data), HBS_STRL("index"), index);
-        handlebars_map_str_update(handlebars_value_get_map(data), HBS_STRL("key"), key);
-        handlebars_map_str_update(handlebars_value_get_map(data), HBS_STRL("first"), first);
-        handlebars_map_str_update(handlebars_value_get_map(data), HBS_STRL("last"), last);
+        data_map = handlebars_map_str_update(data_map, HBS_STRL("index"), index);
+        data_map = handlebars_map_str_update(data_map, HBS_STRL("key"), key);
+        data_map = handlebars_map_str_update(data_map, HBS_STRL("first"), first);
+        data_map = handlebars_map_str_update(data_map, HBS_STRL("last"), last);
+        handlebars_value_map(data, data_map);
 
         handlebars_value_addref(key);
         handlebars_value_addref(index);

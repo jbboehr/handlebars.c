@@ -108,12 +108,14 @@ static int cache_gc(struct handlebars_cache * cache)
         }
     } handlebars_map_foreach_end();
 
-    intern->map = map = handlebars_map_rehash(map, false);
+    map = handlebars_map_rehash(map, false);
 
     for( i = 0; i < remove_keys_i; i++ ) {
         struct handlebars_string * key = remove_keys[i];
-        handlebars_map_remove(map, key);
+        map = handlebars_map_remove(map, key);
     }
+
+    intern->map = map;
 
     handlebars_talloc_free(remove_keys);
 
@@ -156,7 +158,7 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     value = handlebars_value_ctor(HBSCTX(cache));
     handlebars_value_ptr(value, talloc_steal(cache, module));
 
-    handlebars_map_add(map, tmpl, value);
+    intern->map = map = handlebars_map_add(map, tmpl, value);
 
     // Update master
     stat->current_entries++;

@@ -181,13 +181,18 @@ struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
                 handlebars_value_array_push(new_value, handlebars_value_copy(child));
             } HANDLEBARS_VALUE_FOREACH_END();
             break;
-        case HANDLEBARS_VALUE_TYPE_MAP:
+        case HANDLEBARS_VALUE_TYPE_MAP: {
+            struct handlebars_map * new_map;
             new_value = handlebars_value_ctor(CONTEXT);
-            handlebars_value_map_init(new_value, handlebars_value_count(value));
+            new_map = handlebars_map_ctor(CONTEXT, handlebars_value_count(value));
+            // handlebars_value_map_init(new_value, handlebars_value_count(value));
             HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
-                handlebars_map_update(new_value->v.map, key, handlebars_value_copy(child));
+                new_map = handlebars_map_update(new_map, key, handlebars_value_copy(child));
+                // handlebars_map_update(new_value->v.map, key, handlebars_value_copy(child));
             } HANDLEBARS_VALUE_FOREACH_END();
+            handlebars_value_map(new_value, new_map);
             break;
+        }
         case HANDLEBARS_VALUE_TYPE_USER:
             new_value = handlebars_value_get_handlers(value)->copy(value);
             break;
@@ -530,18 +535,18 @@ void handlebars_value_user(struct handlebars_value * value, struct handlebars_us
 
 void handlebars_value_map(struct handlebars_value * value, struct handlebars_map * map)
 {
+    handlebars_map_addref(map);
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_MAP;
     value->v.map = map;
-    handlebars_map_addref(value->v.map);
 }
 
 void handlebars_value_array(struct handlebars_value * value, struct handlebars_stack * stack)
 {
+    handlebars_stack_addref(stack);
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
     value->v.stack = stack;
-    handlebars_stack_addref(value->v.stack);
 }
 
 void handlebars_value_helper(struct handlebars_value * value, handlebars_helper_func helper)

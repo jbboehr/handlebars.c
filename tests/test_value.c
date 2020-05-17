@@ -36,6 +36,7 @@ START_TEST(test_boolean_true)
     handlebars_value_boolean(value, true);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_TRUE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -46,6 +47,7 @@ START_TEST(test_boolean_false)
     handlebars_value_boolean(value, false);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FALSE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 0);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -56,6 +58,7 @@ START_TEST(test_int)
     handlebars_value_integer(value, 2358);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
     ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -67,6 +70,7 @@ START_TEST(test_float)
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
     // Note: converting to int - precision issue
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -79,6 +83,7 @@ START_TEST(test_string)
     const char * tmp = handlebars_value_get_strval(value);
 	ck_assert_str_eq(tmp, "test");
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -111,6 +116,7 @@ START_TEST(test_array_iterator)
         ck_assert_int_eq((size_t) handlebars_value_get_intval(child), ++i);
     } HANDLEBARS_VALUE_FOREACH_END();
 
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -119,22 +125,25 @@ START_TEST(test_map_iterator)
 {
     struct handlebars_value * value;
     struct handlebars_value * tmp;
+    struct handlebars_map * tmp_map;
     int i = 0;
 
-    value = handlebars_value_ctor(context);
-    handlebars_value_map_init(value, 0); // zero may trigger extra rehashes possibly - good for testing
+    tmp_map = handlebars_map_ctor(context, 0); // zero may trigger extra rehashes possibly - good for testing
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
-    handlebars_map_str_update(handlebars_value_get_map(value), HBS_STRL("a"), tmp);
+    tmp_map = handlebars_map_str_update(tmp_map, HBS_STRL("a"), tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
-    handlebars_map_str_update(handlebars_value_get_map(value), HBS_STRL("c"), tmp);
+    tmp_map = handlebars_map_str_update(tmp_map, HBS_STRL("c"), tmp);
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
-    handlebars_map_str_update(handlebars_value_get_map(value), HBS_STRL("b"), tmp);
+    tmp_map = handlebars_map_str_update(tmp_map, HBS_STRL("b"), tmp);
+
+    value = handlebars_value_ctor(context);
+    handlebars_value_map(value, tmp_map);
 
     HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
         ++i;
@@ -150,6 +159,7 @@ START_TEST(test_map_iterator)
         ck_assert_int_eq(handlebars_value_get_intval(child), i);
     } HANDLEBARS_VALUE_FOREACH_END();
 
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -194,6 +204,7 @@ START_TEST(test_array_find)
 	value2 = handlebars_value_array_find(value, 2);
 	ck_assert_ptr_eq(value2, NULL);
 
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -211,13 +222,13 @@ START_TEST(test_map_find)
         tmp = handlebars_value_ctor(context);
         handlebars_value_integer(tmp, 2358);
         tmp_str = handlebars_string_ctor(context, HBS_STRL("a"));
-        handlebars_map_update(map, tmp_str, tmp);
+        map = handlebars_map_update(map, tmp_str, tmp);
         handlebars_talloc_free(tmp_str);
 
         tmp = handlebars_value_ctor(context);
         handlebars_value_str_steal(tmp, handlebars_string_ctor(context, HBS_STRL("test")));
         tmp_str = handlebars_string_ctor(context, HBS_STRL("b"));
-        handlebars_map_update(map, tmp_str, tmp);
+        map = handlebars_map_update(map, tmp_str, tmp);
         handlebars_talloc_free(tmp_str);
 
         handlebars_value_map(value, map);
@@ -243,6 +254,7 @@ START_TEST(test_map_find)
 	value2 = handlebars_value_map_str_find(value, HBS_STRL("c"));
 	ck_assert_ptr_eq(value2, NULL);
 
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST

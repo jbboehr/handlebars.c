@@ -37,6 +37,7 @@ START_TEST(test_boolean_yaml_true)
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_TRUE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -47,6 +48,7 @@ START_TEST(test_boolean_yaml_false)
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FALSE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 0);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -57,6 +59,7 @@ START_TEST(test_int_yaml)
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
     ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -68,6 +71,7 @@ START_TEST(test_float_yaml)
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
     // Note: converting to int - precision issue
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -80,6 +84,7 @@ START_TEST(test_string_yaml)
     const char * tmp = handlebars_value_get_strval(value);
 	ck_assert_str_eq(tmp, "test");
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
+    handlebars_value_delref(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST

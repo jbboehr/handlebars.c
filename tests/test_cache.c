@@ -117,8 +117,11 @@ static void execute_gc_test(struct handlebars_cache * cache)
     handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
 
     struct handlebars_value * partials = handlebars_value_ctor(context);
-    handlebars_value_map_init(partials, 0);
-    handlebars_map_str_add(handlebars_value_get_map(partials), HBS_STRL("foo"), partial);
+    do {
+        struct handlebars_map * tmp_map = handlebars_map_ctor(context, 0);
+        tmp_map = handlebars_map_str_add(tmp_map, HBS_STRL("foo"), partial);
+        handlebars_value_map(partials, tmp_map);
+    } while (0);
 
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
     struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
@@ -164,8 +167,11 @@ static void execute_reset_test(struct handlebars_cache * cache)
     handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
 
     struct handlebars_value * partials = handlebars_value_ctor(context);
-    handlebars_value_map_init(partials, 0);
-    handlebars_map_str_add(handlebars_value_get_map(partials), HBS_STRL("foo"), partial);
+    do {
+        struct handlebars_map * tmp_map = handlebars_map_ctor(context, 0);
+        tmp_map = handlebars_map_str_add(tmp_map, HBS_STRL("foo"), partial);
+        handlebars_value_map(partials, tmp_map);
+    } while (0);
 
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
     struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);

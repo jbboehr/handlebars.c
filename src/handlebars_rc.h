@@ -47,6 +47,9 @@ void handlebars_rc_addref(struct handlebars_rc * rc)
 void handlebars_rc_delref(struct handlebars_rc * rc)
     HBS_ATTR_NONNULL_ALL;
 
+size_t handlebars_rc_refcount(struct handlebars_rc * rc)
+    HBS_ATTR_NONNULL_ALL;
+
 HBS_EXTERN_C_END
 
 #endif

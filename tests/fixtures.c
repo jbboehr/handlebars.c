@@ -187,13 +187,14 @@ FIXTURE_FN(585442881)
     // "function (cruel, world, options) {\n        return options.fn({greeting: 'Goodbye', adj: cruel, noun: world});\n      }"
     struct handlebars_value * cruel = argv[0];
     struct handlebars_value * world = argv[1];
-    struct handlebars_value * context = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(context, 0); // zero may trigger extra rehashes - good for testing
     struct handlebars_value * greeting = handlebars_value_ctor(CONTEXT);
     handlebars_value_string(greeting, "Goodbye");
-    handlebars_map_str_update(handlebars_value_get_map(context), HBS_STRL("greeting"), greeting);
-    handlebars_map_str_update(handlebars_value_get_map(context), HBS_STRL("adj"), cruel);
-    handlebars_map_str_update(handlebars_value_get_map(context), HBS_STRL("noun"), world);
+    struct handlebars_map * context_map = handlebars_map_ctor(CONTEXT, 3);
+    context_map = handlebars_map_str_update(context_map, HBS_STRL("greeting"), greeting);
+    context_map = handlebars_map_str_update(context_map, HBS_STRL("adj"), cruel);
+    context_map = handlebars_map_str_update(context_map, HBS_STRL("noun"), world);
+    struct handlebars_value * context = handlebars_value_ctor(CONTEXT);
+    handlebars_value_map(context, context_map);
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     handlebars_value_str_steal(result, tmp);
@@ -416,13 +417,13 @@ FIXTURE_FN(931412676)
         if( 0 == strcmp(hbs_str_val(key), "depth") ) {
             struct handlebars_value * tmp = handlebars_value_ctor(CONTEXT);
             handlebars_value_integer(tmp, handlebars_value_get_intval(child) + 1);
-            handlebars_map_update(map, key, tmp);
+            map = handlebars_map_update(map, key, tmp);
         } else {
-            handlebars_map_update(map, key, child);
+            map = handlebars_map_update(map, key, child);
         }
     } HANDLEBARS_VALUE_FOREACH_END();
 
-    handlebars_map_str_update(map, HBS_STRL("_parent"), options->data);
+    map = handlebars_map_str_update(map, HBS_STRL("_parent"), options->data);
     struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
     handlebars_value_map(frame, map);
 
@@ -997,14 +998,14 @@ FIXTURE_FN(2919388099)
     struct handlebars_map * map = handlebars_map_ctor(CONTEXT, handlebars_value_count(options->data) + handlebars_value_count(options->hash) + 1);
 
     HANDLEBARS_VALUE_FOREACH_KV(options->data, key, child) {
-        handlebars_map_update(map, key, child);
+        map = handlebars_map_update(map, key, child);
     } HANDLEBARS_VALUE_FOREACH_END();
 
     HANDLEBARS_VALUE_FOREACH_KV(options->hash, key, child) {
-        handlebars_map_update(map, key, child);
+        map = handlebars_map_update(map, key, child);
     } HANDLEBARS_VALUE_FOREACH_END();
 
-    handlebars_map_str_update(map, HBS_STRL("_parent"), options->data);
+    map = handlebars_map_str_update(map, HBS_STRL("_parent"), options->data);
 
     struct handlebars_value * frame = handlebars_value_ctor(CONTEXT);
     // handlebars_value_map_init(frame, 0); // zero may trigger extra rehashes - good for testing

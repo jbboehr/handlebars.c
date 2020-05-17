@@ -61,6 +61,10 @@ struct handlebars_map * handlebars_map_ctor(
     size_t capacity
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+struct handlebars_map * handlebars_map_copy_ctor(
+    struct handlebars_map * map
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
 /**
  * @brief Destruct a map
  * @param[in] map The name
@@ -111,13 +115,13 @@ struct handlebars_value * handlebars_map_str_find(
  * @param[in] map
  * @param[in] key
  * @param[in] value
- * @return void
+ * @return The original map, or if reallocated, a new map
  */
-void handlebars_map_add(
+struct handlebars_map * handlebars_map_add(
     struct handlebars_map * map,
     struct handlebars_string * key,
     struct handlebars_value * value
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Add a value to a map. Adding a key twice is an error, use #handlebars_map_str_update instead. (const char[] with length variant)
@@ -125,27 +129,27 @@ void handlebars_map_add(
  * @param[in] key
  * @param[in] len
  * @param[in] value
- * @return void
+ * @return The original map, or if reallocated, a new map
  */
-void handlebars_map_str_add(
+struct handlebars_map * handlebars_map_str_add(
     struct handlebars_map * map,
     const char * key,
     size_t len,
     struct handlebars_value * value
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Update or add a value (#handlebars_string variant)
  * @param[in] map
  * @param[in] key
  * @param[in] value
- * @return void
+ * @return The original map, or if reallocated, a new map
  */
-void handlebars_map_update(
+struct handlebars_map * handlebars_map_update(
     struct handlebars_map * map,
     struct handlebars_string * key,
     struct handlebars_value * value
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Update or add a value (const char[] with length variant)
@@ -153,38 +157,38 @@ void handlebars_map_update(
  * @param[in] key
  * @param[in] len
  * @param[in] value
- * @return void
+ * @return The original map, or if reallocated, a new map
  */
-void handlebars_map_str_update(
+struct handlebars_map * handlebars_map_str_update(
     struct handlebars_map * map,
     const char * key,
     size_t len,
     struct handlebars_value * value
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Remove a value by key (#handlebars_string variant)
  * @param[in] map
  * @param[in] key
- * @return Whether or not an element was removed
+ * @return The original map, or if reallocated, a new map
  */
-bool handlebars_map_remove(
+struct handlebars_map * handlebars_map_remove(
     struct handlebars_map * map,
     struct handlebars_string * key
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Remove a value by key (const char[] with length variant)
  * @param[in] map
  * @param[in] key
  * @param[in] len
- * @return Whether or not an element was removed
+ * @return The original map, or if reallocated, a new map
  */
-bool handlebars_map_str_remove(
+struct handlebars_map * handlebars_map_str_remove(
     struct handlebars_map * map,
     const char * key,
     size_t len
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Returns the number of items in the nmap
