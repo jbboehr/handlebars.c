@@ -117,7 +117,7 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
     size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    char * buf = handlebars_talloc_array(CONTEXT, char, size);
+    char * buf = handlebars_talloc_array(CONTEXT, char, size + 1);
     size_t read = fread(buf, size, 1, f);
     fclose(f);
 

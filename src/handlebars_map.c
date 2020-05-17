@@ -214,10 +214,18 @@ static inline void map_add_at_table_offset(
     assert(map->table[offset] == NULL || map->table[offset] == HANDLEBARS_MAP_TOMBSTONE);
 
     struct handlebars_map_entry * entry = &map->vec[map->vec_offset];
-    entry->key = talloc_steal(map, handlebars_string_copy_ctor(map->ctx, (const struct handlebars_string *) key));
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+    entry->key = key;
+    handlebars_string_addref(entry->key);
+#else
+    entry->key = handlebars_string_copy_ctor(map->ctx, (const struct handlebars_string *) key);
     HANDLEBARS_MEMCHECK(entry->key, map->ctx);
+#endif
+
     entry->value = value;
     handlebars_value_addref(value);
+
     entry->table_offset = offset;
 
     // Add to table
@@ -382,7 +390,7 @@ struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_ma
 
     handlebars_map_foreach(prev_map, index, key, value) {
         map = handlebars_map_add(map, key, value);
-    } handlebars_map_foreach_end();
+    } handlebars_map_foreach_end(prev_map);
 
     return map;
 }
@@ -395,8 +403,9 @@ struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_ma
 void handlebars_map_dtor(struct handlebars_map * map)
 {
     handlebars_map_foreach(map, index, key, value) {
+        handlebars_string_delref(key);
         handlebars_value_delref(value);
-    } handlebars_map_foreach_end();
+    } handlebars_map_foreach_end(map);
 
     handlebars_talloc_free(map);
 }
@@ -676,6 +685,7 @@ struct handlebars_map * handlebars_map_sort_r(
 struct handlebars_map * handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
 {
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
+    handlebars_string_addref(string);
     map = handlebars_map_remove(map, string);
     handlebars_string_delref(string);
     return map;
@@ -684,6 +694,7 @@ struct handlebars_map * handlebars_map_str_remove(struct handlebars_map * map, c
 struct handlebars_map * handlebars_map_str_add(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
+    handlebars_string_addref(string);
     map = handlebars_map_add(map, string, value);
     handlebars_string_delref(string);
     return map;
@@ -692,6 +703,7 @@ struct handlebars_map * handlebars_map_str_add(struct handlebars_map * map, cons
 struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, const char * key, size_t len)
 {
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
+    handlebars_string_addref(string);
     struct handlebars_value * value = handlebars_map_find(map, string);
     handlebars_string_delref(string);
     return value;
@@ -700,6 +712,7 @@ struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, c
 struct handlebars_map * handlebars_map_str_update(struct handlebars_map * map, const char * key, size_t len, struct handlebars_value * value)
 {
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
+    handlebars_string_addref(string);
     map = handlebars_map_update(map, string, value);
     handlebars_string_delref(string);
     return map;

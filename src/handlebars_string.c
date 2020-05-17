@@ -202,6 +202,9 @@ struct handlebars_string * handlebars_string_copy_ctor(
     HANDLEBARS_MEMCHECK(st, context);
     talloc_set_type(st, struct handlebars_string);
     memcpy(st, string, size);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&st->rc, string_rc_dtor);
+#endif
     return st;
 }
 

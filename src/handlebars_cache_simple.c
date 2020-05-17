@@ -107,7 +107,7 @@ static int cache_gc(struct handlebars_cache * cache)
         } else {
             break;
         }
-    } handlebars_map_foreach_end();
+    } handlebars_map_foreach_end(map);
 
     map = handlebars_map_rehash(map, false);
 

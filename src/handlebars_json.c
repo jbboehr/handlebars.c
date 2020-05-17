@@ -233,6 +233,7 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
                 it->current = handlebars_value_from_json_object(CONTEXT, (json_object *) entry->v);
                 it->length = (size_t) json_object_object_length(intern);
                 it->next = &hbs_json_iterator_next_object;
+                handlebars_string_addref(it->key);
                 handlebars_value_addref(it->current);
                 return true;
             } else {

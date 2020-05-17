@@ -187,7 +187,14 @@ struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack,
 
         size_t capacity = (stack->capacity | 3) * 3 / 2;
         struct handlebars_context * ctx = stack->ctx;
+#ifndef HANDLEBARS_NO_REFCOUNT
         stack = handlebars_talloc_realloc_size(NULL, stack, handlebars_stack_size(capacity));
+#else
+        // We're going to be hemorrhaging memory when refcounting is disabled
+        struct handlebars_stack * prev_stack = stack;
+        stack = handlebars_talloc_size(ctx, handlebars_stack_size(capacity));
+        memcpy(stack, prev_stack, handlebars_stack_size(prev_stack->capacity));
+#endif
         HANDLEBARS_MEMCHECK(stack, ctx);
         talloc_set_type(stack, struct handlebars_stack);
         stack->capacity = capacity;

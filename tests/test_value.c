@@ -223,13 +223,11 @@ START_TEST(test_map_find)
         handlebars_value_integer(tmp, 2358);
         tmp_str = handlebars_string_ctor(context, HBS_STRL("a"));
         map = handlebars_map_update(map, tmp_str, tmp);
-        handlebars_talloc_free(tmp_str);
 
         tmp = handlebars_value_ctor(context);
         handlebars_value_str_steal(tmp, handlebars_string_ctor(context, HBS_STRL("test")));
         tmp_str = handlebars_string_ctor(context, HBS_STRL("b"));
         map = handlebars_map_update(map, tmp_str, tmp);
-        handlebars_talloc_free(tmp_str);
 
         handlebars_value_map(value, map);
     } while(0);

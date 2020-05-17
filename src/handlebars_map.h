@@ -292,7 +292,7 @@ struct handlebars_map * handlebars_map_sort_r(
             handlebars_map_get_kv_at_index(map, index, &key, &value); \
             if (key == NULL || value == NULL) continue;
 
-#define handlebars_map_foreach_end() \
+#define handlebars_map_foreach_end(map) \
         } \
         handlebars_map_set_is_in_iteration(map, old_is_in_iteration); \
     } while(0)
