@@ -26,12 +26,13 @@ function strip_extension() {
 function run_test_inner() (
 	set -e -o pipefail
 
-	TEMPLATE="templates/${1}"
-	DATA="templates/${2}"
-	EXTRA_OPTS="${3} ${4} --partial-loader --partial-path ./partials --partial-ext .handlebars"
-	time_outputfile=`mktemp`
-	actual_outputfile=`mktemp`
-	expected_file=templates/$(strip_extension $TEMPLATE).expected
+	local template_path="templates/${1}"
+	local DATA="templates/${2}"
+	local EXTRA_OPTS="${3} ${4} --partial-loader --partial-path ./partials --partial-ext .handlebars"
+	local time_outputfile=`mktemp`
+	local actual_outputfile=`mktemp`
+	local expected_file=templates/$(strip_extension $template_path).expected
+	local time_format="real %e\nuser %U\nsys %S\nmrss %M KB"
 
 	# header
 	echo "----- Running: ${1} -----"
@@ -40,8 +41,14 @@ function run_test_inner() (
 	fi
 
 	# execute command
-	COMMAND="${TIME} --output=${time_outputfile} -p ${HANDLEBARSC} --run-count ${RUN_COUNT} ${EXTRA_OPTS} --data ${DATA} ${TEMPLATE}"
-	${COMMAND} 1>${actual_outputfile}
+	${TIME} -f "${time_format}" \
+		--output=${time_outputfile} \
+		${HANDLEBARSC} \
+		--run-count ${RUN_COUNT} \
+		${EXTRA_OPTS} \
+		--data ${DATA} \
+		${template_path} \
+		1>${actual_outputfile}
 
 	# print time
 	real_time=`cat ${time_outputfile} | grep real | awk '{ print $2 }'`
