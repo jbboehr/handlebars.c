@@ -188,7 +188,7 @@ whoopsie:
     }
 
     result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, result_str);
+    handlebars_value_str(result, result_str);
 
     //handlebars_value_try_delref(context);  // @todo double-check
     if( use_data ) {
@@ -212,7 +212,7 @@ whoopsie:
 struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_value * context;
-    struct handlebars_string * result = NULL;
+    struct handlebars_string * result_str = NULL;
     bool is_zero;
     struct handlebars_value * ret = NULL;
 
@@ -224,20 +224,20 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HEL
     is_zero = handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_INTEGER && handlebars_value_get_intval(context) == 0;
 
     if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_TRUE ) {
-        result = handlebars_vm_execute_program(options->vm, options->program, options->scope);
+        result_str = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     } else if( handlebars_value_is_empty(context) && !is_zero ) {
 inverse:
-        result = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
+        result_str = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
         ret = handlebars_vm_call_helper_str(HBS_STRL("each"), argc, argv, options);
         goto done;
     } else {
         // For object, etc
-        result = handlebars_vm_execute_program(options->vm, options->program, context);
+        result_str = handlebars_vm_execute_program(options->vm, options->program, context);
     }
 
     ret = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(ret, result);
+    handlebars_value_str(ret, result_str);
 
     //handlebars_value_try_delref(context); // @todo double-check
 
@@ -307,7 +307,7 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
     long program;
     struct handlebars_value * tmp = NULL;
     struct handlebars_value * ret = NULL;
-    struct handlebars_string * result;
+    struct handlebars_string * result_str = NULL;
 
     if (argc != 1) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "#if requires exactly one argument");
@@ -342,9 +342,9 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
         program = options->inverse;
     }
 
-    result = handlebars_vm_execute_program(options->vm, program, options->scope);
+    result_str = handlebars_vm_execute_program(options->vm, program, options->scope);
     ret = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(ret, result);
+    handlebars_value_str(ret, result_str);
 
     SAFE_RETURN(ret);
 }
@@ -369,7 +369,7 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 
 struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
 {
-    struct handlebars_string * result = NULL;
+    struct handlebars_string * result_str = NULL;
     struct handlebars_value * context = argv[0];
     struct handlebars_value * block_params = NULL;
     struct handlebars_value * ret = NULL;
@@ -396,19 +396,19 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
 
     if( context == NULL ) {
         context = handlebars_value_ctor(CONTEXT);
-        result = handlebars_vm_execute_program(options->vm, options->inverse, context);
+        result_str = handlebars_vm_execute_program(options->vm, options->inverse, context);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_NULL ) {
-        result = handlebars_vm_execute_program(options->vm, options->inverse, context);
+        result_str = handlebars_vm_execute_program(options->vm, options->inverse, context);
     } else {
         block_params = handlebars_value_ctor(CONTEXT);
         handlebars_value_array_init(block_params, 2);
         handlebars_value_array_set(block_params, 0, context);
 
-        result = handlebars_vm_execute_program_ex(options->vm, options->program, context, options->data, block_params);
+        result_str = handlebars_vm_execute_program_ex(options->vm, options->program, context, options->data, block_params);
     }
 
     ret = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(ret, result);
+    handlebars_value_str(ret, result_str);
 
     //handlebars_value_delref(context); // @todo double-check
 

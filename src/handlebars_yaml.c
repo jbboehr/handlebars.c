@@ -97,7 +97,7 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
                     return;
                 }
                 // String
-                handlebars_value_stringl(value, (const char *) node->data.scalar.value, node->data.scalar.length);
+                handlebars_value_cstrl(value, (const char *) node->data.scalar.value, node->data.scalar.length);
             }
             break;
         default:

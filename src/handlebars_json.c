@@ -304,7 +304,7 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
             handlebars_value_integer(value, json_object_get_int64(json));
             break;
         case json_type_string:
-            handlebars_value_stringl(value, json_object_get_string(json), json_object_get_string_len(json));
+            handlebars_value_cstrl(value, json_object_get_string(json), json_object_get_string_len(json));
             break;
 
         case json_type_object:

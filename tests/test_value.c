@@ -78,7 +78,7 @@ END_TEST
 START_TEST(test_string)
 {
     struct handlebars_value * value = handlebars_value_ctor(context);
-    handlebars_value_str_steal(value, handlebars_string_ctor(context, HBS_STRL("test")));
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("test")));
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_STRING);
     const char * tmp = handlebars_value_get_strval(value);
 	ck_assert_str_eq(tmp, "test");
@@ -180,7 +180,6 @@ START_TEST(test_array_find)
         tmp = handlebars_value_ctor(context);
         tmp_str = handlebars_string_ctor(context, HBS_STRL("test"));
         handlebars_value_str(tmp, tmp_str);
-        handlebars_talloc_free(tmp_str);
         handlebars_value_array_push(value, tmp);
     } while(0);
 
@@ -225,7 +224,7 @@ START_TEST(test_map_find)
         map = handlebars_map_update(map, tmp_str, tmp);
 
         tmp = handlebars_value_ctor(context);
-        handlebars_value_str_steal(tmp, handlebars_string_ctor(context, HBS_STRL("test")));
+        handlebars_value_str(tmp, handlebars_string_ctor(context, HBS_STRL("test")));
         tmp_str = handlebars_string_ctor(context, HBS_STRL("b"));
         map = handlebars_map_update(map, tmp_str, tmp);
 

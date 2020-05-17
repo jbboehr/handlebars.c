@@ -114,7 +114,7 @@ static void execute_gc_test(struct handlebars_cache * cache)
     handlebars_value_convert(value);
 
     struct handlebars_value * partial = handlebars_value_ctor(context);
-    handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
+    handlebars_value_cstrl(partial, HBS_STRL("{{bar}}"));
 
     struct handlebars_value * partials = handlebars_value_ctor(context);
     do {
@@ -164,7 +164,7 @@ static void execute_reset_test(struct handlebars_cache * cache)
     handlebars_value_convert(value);
 
     struct handlebars_value * partial = handlebars_value_ctor(context);
-    handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
+    handlebars_value_cstrl(partial, HBS_STRL("{{bar}}"));
 
     struct handlebars_value * partials = handlebars_value_ctor(context);
     do {

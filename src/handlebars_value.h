@@ -301,29 +301,12 @@ void handlebars_value_float(struct handlebars_value * value, double dval) HBS_AT
 void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Set the string value (#handlebars_string variant) and `talloc_steal` the given string.
- * @param[in] value
- * @param[in] string
- * @return void
- */
-void handlebars_value_str_steal(struct handlebars_value * value, struct handlebars_string * string) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Set the string value (const char[] variant)
- * @param[in] value
- * @param[in] strval
- * @return void
- */
-
-void handlebars_value_string(struct handlebars_value * value, const char * strval) HBS_ATTR_NONNULL_ALL;
-
-/**
  * @brief Set the string value (char[] variant) and `talloc_free` the given string
  * @param[in] value
  * @param[in] strval
  * @return void
  */
-void handlebars_value_string_steal(struct handlebars_value * value, char * strval) HBS_ATTR_NONNULL_ALL;
+void handlebars_value_cstr_steal(struct handlebars_value * value, char * strval) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Set the string value (char[] with length variant)
@@ -332,7 +315,7 @@ void handlebars_value_string_steal(struct handlebars_value * value, char * strva
  * @param[in] strlen
  * @return void
  */
-void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen) HBS_ATTR_NONNULL_ALL;
+void handlebars_value_cstrl(struct handlebars_value * value, const char * strval, size_t strlen) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_value_ptr(struct handlebars_value * value, void * ptr) HBS_ATTR_NONNULL_ALL;
 

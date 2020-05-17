@@ -579,7 +579,7 @@ static inline struct handlebars_value * invoke_mustache_style_lambda(
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
     struct handlebars_string * rv_str = execute_template(context, vm, tmpl, value, NULL, 0);
     rv = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(rv, rv_str);
+    handlebars_value_str(rv, rv_str);
     handlebars_context_dtor(context);
 
     handlebars_value_delref(lambda_result);

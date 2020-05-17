@@ -46,7 +46,7 @@
 #define FIXTURE_FN(hash) static struct handlebars_value * fixture_ ## hash(HANDLEBARS_HELPER_ARGS)
 #define FIXTURE_STRING(string) \
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT); \
-    handlebars_value_string(value, string); \
+    handlebars_value_cstrl(value, HBS_STRL(string)); \
     return value;
 #define FIXTURE_INTEGER(integer) \
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT); \
@@ -80,7 +80,7 @@ FIXTURE_FN(49286285)
 {
     struct handlebars_value * arg = argv[0];
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string_steal(result, handlebars_talloc_asprintf(
+    handlebars_value_cstr_steal(result, handlebars_talloc_asprintf(
             arg, "%s%s", "bar",  hbs_str_val(handlebars_value_to_string(arg))
     ));
     return result;
@@ -113,10 +113,9 @@ FIXTURE_FN(454102302)
     struct handlebars_value * prefix = argv[0];
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     if (handlebars_value_get_type(prefix) == HANDLEBARS_VALUE_TYPE_NULL) {
-        const char * tmp = "undefined";
-        handlebars_value_string(result, tmp);
+        handlebars_value_cstrl(result, HBS_STRL("undefined"));
     } else {
-        handlebars_value_str_steal(result, handlebars_value_expression(prefix, 1));
+        handlebars_value_str(result, handlebars_value_expression(prefix, 1));
     }
     return result;
 }
@@ -135,7 +134,7 @@ FIXTURE_FN(459219799)
             hbs_str_val(res)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
 
     handlebars_talloc_free(tmp);
     handlebars_talloc_free(res);
@@ -177,7 +176,7 @@ FIXTURE_FN(510017722)
 
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
 
     return result;
 }
@@ -188,7 +187,7 @@ FIXTURE_FN(585442881)
     struct handlebars_value * cruel = argv[0];
     struct handlebars_value * world = argv[1];
     struct handlebars_value * greeting = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(greeting, "Goodbye");
+    handlebars_value_cstrl(greeting, HBS_STRL("Goodbye"));
     struct handlebars_map * context_map = handlebars_map_ctor(CONTEXT, 3);
     context_map = handlebars_map_str_update(context_map, HBS_STRL("greeting"), greeting);
     context_map = handlebars_map_str_update(context_map, HBS_STRL("adj"), cruel);
@@ -197,7 +196,7 @@ FIXTURE_FN(585442881)
     handlebars_value_map(context, context_map);
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
 
     return result;
 }
@@ -209,10 +208,10 @@ FIXTURE_FN(620640779)
     struct handlebars_value * times2 = argv[1];
     // @todo this should be a float perhaps?
     /* if( times->type != HANDLEBARS_VALUE_TYPE_FLOAT || times->type != HANDLEBARS_VALUE_TYPE_INTEGER ) {
-        handlebars_value_string(times, "NaN");
+        handlebars_value_cstrl(times, HBS_STRL("NaN"));
     }
     if( times2->type != HANDLEBARS_VALUE_TYPE_FLOAT || times2->type != HANDLEBARS_VALUE_TYPE_INTEGER ) {
-        handlebars_value_string(times2, "NaN");
+        handlebars_value_cstrl(times2, HBS_STRL("NaN"));
     } */
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
@@ -221,7 +220,7 @@ FIXTURE_FN(620640779)
             hbs_str_val(handlebars_value_to_string(times2))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -239,7 +238,7 @@ FIXTURE_FN(620828131)
             hbs_str_val(handlebars_value_to_string(world))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -272,7 +271,7 @@ FIXTURE_FN(690821881)
             hbs_str_val(handlebars_value_to_string(url))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -292,7 +291,7 @@ FIXTURE_FN(666457330)
         );
         handlebars_talloc_free(res);
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string(result, tmp);
+        handlebars_value_cstrl(result, tmp, strlen(tmp));
         handlebars_talloc_free(tmp);
         return result;
     } else if( handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_FALSE ) {
@@ -317,7 +316,7 @@ FIXTURE_FN(730081660)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -332,7 +331,7 @@ FIXTURE_FN(730672213)
                 hbs_str_val(handlebars_value_to_string(mesg))
         );
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string(result, tmp);
+        handlebars_value_cstrl(result, tmp, strlen(tmp));
         handlebars_talloc_free(tmp);
         handlebars_value_set_flag(result, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
         return result;
@@ -360,7 +359,7 @@ FIXTURE_FN(748362646)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -382,10 +381,10 @@ FIXTURE_FN(922226146)
 {
     // "function (block) { return block.fn(''); }"
     struct handlebars_value * context = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(context, "");
+    handlebars_value_cstrl(context, HBS_STRL(""));
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     return result;
 }
 
@@ -401,7 +400,7 @@ FIXTURE_FN(929767352)
             handlebars_value_is_empty(exclaim) ? "" : "!"
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, ret);
+    handlebars_value_cstrl(result, ret, strlen(ret));
     handlebars_talloc_free(ret);
     return result;
 }
@@ -429,7 +428,7 @@ FIXTURE_FN(931412676)
 
     struct handlebars_string * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, frame, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, res);
+    handlebars_value_str(result, res);
     return result;
 }
 
@@ -451,7 +450,7 @@ FIXTURE_FN(1211570580)
             hbs_str_val(options->name)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -471,7 +470,7 @@ FIXTURE_FN(1091971719)
                 "winning"
         );
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string(result, tmp);
+        handlebars_value_cstrl(result, tmp, strlen(tmp));
         handlebars_talloc_free(tmp);
         handlebars_value_set_flag(result, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
         return result;
@@ -492,7 +491,7 @@ FIXTURE_FN(1041501180)
             hbs_str_val(handlebars_value_to_string(b))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -510,7 +509,7 @@ FIXTURE_FN(1102272015)
                 hbs_str_val(handlebars_value_to_string(world))
         );
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string(result, tmp);
+        handlebars_value_cstrl(result, tmp, strlen(tmp));
         handlebars_talloc_free(tmp);
         return result;
     } else if( handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_FALSE ) {
@@ -534,7 +533,7 @@ FIXTURE_FN(1198465479)
             hbs_str_val(handlebars_value_to_string(noun)),
             (handlebars_value_get_boolval(exclaim) ? "!" : "")
     );
-    handlebars_value_string_steal(result, tmp);
+    handlebars_value_cstr_steal(result, tmp);
     return result;
 }
 
@@ -550,7 +549,7 @@ FIXTURE_FN(1283397100)
     struct handlebars_value * context = handlebars_value_from_json_string(CONTEXT, "{\"exclaim\": \"?\"}");
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     return result;
 }
 
@@ -573,7 +572,7 @@ FIXTURE_FN(1582700088)
             hbs_str_val(handlebars_value_to_string(fun))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, res);
+    handlebars_value_cstrl(result, res, strlen(res));
     handlebars_talloc_free(res);
     return result;
 }
@@ -588,7 +587,7 @@ FIXTURE_FN(1623791204)
             !*tmp ? "undefined" : tmp
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, res);
+    handlebars_value_cstrl(result, res, strlen(res));
     handlebars_talloc_free(res);
     return result;
 }
@@ -627,7 +626,7 @@ FIXTURE_FN(1774917451)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -642,7 +641,7 @@ FIXTURE_FN(1818365722)
             hbs_str_val(handlebars_value_to_string(param))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -652,7 +651,7 @@ FIXTURE_FN(1872958178)
     // "function (options) {\n        return options.fn(this);\n      }"
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, options->scope);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     return result;
 }
 
@@ -668,7 +667,7 @@ FIXTURE_FN(1983911259)
             hbs_str_val(handlebars_value_to_string(argv[2]))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -683,7 +682,7 @@ FIXTURE_FN(2084318034)
                                             (handlebars_value_get_type(arg1) == HANDLEBARS_VALUE_TYPE_NULL ? "true" : "false"),
                                             "object");
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(value, res);
+    handlebars_value_cstrl(value, res, strlen(res));
     handlebars_talloc_free(res);
     return value;
 }
@@ -701,7 +700,7 @@ FIXTURE_FN(2089689191)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -726,7 +725,7 @@ FIXTURE_FN(2107645267)
             hbs_str_val(handlebars_value_to_string(text))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -742,7 +741,7 @@ FIXTURE_FN(2182811123)
             hbs_str_val(handlebars_value_to_string(value))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 
@@ -751,7 +750,7 @@ FIXTURE_FN(2182811123)
 FIXTURE_FN(2259424295)
 {
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(value, "&'\\<>");
+    handlebars_value_cstrl(value, HBS_STRL("&'\\<>"));
     handlebars_value_set_flag(value, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
     return value;
 }
@@ -768,7 +767,7 @@ FIXTURE_FN(2262633698)
             hbs_str_val(handlebars_value_to_string(b))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -785,10 +784,10 @@ FIXTURE_FN(2327777290)
 {
     // "function (block) { return block.inverse(''); }"
     struct handlebars_value * context = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(context, "");
+    handlebars_value_cstrl(context, HBS_STRL(""));
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->inverse, context);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     return result;
 }
 
@@ -823,7 +822,7 @@ FIXTURE_FN(2515293198)
             hbs_str_val(handlebars_value_to_string(bool2))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -857,7 +856,7 @@ FIXTURE_FN(2573932141)
     );
     handlebars_talloc_free(tmp);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp2);
+    handlebars_value_cstrl(result, tmp2, strlen(tmp2));
     handlebars_talloc_free(tmp2);
     return result;
 }
@@ -868,7 +867,7 @@ FIXTURE_FN(2596410860)
     struct handlebars_value * context = argv[0];
     struct handlebars_string * res = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(value, res);
+    handlebars_value_str(value, res);
     return value;
 }
 
@@ -877,7 +876,7 @@ FIXTURE_FN(2600345162)
     // "function (defaultString) {\n        return new Handlebars.SafeString(defaultString);\n      }"
     struct handlebars_value * context = argv[0];
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(value, hbs_str_val(handlebars_value_to_string(context)));
+    handlebars_value_str(value, handlebars_value_to_string(context));
     handlebars_value_set_flag(value, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
     return value;
 }
@@ -906,7 +905,7 @@ FIXTURE_FN(2632597106)
             hbs_str_val(tmp3)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -925,7 +924,7 @@ FIXTURE_FN(2659134105)
             hbs_str_val(handlebars_value_to_string(times))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -940,7 +939,7 @@ FIXTURE_FN(2736662431)
     handlebars_value_map_init(context, 0); // zero may trigger extra rehashes - good for testing
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     return result;
 }
 
@@ -951,7 +950,7 @@ FIXTURE_FN(2795443460)
     handlebars_value_convert(context);
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, context);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     return result;
 }
 
@@ -961,10 +960,10 @@ FIXTURE_FN(2818908139)
     struct handlebars_value * context = handlebars_value_from_json_string(CONTEXT, "{\"exclaim\": \"?\"}");
     struct handlebars_value * data = handlebars_value_from_json_string(CONTEXT, "{\"adjective\": \"sad\"}");
     struct handlebars_value * exclaim = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(exclaim, "!");
+    handlebars_value_cstrl(exclaim, HBS_STRL("!"));
     struct handlebars_string * res = handlebars_vm_execute_program_ex(options->vm, options->program, context, data, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, res);
+    handlebars_value_str(result, res);
     return result;
 }
 
@@ -977,7 +976,7 @@ FIXTURE_FN(2842041837)
             hbs_str_val(options->name)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -987,7 +986,7 @@ FIXTURE_FN(2857704189)
     // "function (options) {\n        return new Handlebars.SafeString(options.fn());\n      }"
     struct handlebars_string * tmp = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     handlebars_value_set_flag(result, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
     return result;
 }
@@ -1013,7 +1012,7 @@ FIXTURE_FN(2919388099)
 
     struct handlebars_string * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, frame, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, res);
+    handlebars_value_str(result, res);
     return result;
 }
 
@@ -1043,7 +1042,7 @@ FIXTURE_FN(2961119846)
             hbs_str_val(handlebars_value_to_string(adjective)),
             hbs_str_val(handlebars_value_to_string(noun))
     );
-    handlebars_value_string_steal(result, tmp);
+    handlebars_value_cstr_steal(result, tmp);
     return result;
 }
 
@@ -1057,7 +1056,7 @@ FIXTURE_FN(3011980185)
     handlebars_value_convert(context);
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, context, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     return result;
 }
 
@@ -1084,7 +1083,7 @@ FIXTURE_FN(3065257350)
     struct handlebars_string * tmp2 = handlebars_vm_execute_program(options->vm, options->program, options->scope);
     tmp = handlebars_talloc_strdup_append(tmp, hbs_str_val(tmp2));
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string_steal(result, tmp);
+    handlebars_value_cstr_steal(result, tmp);
     handlebars_talloc_free(tmp2);
     return result;
 }
@@ -1115,7 +1114,7 @@ FIXTURE_FN(3168412868)
     handlebars_value_convert(data);
     struct handlebars_string * res = handlebars_vm_execute_program_ex(options->vm, options->program, context, data, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, res);
+    handlebars_value_str(result, res);
     return result;
 }
 
@@ -1131,7 +1130,7 @@ FIXTURE_FN(3206093801)
     );
     handlebars_talloc_free(res);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string_steal(result, tmp);
+    handlebars_value_cstr_steal(result, tmp);
     return result;
 }
 
@@ -1156,7 +1155,7 @@ FIXTURE_FN(325991858)
             hbs_str_val(tmp3)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string_steal(result, tmp);
+    handlebars_value_cstr_steal(result, tmp);
     handlebars_talloc_free(tmp1);
     handlebars_talloc_free(tmp2);
     handlebars_talloc_free(tmp3);
@@ -1184,7 +1183,7 @@ FIXTURE_FN(3308130198)
             hbs_str_val(handlebars_value_to_string(value))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -1203,7 +1202,7 @@ FIXTURE_FN(3325763044)
             hbs_str_val(handlebars_value_to_string(theOther))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -1219,7 +1218,7 @@ FIXTURE_FN(3327136760)
         i++;
     }
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -1249,7 +1248,7 @@ FIXTURE_FN(3407223629)
             hbs_str_val(options->name)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -1264,7 +1263,7 @@ FIXTURE_FN(3578728160)
 {
     // "function () {\n            return 'undefined!';\n          }"
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(value, "undefined!");
+    handlebars_value_cstrl(value, HBS_STRL("undefined!"));
     return value;
 }
 
@@ -1273,7 +1272,7 @@ FIXTURE_FN(3659403207)
     // "function (value) {\n        return 'bar ' + value;\n    }"
     struct handlebars_value * arg = argv[0];
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string_steal(result, handlebars_talloc_asprintf(
+    handlebars_value_cstr_steal(result, handlebars_talloc_asprintf(
             arg, "%s%s", "bar ",  hbs_str_val(handlebars_value_to_string(arg))
     ));
     return result;
@@ -1289,7 +1288,7 @@ FIXTURE_FN(3691188061)
             hbs_str_val(handlebars_value_to_string(value))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, ret);
+    handlebars_value_cstrl(result, ret, strlen(ret));
     handlebars_talloc_free(ret);
     return result;
 }
@@ -1320,7 +1319,7 @@ FIXTURE_FN(3728875550)
             hbs_str_val(ret)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string_steal(result, ret2);
+    handlebars_value_cstr_steal(result, ret2);
     return result;
 }
 
@@ -1330,7 +1329,7 @@ FIXTURE_FN(3781305181)
     struct handlebars_value * times = argv[0];
     // @todo this should be a float perhaps?
     /* if( times->type != HANDLEBARS_VALUE_TYPE_FLOAT || times->type != HANDLEBARS_VALUE_TYPE_INTEGER ) {
-        handlebars_value_string(times, "NaN");
+        handlebars_value_cstrl(times, HBS_STRL("NaN"));
     }*/
     char * tmp = handlebars_talloc_asprintf(
             options->vm,
@@ -1338,7 +1337,7 @@ FIXTURE_FN(3781305181)
             hbs_str_val(handlebars_value_to_string(times))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -1370,7 +1369,7 @@ FIXTURE_FN(3878511480)
         handlebars_talloc_free(tmp2);
     }
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string_steal(result, tmp);
+    handlebars_value_cstr_steal(result, tmp);
     return result;
 }
 
@@ -1393,7 +1392,7 @@ FIXTURE_FN(4005129518)
             hbs_str_val(tmp2)
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp3);
+    handlebars_value_cstrl(result, tmp3, strlen(tmp3));
     handlebars_value_set_flag(result, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
     handlebars_talloc_free(tmp1);
     handlebars_talloc_free(tmp2);
@@ -1415,7 +1414,7 @@ FIXTURE_FN(4112130635)
             hbs_str_val(handlebars_value_to_string(exclaim))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, res);
+    handlebars_value_cstrl(result, res, strlen(res));
     handlebars_talloc_free(res);
     return result;
 }
@@ -1430,7 +1429,7 @@ FIXTURE_FN(4158918668)
             !*tmp ? "undefined" : tmp
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, res);
+    handlebars_value_cstrl(result, res, strlen(res));
     handlebars_talloc_free(res);
     return result;
 }
@@ -1439,7 +1438,7 @@ FIXTURE_FN(4204859626)
 {
     struct handlebars_string * res = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, NULL, NULL);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, res);
+    handlebars_value_str(result, res);
     return result;
 }
 
@@ -1451,7 +1450,7 @@ FIXTURE_FN(4207421535)
     handlebars_value_convert(block_params);
     struct handlebars_string * tmp = handlebars_vm_execute_program_ex(options->vm, options->program, options->scope, NULL, block_params);
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, tmp);
+    handlebars_value_str(result, tmp);
     return result;
 }
 
@@ -1486,7 +1485,7 @@ FIXTURE_FN(1569150712)
                 hbs_str_val(handlebars_value_to_string(world))
         );
         struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-        handlebars_value_string(result, tmp);
+        handlebars_value_cstrl(result, tmp, strlen(tmp));
         handlebars_talloc_free(tmp);
         return result;
     } else if (print && handlebars_value_get_type(print) == HANDLEBARS_VALUE_TYPE_FALSE) {
@@ -1510,7 +1509,7 @@ FIXTURE_FN(1646670161)
         str = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
     }
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(result, str);
+    handlebars_value_str(result, str);
     return result;
 }
 
@@ -1557,7 +1556,7 @@ FIXTURE_FN(1561073198)
             hbs_str_val(handlebars_value_to_string(fun))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -1626,7 +1625,7 @@ FIXTURE_FN(3964931170)
             hbs_str_val(handlebars_value_to_string(argv[0]))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -1645,7 +1644,7 @@ FIXTURE_FN(2718175385)
             hbs_str_val(handlebars_value_to_string(argv[0]))
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }
@@ -1664,7 +1663,7 @@ FIXTURE_FN(2000357317)
             "__"
     );
     struct handlebars_value * result = handlebars_value_ctor(CONTEXT);
-    handlebars_value_string(result, tmp);
+    handlebars_value_cstrl(result, tmp, strlen(tmp));
     handlebars_talloc_free(tmp);
     return result;
 }

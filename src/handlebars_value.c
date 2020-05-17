@@ -356,7 +356,8 @@ struct handlebars_string * handlebars_value_to_string(struct handlebars_value * 
 {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
-            return handlebars_string_copy_ctor(CONTEXT, value->v.string);
+            handlebars_string_addref(value->v.string);
+            return value->v.string;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             return handlebars_string_asprintf(CONTEXT, "%ld", value->v.lval);
         case HANDLEBARS_VALUE_TYPE_FLOAT:
@@ -482,36 +483,22 @@ void handlebars_value_float(struct handlebars_value * value, double dval)
 
 void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string)
 {
+    handlebars_string_addref(string);
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = handlebars_string_copy_ctor(value->ctx, string);
+    value->v.string = string;
 }
 
-void handlebars_value_str_steal(struct handlebars_value * value, struct handlebars_string * string)
-{
-    handlebars_value_null(value);
-    value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = talloc_steal(value->ctx, string);
-}
-
-void handlebars_value_string(struct handlebars_value * value, const char * strval)
+void handlebars_value_cstr_steal(struct handlebars_value * value, char * strval)
 {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
+    handlebars_talloc_free(strval);
     handlebars_string_addref(value->v.string);
 }
 
-void handlebars_value_string_steal(struct handlebars_value * value, char * strval)
-{
-    handlebars_value_null(value);
-    value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
-    talloc_free(strval); // meh
-    handlebars_string_addref(value->v.string);
-}
-
-void handlebars_value_stringl(struct handlebars_value * value, const char * strval, size_t strlen)
+void handlebars_value_cstrl(struct handlebars_value * value, const char * strval, size_t strlen)
 {
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
