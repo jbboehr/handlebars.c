@@ -68,6 +68,7 @@ static short enable_partial_loader = 0;
 static long run_count = 1;
 static bool convert_input = true;
 static bool newline_at_eof = true;
+static size_t pool_size = 2 * 1024 * 1024;
 
 enum handlebarsc_mode {
     handlebarsc_mode_usage = 0,
@@ -79,7 +80,35 @@ enum handlebarsc_mode {
     handlebarsc_mode_debug
 };
 
+enum handlebarsc_flag {
+    // short flags
+    handlebarsc_flag_help = 'h',
+    handlebarsc_flag_version = 'V',
+    handlebarsc_flag_template = 't',
+    handlebarsc_flag_data = 'D',
+    handlebarsc_flag_no_newline = 'n',
+
+    // misc flags
+    handlebarsc_flag_pool_size = 500,
+    handlebarsc_flag_no_convert_input = 501,
+    handlebarsc_flag_run_count = 502,
+    handlebarsc_flag_partial_ext = 503,
+    handlebarsc_flag_partial_path = 504,
+    handlebarsc_flag_partial_loader = 505,
+    handlebarsc_flag_flags = 506,
+
+    // modes
+    handlebarsc_flag_lex = 600,
+    handlebarsc_flag_parse = 601,
+    handlebarsc_flag_compile = 602,
+    handlebarsc_flag_execute = 603,
+    handlebarsc_flag_debug = 604
+};
+
 static enum handlebarsc_mode mode = handlebarsc_mode_execute;
+
+#define HBSC_OPT(a, b, c) {HBS_S1(a), b, 0, c},
+#define HBSC_OPT_END {0, 0, 0, 0}
 
 /**
  * http://linux.die.net/man/3/getopt_long
@@ -93,62 +122,69 @@ static void readOpts(int argc, char * argv[])
 
     static struct option long_options[] = {
         // modes
-        {"help",      no_argument,              0,  'h' },
-        {"lex",       no_argument,              0,  'l' },
-        {"parse",     no_argument,              0,  'p' },
-        {"compile",   no_argument,              0,  'c' },
-        {"execute",   no_argument,              0,  'e' },
-        {"version",   no_argument,              0,  'V' },
-        {"debug",     no_argument,              0,  'd' },
+        HBSC_OPT(help, no_argument, handlebarsc_flag_help)
+        HBSC_OPT(lex, no_argument, handlebarsc_flag_lex)
+        HBSC_OPT(parse, no_argument, handlebarsc_flag_parse)
+        HBSC_OPT(compile, no_argument, handlebarsc_flag_compile)
+        HBSC_OPT(execute, no_argument, handlebarsc_flag_execute)
+        HBSC_OPT(version, no_argument, handlebarsc_flag_version)
+        HBSC_OPT(debug, no_argument, handlebarsc_flag_debug)
         // input
-        {"template",  required_argument,        0,  't' },
-        {"data",      required_argument,        0,  'D' },
+        HBSC_OPT(template, required_argument, handlebarsc_flag_template)
+        HBSC_OPT(data, required_argument, handlebarsc_flag_data)
         // compiler flags
-        {"flags",     required_argument,        0,  'F' },
+        HBSC_OPT(flags, required_argument, handlebarsc_flag_flags)
         // loaders
-        {"partial-loader", no_argument,         0,  'P' },
-        {"partial-path",   required_argument,   0,  'A' },
-        {"partial-ext",    required_argument,   0,  'X' },
+        HBSC_OPT(partial-loader, no_argument, handlebarsc_flag_partial_loader)
+        HBSC_OPT(partial-path, required_argument, handlebarsc_flag_partial_path)
+        HBSC_OPT(partial-ext, required_argument, handlebarsc_flag_partial_ext)
         // misc
-        {"run-count",    required_argument,     0,  'N' },
-        {"no-convert-input", no_argument,       0,  'C' },
-        {"no-newline", no_argument,             0,  'n' },
+        HBSC_OPT(run-count, required_argument, handlebarsc_flag_run_count)
+        HBSC_OPT(no-convert-input, no_argument, handlebarsc_flag_no_convert_input)
+        HBSC_OPT(no-newline, no_argument, handlebarsc_flag_no_newline)
+        HBSC_OPT(pool-size, required_argument, handlebarsc_flag_pool_size)
         // end
-        {0,           0,                        0,  0   }
+        HBSC_OPT_END
     };
 
 start:
-    c = getopt_long(argc, argv, "hlpcVt:D:", long_options, &option_index);
+    c = getopt_long(argc, argv, "hnVt:D:", long_options, &option_index);
     if( c == -1 ) {
         return;
     }
 
     switch( c ) {
         // modes
-        case 'h':
+        case handlebarsc_flag_help:
             mode = handlebarsc_mode_usage;
             break;
-        case 'l':
+
+        case handlebarsc_flag_lex:
             mode = handlebarsc_mode_lex;
             break;
-        case 'p':
+
+        case handlebarsc_flag_parse:
             mode = handlebarsc_mode_parse;
             break;
-        case 'c':
+
+        case handlebarsc_flag_compile:
             mode = handlebarsc_mode_compile;
             break;
-        case 'e':
+
+        case handlebarsc_flag_execute:
             mode = handlebarsc_mode_execute;
             break;
-        case 'V':
+
+        case handlebarsc_flag_version:
             mode = handlebarsc_mode_version;
             break;
-        case 'd':
+
+        case handlebarsc_flag_debug:
             mode = handlebarsc_mode_debug;
             break;
 
         // compiler flags
-        case 'F':
+        case handlebarsc_flag_flags:
             // we could do this more efficiently
             if (NULL != strstr(optarg, "compat")) {
                 compiler_flags |= handlebars_compiler_flag_compat;
@@ -182,33 +218,42 @@ start:
             }
             break;
 
-        case 'P':
+        // partials
+        case handlebarsc_flag_partial_loader:
             enable_partial_loader = 1;
             break;
-        case 'A':
+
+        case handlebarsc_flag_partial_path:
             partial_path = optarg;
             break;
-        case 'X':
+
+        case handlebarsc_flag_partial_ext:
             partial_extension = optarg;
             break;
 
         // input
-        case 't':
+        case handlebarsc_flag_template:
             input_name = optarg;
             break;
-        case 'D':
+        case handlebarsc_flag_data:
             input_data_name = optarg;
             break;
 
         // misc
-        case 'N':
+        case handlebarsc_flag_run_count:
             sscanf(optarg, "%ld", &run_count);
             break;
-        case 'C':
+
+        case handlebarsc_flag_no_convert_input:
             convert_input = false;
             break;
-        case 'n':
+
+        case handlebarsc_flag_no_newline:
             newline_at_eof = false;
+            break;
+
+        case handlebarsc_flag_pool_size:
+            sscanf(optarg, "%zu", &pool_size);
             break;
 
         default: break;
@@ -283,11 +328,11 @@ static int do_usage(void)
         "\n"
         "Mode options:\n"
         "  -h, --help            Show this message\n"
-        "  -e, --execute         Execute the specified template (default)\n"
-        "  -l, --lex             Lex the specified template into tokens\n"
-        "  -p, --parse           Parse the specified template into an AST\n"
-        "  -c, --compile         Compile the specified template into opcodes\n"
         "  -V, --version         Print the version\n"
+        "  --execute             Execute the specified template (default)\n"
+        "  --lex                 Lex the specified template into tokens\n"
+        "  --parse               Parse the specified template into an AST\n"
+        "  --compile             Compile the specified template into opcodes\n"
         "\n"
         "Input options:\n"
         "  -t, --template=FILE   The template to operate on\n"
@@ -303,6 +348,7 @@ static int do_usage(void)
         "  --partial-loader      Specify to enable loading partials dynamically\n"
         "  --partial-path=DIR    The directory in which to look for partials\n"
         "  --partial-ext=EXT     The file extension of partials, including the '.'\n"
+        "  --pool-size=SIZE      The size of the memory pool to use, 0 to disable (default 2 MB)\n"
         "  --run-count=NUM       The number of times to execute (for benchmarking)\n"
         "\n"
         "The partial loader will concat the partial-path, given partial name in the template,\n"
@@ -368,7 +414,7 @@ static int do_lex(void)
     struct handlebars_token ** tokens;
     jmp_buf jmp;
 
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(root);
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
@@ -411,7 +457,7 @@ static int do_parse(void)
     struct handlebars_ast_node * ast;
     jmp_buf jmp;
 
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(root);
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
@@ -452,7 +498,7 @@ static int do_compile(void)
     struct handlebars_program * program;
     jmp_buf jmp;
 
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(root);
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
@@ -500,7 +546,7 @@ static int do_execute(void)
     struct handlebars_value * partials;
     jmp_buf jmp;
 
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(root);
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
@@ -617,6 +663,12 @@ int main(int argc, char * argv[])
     }
 
     readOpts(argc, argv);
+
+    if (pool_size > 0) {
+        void * old_root = root;
+        root = talloc_pool(NULL, pool_size);
+        talloc_steal(root, old_root);
+    }
 
     if( optind < argc ) {
         while( optind < argc ) {
