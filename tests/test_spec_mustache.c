@@ -91,7 +91,7 @@ static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node, const c
     test = &(tests[tests_len++]);
     memset(test, 0, sizeof(struct mustache_test));
     test->suite_name = spec;
-    test->ctx = handlebars_context_ctor_ex(root);
+    test->ctx = handlebars_context_ctor_ex(tests);
     test->flags = handlebars_compiler_flag_compat | handlebars_compiler_flag_mustache_style_lambdas;
 
     for( pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++ ) {
@@ -101,18 +101,18 @@ static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node, const c
 
         if( 0 == strcmp("name", key->data.scalar.value) ) {
             assert(value->type == YAML_SCALAR_NODE);
-            test->name = handlebars_talloc_strdup(root, value->data.scalar.value);
+            test->name = handlebars_talloc_strdup(tests, value->data.scalar.value);
         } else if( 0 == strcmp("desc", key->data.scalar.value) ) {
             assert(value->type == YAML_SCALAR_NODE);
-            test->desc = handlebars_talloc_strdup(root, value->data.scalar.value);
+            test->desc = handlebars_talloc_strdup(tests, value->data.scalar.value);
         } else if( 0 == strcmp("data", key->data.scalar.value) ) {
             test->data = handlebars_value_from_yaml_node(test->ctx, document, value);
         } else if( 0 == strcmp("template", key->data.scalar.value) ) {
             assert(value->type == YAML_SCALAR_NODE);
-            test->tmpl = handlebars_talloc_strdup(root, value->data.scalar.value);
+            test->tmpl = handlebars_talloc_strdup(tests, value->data.scalar.value);
         } else if( 0 == strcmp("expected", key->data.scalar.value) ) {
             assert(value->type == YAML_SCALAR_NODE);
-            test->expected = handlebars_talloc_strdup(root, value->data.scalar.value);
+            test->expected = handlebars_talloc_strdup(tests, value->data.scalar.value);
         } else if( 0 == strcmp("partials", key->data.scalar.value) ) {
             //assert(value->type == YAML_MAPPING_NODE);
             loadSpecTestPartials(document, value, test);
@@ -240,7 +240,7 @@ START_TEST(test_ast_to_string_on_mustache_spec)
     actual = normalize_template_whitespace(context, ast_str);
     expected = normalize_template_whitespace(context, tmpl);
     if (strcmp(actual, expected) != 0) {
-        char *tmp = handlebars_talloc_asprintf(root,
+        char *tmp = handlebars_talloc_asprintf(tests,
                                                "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                                                "" /*test->suite_name*/,
                                                test->name, test->desc, test->flags,
@@ -264,7 +264,9 @@ START_TEST(test_mustache_spec)
     fprintf(stderr, "DESC: %s\n", test->desc);
     fprintf(stderr, "TMPL: %s\n", test->tmpl);
     if( test->partials ) {
-        fprintf(stderr, "PARTIALS:\n%s\n", handlebars_value_dump(test->partials, 0));
+        char * tmp = handlebars_value_dump(test->partials, 0);
+        fprintf(stderr, "PARTIALS:\n%s\n", tmp);
+        talloc_free(tmp);
     }
 #endif
 
@@ -307,17 +309,20 @@ START_TEST(test_mustache_spec)
     // Setup partials
     struct handlebars_value * partials;
     if( test->partials ) {
-        partials = test->partials; // @TODO this may have the wrong parent - might be bad
+        // @TODO this may have the wrong parent - might be bad
+        partials = /*handlebars_value_copy*/(test->partials);
     } else {
         partials = handlebars_value_ctor(context);
         handlebars_value_map_init(partials, 0);
     }
     handlebars_vm_set_partials(vm, partials);
 
-    load_fixtures(test->data);
+    // Setup input
+    struct handlebars_value * input = /*handlebars_value_copy*/(test->data);
+    load_fixtures(input);
 
     // Execute
-    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, test->data);
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, input);
 
 #ifndef NDEBUG
     if( test->expected ) {
@@ -338,7 +343,7 @@ START_TEST(test_mustache_spec)
 
     if (!hbs_str_eq_strl(buffer, test->expected, strlen(test->expected))) {
         char *tmp = handlebars_talloc_asprintf(
-            root,
+            tests,
             "Failed.\n"
             "Num: %d\n"
             "Suite: %s\n"
@@ -359,12 +364,26 @@ START_TEST(test_mustache_spec)
         );
         ck_abort_msg(tmp);
     }
+
+    // ugh
+    talloc_free(test->ctx);
 }
 END_TEST
 
 static Suite * suite(void);
 static Suite * suite(void)
 {
+    // Load specs
+    loadSpec("comments");
+    loadSpec("delimiters");
+    loadSpec("interpolation");
+    loadSpec("inverted");
+    loadSpec("partials");
+    loadSpec("sections");
+    loadSpec("~lambdas");
+    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
+
+    // Setup the suite
     Suite * s = suite_create("Mustache Spec");
     int start = 0;
     int end = tests_len;
@@ -391,17 +410,7 @@ static Suite * suite(void)
 
 int main(int argc, char *argv[])
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Load specs
+    // Load the spec
     spec_dir = getenv("mustache_spec_dir");
     if( spec_dir == NULL && argc >= 2 ) {
         spec_dir = argv[1];
@@ -409,31 +418,7 @@ int main(int argc, char *argv[])
     if( spec_dir == NULL ) {
         spec_dir = "./spec/mustache/specs";
     }
-    loadSpec("comments");
-    loadSpec("delimiters");
-    loadSpec("interpolation");
-    loadSpec("inverted");
-    loadSpec("partials");
-    loadSpec("sections");
-    loadSpec("~lambdas");
-    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
 
-    // Set up test suite
-    Suite * s = suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    // Run the suite
+    return default_main(&suite);
 }

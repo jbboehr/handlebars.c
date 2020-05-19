@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set -e -o pipefail
+# this might break stuff in travis. most of the work is run in subshells so
+# they should be safe
+#set -e -o pipefail
 
 export CC="$MYCC"
 export PREFIX="$HOME/build"
@@ -11,7 +13,7 @@ export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:/usr/lib/$ARCH-linux-gnu/pkgconfig
 export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
 export SUDO="sudo"
 
-mkdir -p "${PREFIX/include}" "${PREFIX}/include/json-c" "${PREFIX}/lib/pkgconfig"
+mkdir -p "${PREFIX}/include" "${PREFIX}/include/json-c" "${PREFIX}/lib/pkgconfig"
 
 if [ -z "$ARCH" ]; then
 	export ARCH=amd64
@@ -25,9 +27,13 @@ fi
 function install_apt_packages() (
 	set -e -o pipefail
 
+	$SUDO apt-add-repository -y ppa:ubuntu-toolchain-r/test
+	$SUDO apt-get update -y
+	$SUDO apt-get purge -y bison flex gperf re2c valgrind
+
 	# we commit the generated files for these now:
 	# apt-get install -y bison flex gperf re2c
-	local apt_packages_to_install="${MYCC} automake pkg-config:${ARCH} gcc-multilib check:${ARCH} libpcre3-dev:${ARCH} libtalloc-dev:${ARCH} libsubunit-dev:${ARCH}"
+	local apt_packages_to_install="${MYCC} autotools-dev autoconf automake libtool m4 pkg-config:${ARCH} gcc-multilib check:${ARCH} libpcre3-dev:${ARCH} libtalloc-dev:${ARCH} libsubunit-dev:${ARCH}"
 	if [ "$COVERAGE" = "true" ]; then
 		apt_packages_to_install="${apt_packages_to_install} lcov"
 	fi
@@ -35,9 +41,10 @@ function install_apt_packages() (
 		# json-c might be having issues: https://bugs.launchpad.net/ubuntu/+source/json-c/+bug/1878738
 		apt_packages_to_install="${apt_packages_to_install} libjson-c-dev:${ARCH} liblmdb-dev:${ARCH} libyaml-dev:${ARCH}"
 	fi
-	$SUDO apt-add-repository -y ppa:ubuntu-toolchain-r/test
-	$SUDO apt-get update -y
-	$SUDO apt-get purge -y bison flex gperf re2c
+	if [ "$VALGRIND" == "true" ]; then
+		apt_packages_to_install="${apt_packages_to_install} valgrind"
+	fi
+
 	$SUDO apt-get install -y ${apt_packages_to_install}
 )
 
@@ -47,14 +54,6 @@ function install_coveralls_lcov() (
 	if [ "$COVERAGE" = "true" ]; then
 		gem install coveralls-lcov
 	fi
-)
-
-function before_install() (
-	set -e -o pipefail
-
-	# currently not using this function, add to .travis.yml instead
-	install_apt_packages
-	install_coveralls_lcov
 )
 
 function configure_handlebars() {
@@ -86,12 +85,16 @@ function configure_handlebars() {
 		extra_configure_flags="$extra_configure_flags --enable-code-coverage"
 	fi
 
-	if [ "$HARDENING" = "true" ]; then
+	if [ "$HARDENING" != "false" ]; then
 		extra_configure_flags="$extra_configure_flags --enable-hardening"
+	else
+		extra_configure_flags="$extra_configure_flags --disable-hardening"
 	fi
 
 	if [ "$LTO" = "true" ]; then
 		extra_configure_flags="${extra_configure_flags} --enable-lto"
+	else
+		extra_configure_flags="${extra_configure_flags} --disable-lto"
 	fi
 
 	if [ "$MINIMAL" = "true" ]; then
@@ -100,8 +103,15 @@ function configure_handlebars() {
 		extra_configure_flags="${extra_configure_flags} --enable-handlebars-memory --enable-check --enable-json --enable-lmdb --enable-pcre  --enable-pthread --enable-subunit --enable-yaml"
 	fi
 
-	./bootstrap
+	if [ "$VALGRIND" = "true" ]; then
+		extra_configure_flags="${extra_configure_flags} --enable-valgrind"
+	else
+		extra_configure_flags="${extra_configure_flags} --disable-valgrind"
+	fi
 
+	autoreconf -v
+
+	echo "Configuring with flags: ${extra_configure_flags}"
 	trap "cat config.log" ERR
 	./configure ${extra_configure_flags}
 	trap - ERR
@@ -119,16 +129,7 @@ function install_handlebars() (
 	make install
 )
 
-function install() (
-	set -e -o pipefail
-
-	# currently not using this function, add to .travis.yml instead
-	configure_handlebars
-	make_handlebars
-	install_handlebars
-)
-
-function before_script() (
+function initialize_coverage() (
 	set -e -o pipefail
 
 	if [ "$COVERAGE" = "true" ]; then
@@ -140,7 +141,12 @@ function before_script() (
 function test_handlebars() (
 	set -e -o pipefail
 
-	make check
+	trap "dump_logs" ERR
+	if [ "$VALGRIND" == "true" ]; then
+		make check-valgrind
+	else
+		make check
+	fi
 )
 
 function run_handlebars_benchmark() (
@@ -151,15 +157,7 @@ function run_handlebars_benchmark() (
 	fi
 )
 
-function script() (
-	set -e -o pipefail
-
-	# currently not using this function, add to .travis.yml instead
-	test_handlebars
-	run_handlebars_benchmark
-)
-
-function after_success() (
+function upload_coverage() (
 	set -e -o pipefail
 
 	if [ "$COVERAGE" = "true" ]; then
@@ -176,19 +174,12 @@ function after_success() (
 	fi
 )
 
-function after_failure() (
+function dump_logs() (
 	set -e -o pipefail
 
-	if [ "$COVERAGE" = "true" ]; then
-		for i in `find tests -name "*.log" 2>/dev/null`; do
-			echo "-- START ${i}";
-			cat "${i}";
-			echo "-- END";
-		done
-	fi
-	if [ -f tests/test-suite.log ]; then
-			echo "-- START test-suite.log";
-			cat tests/test-suite.log
-			echo "-- END";
-	fi
+	for i in `find tests -name "*.log" 2>/dev/null`; do
+		echo "-- START ${i}";
+		cat "${i}";
+		echo "-- END";
+	done
 )

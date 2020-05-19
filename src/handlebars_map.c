@@ -194,25 +194,6 @@ static inline struct ht_find_result ht_find_entry(
     return ret;
 }
 
-static inline int ht_add_entry(
-    struct handlebars_context * ctx,
-    struct handlebars_map_entry ** table,
-    size_t table_capacity,
-    struct handlebars_map_entry * entry
-) {
-    struct ht_find_result o = ht_find_entry(ctx, table, table_capacity, entry->key);
-    if (!o.empty_found) {
-        // We should never get here (unless we implemented max_lookahead and forgot)
-        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failure to add hash element");
-    } else if (o.entry_found) {
-        // We should really never get here
-        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failure to add hash element");
-    }
-    table[o.empty_offset] = entry;
-    entry->table_offset = o.empty_offset;
-    return o.tombstones;
-}
-
 static inline void map_add_at_table_offset(
     struct handlebars_map * map,
     struct handlebars_string * key,

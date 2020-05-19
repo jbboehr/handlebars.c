@@ -178,36 +178,5 @@ static Suite * suite(void)
 
 int main(void)
 {
-    int number_failed;
-    Suite * s;
-    SRunner * sr;
-    int memdebug = 0;
-    int iswin = 0;
-    int error = 0;
-
-    talloc_set_log_stderr();
-
-#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
-    iswin = 1;
-#endif
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    s = suite();
-    sr = srunner_create(s);
-    if( iswin || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-    return error;
+    return default_main(&suite);
 }

@@ -72,7 +72,6 @@ struct generic_test {
     const char * raw;
 };
 
-static int memdebug;
 static struct generic_test ** tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
@@ -319,10 +318,7 @@ error:
     if( data ) {
         free(data);
     }
-    if( result ) {
-        // @todo free?
-        //json_object_put(result);
-    }
+    HBS_TEST_JSON_DTOR(tests, result);
     return error;
 }
 
@@ -565,6 +561,22 @@ END_TEST
 static Suite * suite(void);
 static Suite * suite(void)
 {
+    // Load the spec
+    loadSpec("basic");
+    loadSpec("blocks");
+    loadSpec("builtins");
+    loadSpec("data");
+    loadSpec("helpers");
+    loadSpec("partials");
+    loadSpec("regressions");
+    loadSpec("strict");
+    //loadSpec("string-params");
+    loadSpec("subexpressions");
+    //loadSpec("track-ids");
+    loadSpec("whitespace-control");
+    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
+
+    // Setup the suite
     const char * title = "Handlebars Spec";
     TCase * tc_handlebars_spec = tcase_create(title);
     Suite * s = suite_create(title);
@@ -594,23 +606,11 @@ static Suite * suite(void)
 
 int main(int argc, char *argv[])
 {
-    int number_failed;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
     // Get runs
     if( getenv("TEST_RUNS") ) {
         runs = atoi(getenv("TEST_RUNS"));
     }
 
-    // Load specs
     // Load the spec
     spec_dir = getenv("handlebars_spec_dir");
     if( spec_dir == NULL && argc >= 2 ) {
@@ -619,40 +619,7 @@ int main(int argc, char *argv[])
     if( spec_dir == NULL ) {
         spec_dir = "./spec/handlebars/spec";
     }
-    loadSpec("basic");
-    loadSpec("blocks");
-    loadSpec("builtins");
-    loadSpec("data");
-    loadSpec("helpers");
-    loadSpec("partials");
-    loadSpec("regressions");
-    loadSpec("strict");
-    //loadSpec("string-params");
-    loadSpec("subexpressions");
-    //loadSpec("track-ids");
-    loadSpec("whitespace-control");
-    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
 
-    // Set up test suite
-    Suite * s = suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        // What should we free here?
-        handlebars_talloc_free(root);
-        //handlebars_talloc_free(tests);
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    // Run the suite
+    return default_main(&suite);
 }

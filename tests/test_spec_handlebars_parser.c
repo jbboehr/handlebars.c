@@ -177,10 +177,7 @@ error:
     if( data ) {
         free(data);
     }
-    if( result ) {
-        // @todo free?
-        // json_object_put(result);
-    }
+    HBS_TEST_JSON_DTOR(tests, result);
     return error;
 }
 
@@ -271,6 +268,13 @@ END_TEST
 static Suite * suite(void);
 static Suite * suite(void)
 {
+    // Load the spec
+    if( 0 != loadSpec(spec_filename) ) {
+        abort();
+    }
+    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
+
+    // Setup the suite
     const char * title = "Handlebars Parser Spec";
     Suite * s = suite_create(title);
 
@@ -284,24 +288,6 @@ static Suite * suite(void)
 
 int main(int argc, char *argv[])
 {
-    int number_failed;
-    Suite * s;
-    SRunner * sr;
-    int memdebug = 0;
-    int iswin = 0;
-    int error = 0;
-
-    talloc_set_log_stderr();
-
-#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
-    iswin = 1;
-#endif
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
     // Load the spec
     spec_filename = getenv("handlebars_parser_spec");
     if( spec_filename == NULL && argc >= 2 ) {
@@ -310,26 +296,7 @@ int main(int argc, char *argv[])
     if( spec_filename == NULL ) {
         spec_filename = "./spec/handlebars/spec/parser.json";
     }
-    error = loadSpec(spec_filename);
-    if( error != 0 ) {
-        goto error;
-    }
-    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
 
-    s = suite();
-    sr = srunner_create(s);
-    if( iswin || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-error:
-    talloc_free(root);
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-    return error;
+    // Run the suite
+    return default_main(&suite);
 }

@@ -376,13 +376,13 @@ static struct handlebars_string * loadTestOpcodesPrint(json_object * object)
     struct handlebars_program * program;
     struct handlebars_string * output;
 
-    test_context = handlebars_context_ctor_ex(root);
-    program = handlebars_talloc_zero(context, struct handlebars_program);
+    test_context = handlebars_context_ctor_ex(tests);
+    program = handlebars_talloc_zero(test_context, struct handlebars_program);
 
     loadTestProgram(test_context, program, object);
 
     output = handlebars_program_print(test_context, program, 0);
-    output = talloc_steal(root, output);
+    output = talloc_steal(tests, output);
 
     handlebars_context_dtor(test_context);
     return output;
@@ -391,17 +391,17 @@ static struct handlebars_string * loadTestOpcodesPrint(json_object * object)
 static int loadSpecTestKnownHelpers(struct compiler_test * test, json_object * object)
 {
     // Let's just allocate a nice fat array >.>
-    char ** known_helpers = talloc_zero_array(root, char *, 32);
+    char ** known_helpers = talloc_zero_array(tests, char *, 32);
     char ** ptr = known_helpers;
     const char ** ptr2 = handlebars_builtins_names();
 
     for( ; *ptr2 ; ++ptr2 ) {
-        *ptr = handlebars_talloc_strdup(root, *ptr2);
+        *ptr = handlebars_talloc_strdup(tests, *ptr2);
         ptr++;
     }
 
     json_object_object_foreach(object, key, value) {
-        *ptr = handlebars_talloc_strdup(root, key);
+        *ptr = handlebars_talloc_strdup(tests, key);
         ptr++;
     }
 
@@ -528,19 +528,19 @@ static int loadSpecTest(const char * name, json_object * object)
     // Get description
     cur = json_object_object_get(object, "description");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->description = handlebars_talloc_strdup(root, json_object_get_string(cur));
+        test->description = handlebars_talloc_strdup(tests, json_object_get_string(cur));
     }
 
     // Get it
     cur = json_object_object_get(object, "it");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->it = handlebars_talloc_strdup(root, json_object_get_string(cur));
+        test->it = handlebars_talloc_strdup(tests, json_object_get_string(cur));
     }
 
     // Get template
     cur = json_object_object_get(object, "template");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->tmpl = handlebars_talloc_strdup(root, json_object_get_string(cur));
+        test->tmpl = handlebars_talloc_strdup(tests, json_object_get_string(cur));
     }
 
     // Get opcodes
@@ -562,7 +562,7 @@ static int loadSpecTest(const char * name, json_object * object)
     // Get message
     cur = json_object_object_get(object, "message");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->message = handlebars_talloc_strdup(root, json_object_get_string(cur));
+        test->message = handlebars_talloc_strdup(tests, json_object_get_string(cur));
         nreq++;
     }
 
@@ -588,7 +588,7 @@ static int loadSpecTest(const char * name, json_object * object)
 
 static int loadSpec(const char * name)
 {
-    char * filename = handlebars_talloc_asprintf(root, "%s/%s.json", export_dir, name);
+    char * filename = handlebars_talloc_asprintf(tests, "%s/%s.json", export_dir, name);
     int error = 0;
     char * data = NULL;
     size_t data_len = 0;
@@ -643,9 +643,7 @@ error:
     if( data ) {
         free(data);
     }
-    if( result ) {
-        json_object_put(result);
-    }
+    HBS_TEST_JSON_DTOR(tests, result);
     return error;
 }
 
@@ -697,7 +695,7 @@ START_TEST(handlebars_spec_compiler)
     } else {*/
         //ck_assert_str_eq(printer->output, test->expected);
         if (!handlebars_string_eq(actual, test->expected)) {
-            char * tmp = handlebars_talloc_asprintf(root,
+            char * tmp = handlebars_talloc_asprintf(tests,
                 "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                 test->suite_name,
                 test->description, test->it, test->flags,
@@ -711,6 +709,13 @@ END_TEST
 static Suite * suite(void);
 static Suite * suite(void)
 {
+    // Load the spec
+    if( 0 != loadAllSpecs() ) {
+        abort();
+    }
+    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
+
+    // Setup the suite
     const char * title = "Handlebars Compiler Spec";
     Suite * s = suite_create(title);
 
@@ -724,24 +729,6 @@ static Suite * suite(void)
 
 int main(int argc, char *argv[])
 {
-    int number_failed;
-    Suite * s;
-    SRunner * sr;
-    int memdebug = 0;
-    int iswin = 0;
-    int error = 0;
-
-    talloc_set_log_stderr();
-
-#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
-    iswin = 1;
-#endif
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
     // Get the export dir
     export_dir = getenv("handlebars_export_dir");
     if( export_dir == NULL && argc >= 2 ) {
@@ -751,28 +738,6 @@ int main(int argc, char *argv[])
         export_dir = "./spec/handlebars/export";
     }
 
-    // Load the spec
-    error = loadAllSpecs();
-    if( error != 0 ) {
-        goto error;
-    }
-    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
-
-    // Run tests
-    s = suite();
-    sr = srunner_create(s);
-    if( iswin || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-error:
-    talloc_free(root);
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-    return error;
+    // Run the suite
+    return default_main(&suite);
 }

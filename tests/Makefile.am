@@ -45,22 +45,6 @@ test_token_SOURCES = $(COMMONFILES) test_token.c
 test_utils_SOURCES = $(COMMONFILES) test_utils.c
 test_value_SOURCES = $(COMMONFILES) test_value.c
 
-TESTS = \
-	test_main \
-	test_ast \
-	test_ast_helpers \
-	test_ast_list \
-	test_compiler \
-	test_map \
-	test_opcode_printer \
-	test_opcodes \
-	test_scanners \
-	test_stack \
-	test_string \
-	test_token \
-	test_utils \
-	test_value
-
 if JSON
 test_cache_SOURCES = $(COMMONFILES) test_cache.c
 test_json_SOURCES = $(COMMONFILES) test_json.c
@@ -78,15 +62,6 @@ check_PROGRAMS += \
 	test_spec_handlebars_tokenizer \
 	test_spec_handlebars_compiler \
 	test_spec_handlebars
-
-TESTS += \
-	test_cache \
-	test_json \
-	test_partial_loader \
-	test_spec_handlebars_parser \
-	test_spec_handlebars_tokenizer \
-	test_spec_handlebars_compiler \
-	test_spec_handlebars
 endif
 
 if YAML
@@ -96,19 +71,15 @@ test_yaml_SOURCES = $(COMMONFILES) test_yaml.c
 check_PROGRAMS += \
 	test_spec_mustache \
 	test_yaml
-
-TESTS += \
-	test_spec_mustache \
-	test_yaml
 endif
 
 if HANDLEBARS_MEMORY
 test_random_alloc_fail_SOURCES = $(COMMONFILES) test_random_alloc_fail.c
 check_PROGRAMS += test_random_alloc_fail
-TESTS += test_random_alloc_fail
 endif
 
-TESTS_ENVIRONMENT = \
+TESTS = $(check_PROGRAMS)
+AM_TESTS_ENVIRONMENT = \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
 	handlebars_export_dir=@HANDLEBARS_SPEC_DIR@/export \
@@ -119,5 +90,9 @@ TESTS_ENVIRONMENT = \
 	CK_VERBOSITY=normal
 
 #if CHECK_HAS_TAP
-TESTS_ENVIRONMENT += CK_TAP_LOG_FILE_NAME=-
+AM_TESTS_ENVIRONMENT += CK_TAP_LOG_FILE_NAME=-
 #endif
+
+if VALGRIND_ENABLED
+@VALGRIND_CHECK_RULES@
+endif

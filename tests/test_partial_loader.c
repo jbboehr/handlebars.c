@@ -41,19 +41,11 @@
 
 
 
-TALLOC_CTX * memctx;
-static int memdebug;
-
 static struct handlebars_string * execute_template(const char *template)
 {
     struct handlebars_string *retval = NULL;
     struct handlebars_module * module;
     struct handlebars_value *input;
-
-    // Initialize
-    // ctx = handlebars_context_ctor_ex(memctx);
-    // parser = handlebars_parser_ctor(ctx);
-    // compiler = handlebars_compiler_ctor(ctx);
 
     // Parse
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), template, strlen(template)), 0);
@@ -108,6 +100,7 @@ START_TEST(test_partial_loader_1)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}");
     ck_assert_hbs_str_eq_cstr(rv, "|bar|\n");
+    talloc_free(rv);
 }
 END_TEST
 
@@ -115,6 +108,7 @@ START_TEST(test_partial_loader_2)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}{{> fixture1 .}}");
     ck_assert_hbs_str_eq_cstr(rv, "|bar|\n|bar|\n");
+    talloc_free(rv);
 }
 END_TEST
 
@@ -131,34 +125,5 @@ static Suite * suite(void)
 
 int main(void)
 {
-    int number_failed;
-    // int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

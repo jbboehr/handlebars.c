@@ -1,9 +1,9 @@
 let
-  generateHandlebarsCTestsForPlatform = { pkgs, stdenv, handlebarscSrc, handlebarscWithCmake ? false, handlebarscRefcounting ? true, handlebarscDebug ? false }: let
-  in
-    pkgs.callPackage ./default.nix {
-      inherit stdenv handlebarscWithCmake handlebarscRefcounting handlebarscDebug handlebarscSrc;
-    };
+  generateHandlebarsCTestsForPlatform = { pkgs, stdenv, ... }@args:
+    pkgs.callPackage ./default.nix (args // {
+      inherit stdenv;
+      WerrorSupport = true;
+    });
 
   generateHandlebarsCTestsForPlatform2 = { pkgs, ... }@args:
     pkgs.recurseIntoAttrs {
@@ -58,7 +58,7 @@ builtins.mapAttrs (k: _v:
     # cmake
     n1909-cmake = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
-      handlebarscWithCmake = true;
+      cmakeSupport = true;
     };
 
     # 32bit (gcc only)
@@ -73,13 +73,32 @@ builtins.mapAttrs (k: _v:
     # refcounting disabled
     n1909-norc = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
-      handlebarscRefcounting = false;
+      noRefcountingSupport = true;
     };
 
-    # debug/dev
+    # debug
     n1909-debug = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
-      handlebarscDebug = true;
+      debugSupport = true;
+      hardeningSupport = false;
+      ltoSupport = false;
+    };
+
+    # minimal
+    n1909-minimal = generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs handlebarscSrc;
+      hardeningSupport = false;
+      jsonSupport = false;
+      lmdbSupport = false;
+      ltoSupport = false;
+      pthreadSupport = false;
+      yamlSupport = false;
+    };
+
+    # valgrind
+    n1909-valgrind = generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs handlebarscSrc;
+      valgrindSupport = true;
     };
 
     n2003 = let

@@ -38,6 +38,17 @@
 
 #include <check.h>
 
+#ifdef HANDLEBARS_HAVE_JSON
+// json-c undeprecated json_object_object_get, but the version in xenial
+// is too old, so let's silence deprecated warnings for json-c
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <json.h>
+#include <json_object.h>
+#include <json_tokener.h>
+#pragma GCC diagnostic pop
+#endif
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_parser.h"
@@ -55,6 +66,7 @@ struct handlebars_compiler * compiler;
 struct handlebars_vm * vm;
 size_t init_blocks;
 static size_t root_blocks;
+static size_t null_blocks;
 
 void default_setup(void)
 {
@@ -64,7 +76,15 @@ void default_setup(void)
     if (!root) {
         root = talloc_init(NULL);
     }
+    null_blocks = talloc_total_blocks(NULL);
     root_blocks = talloc_total_blocks(root);
+#if 0
+    do {
+        FILE * tmp = fopen("./tmp1", "w");
+        talloc_report_full(NULL, tmp);
+        fclose(tmp);
+    } while(0);
+#endif
     context = handlebars_context_ctor_ex(root);
     parser = handlebars_parser_ctor(context);
     compiler = handlebars_compiler_ctor(context);
@@ -86,7 +106,18 @@ void default_teardown(void)
     parser = NULL;
     context = NULL;
     // Make sure we aren't leaking anything
-    ck_assert_uint_eq(root_blocks, talloc_total_blocks(root));
+#if 0
+    if (root_blocks != talloc_total_blocks(root)) {
+        FILE * tmp = fopen("./tmp2", "w");
+        talloc_report_full(NULL, tmp);
+        fclose(tmp);
+        abort();
+    }
+#endif
+    // These used to be ck_assert_uint_eq but stuff was freeing
+    // globals in mustache spec tests... so we changed it for now
+    ck_assert_uint_le(talloc_total_blocks(root), root_blocks);
+    ck_assert_uint_le(talloc_total_blocks(NULL), null_blocks);
 }
 
 
@@ -224,4 +255,63 @@ char * normalize_template_whitespace(TALLOC_CTX *ctx, struct handlebars_string *
         }
         i++;
     }
+}
+
+#ifdef HANDLEBARS_HAVE_JSON
+int hbs_test_json_dtor(struct hbs_test_json_holder * holder)
+{
+    if (holder && holder->obj) {
+        json_object_put(holder->obj);
+        holder->obj = NULL;
+    }
+
+    return 0;
+}
+#endif
+
+int default_main(suite_ctor_func suite_ctor)
+{
+    int number_failed;
+    int exit_code;
+
+    talloc_set_log_stderr();
+    talloc_enable_null_tracking();
+
+    // Setup root memory context
+    if (!root) {
+        root = talloc_new(NULL);
+    }
+
+    // Set up test suite
+    Suite * s = suite_ctor();
+    SRunner * sr = srunner_create(s);
+#if IS_WIN
+    srunner_set_fork_status(sr, CK_NOFORK);
+#endif
+#ifdef HANDLEBARS_HAVE_VALGRIND
+    if (RUNNING_ON_VALGRIND) {
+        srunner_set_fork_status(sr, CK_NOFORK);
+    }
+#endif
+    srunner_run_all(sr, CK_ENV);
+    number_failed = srunner_ntests_failed(sr);
+    srunner_free(sr);
+    exit_code = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+    if (root) {
+        talloc_free(root);
+    }
+
+    // Generate report for memdebug
+    if (talloc_total_size(NULL) > 0) {
+        talloc_report_full(NULL, stderr);
+        fprintf(stderr, "Talloc total size was greater than zero: %zu\n", talloc_total_size(NULL));
+        exit_code = EXIT_FAILURE;
+    }
+
+    // If we don't do this, valgrind reports the null context as a leak
+    talloc_disable_null_tracking();
+
+    // Return
+    return exit_code;
 }

@@ -330,6 +330,7 @@ void handlebars_value_init_json_string(struct handlebars_context *ctx, struct ha
     // @todo test parse error
     if( parse_err == json_tokener_success ) {
         handlebars_value_init_json_object(ctx, value, result);
+        json_object_put(result);
     } else {
         handlebars_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
     }

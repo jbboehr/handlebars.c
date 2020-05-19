@@ -87,6 +87,16 @@ AM_CONDITIONAL([GCC], [test x$GCC = xyes])
 AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
 AM_CONDITIONAL([RE2C], [test x$RE2C != xno])
 
+AC_MSG_CHECKING([if compiling with clang])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([], [[
+#ifndef __clang__
+       not clang
+#endif
+]])],
+[CLANG=yes], [CLANG=no])
+AC_MSG_RESULT([$CLANG])
+
 # Checks for header files
 AC_HEADER_STDC
 
@@ -139,6 +149,9 @@ AX_CODE_COVERAGE()
 AC_ARG_ENABLE([doxygen], [AS_HELP_STRING([--disable-doxygen], [disable support for doxygen])], [])
 AS_IF([test "x$enable_doxygen" != "xno"], [
 	AC_PATH_PROGS(DOXYGEN, [doxygen])
+	AS_IF([test "x$DOXYGEN" != "x"], [
+		enable_doxygen=yes
+	])
 ])
 AM_CONDITIONAL(DOXYGEN, [test "x$DOXYGEN" != "x"])
 
@@ -183,10 +196,15 @@ AS_IF([test "x$with_handlebars_spec" != "xno"], [
 AC_ARG_ENABLE([hardening], [AS_HELP_STRING([--enable-hardening], [enable hardening])], [])
 AS_IF([test "x$enable_hardening" == "xyes"], [
 	AX_ADD_FORTIFY_SOURCE()
-	AX_APPEND_COMPILE_FLAGS([-fcf-protection -fstack-protector-strong -grecord-gcc-switches -fstack-clash-protection -fPIC -DPIC])
-	AX_APPEND_LINK_FLAGS([-fcf-protection -fstack-protector-strong -grecord-gcc-switches -fstack-clash-protection -fPIC -DPIC])
+	AX_APPEND_COMPILE_FLAGS([-fstack-protector-strong -grecord-gcc-switches -fstack-clash-protection -fPIC -DPIC])
+	AX_APPEND_LINK_FLAGS([-fstack-protector-strong -grecord-gcc-switches -fstack-clash-protection -fPIC -DPIC])
 	AX_APPEND_COMPILE_FLAGS([-specs=$(pwd)/build/redhat-hardened-cc1 -specs=$(pwd)/build/redhat-hardened-ld])
 	AX_APPEND_LINK_FLAGS([-specs=$(pwd)/build/redhat-hardened-cc1 -specs=$(pwd)/build/redhat-hardened-ld])
+	# See: https://github.com/gdnsd/gdnsd/blob/f23273c688ae267d2b6049f0608f7b42193211fe/configure.ac#L84
+	AS_IF([test "x$CLANG" != "xyes"], [
+		AX_APPEND_COMPILE_FLAGS([-fcf-protection])
+		AX_APPEND_LINK_FLAGS([-fcf-protection])
+	])
 ])
 
 # Work around buggy handling in Nix
@@ -300,6 +318,12 @@ AM_CONDITIONAL([SUBUNIT], [test "x$enable_subunit" == "xyes"])
 # talloc
 PKG_CHECK_MODULES(TALLOC, [talloc], [enable_talloc=yes])
 
+# valgrind
+AX_VALGRIND_CHECK
+AS_IF([test "x$enable_valgrind" == "xyes"], [
+	AC_DEFINE([HANDLEBARS_HAVE_VALGRIND], [1], [Use valgrind])
+])
+
 # yaml
 AC_ARG_ENABLE([yaml], [AS_HELP_STRING([--disable-yaml], [disable support for yaml])], [])
 AS_IF([test "x$enable_yaml" != "xno"], [
@@ -315,10 +339,13 @@ AC_CONFIG_FILES([
   handlebars.pc
   src/Makefile
   Makefile
-  doc/Doxyfile
-  doc/Makefile
   bin/Makefile
-  tests/Makefile
+])
+AS_IF([test "x$enable_doxygen" == "xyes"], [
+	AC_CONFIG_FILES([doc/Doxyfile doc/Makefile])
+])
+AS_IF([test "x$enable_check" == "xyes"], [
+	AC_CONFIG_FILES([tests/Makefile])
 ])
 
 # Generate the "configure" script.

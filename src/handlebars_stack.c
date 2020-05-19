@@ -118,9 +118,10 @@ struct handlebars_stack * handlebars_stack_init(struct handlebars_context * ctx,
 
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx, size_t capacity)
 {
-    struct handlebars_stack * stack = handlebars_talloc_zero_size(ctx, handlebars_stack_size(capacity));
+    struct handlebars_stack * stack = handlebars_talloc_size(ctx, handlebars_stack_size(capacity));
     HANDLEBARS_MEMCHECK(stack, ctx);
     talloc_set_type(stack, struct handlebars_stack);
+    memset(stack, 0, sizeof(struct handlebars_stack));
     stack->ctx = ctx;
     stack->capacity = capacity;
     stack->flags = HANDLEBARS_STACK_TALLOCATED;

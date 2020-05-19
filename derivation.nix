@@ -1,25 +1,34 @@
 {
-  stdenv, fetchurl, pkgconfig,
+  lib, stdenv, fetchurl, pkgconfig,
   autoconf, automake, autoreconfHook, libtool, m4, # autoconf
   cmake, # cmake
   glib, json_c, lmdb, talloc, libyaml, pcre, # deps
   doxygen, # doc deps
   check, subunit, # testing deps
-  autoconf-archive, bison, flex, gperf, lcov, re2c, valgrind, kcachegrind, # debug deps
+  autoconf-archive, bison, flex, gperf, lcov, re2c, valgrind, kcachegrind, # dev deps
   handlebars_spec, mustache_spec, # my special stuff
-  handlebarscDebug ? false,
-  handlebarscDev ? false,
-  handlebarscDoc ? false,
-  handlebarscWithCmake ? false,
-  handlebarscRefcounting ? true,
-  handlebarscWerror ? false,
+  # source options
   handlebarscVersion ? null,
   handlebarscSrc ? null,
-  handlebarscSha256 ? null
+  handlebarscSha256 ? null,
+  # configure options
+  checkSupport ? true,
+  cmakeSupport ? false,
+  debugSupport ? false,
+  devSupport ? false,
+  doxygenSupport ? false,
+  hardeningSupport ? (!debugSupport),
+  jsonSupport ? true,
+  lmdbSupport ? true,
+  ltoSupport ? (!debugSupport),
+  noRefcountingSupport ? false,
+  pthreadSupport ? true,
+  WerrorSupport ? (debugSupport || devSupport),
+  valgrindSupport ? (debugSupport || devSupport),
+  yamlSupport ? true
 }:
 
 let
-  debug = false;
   orDefault = x: y: (if (!isNull x) then x else y);
 in
 
@@ -33,47 +42,79 @@ stdenv.mkDerivation rec {
   });
 
   outputs = [ "out" "dev" "bin" ]
-    ++ (if handlebarscDoc then [ "man" "doc" ] else []);
+    ++ lib.optionals doxygenSupport [ "man" "doc" ]
+    ;
 
   enableParallelBuilding = true;
-  buildInputs = [ glib json_c lmdb pcre libyaml ];
+
+  buildInputs = [ glib ]
+    ++ lib.optional  checkSupport pcre
+    ++ lib.optional  jsonSupport json_c
+    ++ lib.optional  lmdbSupport lmdb
+    ++ lib.optional  yamlSupport libyaml
+    ;
+
   propagatedBuildInputs = [ talloc pkgconfig ];
-  nativeBuildInputs = [ handlebars_spec mustache_spec check subunit ]
-    ++ (if handlebarscWithCmake then [ cmake ] else [ autoreconfHook autoconf automake libtool m4 ])
-    ++ (if handlebarscDev then [ valgrind kcachegrind autoconf-archive bison gperf flex lcov re2c ] else [])
-    ++ (if handlebarscDoc then [ doxygen ] else []);
 
-  doCheck = true;
-  configureFlags = [
-      "--with-handlebars-spec=${handlebars_spec}/share/handlebars-spec/"
-      "--with-mustache-spec=${mustache_spec}/share/mustache-spec/"
-      "--bindir=$(bin)/bin"
-      "--enable-check"
-      "--enable-json"
-      "--enable-lmdb"
-      "--enable-pcre"
-      "--enable-subunit"
-      "--enable-yaml"
-    ]
-    ++ (if handlebarscRefcounting then [] else ["--disable-refcounting"])
-    ++ (if handlebarscWerror then ["--enable-compile-warnings=error"] else ["--enable-compile-warnings=yes --disable-Werror"])
-    ++ (if handlebarscDebug then ["--enable-debug"] else [])
-    ++ (if handlebarscDoc then ["--mandir=$(man)/share/man --docdir=$(doc)/share/doc"] else []);
+  nativeBuildInputs = []
+    ++ lib.optionals checkSupport [ handlebars_spec mustache_spec check subunit ]
+    ++ lib.optional  cmakeSupport cmake
+    ++ lib.optionals (!cmakeSupport) [ autoreconfHook autoconf automake libtool m4 ]
+    ++ lib.optionals devSupport [ kcachegrind autoconf-archive bison gperf flex lcov re2c valgrind ]
+    ++ lib.optional  doxygenSupport doxygen
+    ++ lib.optional  valgrindSupport valgrind
+    ;
 
-  cmakeFlags = [
-    "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}"
-    "-DHANDLEBARS_ENABLE_TESTS=1"
-  ];
+  configureFlags = [ "--bindir=$(bin)/bin" ]
+    ++ lib.optionals checkSupport [
+        "--with-handlebars-spec=${handlebars_spec}/share/handlebars-spec/"
+        "--with-mustache-spec=${mustache_spec}/share/mustache-spec/"
+        "--enable-check"
+        "--enable-pcre"
+        "--enable-subunit"
+      ]
+    ++ lib.optionals (!checkSupport) [
+        "--disable-check"
+        "--disable-pcre"
+        "--disable-subunit"
+      ]
+    ++ lib.optional  debugSupport "--enable-debug"
+    ++ lib.optionals doxygenSupport [ "--mandir=$(man)/share/man" "--docdir=$(doc)/share/doc" ]
+    ++ lib.optional  hardeningSupport "--enable-hardening"
+    ++ lib.optional  (!hardeningSupport) "--disable-hardening"
+    ++ lib.optional  jsonSupport "--enable-json"
+    ++ lib.optional  (!jsonSupport) "--disable-json"
+    ++ lib.optional  lmdbSupport "--enable-lmdb"
+    ++ lib.optional  (!lmdbSupport) "--disable-lmdb"
+    ++ lib.optional  ltoSupport "--enable-lto"
+    ++ lib.optional  (!ltoSupport) "--disable-lto"
+    ++ lib.optional  noRefcountingSupport "--disable-refcounting"
+    ++ lib.optional  pthreadSupport "--enable-pthread"
+    ++ lib.optional  (!pthreadSupport) "--disable-pthread"
+    ++ lib.optional  valgrindSupport "--enable-valgrind"
+    ++ lib.optional  (!valgrindSupport) "--disable-valgrind"
+    ++ lib.optional  WerrorSupport "--enable-compile-warnings=error"
+    ++ lib.optionals (!WerrorSupport) ["--enable-compile-warnings=yes" "--disable-Werror"]
+    ++ lib.optional  yamlSupport "--enable-yaml"
+    ++ lib.optional  (!yamlSupport) "--disable-yaml"
+    ;
 
-  hardeningDisable = if handlebarscDebug then [ "fortify" ] else [];
+  cmakeFlags = []
+    ++ lib.optional  debugSupport "-DCMAKE_BUILD_TYPE=Debug"
+    ++ lib.optional  (!debugSupport) "-DCMAKE_BUILD_TYPE=Release"
+    ++ lib.optional  checkSupport "-DHANDLEBARS_ENABLE_TESTS=1"
+    ;
 
-  preConfigure = ''
+  preConfigure = lib.optionalString checkSupport ''
       export handlebars_export_dir=${handlebars_spec}/share/handlebars-spec/export/
       export handlebars_spec_dir=${handlebars_spec}/share/handlebars-spec/spec/
       export handlebars_tokenizer_spec=${handlebars_spec}/share/handlebars-spec/spec/tokenizer.json
       export handlebars_parser_spec=${handlebars_spec}/share/handlebars-spec/spec/parser.json
       export mustache_spec_dir=${mustache_spec}/share/mustache-spec/specs
     '';
+
+  doCheck = checkSupport;
+  checkTarget = if cmakeSupport then "test" else (if valgrindSupport then "check-valgrind" else "check");
 
   meta = with stdenv.lib; {
     description = "C implementation of handlebars.js";

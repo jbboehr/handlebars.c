@@ -57,8 +57,8 @@ struct cache_test_ctx {
     struct handlebars_module * module;
 };
 
-static int memdebug;
 char lmdb_db_file[] = "./handlebars-lmdb-cache-test.mdb";
+char lmdb_db_lock_file[] = "./handlebars-lmdb-cache-test.mdb-lock";
 
 static const char * tmpls[] = {
     "{{foo}}", "{{bar}}", "{{baz}}"
@@ -285,35 +285,10 @@ static Suite * suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int error;
-
-    // Remove test file
     unlink(lmdb_db_file);
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-    root = talloc_new(NULL);
-
-    // Set up test suite
-    Suite * s = suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    unlink(lmdb_db_lock_file);
+    int exit_code = default_main(&suite);
+    unlink(lmdb_db_file);
+    unlink(lmdb_db_lock_file);
+    return exit_code;
 }

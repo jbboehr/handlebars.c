@@ -41,15 +41,11 @@ tests/test_*
 .deps
 .dirstamp
 Makefile
-Makefile.in
-aclocal.m4
 autom4te.cache
 confdefs.h
 config.h
-config.h.in
 config.log
 config.status
-configure
 libtool
 stamp-h1
 stamp-h2

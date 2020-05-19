@@ -70,7 +70,7 @@ START_TEST(test_map)
             continue;
         }
 
-        struct handlebars_value * value = talloc_steal(map, handlebars_value_ctor(context));
+        struct handlebars_value * value = handlebars_value_ctor(context);
         handlebars_value_integer(value, pos++);
         map = handlebars_map_add(map, key, value);
     }
@@ -246,7 +246,7 @@ START_TEST(test_map_copy_ctor)
 
     ck_assert_uint_eq(handlebars_map_count(map), 3);
 
-    map_copy = handlebars_map_copy_ctor(map);
+    map_copy = handlebars_map_copy_ctor(map, 0);
 
     ck_assert_ptr_ne(map_copy, NULL);
     ck_assert_ptr_ne(map, map_copy);
@@ -340,34 +340,5 @@ static Suite * suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

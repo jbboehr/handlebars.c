@@ -22,6 +22,12 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <check.h>
+
+#ifdef HANDLEBARS_HAVE_VALGRIND
+#include <valgrind/valgrind.h>
+#include <valgrind/memcheck.h>
+#endif
 
 #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
 #define IS_WIN 1
@@ -96,6 +102,24 @@ void load_fixtures(struct handlebars_value * value);
 
 char * normalize_template_whitespace(TALLOC_CTX *ctx, struct handlebars_string * str);
 
+#ifdef HANDLEBARS_HAVE_JSON
+struct json_object;
+
+struct hbs_test_json_holder {
+    struct json_object * obj;
+};
+
+int hbs_test_json_dtor(struct hbs_test_json_holder * holder);
+
+#define HBS_TEST_JSON_DTOR(ctx, o) \
+    do { \
+        if( o ) { \
+            struct hbs_test_json_holder * holder = talloc(ctx, struct hbs_test_json_holder); \
+            holder->obj = (void *) o; \
+            talloc_set_destructor(holder, hbs_test_json_dtor); \
+        } \
+    } while (0)
+#endif
 
 // Common
 extern TALLOC_CTX * root;
@@ -106,5 +130,7 @@ extern struct handlebars_vm * vm;
 extern size_t init_blocks;
 void default_setup(void);
 void default_teardown(void);
+typedef Suite * (*suite_ctor_func)(void);
+int default_main(suite_ctor_func suite_ctor);
 
 #endif

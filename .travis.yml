@@ -21,15 +21,19 @@ env:
       ARCH="i386"
 # clang
     - MYCC="clang-3.8"
-# hardened
+# no hardening
     - MYCC="gcc-9"
-      HARDENING="true"
+      HARDENING="false"
 # lto
     - MYCC="gcc-9"
       LTO="true"
 # minimal
     - MYCC="gcc-9"
       MINIMAL="true"
+# valgrind
+# not sure why but this isn't working, running it on HerculesCI instead
+#    - MYCC="gcc-9"
+#      VALGRIND="true"
 
 matrix:
   include:
@@ -61,11 +65,11 @@ install:
     - make_handlebars
     - install_handlebars
 
-before_script: before_script
+before_script: initialize_coverage
 
 script:
     - test_handlebars
     - run_handlebars_benchmark
 
-after_success: after_success
-after_failure: after_failure
+after_success: upload_coverage
+after_failure: dump_logs
