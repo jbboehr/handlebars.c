@@ -392,7 +392,7 @@ static int do_debug(void)
     fprintf(stderr, "sizeof(struct handlebars_cache_stat): %lu\n", (long unsigned) sizeof(struct handlebars_cache_stat));
     fprintf(stderr, "sizeof(struct handlebars_context): %lu\n", (long unsigned) sizeof(struct handlebars_context));
     fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) HANDLEBARS_COMPILER_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_map): %lu\n", (long unsigned) handlebars_map_size());
+    fprintf(stderr, "sizeof(struct handlebars_map): %lu\n", (long unsigned) HANDLEBARS_MAP_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_opcode): %lu\n", (long unsigned) HANDLEBARS_OPCODE_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_operand): %lu\n", (long unsigned) HANDLEBARS_OPERAND_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_options): %lu\n", (long unsigned) HANDLEBARS_OPTIONS_SIZE);

@@ -107,7 +107,7 @@ static inline struct handlebars_stack * stack_separate(struct handlebars_stack *
 
 struct handlebars_stack * handlebars_stack_init(struct handlebars_context * ctx, struct handlebars_stack * stack, size_t elem)
 {
-    memset(stack, 0, handlebars_stack_size(elem));
+    memset(stack, 0, sizeof(struct handlebars_stack));
     stack->ctx = ctx;
     stack->capacity = elem;
 #ifndef HANDLEBARS_NO_REFCOUNT

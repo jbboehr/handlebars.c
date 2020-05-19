@@ -26,6 +26,13 @@
 #include <string.h>
 #include <stdint.h>
 
+#ifdef HANDLEBARS_HAVE_VALGRIND
+#include <valgrind/memcheck.h>
+#define HT_BOUNDARY_SIZE sizeof(void *)
+#else
+#define HT_BOUNDARY_SIZE 0
+#endif
+
 #include "sort_r.h"
 
 #include "handlebars.h"
@@ -61,6 +68,8 @@ struct handlebars_map {
 #ifndef NDEBUG
     size_t collisions;
 #endif
+
+    char data[];
 };
 
 struct handlebars_map_entry {
@@ -245,83 +254,6 @@ static void map_rebuild_references(struct handlebars_map * map)
     }
 }
 
-static inline struct handlebars_map * map_separate(struct handlebars_map * map) {
-#ifndef HANDLEBARS_NO_REFCOUNT
-    if (handlebars_rc_refcount(&map->rc) > 1) {
-        struct handlebars_map * prev_map = map;
-        map = handlebars_map_copy_ctor(map);
-        handlebars_map_delref(prev_map);
-    }
-#endif
-
-    return map;
-}
-
-static void map_rehash(struct handlebars_map * map)
-{
-    size_t vec_capacity = 1 << ht_choose_vec_capacity_log2(map->i + 1);
-    size_t table_capacity = ht_choose_table_capacity(vec_capacity);
-    struct handlebars_map_entry ** table;
-    struct handlebars_map_entry * vec;
-
-#if 0
-    fprintf(stderr, "REHASH: "
-        "entries: %lu, "
-        "collisions: %lu, "
-        "load factor: %d, "
-        "table size (old/new): %lu / %lu, "
-        "capacity (old/new): %lu / %lu\n",
-        map->i,
-        map->collisions,
-        handlebars_map_load_factor(map),
-        map->table_capacity,
-        table_capacity,
-        map->vec_capacity,
-        vec_capacity
-    );
-#endif
-
-#ifndef NDEBUG
-    // Reset collisions
-    map->collisions = 0;
-#endif
-
-    // Allocate new entries
-    vec = handlebars_talloc_array(map, struct handlebars_map_entry, vec_capacity);
-    HANDLEBARS_MEMCHECK(vec, map->ctx);
-    vec = talloc_steal(map, vec);
-    memset(vec, 0, sizeof(struct handlebars_map_entry) * vec_capacity);
-
-    // Create new table
-    table = handlebars_talloc_array(map, struct handlebars_map_entry *, table_capacity);
-    HANDLEBARS_MEMCHECK(table, map->ctx);
-    table = talloc_steal(map, table);
-    memset(table, 0, sizeof(struct handlebars_map_entry *) * table_capacity);
-
-    // Reimport entries
-    size_t i;
-    size_t vec_offset = 0;
-    for (i = 0; i < map->vec_offset; i++) {
-        if (0 != memcmp(&map->vec[i], &HANDLEBARS_MAP_TOMBSTONE_V, sizeof(HANDLEBARS_MAP_TOMBSTONE_V))) {
-            struct handlebars_map_entry * entry = &vec[vec_offset];
-
-            entry->key = map->vec[i].key;
-            entry->value = map->vec[i].value;
-            ht_add_entry(map->ctx, table, table_capacity, entry);
-            vec_offset++;
-        }
-    }
-
-    // Swap with old table
-    handlebars_talloc_free(map->table);
-    handlebars_talloc_free(map->vec);
-    map->table = table;
-    map->table_capacity = table_capacity;
-    map->vec_offset = vec_offset;
-    map->vec_capacity = vec_capacity;
-    map->vec = vec;
-}
-
 
 
 // {{{ Reference Counting
@@ -352,30 +284,49 @@ void handlebars_map_delref(struct handlebars_map * map)
 
 
 
-size_t handlebars_map_size(void) {
-    return sizeof(struct handlebars_map);
+const size_t HANDLEBARS_MAP_SIZE = sizeof(struct handlebars_map);
+
+#define HT_SIZES(capacity) \
+    size_t vec_capacity = capacity; \
+    size_t table_capacity = ht_choose_table_capacity(vec_capacity); \
+    size_t size = sizeof(struct handlebars_map); \
+    size_t vec_size = vec_capacity * sizeof(struct handlebars_map_entry); \
+    size_t table_size = table_capacity * sizeof(struct handlebars_map_entry *); \
+    size += HT_BOUNDARY_SIZE * 3 + vec_size + table_size
+
+size_t handlebars_map_size_of(size_t capacity) {
+    HT_SIZES(capacity);
+    return size;
 }
 
 struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, size_t capacity)
 {
+    HT_SIZES(capacity);
+
     // Allocate map
-    struct handlebars_map * map = handlebars_talloc_zero(ctx, struct handlebars_map);
+    struct handlebars_map * map = handlebars_talloc_size(ctx, size);
     HANDLEBARS_MEMCHECK(map, ctx);
+    talloc_set_type(map, struct handlebars_map);
+    memset(map, 0, sizeof(struct handlebars_map));
     map->ctx = ctx;
 
+    // The layout for the memory is: [map] [boundary] [vec] [boundary] [table] [boundary]
+    // bounary size is 0 when compiled without valgrind
+
     // Allocate vector
-    size_t vec_capacity = capacity;
     map->vec_capacity = vec_capacity;
-    map->vec = handlebars_talloc_array(map, struct handlebars_map_entry, vec_capacity);
-    HANDLEBARS_MEMCHECK(map->vec, map->ctx);
-    memset(map->vec, 0, sizeof(struct handlebars_map_entry) * vec_capacity);
+    map->vec = (struct handlebars_map_entry *) (void *) (map->data + HT_BOUNDARY_SIZE);
 
     // Allocate table
-    map->table_capacity = ht_choose_table_capacity(vec_capacity);
-    map->table = handlebars_talloc_array(map, struct handlebars_map_entry *, map->table_capacity);
-    HANDLEBARS_MEMCHECK(map->table, map->ctx);
-    map->table = talloc_steal(map, map->table);
-    memset(map->table, 0, sizeof(struct handlebars_map_entry *) * map->table_capacity);
+    map->table_capacity = table_capacity;
+    map->table = (struct handlebars_map_entry **) (void *) (map->data + HT_BOUNDARY_SIZE * 2 + vec_size);
+    memset(map->table, 0, table_size);
+
+#ifdef HANDLEBARS_HAVE_VALGRIND
+   VALGRIND_MAKE_MEM_NOACCESS(map->data, HT_BOUNDARY_SIZE);
+   VALGRIND_MAKE_MEM_NOACCESS(map->data + HT_BOUNDARY_SIZE + vec_size, HT_BOUNDARY_SIZE);
+   VALGRIND_MAKE_MEM_NOACCESS(map->data + HT_BOUNDARY_SIZE + vec_size + HT_BOUNDARY_SIZE + table_size, HT_BOUNDARY_SIZE);
+#endif
 
 #ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_rc_init(&map->rc, map_rc_dtor);
@@ -384,9 +335,13 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
     return map;
 }
 
-struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_map)
+struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_map, size_t new_capacity)
 {
-    struct handlebars_map * map = handlebars_map_ctor(prev_map->ctx, prev_map->vec_capacity);
+    if (new_capacity < prev_map->vec_capacity) {
+        new_capacity = prev_map->vec_capacity;
+    }
+
+    struct handlebars_map * map = handlebars_map_ctor(prev_map->ctx, new_capacity);
 
     handlebars_map_foreach(prev_map, index, key, value) {
         map = handlebars_map_add(map, key, value);
@@ -412,9 +367,6 @@ void handlebars_map_dtor(struct handlebars_map * map)
 
 struct handlebars_map * handlebars_map_add(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
-    // Separate if refcount > 1
-    map = map_separate(map);
-
     // Rehash
     map = handlebars_map_rehash(map, false);
 
@@ -438,9 +390,6 @@ struct handlebars_map * handlebars_map_add(struct handlebars_map * map, struct h
 
 struct handlebars_map * handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
 {
-    // Separate if refcount > 1
-    map = map_separate(map);
-
     // Rehash
     map = handlebars_map_rehash(map, handlebars_map_load_factor(map) < HANDLEBARS_MAP_MIN_LOAD_FACTOR);
 
@@ -478,9 +427,6 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struc
 
 struct handlebars_map * handlebars_map_update(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
-    // Separate if refcount > 1
-    map = map_separate(map);
-
     // Rehash
     map = handlebars_map_rehash(map, false);
 
@@ -548,10 +494,17 @@ struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool 
         return map;
     }
 
-    short load_factor = handlebars_map_load_factor(map);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    if (handlebars_rc_refcount(&map->rc) > 1) {
+        force = true;
+    }
+#endif
 
-    if (force || map->vec_offset == map->vec_capacity || load_factor > HANDLEBARS_MAP_MAX_LOAD_FACTOR) {
-        map_rehash(map);
+    if (force || map->vec_offset == map->vec_capacity || handlebars_map_load_factor(map) > HANDLEBARS_MAP_MAX_LOAD_FACTOR) {
+        size_t vec_capacity = 1 << ht_choose_vec_capacity_log2(map->i + 1);
+        struct handlebars_map * prev_map = map;
+        map = handlebars_map_copy_ctor(prev_map, vec_capacity);
+        handlebars_map_delref(prev_map);
     }
 
     return map;
@@ -621,13 +574,7 @@ static int map_entry_compare(const void * ptr1, const void * ptr2, void * arg)
 
 struct handlebars_map * handlebars_map_sort(struct handlebars_map * map, handlebars_map_kv_compare_func compare)
 {
-    if (handlebars_map_is_sparse(map)) {
-        // Separate if refcount > 1
-        map = map_separate(map);
-
-        // Rehash
-        map = handlebars_map_rehash(map, true);
-    }
+    map = handlebars_map_rehash(map, handlebars_map_is_sparse(map));
 
     sort_r(map->vec, map->i, sizeof(struct handlebars_map_entry), &map_entry_compare, (void *) compare);
 
@@ -662,13 +609,7 @@ struct handlebars_map * handlebars_map_sort_r(
     handlebars_map_kv_compare_r_func compare,
     const void * arg
 ) {
-    if (handlebars_map_is_sparse(map)) {
-        // Separate if refcount > 1
-        map = map_separate(map);
-
-        // Rehash
-        map = handlebars_map_rehash(map, true);
-    }
+    map = handlebars_map_rehash(map, handlebars_map_is_sparse(map));
 
     struct map_sort_r_arg sort_r_arg = {compare, arg};
 

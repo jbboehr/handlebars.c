@@ -45,8 +45,10 @@ typedef int (*handlebars_map_kv_compare_r_func)(
     const void *
 );
 
-extern size_t handlebars_map_size(void)
-    HBS_ATTR_CONST;
+extern const size_t HANDLEBARS_MAP_SIZE;
+
+size_t handlebars_map_size_of(size_t capacity)
+    HBS_ATTR_PURE;
 
 // {{{ Constructors and Destructors
 
@@ -61,13 +63,22 @@ struct handlebars_map * handlebars_map_ctor(
     size_t capacity
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Construct a new map by copying the specified map. If capacity is
+          less than the specified map's capacity, it will be the
+          specified map's capacity.
+ * @param[in] map The map to copy
+ * @param[in] capacity The desired number of values to be stored
+ * @return The new map
+ */
 struct handlebars_map * handlebars_map_copy_ctor(
-    struct handlebars_map * map
+    struct handlebars_map * map,
+    size_t capacity
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Destruct a map
- * @param[in] map The name
+ * @param[in] map The map to destruct
  * @return void
  */
 void handlebars_map_dtor(
