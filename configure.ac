@@ -31,7 +31,7 @@ AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
 
 AX_IS_RELEASE([git-directory])
 AX_CHECK_ENABLE_DEBUG
-AX_CFLAGS_WARN_ALL
+AX_CFLAGS_WARN_ALL([WARN_CFLAGS])
 AX_COMPILER_FLAGS(,,,,[-Wno-declaration-after-statement -Wno-error=declaration-after-statement -Wno-switch-enum -Wno-error=switch-enum -Wdeprecated-declarations -Wclobbered -Wmaybe-uninitialized])
 
 # my custom hacked up ax_am_macros_static
@@ -68,24 +68,21 @@ AS_IF([test "x$RE2CFLAGS" == "x"], [RE2CFLAGS="--no-generation-date -s8"])
 # Checks for scripts
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
 
-# Checks for programs
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
-AC_PROG_AWK
+# Checks for compilers
 AC_PROG_CC
 AC_PROG_CC_STDC
 AC_PROG_CC_C99
-AC_PROG_INSTALL
-AC_PROG_LEX
-AC_PROG_LIBTOOL
-AC_PROG_LN_S
-AC_PROG_YACC
-AC_PATH_PROGS(LCOV, [lcov], no)
-AC_PATH_PROGS(RE2C, [re2c], no)
 
-AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
-AM_CONDITIONAL([GCC], [test x$GCC = xyes])
-AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
-AM_CONDITIONAL([RE2C], [test x$RE2C != xno])
+AC_MSG_CHECKING([if compiling with gcc])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([], [[
+#ifndef __GNUC__
+       not gcc
+#endif
+]])],
+[GCC=yes], [GCC=no])
+AC_MSG_RESULT([$GCC])
+AM_CONDITIONAL([GCC], [test "x$GCC" = "xyes"])
 
 AC_MSG_CHECKING([if compiling with clang])
 AC_COMPILE_IFELSE(
@@ -96,6 +93,56 @@ AC_COMPILE_IFELSE(
 ]])],
 [CLANG=yes], [CLANG=no])
 AC_MSG_RESULT([$CLANG])
+
+# This has to come before AC_PROG_LIBTOOL I think
+AC_ARG_ENABLE([lto],
+	[AS_HELP_STRING([--enable-lto], [enable support for Link Time Optimization])], [])
+
+AS_IF([test "x$enable_lto" == "xyes"], [
+	AS_IF([test "x$enable_debug" != "xyes"], [
+		AX_APPEND_COMPILE_FLAGS([-O3])
+		AX_APPEND_LINK_FLAGS([-O3])
+	])
+	AS_IF([test "x$enable_shared" != "xno"], [
+		AC_MSG_WARN([--enable-shared and --enable-lto do not currently work together])
+	])
+	AS_IF([test "x$GCC" = "xyes"], [
+		AC_CHECK_TOOL([LD], [gcc], [$LD])
+		AC_CHECK_TOOL([AR], [gcc-ar], [$AR])
+		AC_CHECK_TOOL([RANLIB], [gcc-ranlib], [$RANLIB])
+		AC_CHECK_TOOL([NM], [gcc-nm], [$NM])
+		AX_APPEND_COMPILE_FLAGS([-flto=auto])
+		AX_APPEND_LINK_FLAGS([-flto=auto])
+	])
+	AS_IF([test "x$CLANG" = "xyes"], [
+		AC_CHECK_TOOL([AR], [llvm-ar], [$AR])
+		AC_CHECK_TOOL([RANLIB], [llvm-ranlib], [$RANLIB])
+		AX_CHECK_COMPILE_FLAG([-flto=thin], [
+			AX_APPEND_COMPILE_FLAGS([-flto=thin])
+			AX_APPEND_LINK_FLAGS([-flto=thin])
+		], [
+			AX_APPEND_COMPILE_FLAGS([-flto])
+			AX_APPEND_LINK_FLAGS([-flto])
+		])
+	])
+	# not sure why, but these errors only show up with LTO enabled
+	AX_APPEND_LINK_FLAGS([-Wno-inline -Wno-error=inline -Wno-null-dereference -Wno-error=null-dereference])
+])
+
+# Checks for programs
+AM_PROG_AR
+AC_PROG_AWK
+AC_PROG_INSTALL
+AC_PROG_LEX
+AC_PROG_LIBTOOL
+AC_PROG_LN_S
+AC_PROG_YACC
+AC_PATH_PROGS(LCOV, [lcov], no)
+AC_PATH_PROGS(RE2C, [re2c], no)
+
+AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
+AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
+AM_CONDITIONAL([RE2C], [test x$RE2C != xno])
 
 # Checks for header files
 AC_HEADER_STDC
@@ -193,18 +240,28 @@ AS_IF([test "x$with_handlebars_spec" != "xno"], [
 ])
 
 # hardening
-AC_ARG_ENABLE([hardening], [AS_HELP_STRING([--enable-hardening], [enable hardening])], [])
-AS_IF([test "x$enable_hardening" == "xyes"], [
+AC_ARG_ENABLE([hardening], [AS_HELP_STRING([--disable-hardening], [disable hardening])], [])
+AS_IF([test "x$enable_hardening" != "xno"], [
 	AX_ADD_FORTIFY_SOURCE()
-	AX_APPEND_COMPILE_FLAGS([-fstack-protector-strong -grecord-gcc-switches -fstack-clash-protection -fPIC -DPIC])
-	AX_APPEND_LINK_FLAGS([-fstack-protector-strong -grecord-gcc-switches -fstack-clash-protection -fPIC -DPIC])
-	AX_APPEND_COMPILE_FLAGS([-specs=$(pwd)/build/redhat-hardened-cc1 -specs=$(pwd)/build/redhat-hardened-ld])
-	AX_APPEND_LINK_FLAGS([-specs=$(pwd)/build/redhat-hardened-cc1 -specs=$(pwd)/build/redhat-hardened-ld])
+	AX_APPEND_COMPILE_FLAGS([-fstack-protector-strong -fstack-clash-protection], [HARDENING_CFLAGS])
+	AX_APPEND_LINK_FLAGS([-fstack-protector-strong -fstack-clash-protection], [HARDENING_LDFLAGS])
 	# See: https://github.com/gdnsd/gdnsd/blob/f23273c688ae267d2b6049f0608f7b42193211fe/configure.ac#L84
 	AS_IF([test "x$CLANG" != "xyes"], [
-		AX_APPEND_COMPILE_FLAGS([-fcf-protection])
-		AX_APPEND_LINK_FLAGS([-fcf-protection])
+		AX_APPEND_COMPILE_FLAGS([-fcf-protection], [HARDENING_CFLAGS])
+		AX_APPEND_LINK_FLAGS([-fcf-protection], [HARDENING_LDFLAGS])
 	])
+	# fpic
+	AX_APPEND_COMPILE_FLAGS([-fpic], [HARDENING_CFLAGS])
+	AX_APPEND_LINK_FLAGS([-fpic], [HARDENING_LDFLAGS])
+	# fpie
+	AX_CHECK_COMPILE_FLAG([-fpie], [HARDENING_BIN_CFLAGS="-fpie"])
+	AX_CHECK_LINK_FLAG([-pie], [HARDENING_BIN_LDFLAGS="-pie"])
+	HARDENING_BIN_CFLAGS="$HARDENING_CFLAGS $HARDENING_BIN_CFLAGS"
+	HARDENING_BIN_LDFLAGS="$HARDENING_LDFLAGS $HARDENING_BIN_LDFLAGS"
+	AC_SUBST([HARDENING_CFLAGS])
+	AC_SUBST([HARDENING_LDFLAGS])
+	AC_SUBST([HARDENING_BIN_CFLAGS])
+	AC_SUBST([HARDENING_BIN_LDFLAGS])
 ])
 
 # Work around buggy handling in Nix
@@ -237,23 +294,6 @@ AS_IF([test "x$enable_lmdb" == "xyes"], [
 	AC_DEFINE([HANDLEBARS_HAVE_LMDB], [1], [Use LMDB])
 ])
 AM_CONDITIONAL([LMDB], [test "x$enable_lmdb" == "xyes"])
-
-# lto
-AC_ARG_ENABLE([lto],
-	[AS_HELP_STRING([--enable-lto], [enable support for Link Time Optimization])], [])
-
-AS_IF([test "x$enable_lto" == "xyes"], [
-	AX_APPEND_COMPILE_FLAGS([-flto -O3])
-	AX_APPEND_LINK_FLAGS([-flto -O3])
-	# not sure why, but these errors only show up with LTO enabled
-	AX_APPEND_LINK_FLAGS([-Wno-inline -Wno-error=inline -Wno-null-dereference -Wno-error=null-dereference])
-	AS_IF([test "x$GCC" = "xyes"], [
-		LD=gcc
-		AR=gcc-ar
-		RANLIB=gcc-ranlib
-		NM=gcc-nm
-	])
-])
 
 # memory
 AC_ARG_ENABLE([handlebars-memory],

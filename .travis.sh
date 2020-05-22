@@ -13,6 +13,12 @@ export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:/usr/lib/$ARCH-linux-gnu/pkgconfig
 export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
 export SUDO="sudo"
 
+# these mess up our configuration for LTO, make sure they are unset
+unset RANLIB
+unset AR
+unset NM
+unset LD
+
 mkdir -p "${PREFIX}/include" "${PREFIX}/include/json-c" "${PREFIX}/lib/pkgconfig"
 
 if [ -z "$ARCH" ]; then
@@ -92,7 +98,9 @@ function configure_handlebars() {
 	fi
 
 	if [ "$LTO" = "true" ]; then
-		extra_configure_flags="${extra_configure_flags} --enable-lto"
+		extra_configure_flags="${extra_configure_flags} --enable-lto --disable-shared"
+		# seems to break on Travis with: Error: no such instruction: `endbr64'
+		export CFLAGS="$CFLAGS -fcf-protection=none"
 	else
 		extra_configure_flags="${extra_configure_flags} --disable-lto"
 	fi

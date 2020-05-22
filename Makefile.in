@@ -238,8 +238,8 @@ am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(top_srcdir)/build/config.sub $(top_srcdir)/build/install-sh \
 	$(top_srcdir)/build/ltmain.sh $(top_srcdir)/build/missing \
 	$(top_srcdir)/build/tap-driver.sh build/ar-lib build/compile \
-	build/config.guess build/config.sub build/depcomp \
-	build/install-sh build/ltmain.sh build/missing
+	build/config.guess build/config.sub build/install-sh \
+	build/ltmain.sh build/missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -334,6 +334,10 @@ HANDLEBARS_LT_AGE = @HANDLEBARS_LT_AGE@
 HANDLEBARS_LT_CURRENT = @HANDLEBARS_LT_CURRENT@
 HANDLEBARS_LT_REVISION = @HANDLEBARS_LT_REVISION@
 HANDLEBARS_SPEC_DIR = @HANDLEBARS_SPEC_DIR@
+HARDENING_BIN_CFLAGS = @HARDENING_BIN_CFLAGS@
+HARDENING_BIN_LDFLAGS = @HARDENING_BIN_LDFLAGS@
+HARDENING_CFLAGS = @HARDENING_CFLAGS@
+HARDENING_LDFLAGS = @HARDENING_LDFLAGS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -464,8 +468,6 @@ valgrind_tools = @valgrind_tools@
 SUBDIRS = src . bin $(am__append_1) $(am__append_2)
 EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor build/redhat-hardened-cc1 build/redhat-hardened-ld
 ACLOCAL_AMFLAGS = -I m4 --install
-AM_CFLAGS = $(WARN_CFLAGS)
-AM_LDFLAGS = $(WARN_LDFLAGS)
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = handlebars.pc
 @CODE_COVERAGE_ENABLED_TRUE@CODE_COVERAGE_OUTPUT_FILE = $(PACKAGE_NAME)-coverage.info
@@ -913,8 +915,8 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-@CODE_COVERAGE_ENABLED_FALSE@distclean-local:
 @CODE_COVERAGE_ENABLED_FALSE@clean-local:
+@CODE_COVERAGE_ENABLED_FALSE@distclean-local:
 check-valgrind: check-valgrind-recursive
 
 check-valgrind-am: check-valgrind-local

@@ -11,8 +11,6 @@ endif
 EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor build/redhat-hardened-cc1 build/redhat-hardened-ld
 
 ACLOCAL_AMFLAGS = -I m4 --install
-AM_CFLAGS = $(WARN_CFLAGS)
-AM_LDFLAGS = $(WARN_LDFLAGS)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = handlebars.pc

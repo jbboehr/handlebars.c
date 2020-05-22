@@ -27,6 +27,8 @@
   ltoSupport ? true,
   noRefcountingSupport ? false,
   pthreadSupport ? true,
+  sharedSupport ? true,
+  staticSupport ? true,
   WerrorSupport ? false,
   valgrindSupport ? false,
   yamlSupport ? true
@@ -36,5 +38,5 @@ pkgs.callPackage ./derivation.nix {
   inherit stdenv;
   inherit handlebarscVersion handlebarscSrc handlebarscSha256;
   inherit mustache_spec handlebars_spec;
-  inherit checkSupport cmakeSupport debugSupport devSupport doxygenSupport hardeningSupport jsonSupport lmdbSupport ltoSupport noRefcountingSupport pthreadSupport WerrorSupport valgrindSupport yamlSupport;
+  inherit checkSupport cmakeSupport debugSupport devSupport doxygenSupport hardeningSupport jsonSupport lmdbSupport ltoSupport noRefcountingSupport pthreadSupport sharedSupport staticSupport WerrorSupport valgrindSupport yamlSupport;
 }

@@ -8,7 +8,11 @@ let
   generateHandlebarsCTestsForPlatform2 = { pkgs, ... }@args:
     pkgs.recurseIntoAttrs {
       gcc = generateHandlebarsCTestsForPlatform (args // { stdenv = pkgs.stdenv; });
-      clang = generateHandlebarsCTestsForPlatform (args // { stdenv = pkgs.clangStdenv; });
+      # we need this or llvm-ar isn't found
+      clang = generateHandlebarsCTestsForPlatform (args // {
+        stdenv = with pkgs; overrideCC clangStdenv [ clang llvm lld ];
+      });
+      #clang = generateHandlebarsCTestsForPlatform (args // { stdenv = pkgs.clangStdenv; });
     };
 in
 builtins.mapAttrs (k: _v:
@@ -81,18 +85,37 @@ builtins.mapAttrs (k: _v:
       inherit pkgs handlebarscSrc;
       debugSupport = true;
       hardeningSupport = false;
-      ltoSupport = false;
+    };
+
+    # lto
+    n1909-lto = generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs handlebarscSrc;
+      ltoSupport = true;
+      sharedSupport = false;
     };
 
     # minimal
     n1909-minimal = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
+      debugSupport = false;
       hardeningSupport = false;
       jsonSupport = false;
       lmdbSupport = false;
-      ltoSupport = false;
       pthreadSupport = false;
       yamlSupport = false;
+      valgrindSupport = false;
+    };
+
+    # static only
+    n1909-static = generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs handlebarscSrc;
+      sharedSupport = false;
+    };
+
+    # shared only
+    n1909-shared = generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs handlebarscSrc;
+      staticSupport = false;
     };
 
     # valgrind

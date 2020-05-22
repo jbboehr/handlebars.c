@@ -17,12 +17,14 @@
   debugSupport ? false,
   devSupport ? false,
   doxygenSupport ? false,
-  hardeningSupport ? (!debugSupport),
+  hardeningSupport ? (!debugSupport && !devSupport),
   jsonSupport ? true,
   lmdbSupport ? true,
-  ltoSupport ? (!debugSupport),
+  ltoSupport ? false,
   noRefcountingSupport ? false,
   pthreadSupport ? true,
+  sharedSupport ? true,
+  staticSupport ? true,
   WerrorSupport ? (debugSupport || devSupport),
   valgrindSupport ? (debugSupport || devSupport),
   yamlSupport ? true
@@ -87,10 +89,16 @@ stdenv.mkDerivation rec {
     ++ lib.optional  lmdbSupport "--enable-lmdb"
     ++ lib.optional  (!lmdbSupport) "--disable-lmdb"
     ++ lib.optional  ltoSupport "--enable-lto"
+    # not sure if this is a good idea, but I don't think it'll work without it
+    ++ lib.optionals ltoSupport [ "RANLIB=" "AR=" "NM=" "LD=" ]
     ++ lib.optional  (!ltoSupport) "--disable-lto"
     ++ lib.optional  noRefcountingSupport "--disable-refcounting"
     ++ lib.optional  pthreadSupport "--enable-pthread"
     ++ lib.optional  (!pthreadSupport) "--disable-pthread"
+    ++ lib.optional  (sharedSupport && !ltoSupport) "--enable-shared"
+    ++ lib.optional  (!sharedSupport || ltoSupport) "--disable-shared"
+    ++ lib.optional  staticSupport "--enable-static"
+    ++ lib.optional  (!staticSupport) "--disable-static"
     ++ lib.optional  valgrindSupport "--enable-valgrind"
     ++ lib.optional  (!valgrindSupport) "--disable-valgrind"
     ++ lib.optional  WerrorSupport "--enable-compile-warnings=error"
@@ -123,4 +131,3 @@ stdenv.mkDerivation rec {
     maintainers = [ "John Boehr <jbboehr@gmail.com>" ];
   };
 }
-
