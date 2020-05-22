@@ -85,10 +85,10 @@ struct handlebars_cache_mmap {
     size_t table_size;
 
     //! The number of slots in the hash table
-    size_t table_count;
+    uint32_t table_count;
 
     //! The number of used slots in the hash table
-    size_t table_entries;
+    uint32_t table_entries;
 
     //! The pointer to the data segment
     void * data;
@@ -189,13 +189,13 @@ static inline void unlock(struct handlebars_cache * cache)
 
 static inline struct table_entry * table_find(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
 {
-    size_t offset = hbs_str_hash(string) % intern->table_count;
+    uint32_t offset = hbs_str_hash(string) % intern->table_count;
     return intern->table[offset];
 }
 
 static inline void table_set(struct handlebars_cache_mmap * intern, struct table_entry * entry)
 {
-    size_t offset = hbs_str_hash(entry->key) % intern->table_count;
+    uint32_t offset = hbs_str_hash(entry->key) % intern->table_count;
     if( entry == NULL ) {
         intern->table[offset] = NULL;
     } else {
@@ -205,7 +205,7 @@ static inline void table_set(struct handlebars_cache_mmap * intern, struct table
 
 static inline void table_unset(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
 {
-    size_t offset = HBS_STR_HASH(string) % intern->table_count;
+    uint32_t offset = hbs_str_hash(string) % intern->table_count;
     intern->table[offset] = NULL;
 }
 

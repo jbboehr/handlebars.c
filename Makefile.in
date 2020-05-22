@@ -109,6 +109,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_ac_append_to_file.m4 \
 	$(top_srcdir)/m4/ax_check_link_flag.m4 \
 	$(top_srcdir)/m4/ax_code_coverage.m4 \
 	$(top_srcdir)/m4/ax_compare_version.m4 \
+	$(top_srcdir)/m4/ax_compile_check_sizeof.m4 \
 	$(top_srcdir)/m4/ax_compiler_flags.m4 \
 	$(top_srcdir)/m4/ax_compiler_flags_cflags.m4 \
 	$(top_srcdir)/m4/ax_compiler_flags_gir.m4 \
@@ -915,8 +916,8 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-@CODE_COVERAGE_ENABLED_FALSE@clean-local:
 @CODE_COVERAGE_ENABLED_FALSE@distclean-local:
+@CODE_COVERAGE_ENABLED_FALSE@clean-local:
 check-valgrind: check-valgrind-recursive
 
 check-valgrind-am: check-valgrind-local

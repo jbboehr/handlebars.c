@@ -129,7 +129,7 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
     switch( operand->type ) {
         case handlebars_operand_type_string:
             // Make sure hash is computed
-            HBS_STR_HASH(operand->data.string.string);
+            hbs_str_hash(operand->data.string.string);
 
             size = HBS_STR_SIZE(hbs_str_len(operand->data.string.string));
             operand->data.string.string = append(module, operand->data.string.string, size);
@@ -139,7 +139,7 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
             operand->data.array.array = append(module, operand->data.array.array, sizeof(struct handlebars_operand_string) * operand->data.array.count);
             for( i = 0; i < operand->data.array.count; i++ ) {
                 // Make sure hash is computed
-                HBS_STR_HASH(operand->data.array.array[i].string);
+                hbs_str_hash(operand->data.array.array[i].string);
 
                 size = HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string));
                 operand->data.array.array[i].string = append(module, operand->data.array.array[i].string, size);

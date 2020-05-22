@@ -17492,6 +17492,94 @@ fi
 
 
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __builtin_clz" >&5
+$as_echo_n "checking for __builtin_clz... " >&6; }
+if ${ax_cv_have___builtin_clz+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+            __builtin_clz(0)
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ax_cv_have___builtin_clz=yes
+else
+  ax_cv_have___builtin_clz=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_have___builtin_clz" >&5
+$as_echo "$ax_cv_have___builtin_clz" >&6; }
+
+    if test yes = $ax_cv_have___builtin_clz; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE___BUILTIN_CLZ 1
+_ACEOF
+
+fi
+
+
+
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __builtin_clzl" >&5
+$as_echo_n "checking for __builtin_clzl... " >&6; }
+if ${ax_cv_have___builtin_clzl+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+            __builtin_clzl(0)
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ax_cv_have___builtin_clzl=yes
+else
+  ax_cv_have___builtin_clzl=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_have___builtin_clzl" >&5
+$as_echo "$ax_cv_have___builtin_clzl" >&6; }
+
+    if test yes = $ax_cv_have___builtin_clzl; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE___BUILTIN_CLZL 1
+_ACEOF
+
+fi
+
+
+
+
+
+
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __builtin_clzll" >&5
 $as_echo_n "checking for __builtin_clzll... " >&6; }
 if ${ax_cv_have___builtin_clzll+:} false; then :
@@ -17665,6 +17753,166 @@ else
 $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking size of size_t" >&5
+$as_echo_n "checking size of size_t... " >&6; }
+if ${ac_cv_sizeof_size_t+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  for ac_size in 4 8 1 2 16  ; do # List sizes in rough order of prevalence.
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/types.h>
+
+
+int
+main ()
+{
+switch (0) case 0: case (sizeof (size_t) == $ac_size):;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_sizeof_size_t=$ac_size
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  if test x$ac_cv_sizeof_size_t != x ; then break; fi
+done
+
+fi
+
+if test x$ac_cv_sizeof_size_t = x ; then
+  as_fn_error $? "cannot determine a size for size_t" "$LINENO" 5
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sizeof_size_t" >&5
+$as_echo "$ac_cv_sizeof_size_t" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_SIZE_T $ac_cv_sizeof_size_t
+_ACEOF
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking size of unsigned" >&5
+$as_echo_n "checking size of unsigned... " >&6; }
+if ${ac_cv_sizeof_unsigned+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  for ac_size in 4 8 1 2 16  ; do # List sizes in rough order of prevalence.
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/types.h>
+
+
+int
+main ()
+{
+switch (0) case 0: case (sizeof (unsigned) == $ac_size):;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_sizeof_unsigned=$ac_size
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  if test x$ac_cv_sizeof_unsigned != x ; then break; fi
+done
+
+fi
+
+if test x$ac_cv_sizeof_unsigned = x ; then
+  as_fn_error $? "cannot determine a size for unsigned" "$LINENO" 5
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sizeof_unsigned" >&5
+$as_echo "$ac_cv_sizeof_unsigned" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_UNSIGNED $ac_cv_sizeof_unsigned
+_ACEOF
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking size of unsigned long" >&5
+$as_echo_n "checking size of unsigned long... " >&6; }
+if ${ac_cv_sizeof_unsigned_long+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  for ac_size in 4 8 1 2 16  ; do # List sizes in rough order of prevalence.
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/types.h>
+
+
+int
+main ()
+{
+switch (0) case 0: case (sizeof (unsigned long) == $ac_size):;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_sizeof_unsigned_long=$ac_size
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  if test x$ac_cv_sizeof_unsigned_long != x ; then break; fi
+done
+
+fi
+
+if test x$ac_cv_sizeof_unsigned_long = x ; then
+  as_fn_error $? "cannot determine a size for unsigned long" "$LINENO" 5
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sizeof_unsigned_long" >&5
+$as_echo "$ac_cv_sizeof_unsigned_long" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_UNSIGNED_LONG $ac_cv_sizeof_unsigned_long
+_ACEOF
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking size of unsigned long long" >&5
+$as_echo_n "checking size of unsigned long long... " >&6; }
+if ${ac_cv_sizeof_unsigned_long_long+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  for ac_size in 4 8 1 2 16  ; do # List sizes in rough order of prevalence.
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/types.h>
+
+
+int
+main ()
+{
+switch (0) case 0: case (sizeof (unsigned long long) == $ac_size):;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_sizeof_unsigned_long_long=$ac_size
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  if test x$ac_cv_sizeof_unsigned_long_long != x ; then break; fi
+done
+
+fi
+
+if test x$ac_cv_sizeof_unsigned_long_long = x ; then
+  as_fn_error $? "cannot determine a size for unsigned long long" "$LINENO" 5
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_sizeof_unsigned_long_long" >&5
+$as_echo "$ac_cv_sizeof_unsigned_long_long" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_UNSIGNED_LONG_LONG $ac_cv_sizeof_unsigned_long_long
+_ACEOF
+
 
 
 # Checks for libraries

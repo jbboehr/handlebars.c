@@ -156,10 +156,16 @@ AC_C_INLINE
 AC_C_STRINGIZE
 AC_TYPE_SIZE_T
 AX_GCC_BUILTIN([__builtin_expect])
+AX_GCC_BUILTIN([__builtin_clz])
+AX_GCC_BUILTIN([__builtin_clzl])
 AX_GCC_BUILTIN([__builtin_clzll])
 AX_GCC_VAR_ATTRIBUTE([unused])
 AX_GCC_FUNC_ATTRIBUTE(returns_nonnull)
 HBS_COMPUTED_GOTOS
+AX_COMPILE_CHECK_SIZEOF(size_t)
+AX_COMPILE_CHECK_SIZEOF(unsigned)
+AX_COMPILE_CHECK_SIZEOF(unsigned long)
+AX_COMPILE_CHECK_SIZEOF(unsigned long long)
 
 # Checks for libraries
 AC_CHECK_LIB([m], [cos])

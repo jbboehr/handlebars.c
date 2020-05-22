@@ -54,7 +54,7 @@ struct handlebars_string {
     struct handlebars_rc rc;
 #endif
     size_t len;
-    uint64_t hash;
+    uint32_t hash;
     char val[];
 };
 
@@ -86,7 +86,7 @@ size_t hbs_str_len(struct handlebars_string * str) {
     return str->len;
 }
 
-uint64_t hbs_str_hash(struct handlebars_string * str) {
+uint32_t hbs_str_hash(struct handlebars_string * str) {
     if (str->hash == 0) {
         str->hash = handlebars_string_hash(str->val, str->len);
     }
@@ -97,10 +97,10 @@ uint64_t hbs_str_hash(struct handlebars_string * str) {
 
 // {{{ Hash functions
 
-uint64_t handlebars_hash_djbx33a(const char * str, size_t len)
+uint32_t handlebars_hash_djbx33a(const char * str, size_t len)
 {
-    uint64_t hash = 5381;
-    uint64_t c;
+    uint32_t hash = 5381;
+    uint32_t c;
     const unsigned char * ptr = (const unsigned char *) str;
     const unsigned char * end = ptr + len;
     for (c = *ptr++; ptr <= end && c; c = *ptr++) {
@@ -117,12 +117,17 @@ uint64_t handlebars_hash_xxh3(const char * str, size_t len)
     return XXH3_64bits_digest(&state);
 }
 
-uint64_t handlebars_string_hash(const char * str, size_t len)
+uint32_t handlebars_hash_xxh3low(const char * str, size_t len)
+{
+    return (uint32_t) handlebars_hash_xxh3(str, len);
+}
+
+uint32_t handlebars_string_hash(const char * str, size_t len)
 {
 #if 0
     return handlebars_hash_djbx33a(str, len);
 #else
-    return handlebars_hash_xxh3(str, len);
+    return handlebars_hash_xxh3low(str, len);
 #endif
 }
 
@@ -189,7 +194,7 @@ struct handlebars_string * handlebars_string_ctor_ex(
     struct handlebars_context * context,
     const char * str,
     size_t len,
-    uint64_t hash
+    uint32_t hash
 ) {
     struct handlebars_string * st = handlebars_string_init(context, len + 1);
     HANDLEBARS_MEMCHECK(st, context);
@@ -277,17 +282,6 @@ struct handlebars_string * handlebars_string_compact(struct handlebars_string * 
     return string;
 }
 
-bool handlebars_string_eq_ex(
-    const char * string1, size_t length1, uint64_t hash1,
-    const char * string2, size_t length2, uint64_t hash2
-) {
-    if( length1 != length2 ) {
-        return false;
-    } else {
-        return HBS_STR_HASH_EX(string1, length1, hash1) == HBS_STR_HASH_EX(string2, length2, hash2);
-    }
-}
-
 bool handlebars_string_eq(
     /*const*/ struct handlebars_string * string1,
     /*const*/ struct handlebars_string * string2
@@ -295,7 +289,7 @@ bool handlebars_string_eq(
     if( string1->len != string2->len ) {
         return false;
     } else {
-        return HBS_STR_HASH(string1) == HBS_STR_HASH(string2);
+        return hbs_str_hash(string1) == hbs_str_hash(string2);
     }
 }
 

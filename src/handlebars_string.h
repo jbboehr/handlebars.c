@@ -30,8 +30,6 @@ HBS_EXTERN_C_START
 struct handlebars_string;
 
 #define HBS_STR_STRL(string) hbs_str_val(string), hbs_str_len(string)
-#define HBS_STR_HASH_EX(str, len, hash) (hash ? hash : handlebars_string_hash(str, len))
-#define HBS_STR_HASH(string) hbs_str_hash(string)
 #define HBS_STR_SIZE(length) ((HANDLEBARS_STRING_SIZE) + (length) + (1))
 
 extern const size_t HANDLEBARS_STRING_SIZE;
@@ -43,18 +41,21 @@ char * hbs_str_val(struct handlebars_string * str)
 size_t hbs_str_len(struct handlebars_string * str)
     HBS_ATTR_NONNULL_ALL;
 
-uint64_t hbs_str_hash(struct handlebars_string * str)
+uint32_t hbs_str_hash(struct handlebars_string * str)
     HBS_ATTR_NONNULL_ALL;
 // }}} Accessors
 
 // {{{ Hash functions
-uint64_t handlebars_hash_djbx33a(const char * str, size_t len)
+uint32_t handlebars_hash_djbx33a(const char * str, size_t len)
     HBS_ATTR_NONNULL_ALL;
 
 uint64_t handlebars_hash_xxh3(const char * str, size_t len)
     HBS_ATTR_NONNULL_ALL;
 
-uint64_t handlebars_string_hash(const char * str, size_t len)
+uint32_t handlebars_hash_xxh3low(const char * str, size_t len)
+    HBS_ATTR_NONNULL_ALL;
+
+uint32_t handlebars_string_hash(const char * str, size_t len)
     HBS_ATTR_NONNULL_ALL;
 // }}} Hash functions
 
@@ -306,7 +307,7 @@ struct handlebars_string * handlebars_string_ctor_ex(
     struct handlebars_context * context,
     const char * str,
     size_t len,
-    uint64_t hash
+    uint32_t hash
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
@@ -392,21 +393,6 @@ struct handlebars_string * handlebars_string_append_str(
 struct handlebars_string * handlebars_string_compact(
     struct handlebars_string * string
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
-/**
- * @brief Compare two strings (const char[] with length and hash variant)
- * @param[in] string1
- * @param[in] length1
- * @param[in] hash1
- * @param[in] string2
- * @param[in] length2
- * @param[in] hash2
- * @return Whether or not the strings are equal
- */
-bool handlebars_string_eq_ex(
-    const char * string1, size_t length1, uint64_t hash1,
-    const char * string2, size_t length2, uint64_t hash2
-) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Compare two strings (#handlebars_string variant)

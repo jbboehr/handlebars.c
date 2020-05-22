@@ -34,7 +34,14 @@
 
 START_TEST(test_handlebars_string_hash)
 {
-    ck_assert_uint_eq(14968681860324457947ull, handlebars_string_hash(HBS_STRL("foobar\xFF")));
+#if 0
+    // DJBX33A
+    ck_assert_uint_eq(3127933309ul, handlebars_string_hash(HBS_STRL("foobar\xFF")));
+#elif 1
+    // XXH3LOW
+    ck_assert_uint_eq(1811779989ul, handlebars_string_hash(HBS_STRL("")));
+    ck_assert_uint_eq(813235675ul, handlebars_string_hash(HBS_STRL("foobar\xFF")));
+#endif
 }
 END_TEST
 
