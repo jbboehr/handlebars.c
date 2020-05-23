@@ -439,31 +439,23 @@ static inline struct handlebars_string * execute_template(
 
 ACCEPT_FUNCTION(ambiguous_block_value)
 {
-    struct handlebars_value * current;
     struct handlebars_value * result;
     struct handlebars_options options = {0};
     struct handlebars_value * argv[1];
 
     options.name = vm->last_helper; // @todo dupe?
-    setup_options(vm, 0, argv, &options);
-
-    current = POP(vm->stack);
-    if( !current ) { // @todo I don't think this should happen
-        current = handlebars_value_ctor(CONTEXT);
-    }
-    argv[0] = current;
 
     if( vm->last_helper == NULL ) {
+        setup_options(vm, 1, argv, &options);
         result = handlebars_vm_call_helper_str(HBS_STRL("blockHelperMissing"), 1, argv, &options);
         PUSH(vm->stack, result);
     } else if (hbs_str_eq_strl(vm->last_helper, HBS_STRL("lambda"))) {
-        PUSH(vm->stack, current);
+        setup_options(vm, 0, argv, &options);
         handlebars_string_delref(vm->last_helper);
         vm->last_helper = NULL;
     }
 
     handlebars_options_deinit(&options);
-    //handlebars_value_delref(current); // @todo double-check
 }
 
 ACCEPT_FUNCTION(append)
@@ -505,7 +497,6 @@ ACCEPT_FUNCTION(assign_to_hash)
 
 ACCEPT_FUNCTION(block_value)
 {
-    struct handlebars_value * current;
     struct handlebars_value * result;
     struct handlebars_options options = {0};
     struct handlebars_value * argv[1];
@@ -513,11 +504,7 @@ ACCEPT_FUNCTION(block_value)
     assert(opcode->op1.type == handlebars_operand_type_string);
 
     options.name = opcode->op1.data.string.string;
-    setup_options(vm, 0, argv, &options);
-
-    current = POP(vm->stack);
-    assert(current != NULL);
-    argv[0] = current;
+    setup_options(vm, 1, argv, &options);
 
     result = handlebars_vm_call_helper_str(HBS_STRL("blockHelperMissing"), 1, argv, &options);
     append_to_buffer(vm, result, 0);
@@ -631,7 +618,6 @@ ACCEPT_FUNCTION(invoke_helper)
     assert(opcode->op3.type == handlebars_operand_type_boolean);
 
     int argc = (int) opcode->op1.data.longval;
-    //struct handlebars_value * argv[argc];
     struct handlebars_value ** argv = alloca(sizeof(struct handlebars_value *) * argc);
     options.name = opcode->op2.data.string.string;
     setup_options(vm, argc, argv, &options);
@@ -667,7 +653,6 @@ ACCEPT_FUNCTION(invoke_known_helper)
     assert(opcode->op2.type == handlebars_operand_type_string);
 
     int argc = (int) opcode->op1.data.longval;
-    //struct handlebars_value * argv[argc];
     struct handlebars_value ** argv = alloca(sizeof(struct handlebars_value *) * argc);
     options.name = opcode->op2.data.string.string;
     setup_options(vm, argc, argv, &options);
@@ -1050,7 +1035,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     if( handlebars_value_is_callable(top) ) {
         struct handlebars_options options = {0};
         int argc = 1;
-        struct handlebars_value * argv[1/*argc*/];
+        struct handlebars_value * argv[1];
         argv[0] = TOPCONTEXT;
         options.vm = vm;
         options.scope = TOPCONTEXT;
