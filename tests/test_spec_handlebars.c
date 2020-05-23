@@ -460,7 +460,7 @@ static inline void run_test(struct generic_test * test, int _i)
         load_fixtures(helpers);
     } else {
         helpers = handlebars_value_ctor(HBSCTX(vm));
-        handlebars_value_map_init(helpers, 0);
+        handlebars_value_map(helpers, handlebars_map_ctor(HBSCTX(vm), 0));
     }
     handlebars_vm_set_helpers(vm, helpers);
 
@@ -471,7 +471,7 @@ static inline void run_test(struct generic_test * test, int _i)
         load_fixtures(partials);
     } else {
         partials = handlebars_value_ctor(context);
-        handlebars_value_map_init(partials, 0);
+        handlebars_value_map(partials, handlebars_map_ctor(HBSCTX(vm), 0));
     }
     handlebars_vm_set_partials(vm, partials);
 

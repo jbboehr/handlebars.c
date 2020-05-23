@@ -115,7 +115,7 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 
     if( use_data ) {
         block_params = handlebars_value_ctor(CONTEXT);
-        handlebars_value_array_init(block_params, 2);
+        handlebars_value_array(block_params, handlebars_stack_ctor(CONTEXT, 2));
 
         data = handlebars_value_ctor(CONTEXT);
         struct handlebars_map * data_map;
@@ -264,7 +264,7 @@ struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
     int i;
     fprintf(stderr, "[INFO] ");
     for (i = 0; i < argc; i++) {
-        char *tmp = handlebars_value_dump(argv[i], 0);
+        char *tmp = handlebars_value_dump(argv[i], HBSCTX(options->vm), 0);
         fprintf(stderr, "%s ", tmp);
         handlebars_talloc_free(tmp);
     }
@@ -285,7 +285,7 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
     enum handlebars_value_type type = handlebars_value_get_type(context);
 
     if( type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        struct handlebars_string * key = handlebars_value_to_string(field);
+        struct handlebars_string * key = handlebars_value_to_string(field, CONTEXT);
         result = handlebars_value_map_find(context, key);
         handlebars_string_delref(key);
     } else if( type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
@@ -401,7 +401,7 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
         result_str = handlebars_vm_execute_program(options->vm, options->inverse, context);
     } else {
         block_params = handlebars_value_ctor(CONTEXT);
-        handlebars_value_array_init(block_params, 2);
+        handlebars_value_array(block_params, handlebars_stack_ctor(CONTEXT, 2));
         handlebars_value_array_set(block_params, 0, context);
 
         result_str = handlebars_vm_execute_program_ex(options->vm, options->program, context, options->data, block_params);

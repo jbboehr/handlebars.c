@@ -62,8 +62,9 @@ void handlebars_user_delref(struct handlebars_user * user)
 
 
 
-void handlebars_user_init(struct handlebars_user * user, const struct handlebars_value_handlers * handlers)
+void handlebars_user_init(struct handlebars_user * user, struct handlebars_context * ctx, const struct handlebars_value_handlers * handlers)
 {
+    user->ctx = ctx;
     user->handlers = handlers;
 #ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_rc_init(&user->rc, user_rc_dtor);

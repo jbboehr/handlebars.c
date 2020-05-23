@@ -31,9 +31,6 @@
 
 
 
-#undef CONTEXT
-#define CONTEXT HBSCTX(handlebars_value_get_ctx(value))
-
 struct _yaml_ctx {
     yaml_parser_t parser;
     yaml_document_t document;
@@ -97,7 +94,7 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
                     return;
                 }
                 // String
-                handlebars_value_cstrl(value, (const char *) node->data.scalar.value, node->data.scalar.length);
+                handlebars_value_str(value, handlebars_string_ctor(ctx, (const char *) node->data.scalar.value, node->data.scalar.length));
             }
             break;
         default:
@@ -109,7 +106,8 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
 
 void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct handlebars_value * value, const char * yaml)
 {
-    struct _yaml_ctx * yctx = MC(handlebars_talloc_zero(ctx, struct _yaml_ctx));
+    struct _yaml_ctx * yctx = handlebars_talloc_zero(ctx, struct _yaml_ctx);
+    HANDLEBARS_MEMCHECK(yctx, ctx);
     talloc_set_destructor(yctx, _yaml_ctx_dtor);
     yaml_parser_initialize(&yctx->parser);
     yaml_parser_set_input_string(&yctx->parser, (unsigned char *) yaml, strlen(yaml));

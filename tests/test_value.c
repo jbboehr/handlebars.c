@@ -95,7 +95,7 @@ START_TEST(test_array_iterator)
     size_t i = 0;
 
     value = handlebars_value_ctor(context);
-    handlebars_value_array_init(value, 3);
+    handlebars_value_array(value, handlebars_stack_ctor(context, 3));
 
     tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
@@ -168,7 +168,7 @@ START_TEST(test_array_find)
 {
 	struct handlebars_value * value2;
     struct handlebars_value * value = handlebars_value_ctor(context);
-    handlebars_value_array_init(value, 2);
+    handlebars_value_array(value, handlebars_stack_ctor(context, 2));
     do {
         struct handlebars_value * tmp;
         struct handlebars_string * tmp_str;

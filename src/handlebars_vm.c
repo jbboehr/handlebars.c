@@ -248,7 +248,7 @@ static inline void setup_options(struct handlebars_vm * vm, int argc, struct han
 static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, bool escape)
 {
     if( result ) {
-        vm->buffer = handlebars_value_expression_append(vm->buffer, result, escape);
+        vm->buffer = handlebars_value_expression_append(CONTEXT, result, vm->buffer, escape);
         handlebars_value_delref(result);
     }
 }
@@ -307,7 +307,6 @@ static inline struct handlebars_value * merge_hash(struct handlebars_context * c
     if( context1 && handlebars_value_get_type(context1) == HANDLEBARS_VALUE_TYPE_MAP &&
             hash && handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP ) {
         struct handlebars_map * new_map = handlebars_map_ctor(context, handlebars_value_count(context1) + handlebars_value_count(hash));
-        // handlebars_value_map_init(context2, handlebars_value_count(context1) + handlebars_value_count(hash));
         HANDLEBARS_VALUE_FOREACH_KV(context1, key, child) {
             new_map = handlebars_map_update(new_map, key, child);
         } HANDLEBARS_VALUE_FOREACH_END();
@@ -530,7 +529,7 @@ ACCEPT_FUNCTION(block_value)
 ACCEPT_FUNCTION(empty_hash)
 {
     struct handlebars_value * value = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(value, 0);
+    handlebars_value_map(value, handlebars_map_ctor(CONTEXT, 0));
     PUSH(vm->stack, value);
 }
 
@@ -573,7 +572,7 @@ static inline struct handlebars_value * invoke_mustache_style_lambda(
         return rv;
     }
 
-    struct handlebars_string * tmpl = handlebars_value_to_string(lambda_result);
+    struct handlebars_string * tmpl = handlebars_value_to_string(lambda_result, CONTEXT);
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
     struct handlebars_string * rv_str = execute_template(context, vm, tmpl, value, NULL, 0);
     rv = handlebars_value_ctor(CONTEXT);
@@ -750,7 +749,7 @@ ACCEPT_FUNCTION(invoke_partial)
         argv[0] = context2;
 
         struct handlebars_value * ret = handlebars_value_call(partial, argc, argv, &options);
-        vm->buffer = handlebars_string_indent_append(HBSCTX(vm), vm->buffer, handlebars_value_expression(ret, 0), opcode->op3.data.string.string);
+        vm->buffer = handlebars_string_indent_append(HBSCTX(vm), vm->buffer, handlebars_value_expression(CONTEXT, ret, 0), opcode->op3.data.string.string);
         handlebars_value_delref(ret);
     } else {
 
@@ -982,7 +981,7 @@ ACCEPT_FUNCTION(push_context)
 ACCEPT_FUNCTION(push_hash)
 {
     struct handlebars_value * hash = handlebars_value_ctor(CONTEXT);
-    handlebars_value_map_init(hash, 4); // number of items might be available somewhere
+    handlebars_value_map(hash, handlebars_map_ctor(CONTEXT, 4)); // number of items might be available somewhere
     PUSH(vm->hashStack, hash);
 }
 

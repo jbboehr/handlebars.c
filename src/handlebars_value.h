@@ -99,15 +99,6 @@ void handlebars_value_dtor(
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL;
 
-/**
- * @brief Create a copy of a value
- * @param[in] value
- * @return The copy of the value
- */
-struct handlebars_value * handlebars_value_copy(
-    struct handlebars_value * value
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
 // }}} Constructors and Destructors
 
 // {{{ Reference Counting
@@ -156,9 +147,6 @@ struct handlebars_string * handlebars_value_get_string(struct handlebars_value *
     HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_user * handlebars_value_get_user(struct handlebars_value * value)
-    HBS_ATTR_NONNULL_ALL;
-
-struct handlebars_context * handlebars_value_get_ctx(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
 /**
@@ -216,16 +204,19 @@ double handlebars_value_get_floatval(
  * @return The value as a string
  */
 struct handlebars_string * handlebars_value_to_string(
-    struct handlebars_value * value
+    struct handlebars_value * value,
+    struct handlebars_context * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
  * @brief Convert a value to string, following handlebars (javascript) string conversion rules
+ * @param[in] context The handlebars memory context
  * @param[in] value The value to convert
  * @param[in] escape Whether or not to escape the value. Overridden by #HANDLEBARS_VALUE_FLAG_SAFE_STRING
  * @return The value converted to a string
  */
 struct handlebars_string * handlebars_value_expression(
+    struct handlebars_context * context,
     struct handlebars_value * value,
     bool escape
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
@@ -233,14 +224,16 @@ struct handlebars_string * handlebars_value_expression(
 /**
  * @brief Convert a value to string and append to the given buffer, following handlebars (javascript)
  *        string conversion rules.
- * @param[in] string The buffer to which the result will be appended
+ * @param[in] context The handlebars memory context
  * @param[in] value The value to convert
+ * @param[in] string The buffer to which the result will be appended
  * @param[in] escape Whether or not to escape the value. Overridden by #HANDLEBARS_VALUE_FLAG_SAFE_STRING
  * @return The original buffer with the expression appended. The pointer may change via realloc.
  */
 struct handlebars_string * handlebars_value_expression_append(
-    struct handlebars_string * string,
+    struct handlebars_context * context,
     struct handlebars_value * value,
+    struct handlebars_string * string,
     bool escape
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
@@ -300,23 +293,6 @@ void handlebars_value_float(struct handlebars_value * value, double dval) HBS_AT
  */
 void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string) HBS_ATTR_NONNULL_ALL;
 
-/**
- * @brief Set the string value (char[] variant) and `talloc_free` the given string
- * @param[in] value
- * @param[in] strval
- * @return void
- */
-void handlebars_value_cstr_steal(struct handlebars_value * value, char * strval) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Set the string value (char[] with length variant)
- * @param[in] value
- * @param[in] strval
- * @param[in] strlen
- * @return void
- */
-void handlebars_value_cstrl(struct handlebars_value * value, const char * strval, size_t strlen) HBS_ATTR_NONNULL_ALL;
-
 void handlebars_value_ptr(struct handlebars_value * value, void * ptr) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_value_user(struct handlebars_value * value, struct handlebars_user * user) HBS_ATTR_NONNULL_ALL;
@@ -366,13 +342,6 @@ long handlebars_value_count(struct handlebars_value * value) HBS_ATTR_NONNULL_AL
 
 // {{{ Array
 
-/**
- * @brief Set the value to an empty array
- * @param[in] value
- * @return void
- */
-void handlebars_value_array_init(struct handlebars_value * value, size_t capacity) HBS_ATTR_NONNULL_ALL;
-
 void handlebars_value_array_set(
     struct handlebars_value * value,
     size_t index,
@@ -398,13 +367,6 @@ struct handlebars_value * handlebars_value_array_find(
 // }}} Array
 
 // {{{ Map
-
-/**
- * @brief Set the value to an empty map
- * @param[in] value
- * @return void
- */
-void handlebars_value_map_init(struct handlebars_value * value, size_t capacity) HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Lookup a key in a map
@@ -435,6 +397,7 @@ struct handlebars_value * handlebars_value_map_str_find(
 
 char * handlebars_value_dump(
     struct handlebars_value * value,
+    struct handlebars_context * context,
     size_t depth
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 

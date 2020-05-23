@@ -49,7 +49,7 @@ handlebars_count_func handlebars_value_handlers_get_count_fn(
     const struct handlebars_value_handlers * handlers
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-void handlebars_user_init(struct handlebars_user * user, const struct handlebars_value_handlers * handlers)
+void handlebars_user_init(struct handlebars_user * user, struct handlebars_context * ctx, const struct handlebars_value_handlers * handlers)
     HBS_ATTR_NONNULL_ALL;
 
 // {{{ Reference Counting
@@ -69,6 +69,7 @@ void handlebars_user_delref(struct handlebars_user * user)
 //! Common header for user-defined types
 struct handlebars_user
 {
+    struct handlebars_context * ctx;
 #ifndef HANDLEBARS_NO_REFCOUNT
     struct handlebars_rc rc;
 #endif

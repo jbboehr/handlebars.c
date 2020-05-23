@@ -167,7 +167,7 @@ HBS_ATTR_UNUSED
 static void handlebars_stack_dump(struct handlebars_stack * stack) {
     size_t i;
     for (i = 0; i < stack->i; i++) {
-        fprintf(stderr, "STACK[%zu]: %s\n", i, handlebars_value_dump(stack->v[i], 0));
+        fprintf(stderr, "STACK[%zu]: %s\n", i, handlebars_value_dump(stack->v[i], stack->ctx, 0));
     }
 }
 

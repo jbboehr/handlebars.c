@@ -264,7 +264,7 @@ START_TEST(test_mustache_spec)
     fprintf(stderr, "DESC: %s\n", test->desc);
     fprintf(stderr, "TMPL: %s\n", test->tmpl);
     if( test->partials ) {
-        char * tmp = handlebars_value_dump(test->partials, 0);
+        char * tmp = handlebars_value_dump(test->partials, context, 0);
         fprintf(stderr, "PARTIALS:\n%s\n", tmp);
         talloc_free(tmp);
     }
@@ -310,15 +310,15 @@ START_TEST(test_mustache_spec)
     struct handlebars_value * partials;
     if( test->partials ) {
         // @TODO this may have the wrong parent - might be bad
-        partials = /*handlebars_value_copy*/(test->partials);
+        partials = test->partials;
     } else {
         partials = handlebars_value_ctor(context);
-        handlebars_value_map_init(partials, 0);
+        handlebars_value_map(partials, handlebars_map_ctor(context, 0));
     }
     handlebars_vm_set_partials(vm, partials);
 
     // Setup input
-    struct handlebars_value * input = /*handlebars_value_copy*/(test->data);
+    struct handlebars_value * input = test->data;
     load_fixtures(input);
 
     // Execute
@@ -358,7 +358,7 @@ START_TEST(test_mustache_spec)
             test->name, test->desc,
             test->flags,
             test->tmpl,
-            handlebars_value_dump(test->data, 0),
+            handlebars_value_dump(test->data, context, 0),
             test->expected,
             hbs_str_val(buffer)
         );

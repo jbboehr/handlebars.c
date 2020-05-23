@@ -25,10 +25,13 @@
 #include <string.h>
 #include <talloc.h>
 
+#define HANDLEBARS_HELPERS_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 
+#include "handlebars_helpers.h"
 #include "handlebars_map.h"
 #include "handlebars_stack.h"
 #include "handlebars_value.h"
@@ -37,9 +40,6 @@
 #ifndef HANDLEBARS_NO_REFCOUNT
 #include "handlebars_rc.h"
 #endif
-
-#undef CONTEXT
-#define CONTEXT HBSCTX(value->ctx)
 
 
 
@@ -74,9 +74,6 @@ struct handlebars_value
 
     //! Internal value union
     union handlebars_value_internals v;
-
-    //! Handlebars context, used for error handling and memory allocation
-	struct handlebars_context * ctx;
 };
 
 const size_t HANDLEBARS_VALUE_SIZE = sizeof(struct handlebars_value);
@@ -117,7 +114,6 @@ struct handlebars_value * handlebars_value_ctor(struct handlebars_context * ctx)
 {
     struct handlebars_value * value = handlebars_talloc_zero(ctx, struct handlebars_value);
     HANDLEBARS_MEMCHECK(value, ctx);
-    value->ctx = ctx;
     value->flags = HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED;
 #ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_rc_init(&value->rc, value_rc_dtor);
@@ -162,49 +158,6 @@ void handlebars_value_dtor(struct handlebars_value * value)
     value->flags = restore_flags;
 }
 
-struct handlebars_value * handlebars_value_copy(struct handlebars_value * value)
-{
-    struct handlebars_value * new_value = NULL;
-
-    assert(value != NULL);
-
-    switch( value->type ) {
-        case HANDLEBARS_VALUE_TYPE_STRING:
-            new_value = handlebars_value_ctor(CONTEXT);
-            handlebars_value_str(new_value, value->v.string);
-            new_value->flags = (value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING);
-            break;
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            new_value = handlebars_value_ctor(CONTEXT);
-            handlebars_value_array_init(new_value, handlebars_value_count(value));
-            HANDLEBARS_VALUE_FOREACH(value, child) {
-                handlebars_value_array_push(new_value, handlebars_value_copy(child));
-            } HANDLEBARS_VALUE_FOREACH_END();
-            break;
-        case HANDLEBARS_VALUE_TYPE_MAP: {
-            struct handlebars_map * new_map;
-            new_value = handlebars_value_ctor(CONTEXT);
-            new_map = handlebars_map_ctor(CONTEXT, handlebars_value_count(value));
-            // handlebars_value_map_init(new_value, handlebars_value_count(value));
-            HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
-                new_map = handlebars_map_update(new_map, key, handlebars_value_copy(child));
-                // handlebars_map_update(new_value->v.map, key, handlebars_value_copy(child));
-            } HANDLEBARS_VALUE_FOREACH_END();
-            handlebars_value_map(new_value, new_map);
-            break;
-        }
-        case HANDLEBARS_VALUE_TYPE_USER:
-            new_value = handlebars_value_get_handlers(value)->copy(value);
-            break;
-        default:
-            new_value = handlebars_value_ctor(CONTEXT);
-            memcpy(&new_value->v, &value->v, sizeof(value->v));
-            break;
-    }
-
-    return MC(new_value);
-}
-
 // }}} Constructors and Destructors
 
 // {{{ Getters
@@ -230,9 +183,7 @@ unsigned long handlebars_value_get_flags(struct handlebars_value * value)
 
 const struct handlebars_value_handlers * handlebars_value_get_handlers(struct handlebars_value * value)
 {
-    if (value->type != HANDLEBARS_VALUE_TYPE_USER) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid type");
-    }
+    assert(value->type == HANDLEBARS_VALUE_TYPE_USER);
     return value->v.user->handlers;
 }
 
@@ -279,11 +230,6 @@ struct handlebars_user * handlebars_value_get_user(struct handlebars_value * val
     } else {
         return NULL;
     }
-}
-
-struct handlebars_context * handlebars_value_get_ctx(struct handlebars_value * value)
-{
-    return value->ctx;
 }
 
 const char * handlebars_value_get_strval(struct handlebars_value * value)
@@ -352,22 +298,24 @@ double handlebars_value_get_floatval(struct handlebars_value * value)
 
 // {{{ Conversion
 
-struct handlebars_string * handlebars_value_to_string(struct handlebars_value * value)
-{
+struct handlebars_string * handlebars_value_to_string(
+    struct handlebars_value * value,
+    struct handlebars_context * context
+) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_STRING:
             handlebars_string_addref(value->v.string);
             return value->v.string;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
-            return handlebars_string_asprintf(CONTEXT, "%ld", value->v.lval);
+            return handlebars_string_asprintf(context, "%ld", value->v.lval);
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            return handlebars_string_asprintf(CONTEXT, "%g", value->v.dval);
+            return handlebars_string_asprintf(context, "%g", value->v.dval);
         case HANDLEBARS_VALUE_TYPE_TRUE:
-            return handlebars_string_ctor(CONTEXT, HBS_STRL("true"));
+            return handlebars_string_ctor(context, HBS_STRL("true"));
         case HANDLEBARS_VALUE_TYPE_FALSE:
-            return handlebars_string_ctor(CONTEXT, HBS_STRL("false"));
+            return handlebars_string_ctor(context, HBS_STRL("false"));
         default:
-            return handlebars_string_init(CONTEXT, 0);
+            return handlebars_string_init(context, 0);
     }
 }
 
@@ -389,40 +337,44 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
     }
 }
 
-struct handlebars_string * handlebars_value_expression(struct handlebars_value * value, bool escape)
-{
-    return handlebars_value_expression_append(handlebars_string_init(value->ctx, 0), value, escape);
+struct handlebars_string * handlebars_value_expression(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    bool escape
+) {
+    return handlebars_value_expression_append(context, value, handlebars_string_init(context, 0), escape);
 }
 
 struct handlebars_string * handlebars_value_expression_append(
-    struct handlebars_string * string,
+    struct handlebars_context * context,
     struct handlebars_value * value,
+    struct handlebars_string * string,
     bool escape
 ) {
     bool first;
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_TRUE:
-            string = handlebars_string_append(value->ctx, string, HBS_STRL("true"));
+            string = handlebars_string_append(context, string, HBS_STRL("true"));
             break;
 
         case HANDLEBARS_VALUE_TYPE_FALSE:
-            string = handlebars_string_append(value->ctx, string, HBS_STRL("false"));
+            string = handlebars_string_append(context, string, HBS_STRL("false"));
             break;
 
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            string = handlebars_string_asprintf_append(value->ctx, string, "%g", value->v.dval);
+            string = handlebars_string_asprintf_append(context, string, "%g", value->v.dval);
             break;
 
         case HANDLEBARS_VALUE_TYPE_INTEGER:
-            string = handlebars_string_asprintf_append(value->ctx, string, "%ld", value->v.lval);
+            string = handlebars_string_asprintf_append(context, string, "%ld", value->v.lval);
             break;
 
         case HANDLEBARS_VALUE_TYPE_STRING:
             if( escape && !(value->flags & HANDLEBARS_VALUE_FLAG_SAFE_STRING) ) {
-                string = handlebars_string_htmlspecialchars_append(value->ctx, string, HBS_STR_STRL(value->v.string));
+                string = handlebars_string_htmlspecialchars_append(context, string, HBS_STR_STRL(value->v.string));
             } else {
-                string = handlebars_string_append_str(value->ctx, string, value->v.string);
+                string = handlebars_string_append_str(context, string, value->v.string);
             }
             break;
 
@@ -435,9 +387,9 @@ struct handlebars_string * handlebars_value_expression_append(
             first = true;
             HANDLEBARS_VALUE_FOREACH(value, child) {
                 if( !first ) {
-                    string = handlebars_string_append(value->ctx, string, HBS_STRL(","));
+                    string = handlebars_string_append(context, string, HBS_STRL(","));
                 }
-                string = handlebars_value_expression_append(string, child, escape);
+                string = handlebars_value_expression_append(context, child, string, escape);
                 first = false;
             } HANDLEBARS_VALUE_FOREACH_END();
             break;
@@ -487,23 +439,6 @@ void handlebars_value_str(struct handlebars_value * value, struct handlebars_str
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_STRING;
     value->v.string = string;
-}
-
-void handlebars_value_cstr_steal(struct handlebars_value * value, char * strval)
-{
-    handlebars_value_null(value);
-    value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen(strval))/*)*/;
-    handlebars_talloc_free(strval);
-    handlebars_string_addref(value->v.string);
-}
-
-void handlebars_value_cstrl(struct handlebars_value * value, const char * strval, size_t strlen)
-{
-    handlebars_value_null(value);
-    value->type = HANDLEBARS_VALUE_TYPE_STRING;
-    value->v.string = /*talloc_steal(value,*/ handlebars_string_ctor(value->ctx, strval, strlen)/*)*/;
-    handlebars_string_addref(value->v.string);
 }
 
 void handlebars_value_ptr(struct handlebars_value * value, void * ptr)
@@ -597,27 +532,15 @@ long handlebars_value_count(struct handlebars_value * value)
 
 // {{{ Array
 
-void handlebars_value_array_init(struct handlebars_value * value, size_t capacity)
-{
-    handlebars_value_null(value);
-    value->type = HANDLEBARS_VALUE_TYPE_ARRAY;
-    value->v.stack = /*talloc_steal(value,*/ handlebars_stack_ctor(value->ctx, capacity)/*)*/;
-    handlebars_stack_addref(value->v.stack);
-}
-
 void handlebars_value_array_set(struct handlebars_value * value, size_t index, struct handlebars_value * child)
 {
-    if (value->type != HANDLEBARS_VALUE_TYPE_ARRAY) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid type");
-    }
+    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
     value->v.stack = handlebars_stack_set(value->v.stack, index, child);
 }
 
 void handlebars_value_array_push(struct handlebars_value * value, struct handlebars_value * child)
 {
-    if (value->type != HANDLEBARS_VALUE_TYPE_ARRAY) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid type");
-    }
+    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
     value->v.stack = handlebars_stack_push(value->v.stack, child);
 }
 
@@ -644,14 +567,6 @@ struct handlebars_value * handlebars_value_array_find(struct handlebars_value * 
 
 // {{{ Map
 
-void handlebars_value_map_init(struct handlebars_value * value, size_t capacity)
-{
-    handlebars_value_null(value);
-    value->type = HANDLEBARS_VALUE_TYPE_MAP;
-    value->v.map = /*talloc_steal(value,*/ handlebars_map_ctor(value->ctx, capacity)/*)*/;
-    handlebars_map_addref(value->v.map);
-}
-
 struct handlebars_value * handlebars_value_map_find(struct handlebars_value * value, struct handlebars_string * key)
 {
     struct handlebars_value * child = NULL;
@@ -674,22 +589,22 @@ struct handlebars_value * handlebars_value_map_find(struct handlebars_value * va
 struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value * value, const char * key, size_t len)
 {
     struct handlebars_value * ret = NULL;
-    struct handlebars_string * str = handlebars_string_ctor(value->ctx, key, len);
-    handlebars_string_addref(str);
 
 	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
 		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
+            struct handlebars_string * str = handlebars_string_ctor(value->v.user->ctx, key, len);
+            handlebars_string_addref(str);
 			ret = handlebars_value_get_handlers(value)->map_find(value, str);
+            handlebars_string_delref(str);
 		}
 	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        ret = handlebars_map_find(value->v.map, str);
+        ret = handlebars_map_str_find(value->v.map, key, len);
     }
 
     if (ret) {
         handlebars_value_addref(ret);
     }
 
-    handlebars_string_delref(str);
 	return ret;
 }
 
@@ -704,15 +619,16 @@ struct handlebars_value * handlebars_value_call(struct handlebars_value * value,
     } else if( value->type == HANDLEBARS_VALUE_TYPE_USER && handlebars_value_get_handlers(value)->call ) {
         return handlebars_value_get_handlers(value)->call(value, argc, argv, options);
     } else {
-        handlebars_throw(value->ctx, HANDLEBARS_ERROR, "Unable to call value of type %d", value->type);
+        handlebars_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "Unable to call value of type %d", value->type);
     }
 }
 
-char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
+char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_context * context, size_t depth)
 {
-    char * buf = MC(handlebars_talloc_strdup(CONTEXT, ""));
+    char * buf = handlebars_talloc_strdup(context, "");
     char indent[64];
     char indent2[64];
+    HANDLEBARS_MEMCHECK(buf, context);
 
     memset(indent, 0, sizeof(indent));
     memset(indent, ' ', depth * 4); // @todo fix
@@ -742,7 +658,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "[");
             HANDLEBARS_VALUE_FOREACH_IDX(value, index, child) {
-                char * tmp = handlebars_value_dump(child, depth + 1);
+                char * tmp = handlebars_value_dump(child, context, depth + 1);
                 buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%zd => %s\n", indent2, index, tmp);
                 handlebars_talloc_free(tmp);
             } HANDLEBARS_VALUE_FOREACH_END();
@@ -751,7 +667,7 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
         case HANDLEBARS_VALUE_TYPE_MAP:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "{");
             HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
-                char * tmp = handlebars_value_dump(child, depth + 1);
+                char * tmp = handlebars_value_dump(child, context, depth + 1);
                 buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%.*s => %s\n", indent2, (int) hbs_str_len(key), hbs_str_val(key), tmp);
                 handlebars_talloc_free(tmp);
             } HANDLEBARS_VALUE_FOREACH_END();
@@ -762,7 +678,9 @@ char * handlebars_value_dump(struct handlebars_value * value, size_t depth)
             break;
     }
 
-    return MC(buf);
+    HANDLEBARS_MEMCHECK(buf, context);
+
+    return buf;
 }
 
 // }}} Misc
@@ -845,7 +763,6 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
 
         default:
             it->next = &handlebars_value_iterator_next_void;
-            //handlebars_context_throw(value->ctx, HANDLEBARS_ERROR, "Cannot iterator over type %d", value->type);
             break;
     }
 

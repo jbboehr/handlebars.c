@@ -37,15 +37,17 @@
 #include "handlebars_rc.h"
 #endif
 
+#define GET_INTERN_V(value) GET_INTERN(handlebars_value_get_user(value))
+#define GET_INTERN(user) ((struct handlebars_partial_loader *) talloc_get_type_abort(user, struct handlebars_partial_loader))
+
 
 
 struct handlebars_partial_loader {
-    struct handlebars_user usr;
+    struct handlebars_user user;
     struct handlebars_string *base_path;
     struct handlebars_string *extension;
     struct handlebars_map * map;
 };
-
 
 static int partial_loader_dtor(struct handlebars_partial_loader * intern)
 {
@@ -57,13 +59,6 @@ static int partial_loader_dtor(struct handlebars_partial_loader * intern)
 
     return 0;
 }
-
-
-#define GET_INTERN_V(value) GET_INTERN(handlebars_value_get_user(value))
-#define GET_INTERN(user) ((struct handlebars_partial_loader *) talloc_get_type_abort(user, struct handlebars_partial_loader))
-
-#undef CONTEXT
-#define CONTEXT HBSCTX(handlebars_value_get_ctx(value))
 
 static struct handlebars_value * hbs_partial_loader_copy(struct handlebars_value * value)
 {
@@ -98,11 +93,11 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
         return retval;
     }
 
-    struct handlebars_string *filename = handlebars_string_copy_ctor(CONTEXT, intern->base_path);
-    filename = handlebars_string_append(CONTEXT, filename, HBS_STRL("/"));
-    filename = handlebars_string_append_str(CONTEXT, filename, key);
+    struct handlebars_string *filename = handlebars_string_copy_ctor(intern->user.ctx, intern->base_path);
+    filename = handlebars_string_append(intern->user.ctx, filename, HBS_STRL("/"));
+    filename = handlebars_string_append_str(intern->user.ctx, filename, key);
     if (intern->extension) {
-        filename = handlebars_string_append_str(CONTEXT, filename, intern->extension);
+        filename = handlebars_string_append_str(intern->user.ctx, filename, intern->extension);
     }
 
     FILE * f;
@@ -110,25 +105,25 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
 
     f = fopen(hbs_str_val(filename), "rb");
     if( !f ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "File to open partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
+        handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "File to open partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
     fseek(f, 0, SEEK_END);
     size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    char * buf = handlebars_talloc_array(CONTEXT, char, size + 1);
+    char * buf = handlebars_talloc_array(intern->user.ctx, char, size + 1);
     size_t read = fread(buf, size, 1, f);
     fclose(f);
 
     if (!read) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to read partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
+        handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Failed to read partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
     buf[size] = 0;
 
-    retval = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str(retval, handlebars_string_ctor(CONTEXT, buf, size));
+    retval = handlebars_value_ctor(intern->user.ctx);
+    handlebars_value_str(retval, handlebars_string_ctor(intern->user.ctx, buf, size));
     handlebars_talloc_free(buf);
 
     intern->map = handlebars_map_add(intern->map, key, retval);
@@ -216,7 +211,7 @@ struct handlebars_value * handlebars_value_partial_loader_ctor(
     struct handlebars_value *value = handlebars_value_ctor(context);
 
     struct handlebars_partial_loader *obj = MC(handlebars_talloc(context, struct handlebars_partial_loader));
-    handlebars_user_init((struct handlebars_user *) obj, &handlebars_value_hbs_partial_loader_handlers);
+    handlebars_user_init((struct handlebars_user *) obj, context, &handlebars_value_hbs_partial_loader_handlers);
     obj->base_path = talloc_steal(obj, handlebars_string_copy_ctor(context, base_path));
     obj->extension = talloc_steal(obj, handlebars_string_copy_ctor(context, extension));
     obj->map = talloc_steal(obj, handlebars_map_ctor(context, 32));

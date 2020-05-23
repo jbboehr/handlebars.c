@@ -72,7 +72,7 @@ static struct handlebars_string * execute_template(const char *template)
 
     // Setup helpers
     struct handlebars_value * helpers = handlebars_value_ctor(HBSCTX(vm));
-    handlebars_value_map_init(helpers, 0);
+    handlebars_value_map(helpers, handlebars_map_ctor(HBSCTX(vm), 0));
     handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partial loader
