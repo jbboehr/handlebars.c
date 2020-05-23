@@ -105,6 +105,7 @@ START_TEST(test_compiler_set_flags)
 }
 END_TEST
 
+#ifdef HANDLEBARS_TESTING_EXPORTS
 START_TEST(test_compiler_is_known_helper)
 {
     struct handlebars_ast_node * id;
@@ -163,6 +164,7 @@ START_TEST(test_compiler_opcode)
     ck_assert_ptr_eq(op2, *(program->opcodes + 1));
 }
 END_TEST
+#endif
 
 static Suite * suite(void);
 static Suite * suite(void)
@@ -174,8 +176,10 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");
+#ifdef HANDLEBARS_TESTING_EXPORTS
 	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");
 	REGISTER_TEST_FIXTURE(s, test_compiler_opcode, "Push opcode");
+#endif
 
     return s;
 }

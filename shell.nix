@@ -1,18 +1,31 @@
+# nix-shell --arg stdenv '(import <nixpkgs> {}).clangStdenv'
 {
-  pkgs ? import <nixpkgs> {},
-  handlebarscWerror ? true,
-  handlebarscDebug ? true,
-  handlebarscDev ? true,
-  ...
-}@args:
+  pkgs ? (import <nixpkgs> {}),
+  stdenv ? pkgs.stdenv,
 
-pkgs.mkShell {
-  inputsFrom = [ (import ./default.nix args) ];
-  buildInputs = with pkgs; [
-    autoconf-archive bison gperf flex lcov re2c
-    # cmake
-    kcachegrind valgrind
-    bc # bench
-  ];
-}
+  checkSupport ? true,
+  cmakeSupport ? false,
+  debugSupport ? true, # different than default.nix
+  devSupport ? true, # different than default.nix
+  doxygenSupport ? false,
+  hardeningSupport ? true,
+  jsonSupport ? true,
+  lmdbSupport ? true,
+  ltoSupport ? true,
+  noRefcountingSupport ? false,
+  pthreadSupport ? true,
+  sharedSupport ? true,
+  staticSupport ? true,
+  WerrorSupport ? true, # different than default.nix
+  valgrindSupport ? true, # different than default.nix
+  yamlSupport ? true
+}:
 
+let
+  args = {
+    inherit stdenv;
+    inherit checkSupport cmakeSupport debugSupport devSupport doxygenSupport hardeningSupport jsonSupport lmdbSupport ltoSupport noRefcountingSupport pthreadSupport sharedSupport staticSupport WerrorSupport valgrindSupport yamlSupport;
+  };
+in
+
+import ./default.nix args

@@ -178,18 +178,6 @@ void handlebars_compiler_set_flags(
     unsigned long flags
 ) HBS_ATTR_NONNULL_ALL;
 
-/**
- * @brief Get an array of parts of an ID AST node.
- *
- * @param[in] compiler The handlebars compiler
- * @param[in] ast_node The AST node
- * @return The string array
- */
-struct handlebars_string ** handlebars_ast_node_get_id_parts(
-    struct handlebars_compiler * compiler,
-    struct handlebars_ast_node * ast_node
-) HBS_ATTR_NONNULL_ALL;
-
 struct handlebars_program * handlebars_compiler_get_program(
     struct handlebars_compiler * compiler
 ) HBS_ATTR_NONNULL_ALL;
@@ -201,15 +189,27 @@ void handlebars_compiler_set_known_helpers(
 
 // {{{ Extern for test suite only
 
+/**
+ * @brief Get an array of parts of an ID AST node.
+ *
+ * @param[in] compiler The handlebars compiler
+ * @param[in] ast_node The AST node
+ * @return The string array
+ */
+struct handlebars_string ** handlebars_ast_node_get_id_parts(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * ast_node
+) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL;
+
 bool handlebars_compiler_is_known_helper(
     struct handlebars_compiler * compiler,
     struct handlebars_ast_node * path
-) HBS_ATTR_NONNULL_ALL;
+) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL;
 
 void handlebars_compiler_opcode(
     struct handlebars_compiler * compiler,
     struct handlebars_opcode * opcode
-) HBS_ATTR_NONNULL_ALL;
+) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL;
 
 // }}} Extern for test suite only
 

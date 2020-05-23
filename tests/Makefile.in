@@ -88,14 +88,17 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 check_PROGRAMS = test_main$(EXEEXT) test_ast$(EXEEXT) \
-	test_ast_helpers$(EXEEXT) test_ast_list$(EXEEXT) \
-	test_compiler$(EXEEXT) test_map$(EXEEXT) \
-	test_opcode_printer$(EXEEXT) test_opcodes$(EXEEXT) \
-	test_scanners$(EXEEXT) test_stack$(EXEEXT) \
-	test_string$(EXEEXT) test_token$(EXEEXT) test_utils$(EXEEXT) \
-	test_value$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2) \
-	$(am__EXEEXT_3)
-@JSON_TRUE@am__append_1 = \
+	test_ast_list$(EXEEXT) test_compiler$(EXEEXT) \
+	test_map$(EXEEXT) test_opcode_printer$(EXEEXT) \
+	test_opcodes$(EXEEXT) test_stack$(EXEEXT) test_string$(EXEEXT) \
+	test_token$(EXEEXT) test_value$(EXEEXT) $(am__EXEEXT_1) \
+	$(am__EXEEXT_2) $(am__EXEEXT_3) $(am__EXEEXT_4)
+@TESTING_EXPORTS_TRUE@am__append_1 = \
+@TESTING_EXPORTS_TRUE@	test_ast_helpers \
+@TESTING_EXPORTS_TRUE@	test_scanners \
+@TESTING_EXPORTS_TRUE@	test_utils
+
+@JSON_TRUE@am__append_2 = \
 @JSON_TRUE@	test_cache \
 @JSON_TRUE@	test_json \
 @JSON_TRUE@	test_partial_loader \
@@ -104,11 +107,11 @@ check_PROGRAMS = test_main$(EXEEXT) test_ast$(EXEEXT) \
 @JSON_TRUE@	test_spec_handlebars_compiler \
 @JSON_TRUE@	test_spec_handlebars
 
-@YAML_TRUE@am__append_2 = \
+@YAML_TRUE@am__append_3 = \
 @YAML_TRUE@	test_spec_mustache \
 @YAML_TRUE@	test_yaml
 
-@HANDLEBARS_MEMORY_TRUE@am__append_3 = test_random_alloc_fail
+@HANDLEBARS_MEMORY_TRUE@am__append_4 = test_random_alloc_fail
 subdir = tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_ac_append_to_file.m4 \
@@ -141,6 +144,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_ac_append_to_file.m4 \
 	$(top_srcdir)/m4/ax_prog_flex_version.m4 \
 	$(top_srcdir)/m4/ax_pthread.m4 \
 	$(top_srcdir)/m4/ax_require_defined.m4 \
+	$(top_srcdir)/m4/ax_tls.m4 \
 	$(top_srcdir)/m4/ax_valgrind_check.m4 \
 	$(top_srcdir)/m4/hbs_computed_gotos.m4 \
 	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
@@ -155,15 +159,18 @@ CONFIG_HEADER = $(top_builddir)/config.h \
 	$(top_builddir)/src/handlebars_config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-@JSON_TRUE@am__EXEEXT_1 = test_cache$(EXEEXT) test_json$(EXEEXT) \
+@TESTING_EXPORTS_TRUE@am__EXEEXT_1 = test_ast_helpers$(EXEEXT) \
+@TESTING_EXPORTS_TRUE@	test_scanners$(EXEEXT) \
+@TESTING_EXPORTS_TRUE@	test_utils$(EXEEXT)
+@JSON_TRUE@am__EXEEXT_2 = test_cache$(EXEEXT) test_json$(EXEEXT) \
 @JSON_TRUE@	test_partial_loader$(EXEEXT) \
 @JSON_TRUE@	test_spec_handlebars_parser$(EXEEXT) \
 @JSON_TRUE@	test_spec_handlebars_tokenizer$(EXEEXT) \
 @JSON_TRUE@	test_spec_handlebars_compiler$(EXEEXT) \
 @JSON_TRUE@	test_spec_handlebars$(EXEEXT)
-@YAML_TRUE@am__EXEEXT_2 = test_spec_mustache$(EXEEXT) \
+@YAML_TRUE@am__EXEEXT_3 = test_spec_mustache$(EXEEXT) \
 @YAML_TRUE@	test_yaml$(EXEEXT)
-@HANDLEBARS_MEMORY_TRUE@am__EXEEXT_3 =  \
+@HANDLEBARS_MEMORY_TRUE@am__EXEEXT_4 =  \
 @HANDLEBARS_MEMORY_TRUE@	test_random_alloc_fail$(EXEEXT)
 am__objects_1 = utils.$(OBJEXT) fixtures.$(OBJEXT) adler32.$(OBJEXT)
 am_test_ast_OBJECTS = $(am__objects_1) test_ast.$(OBJEXT)
@@ -174,8 +181,10 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-am_test_ast_helpers_OBJECTS = $(am__objects_1) \
-	test_ast_helpers.$(OBJEXT)
+am__test_ast_helpers_SOURCES_DIST = utils.h utils.c fixtures.c \
+	adler32.c test_ast_helpers.c
+@TESTING_EXPORTS_TRUE@am_test_ast_helpers_OBJECTS = $(am__objects_1) \
+@TESTING_EXPORTS_TRUE@	test_ast_helpers.$(OBJEXT)
 test_ast_helpers_OBJECTS = $(am_test_ast_helpers_OBJECTS)
 test_ast_helpers_LDADD = $(LDADD)
 test_ast_helpers_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
@@ -235,7 +244,10 @@ test_random_alloc_fail_OBJECTS = $(am_test_random_alloc_fail_OBJECTS)
 test_random_alloc_fail_LDADD = $(LDADD)
 test_random_alloc_fail_DEPENDENCIES =  \
 	$(top_builddir)/src/libhandlebars.la
-am_test_scanners_OBJECTS = $(am__objects_1) test_scanners.$(OBJEXT)
+am__test_scanners_SOURCES_DIST = utils.h utils.c fixtures.c adler32.c \
+	test_scanners.c
+@TESTING_EXPORTS_TRUE@am_test_scanners_OBJECTS = $(am__objects_1) \
+@TESTING_EXPORTS_TRUE@	test_scanners.$(OBJEXT)
 test_scanners_OBJECTS = $(am_test_scanners_OBJECTS)
 test_scanners_LDADD = $(LDADD)
 test_scanners_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
@@ -296,7 +308,10 @@ am_test_token_OBJECTS = $(am__objects_1) test_token.$(OBJEXT)
 test_token_OBJECTS = $(am_test_token_OBJECTS)
 test_token_LDADD = $(LDADD)
 test_token_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
-am_test_utils_OBJECTS = $(am__objects_1) test_utils.$(OBJEXT)
+am__test_utils_SOURCES_DIST = utils.h utils.c fixtures.c adler32.c \
+	test_utils.c
+@TESTING_EXPORTS_TRUE@am_test_utils_OBJECTS = $(am__objects_1) \
+@TESTING_EXPORTS_TRUE@	test_utils.$(OBJEXT)
 test_utils_OBJECTS = $(am_test_utils_OBJECTS)
 test_utils_LDADD = $(LDADD)
 test_utils_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
@@ -376,21 +391,22 @@ SOURCES = $(test_ast_SOURCES) $(test_ast_helpers_SOURCES) \
 	$(test_string_SOURCES) $(test_token_SOURCES) \
 	$(test_utils_SOURCES) $(test_value_SOURCES) \
 	$(test_yaml_SOURCES)
-DIST_SOURCES = $(test_ast_SOURCES) $(test_ast_helpers_SOURCES) \
-	$(test_ast_list_SOURCES) $(am__test_cache_SOURCES_DIST) \
-	$(test_compiler_SOURCES) $(am__test_json_SOURCES_DIST) \
-	$(test_main_SOURCES) $(test_map_SOURCES) \
-	$(test_opcode_printer_SOURCES) $(test_opcodes_SOURCES) \
+DIST_SOURCES = $(test_ast_SOURCES) \
+	$(am__test_ast_helpers_SOURCES_DIST) $(test_ast_list_SOURCES) \
+	$(am__test_cache_SOURCES_DIST) $(test_compiler_SOURCES) \
+	$(am__test_json_SOURCES_DIST) $(test_main_SOURCES) \
+	$(test_map_SOURCES) $(test_opcode_printer_SOURCES) \
+	$(test_opcodes_SOURCES) \
 	$(am__test_partial_loader_SOURCES_DIST) \
 	$(am__test_random_alloc_fail_SOURCES_DIST) \
-	$(test_scanners_SOURCES) \
+	$(am__test_scanners_SOURCES_DIST) \
 	$(am__test_spec_handlebars_SOURCES_DIST) \
 	$(am__test_spec_handlebars_compiler_SOURCES_DIST) \
 	$(am__test_spec_handlebars_parser_SOURCES_DIST) \
 	$(am__test_spec_handlebars_tokenizer_SOURCES_DIST) \
 	$(am__test_spec_mustache_SOURCES_DIST) $(test_stack_SOURCES) \
 	$(test_string_SOURCES) $(test_token_SOURCES) \
-	$(test_utils_SOURCES) $(test_value_SOURCES) \
+	$(am__test_utils_SOURCES_DIST) $(test_value_SOURCES) \
 	$(am__test_yaml_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -822,18 +838,18 @@ LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
 COMMONFILES = utils.h utils.c fixtures.c adler32.c
 test_main_SOURCES = $(COMMONFILES) test_main.c
 test_ast_SOURCES = $(COMMONFILES) test_ast.c
-test_ast_helpers_SOURCES = $(COMMONFILES) test_ast_helpers.c
 test_ast_list_SOURCES = $(COMMONFILES) test_ast_list.c
 test_compiler_SOURCES = $(COMMONFILES) test_compiler.c
 test_map_SOURCES = $(COMMONFILES) test_map.c
 test_opcode_printer_SOURCES = $(COMMONFILES) test_opcode_printer.c
 test_opcodes_SOURCES = $(COMMONFILES) test_opcodes.c
-test_scanners_SOURCES = $(COMMONFILES) test_scanners.c
 test_stack_SOURCES = $(COMMONFILES) test_stack.c
 test_string_SOURCES = $(COMMONFILES) test_string.c
 test_token_SOURCES = $(COMMONFILES) test_token.c
-test_utils_SOURCES = $(COMMONFILES) test_utils.c
 test_value_SOURCES = $(COMMONFILES) test_value.c
+@TESTING_EXPORTS_TRUE@test_ast_helpers_SOURCES = $(COMMONFILES) test_ast_helpers.c
+@TESTING_EXPORTS_TRUE@test_scanners_SOURCES = $(COMMONFILES) test_scanners.c
+@TESTING_EXPORTS_TRUE@test_utils_SOURCES = $(COMMONFILES) test_utils.c
 @JSON_TRUE@test_cache_SOURCES = $(COMMONFILES) test_cache.c
 @JSON_TRUE@test_json_SOURCES = $(COMMONFILES) test_json.c
 @JSON_TRUE@test_partial_loader_SOURCES = $(COMMONFILES) test_partial_loader.c
@@ -1276,13 +1292,6 @@ test_ast.log: test_ast$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-test_ast_helpers.log: test_ast_helpers$(EXEEXT)
-	@p='test_ast_helpers$(EXEEXT)'; \
-	b='test_ast_helpers'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 test_ast_list.log: test_ast_list$(EXEEXT)
 	@p='test_ast_list$(EXEEXT)'; \
 	b='test_ast_list'; \
@@ -1318,13 +1327,6 @@ test_opcodes.log: test_opcodes$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-test_scanners.log: test_scanners$(EXEEXT)
-	@p='test_scanners$(EXEEXT)'; \
-	b='test_scanners'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
 test_stack.log: test_stack$(EXEEXT)
 	@p='test_stack$(EXEEXT)'; \
 	b='test_stack'; \
@@ -1346,16 +1348,30 @@ test_token.log: test_token$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-test_utils.log: test_utils$(EXEEXT)
-	@p='test_utils$(EXEEXT)'; \
-	b='test_utils'; \
+test_value.log: test_value$(EXEEXT)
+	@p='test_value$(EXEEXT)'; \
+	b='test_value'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-test_value.log: test_value$(EXEEXT)
-	@p='test_value$(EXEEXT)'; \
-	b='test_value'; \
+test_ast_helpers.log: test_ast_helpers$(EXEEXT)
+	@p='test_ast_helpers$(EXEEXT)'; \
+	b='test_ast_helpers'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+test_scanners.log: test_scanners$(EXEEXT)
+	@p='test_scanners$(EXEEXT)'; \
+	b='test_scanners'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+test_utils.log: test_utils$(EXEEXT)
+	@p='test_utils$(EXEEXT)'; \
+	b='test_utils'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

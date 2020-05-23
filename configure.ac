@@ -161,11 +161,13 @@ AX_GCC_BUILTIN([__builtin_clzl])
 AX_GCC_BUILTIN([__builtin_clzll])
 AX_GCC_VAR_ATTRIBUTE([unused])
 AX_GCC_FUNC_ATTRIBUTE(returns_nonnull)
+AX_GCC_FUNC_ATTRIBUTE(visibility)
 HBS_COMPUTED_GOTOS
 AX_COMPILE_CHECK_SIZEOF(size_t)
 AX_COMPILE_CHECK_SIZEOF(unsigned)
 AX_COMPILE_CHECK_SIZEOF(unsigned long)
 AX_COMPILE_CHECK_SIZEOF(unsigned long long)
+AX_TLS([with_tls=yes], [with_tls=no])
 
 # Checks for libraries
 AC_CHECK_LIB([m], [cos])
@@ -183,7 +185,7 @@ AS_IF([test "x$enable_bison" != "xno"], [
 		enable_bison=yes
 	])
 ])
-AM_CONDITIONAL([BISON], [test "x$BISON" != "x" && test "x$enable_bison" == "yes"])
+AM_CONDITIONAL([BISON], [test "x$BISON" != "x" && test "x$enable_bison" == "xyes"])
 
 # check
 AC_ARG_ENABLE([check], [AS_HELP_STRING([--disable-check], [disable support for check])], [])
@@ -220,7 +222,7 @@ AS_IF([test "x$enable_flex" != "xno"], [
 		enable_flex=yes
 	])
 ])
-AM_CONDITIONAL([FLEX], [test "x$FLEX" != "x" && test "x$enable_flex" == "yes"])
+AM_CONDITIONAL([FLEX], [test "x$FLEX" != "x" && test "x$enable_flex" == "xyes"])
 
 # gperf
 AC_ARG_VAR([GPERFFLAGS], [gperf flags])
@@ -231,6 +233,14 @@ AS_IF([test "x$enable_gperf" != "xno"], [
 	AC_PATH_PROGS(GPERF, [gperf])
 ])
 AM_CONDITIONAL([GPERF], [test "x$GPERF" != "x"])
+
+# testing-exports
+AC_ARG_ENABLE([testing-exports], [AS_HELP_STRING([--disable-testing-exports], [disable some exports used for testing])], [])
+AS_IF([test "x$enable_testing_exports" != "xno"], [
+	AC_DEFINE([HANDLEBARS_TESTING_EXPORTS], [1], [Export some symbols used for testing])
+	enable_testing_exports=yes
+])
+AM_CONDITIONAL([TESTING_EXPORTS], [test "x$enable_testing_exports" == "xyes"])
 
 # handlebars-spec
 AC_ARG_WITH([handlebars-spec],

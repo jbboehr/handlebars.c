@@ -28,15 +28,17 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
-#include "handlebars_parser_private.h"
 #include "handlebars_private.h"
 #include "handlebars_token.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic warning "-Wredundant-decls"
+#include "handlebars_parser_private.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
+#pragma GCC diagnostic pop
 
 
-
-HBS_LOCAL struct handlebars_parser * handlebars_parser_init_current;
 
 const size_t HANDLEBARS_PARSER_SIZE = sizeof(struct handlebars_parser);
 
@@ -56,6 +58,7 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     // @todo set a destructor on the context object to deinit the lexer?
     lexerr = handlebars_yy_lex_init(&parser->scanner);
     if( unlikely(lexerr != 0) ) {
+        handlebars_parser_init_current = NULL;
         handlebars_talloc_free(parser);
         handlebars_throw(ctx, HANDLEBARS_NOMEM, "Lexer initialization failed");
     }

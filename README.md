@@ -52,7 +52,7 @@ sudo apt-get install doxygen
 # Compile
 git clone https://github.com/jbboehr/handlebars.c.git --recursive
 cd handlebars.c
-./bootstrap && ./configure --disable-Werror && make && sudo make install && sudo ldconfig
+./bootstrap && ./configure --disable-Werror --disable-testing-exports && make && sudo make install && sudo ldconfig
 ```
 
 ### OSX via Homebrew
@@ -70,7 +70,7 @@ brew install doxygen
 # Compile
 git clone https://github.com/jbboehr/handlebars.c.git --recursive
 cd handlebars.c
-./bootstrap && ./configure --disable-Werror && make install
+./bootstrap && ./configure --disable-Werror --disable-testing-exports && make install
 ```
 
 ## License

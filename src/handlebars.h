@@ -95,11 +95,17 @@
 #endif
 
 // visibility
-#if __GNUC__ >= 4
-#define HBS_PUBLIC __attribute__ ((visibility ("default")))
-#define HBS_LOCAL  __attribute__ ((visibility ("hidden")))
+#if (__GNUC__ >= 4) || defined(__clang__) || defined(HAVE_FUNC_ATTRIBUTE_VISIBILITY)
+#  define HBS_PUBLIC __attribute__ ((visibility ("default")))
+#  define HBS_LOCAL  __attribute__ ((visibility ("hidden")))
+#  ifdef HANDLEBARS_TESTING_EXPORTS
+#    define HBS_TEST_PUBLIC HBS_PUBLIC
+#  else
+#    define HBS_TEST_PUBLIC HBS_LOCAL
+#  endif
 #else
 #define HBS_PUBLIC
+#define HBS_TEST_PUBLIC
 #define HBS_LOCAL
 #endif
 

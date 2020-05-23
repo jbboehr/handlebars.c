@@ -70,15 +70,17 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
-#include "handlebars_parser_private.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_whitespace.h"
-#include "handlebars.tab.h"
-#include "handlebars.lex.h"
 
 #pragma GCC diagnostic ignored "-Wswitch-default"
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic warning "-Wredundant-decls"
+
+#include "handlebars_parser_private.h"
+#include "handlebars.tab.h"
+#include "handlebars.lex.h"
 
 #if defined(YYDEBUG) && YYDEBUG
 #define YYPRINT handlebars_yy_print

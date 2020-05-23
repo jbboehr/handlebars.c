@@ -75,7 +75,7 @@ function configure_handlebars() {
 	# does gcc-4.9 not support "#pragma GCC diagnostic ignored"?
 	if [ "$CC" = "gcc-4.9" ]; then
 		export CFLAGS="$CFLAGS -Wno-shadow -Wno-error=shadow -Wno-pointer-sign -Wno-error=pointer-sign -Wno-switch-default -Wno-error=switch-default"
-		export CFLAGS="$CFLAGS -Wno-unused-function -Wno-error=unused-function -Wno-inline -Wno-error=inline"
+		export CFLAGS="$CFLAGS -Wno-unused-function -Wno-error=unused-function -Wno-inline -Wno-error=inline -Wno-redundant-decls -Wno-error=redundant-decls"
 		# these are apparently just broken?
 		export CFLAGS="$CFLAGS -Wno-missing-braces -Wno-error=missing-braces"
 	fi
@@ -106,9 +106,9 @@ function configure_handlebars() {
 	fi
 
 	if [ "$MINIMAL" = "true" ]; then
-		extra_configure_flags="${extra_configure_flags} --disable-handlebars-memory --enable-check --disable-json --disable-lmdb --enable-pcre --disable-pthread --enable-subunit --disable-yaml"
+		extra_configure_flags="${extra_configure_flags} --disable-testing-exports --disable-handlebars-memory --enable-check --disable-json --disable-lmdb --enable-pcre --disable-pthread --enable-subunit --disable-yaml"
 	else
-		extra_configure_flags="${extra_configure_flags} --enable-handlebars-memory --enable-check --enable-json --enable-lmdb --enable-pcre  --enable-pthread --enable-subunit --enable-yaml"
+		extra_configure_flags="${extra_configure_flags} --enable-testing-exports --enable-handlebars-memory --enable-check --enable-json --enable-lmdb --enable-pcre  --enable-pthread --enable-subunit --enable-yaml"
 	fi
 
 	if [ "$VALGRIND" = "true" ]; then

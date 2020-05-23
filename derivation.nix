@@ -5,7 +5,7 @@
   glib, json_c, lmdb, talloc, libyaml, pcre, # deps
   doxygen, # doc deps
   check, subunit, # testing deps
-  autoconf-archive, bison, flex, gperf, lcov, re2c, valgrind, kcachegrind, # dev deps
+  autoconf-archive, bison, flex, gperf, lcov, re2c, valgrind, kcachegrind, bc, # dev deps
   handlebars_spec, mustache_spec, # my special stuff
   # source options
   handlebarscVersion ? null,
@@ -62,7 +62,7 @@ stdenv.mkDerivation rec {
     ++ lib.optionals checkSupport [ handlebars_spec mustache_spec check subunit ]
     ++ lib.optional  cmakeSupport cmake
     ++ lib.optionals (!cmakeSupport) [ autoreconfHook autoconf automake libtool m4 ]
-    ++ lib.optionals devSupport [ kcachegrind autoconf-archive bison gperf flex lcov re2c valgrind ]
+    ++ lib.optionals devSupport [ autoconf-archive bc bison gperf flex kcachegrind lcov re2c valgrind ]
     ++ lib.optional  doxygenSupport doxygen
     ++ lib.optional  valgrindSupport valgrind
     ;
@@ -74,11 +74,13 @@ stdenv.mkDerivation rec {
         "--enable-check"
         "--enable-pcre"
         "--enable-subunit"
+        "--enable-testing-exports"
       ]
     ++ lib.optionals (!checkSupport) [
         "--disable-check"
         "--disable-pcre"
         "--disable-subunit"
+        "--disable-testing-exports"
       ]
     ++ lib.optional  debugSupport "--enable-debug"
     ++ lib.optionals doxygenSupport [ "--mandir=$(man)/share/man" "--docdir=$(doc)/share/doc" ]

@@ -32,18 +32,26 @@
 #include "handlebars_ast.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
-#include "handlebars_parser_private.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic warning "-Wredundant-decls"
+#include "handlebars_parser_private.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
-
-
-HBS_LOCAL extern struct handlebars_parser * handlebars_parser_init_current;
+#pragma GCC diagnostic pop
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(parser)
+
+#ifndef TLS
+#define TLS
+#endif
+
+
+
+HBS_TEST_PUBLIC TLS struct handlebars_parser * handlebars_parser_init_current;
 
 void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, struct handlebars_parser * parser)
 {
@@ -98,24 +106,34 @@ void * handlebars_yy_alloc(size_t bytes, void * yyscanner)
     // Note: it looks like the yyscanner is allocated before we can pass in
     // a handlebars context...
     struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : handlebars_parser_init_current);
+    assert(parser != NULL);
 #ifdef HANDLEBARS_MEMORY
     handlebars_memory_fail_counter_incr();
 #endif
-    return _handlebars_yy_alloc(parser, bytes);
+    void * retval = handlebars_talloc_size(parser, bytes);
+    if (unlikely(retval == NULL)) {
+        handlebars_throw(HBSCTX(parser), HANDLEBARS_NOMEM, "Out of memory");
+    }
+    return retval;
 }
 
 void * handlebars_yy_realloc(void * ptr, size_t bytes, void * yyscanner)
 {
     // Going to skip wrappers for now
     struct handlebars_parser * parser = (yyscanner ? handlebars_yy_get_extra(yyscanner) : handlebars_parser_init_current);
+    assert(parser != NULL);
 #ifdef HANDLEBARS_MEMORY
     handlebars_memory_fail_counter_incr();
 #endif
-    return _handlebars_yy_realloc(parser, ptr, sizeof(char) * bytes);
+    void * retval = handlebars_talloc_realloc_size(parser, ptr, sizeof(char) * bytes);
+    if (unlikely(retval == NULL)) {
+        handlebars_throw(HBSCTX(parser), HANDLEBARS_NOMEM, "Out of memory");
+    }
+    return retval;
 }
 
 void handlebars_yy_free(void * ptr, HBS_ATTR_UNUSED void * yyscanner)
 {
     // Going to skip wrappers for now
-    _handlebars_yy_free(ptr);
+    handlebars_talloc_free(ptr);
 }

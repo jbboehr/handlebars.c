@@ -50,6 +50,16 @@ struct handlebars_parser
     unsigned flags;
 };
 
+#ifdef TLS
+#define HBS_PARSER_TLS TLS
+#else
+#define HBS_PARSER_TLS
+#endif
+
+HBS_TEST_PUBLIC extern HBS_PARSER_TLS struct handlebars_parser * handlebars_parser_init_current;
+
+#undef HBS_PARSER_TLS
+
 /**
  * @brief Handle an error in the parser. Prints message to stderr
  *
@@ -62,7 +72,7 @@ void handlebars_yy_error(
     struct handlebars_locinfo * lloc,
     struct handlebars_parser * parser,
     const char * err
-) HBS_ATTR_NORETURN;
+) HBS_TEST_PUBLIC HBS_ATTR_NORETURN;
 
 /**
  * @brief Handle a fatal error in the parser. Prints message to stderr and exits with code 2.
@@ -74,7 +84,7 @@ void handlebars_yy_error(
 void handlebars_yy_fatal_error(
     const char * msg,
     struct handlebars_parser * parser
-) HBS_ATTR_NORETURN;
+) HBS_TEST_PUBLIC HBS_ATTR_NORETURN;
 
 /**
  * @brief Reads input for the lexer. Reads input from the tmpl field of the context object
@@ -90,7 +100,7 @@ void handlebars_yy_input(
     int *numBytesRead,
     int maxBytesToRead,
     struct handlebars_parser * parser
-);
+) HBS_TEST_PUBLIC;
 
 /**
  * @brief Print a parser value
@@ -104,7 +114,7 @@ void handlebars_yy_print(
     FILE *file,
     int type,
     union YYSTYPE value
-);
+) HBS_TEST_PUBLIC;
 
 /**
  * @brief Custom alloc for use with flex/bison. Uses talloc with
@@ -114,10 +124,10 @@ void handlebars_yy_print(
  * @param[in] yyscanner The scanner context. NULL if allocating the yyscanner itself.
  * @return A pointer to the newly allocated memory, or NULL on failure
  */
-// void * handlebars_yy_alloc(
-//     size_t bytes,
-//     void * yyscanner
-// );
+void * handlebars_yy_alloc(
+    size_t bytes,
+    void * yyscanner
+) HBS_TEST_PUBLIC HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Custom realloc for use with flex/bison. Uses talloc with
@@ -128,11 +138,11 @@ void handlebars_yy_print(
  * @param[in] yyscanner The scanner context
  * @return The original pointer, or a new pointer, or NULL on failure
  */
-// void * handlebars_yy_realloc(
-//     void * ptr,
-//     size_t bytes,
-//     void * yyscanner
-// );
+void * handlebars_yy_realloc(
+    void * ptr,
+    size_t bytes,
+    void * yyscanner
+) HBS_TEST_PUBLIC HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Custom free for use with flex/bison. Uses talloc with

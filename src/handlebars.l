@@ -30,12 +30,17 @@
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_parser.h"
-#include "handlebars_parser_private.h"
 #include "handlebars_string.h"
-#include "handlebars.tab.h"
 
 #pragma GCC diagnostic ignored "-Wswitch-default"
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic warning "-Wredundant-decls"
+#if (__GNUC__ >= 6)
+#pragma GCC diagnostic warning "-Wnull-dereference"
+#endif
+
+#include "handlebars_parser_private.h"
+#include "handlebars.tab.h"
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(yyextra)

@@ -52,10 +52,6 @@ HBS_EXTERN_C_START
 
 #define handlebars_exit exit
 
-#define _handlebars_yy_alloc talloc_size
-#define _handlebars_yy_realloc talloc_realloc_size
-#define _handlebars_yy_free talloc_free
-
 #else /* HANDLEBARS_MEMORY */
 
 // Note: a little concerned this naughty stuff may cause problems with
@@ -131,11 +127,6 @@ extern handlebars_talloc_strdup_append_buffer_func _handlebars_talloc_strdup_app
 extern handlebars_talloc_strndup_func _handlebars_talloc_strndup;
 extern handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_append_buffer;
 extern handlebars_talloc_zero_func _handlebars_talloc_zero;
-
-// Memory function pointers for scanner
-#define _handlebars_yy_alloc handlebars_talloc_size
-#define _handlebars_yy_realloc handlebars_talloc_realloc_size
-#define _handlebars_yy_free handlebars_talloc_free
 
 // Other function pointers
 extern handlebars_exit_func handlebars_exit;

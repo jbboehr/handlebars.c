@@ -93,15 +93,17 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
-#include "handlebars_parser_private.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_whitespace.h"
-#include "handlebars.tab.h"
-#include "handlebars.lex.h"
 
 #pragma GCC diagnostic ignored "-Wswitch-default"
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic warning "-Wredundant-decls"
+
+#include "handlebars_parser_private.h"
+#include "handlebars.tab.h"
+#include "handlebars.lex.h"
 
 #if defined(YYDEBUG) && YYDEBUG
 #define YYPRINT handlebars_yy_print
@@ -114,7 +116,7 @@ int handlebars_yy_debug = 0;
 #define CONTEXT HBSCTX(parser)
 #define scanner parser->scanner
 
-#line 118 "handlebars.tab.c"
+#line 120 "handlebars.tab.c"
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus
@@ -166,7 +168,7 @@ extern int handlebars_yy_debug;
         struct handlebars_ast_node * inverse_chain;
     };
 
-#line 170 "handlebars.tab.c"
+#line 172 "handlebars.tab.c"
 
 /* Token type.  */
 #ifndef YYTOKENTYPE
@@ -211,7 +213,7 @@ extern int handlebars_yy_debug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 95 "handlebars.y"
+#line 97 "handlebars.y"
 
     struct handlebars_string * string;
     struct handlebars_ast_node * ast_node;
@@ -220,7 +222,7 @@ union YYSTYPE
     struct handlebars_yy_block_intermediate block_intermediate;
     struct handlebars_yy_block_params block_params;
 
-#line 224 "handlebars.tab.c"
+#line 226 "handlebars.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -543,14 +545,14 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   184,   184,   192,   195,   202,   206,   213,   216,   219,
-     222,   225,   228,   231,   241,   245,   251,   254,   260,   266,
-     269,   272,   275,   281,   285,   289,   296,   304,   311,   318,
-     321,   324,   327,   330,   336,   340,   349,   356,   360,   367,
-     371,   375,   379,   386,   389,   395,   399,   403,   407,   414,
-     418,   425,   428,   434,   440,   445,   449,   452,   455,   458,
-     464,   472,   476,   483,   489,   493,   500,   503,   506,   509,
-     512,   515,   518,   524,   527,   533,   539,   545,   551
+       0,   186,   186,   194,   197,   204,   208,   215,   218,   221,
+     224,   227,   230,   233,   243,   247,   253,   256,   262,   268,
+     271,   274,   277,   283,   287,   291,   298,   306,   313,   320,
+     323,   326,   329,   332,   338,   342,   351,   358,   362,   369,
+     373,   377,   381,   388,   391,   397,   401,   405,   409,   416,
+     420,   427,   430,   436,   442,   447,   451,   454,   457,   460,
+     466,   474,   478,   485,   491,   495,   502,   505,   508,   511,
+     514,   517,   520,   526,   529,   535,   541,   547,   553
 };
 #endif
 
@@ -1548,100 +1550,100 @@ yyreduce:
   switch (yyn)
     {
   case 2:
-#line 184 "handlebars.y"
+#line 186 "handlebars.y"
     {
       parser->program = (yyvsp[-1].ast_node);
       handlebars_whitespace_accept(parser, parser->program);
       return 1;
     }
-#line 1558 "handlebars.tab.c"
+#line 1560 "handlebars.tab.c"
     break;
 
   case 3:
-#line 192 "handlebars.y"
+#line 194 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_program(parser, (yyvsp[0].ast_list), NULL, NULL, 0, 0, &(yyloc));
     }
-#line 1566 "handlebars.tab.c"
+#line 1568 "handlebars.tab.c"
     break;
 
   case 4:
-#line 195 "handlebars.y"
+#line 197 "handlebars.y"
     {
       struct handlebars_ast_list * list = handlebars_ast_list_ctor(CONTEXT);
       (yyval.ast_node) = handlebars_ast_node_ctor_program(parser, list, NULL, NULL, 0, 0, &(yyloc));
     }
-#line 1575 "handlebars.tab.c"
+#line 1577 "handlebars.tab.c"
     break;
 
   case 5:
-#line 202 "handlebars.y"
+#line 204 "handlebars.y"
     {
       (yyval.ast_list) = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append((yyval.ast_list), (yyvsp[0].ast_node));
     }
-#line 1584 "handlebars.tab.c"
+#line 1586 "handlebars.tab.c"
     break;
 
   case 6:
-#line 206 "handlebars.y"
+#line 208 "handlebars.y"
     {
       handlebars_ast_list_append((yyvsp[-1].ast_list), (yyvsp[0].ast_node));
       (yyval.ast_list) = (yyvsp[-1].ast_list);
     }
-#line 1593 "handlebars.tab.c"
+#line 1595 "handlebars.tab.c"
     break;
 
   case 7:
-#line 213 "handlebars.y"
+#line 215 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 1601 "handlebars.tab.c"
+#line 1603 "handlebars.tab.c"
     break;
 
   case 8:
-#line 216 "handlebars.y"
+#line 218 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 1609 "handlebars.tab.c"
+#line 1611 "handlebars.tab.c"
     break;
 
   case 9:
-#line 219 "handlebars.y"
+#line 221 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 1617 "handlebars.tab.c"
+#line 1619 "handlebars.tab.c"
     break;
 
   case 10:
-#line 222 "handlebars.y"
+#line 224 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 1625 "handlebars.tab.c"
+#line 1627 "handlebars.tab.c"
     break;
 
   case 11:
-#line 225 "handlebars.y"
+#line 227 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 1633 "handlebars.tab.c"
+#line 1635 "handlebars.tab.c"
     break;
 
   case 12:
-#line 228 "handlebars.y"
+#line 230 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_content(parser, (yyvsp[0].string), &(yyloc));
     }
-#line 1641 "handlebars.tab.c"
+#line 1643 "handlebars.tab.c"
     break;
 
   case 13:
-#line 231 "handlebars.y"
+#line 233 "handlebars.y"
     {
       // Strip comment strips in place
       unsigned strip = handlebars_ast_helper_strip_flags((yyvsp[0].string), (yyvsp[0].string));
@@ -1649,552 +1651,552 @@ yyreduce:
       			handlebars_ast_helper_strip_comment((yyvsp[0].string)), &(yyloc));
       handlebars_ast_node_set_strip((yyval.ast_node), strip);
     }
-#line 1653 "handlebars.tab.c"
+#line 1655 "handlebars.tab.c"
     break;
 
   case 14:
-#line 241 "handlebars.y"
+#line 243 "handlebars.y"
     {
       (yyval.string) = handlebars_string_append_str(CONTEXT, (yyvsp[-1].string), (yyvsp[0].string));
       (yyval.string) = talloc_steal(parser, (yyval.string));
     }
-#line 1662 "handlebars.tab.c"
+#line 1664 "handlebars.tab.c"
     break;
 
   case 15:
-#line 245 "handlebars.y"
+#line 247 "handlebars.y"
     {
       (yyval.string) = (yyvsp[0].string);
     }
-#line 1670 "handlebars.tab.c"
+#line 1672 "handlebars.tab.c"
     break;
 
   case 16:
-#line 251 "handlebars.y"
+#line 253 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_raw_block(parser, (yyvsp[-2].ast_node), (yyvsp[-1].string), (yyvsp[0].string), &(yyloc));
     }
-#line 1678 "handlebars.tab.c"
+#line 1680 "handlebars.tab.c"
     break;
 
   case 17:
-#line 254 "handlebars.y"
+#line 256 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_raw_block(parser, (yyvsp[-1].ast_node), handlebars_string_ctor(HBSCTX(parser), HBS_STRL("")), (yyvsp[0].string), &(yyloc));
     }
-#line 1686 "handlebars.tab.c"
+#line 1688 "handlebars.tab.c"
     break;
 
   case 18:
-#line 260 "handlebars.y"
+#line 262 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[-1].ast_node);
     }
-#line 1694 "handlebars.tab.c"
+#line 1696 "handlebars.tab.c"
     break;
 
   case 19:
-#line 266 "handlebars.y"
+#line 268 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_block(parser, (yyvsp[-2].ast_node), (yyvsp[-1].block_intermediate).program, (yyvsp[-1].block_intermediate).inverse_chain, (yyvsp[0].ast_node), 0, &(yyloc));
     }
-#line 1702 "handlebars.tab.c"
+#line 1704 "handlebars.tab.c"
     break;
 
   case 20:
-#line 269 "handlebars.y"
+#line 271 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_block(parser, (yyvsp[-1].ast_node), NULL, NULL, (yyvsp[0].ast_node), 0, &(yyloc));
     }
-#line 1710 "handlebars.tab.c"
+#line 1712 "handlebars.tab.c"
     break;
 
   case 21:
-#line 272 "handlebars.y"
+#line 274 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_block(parser, (yyvsp[-2].ast_node), (yyvsp[-1].block_intermediate).program, (yyvsp[-1].block_intermediate).inverse_chain, (yyvsp[0].ast_node), 1, &(yyloc));
     }
-#line 1718 "handlebars.tab.c"
+#line 1720 "handlebars.tab.c"
     break;
 
   case 22:
-#line 275 "handlebars.y"
+#line 277 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_block(parser, (yyvsp[-1].ast_node), NULL, NULL, (yyvsp[0].ast_node), 1, &(yyloc));
     }
-#line 1726 "handlebars.tab.c"
+#line 1728 "handlebars.tab.c"
     break;
 
   case 23:
-#line 281 "handlebars.y"
+#line 283 "handlebars.y"
     {
       (yyval.block_intermediate).program = NULL;
       (yyval.block_intermediate).inverse_chain = (yyvsp[0].ast_node);
     }
-#line 1735 "handlebars.tab.c"
+#line 1737 "handlebars.tab.c"
     break;
 
   case 24:
-#line 285 "handlebars.y"
+#line 287 "handlebars.y"
     {
       (yyval.block_intermediate).program = (yyvsp[-1].ast_node);
       (yyval.block_intermediate).inverse_chain = (yyvsp[0].ast_node);
     }
-#line 1744 "handlebars.tab.c"
+#line 1746 "handlebars.tab.c"
     break;
 
   case 25:
-#line 289 "handlebars.y"
+#line 291 "handlebars.y"
     {
       (yyval.block_intermediate).program = (yyvsp[0].ast_node);
       (yyval.block_intermediate).inverse_chain = NULL;
     }
-#line 1753 "handlebars.tab.c"
+#line 1755 "handlebars.tab.c"
     break;
 
   case 26:
-#line 296 "handlebars.y"
+#line 298 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[-1].ast_node);
       handlebars_ast_node_set_strip((yyval.ast_node), handlebars_ast_helper_strip_flags((yyvsp[-2].string), (yyvsp[0].string)));
       (yyval.ast_node)->node.intermediate.open = talloc_steal((yyval.ast_node), handlebars_string_copy_ctor(CONTEXT, (yyvsp[-2].string)));
     }
-#line 1763 "handlebars.tab.c"
+#line 1765 "handlebars.tab.c"
     break;
 
   case 27:
-#line 304 "handlebars.y"
+#line 306 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[-1].ast_node);
       handlebars_ast_node_set_strip((yyval.ast_node), handlebars_ast_helper_strip_flags((yyvsp[-2].string), (yyvsp[0].string)));
     }
-#line 1772 "handlebars.tab.c"
+#line 1774 "handlebars.tab.c"
     break;
 
   case 28:
-#line 311 "handlebars.y"
+#line 313 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[-1].ast_node);
       handlebars_ast_node_set_strip((yyval.ast_node), handlebars_ast_helper_strip_flags((yyvsp[-2].string), (yyvsp[0].string)));
     }
-#line 1781 "handlebars.tab.c"
+#line 1783 "handlebars.tab.c"
     break;
 
   case 29:
-#line 318 "handlebars.y"
+#line 320 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_inverse_chain(parser, (yyvsp[-2].ast_node), (yyvsp[-1].ast_node), (yyvsp[0].ast_node), &(yyloc));
   	}
-#line 1789 "handlebars.tab.c"
+#line 1791 "handlebars.tab.c"
     break;
 
   case 30:
-#line 321 "handlebars.y"
+#line 323 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_inverse_chain(parser, (yyvsp[-1].ast_node), NULL, (yyvsp[0].ast_node), &(yyloc));
   	}
-#line 1797 "handlebars.tab.c"
+#line 1799 "handlebars.tab.c"
     break;
 
   case 31:
-#line 324 "handlebars.y"
+#line 326 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_inverse_chain(parser, (yyvsp[-1].ast_node), (yyvsp[0].ast_node), NULL, &(yyloc));
     }
-#line 1805 "handlebars.tab.c"
+#line 1807 "handlebars.tab.c"
     break;
 
   case 32:
-#line 327 "handlebars.y"
+#line 329 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_inverse_chain(parser, (yyvsp[0].ast_node), NULL, NULL, &(yyloc));
     }
-#line 1813 "handlebars.tab.c"
+#line 1815 "handlebars.tab.c"
     break;
 
   case 33:
-#line 330 "handlebars.y"
+#line 332 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 1821 "handlebars.tab.c"
+#line 1823 "handlebars.tab.c"
     break;
 
   case 34:
-#line 336 "handlebars.y"
+#line 338 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_inverse(parser, (yyvsp[0].ast_node), 0,
               handlebars_ast_helper_strip_flags((yyvsp[-1].string), (yyvsp[-1].string)), &(yyloc));
     }
-#line 1830 "handlebars.tab.c"
+#line 1832 "handlebars.tab.c"
     break;
 
   case 35:
-#line 340 "handlebars.y"
+#line 342 "handlebars.y"
     {
       struct handlebars_ast_node * program_node;
       program_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PROGRAM);
       (yyval.ast_node) = handlebars_ast_node_ctor_inverse(parser, program_node, 0,
               handlebars_ast_helper_strip_flags((yyvsp[0].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1841 "handlebars.tab.c"
+#line 1843 "handlebars.tab.c"
     break;
 
   case 36:
-#line 349 "handlebars.y"
+#line 351 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[-1].ast_node), NULL, NULL,
               handlebars_ast_helper_strip_flags((yyvsp[-2].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1850 "handlebars.tab.c"
+#line 1852 "handlebars.tab.c"
     break;
 
   case 37:
-#line 356 "handlebars.y"
+#line 358 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_mustache(parser, (yyvsp[-1].ast_node), (yyvsp[-2].string),
         			handlebars_ast_helper_strip_flags((yyvsp[-2].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1859 "handlebars.tab.c"
+#line 1861 "handlebars.tab.c"
     break;
 
   case 38:
-#line 360 "handlebars.y"
+#line 362 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_mustache(parser, (yyvsp[-1].ast_node), (yyvsp[-2].string),
         			handlebars_ast_helper_strip_flags((yyvsp[-2].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1868 "handlebars.tab.c"
+#line 1870 "handlebars.tab.c"
     break;
 
   case 39:
-#line 367 "handlebars.y"
+#line 369 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_partial(parser, (yyvsp[-3].ast_node), (yyvsp[-2].ast_list), (yyvsp[-1].ast_node),
               handlebars_ast_helper_strip_flags((yyvsp[-4].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1877 "handlebars.tab.c"
+#line 1879 "handlebars.tab.c"
     break;
 
   case 40:
-#line 371 "handlebars.y"
+#line 373 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_partial(parser, (yyvsp[-2].ast_node), (yyvsp[-1].ast_list), NULL,
               handlebars_ast_helper_strip_flags((yyvsp[-3].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1886 "handlebars.tab.c"
+#line 1888 "handlebars.tab.c"
     break;
 
   case 41:
-#line 375 "handlebars.y"
+#line 377 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_partial(parser, (yyvsp[-2].ast_node), NULL, (yyvsp[-1].ast_node),
               handlebars_ast_helper_strip_flags((yyvsp[-3].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1895 "handlebars.tab.c"
+#line 1897 "handlebars.tab.c"
     break;
 
   case 42:
-#line 379 "handlebars.y"
+#line 381 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_partial(parser, (yyvsp[-1].ast_node), NULL, NULL,
               handlebars_ast_helper_strip_flags((yyvsp[-2].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1904 "handlebars.tab.c"
+#line 1906 "handlebars.tab.c"
     break;
 
   case 43:
-#line 386 "handlebars.y"
+#line 388 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_partial_block(parser, (yyvsp[-2].ast_node), (yyvsp[-1].ast_node), (yyvsp[0].ast_node), &(yyloc));
   }
-#line 1912 "handlebars.tab.c"
+#line 1914 "handlebars.tab.c"
     break;
 
   case 44:
-#line 389 "handlebars.y"
+#line 391 "handlebars.y"
     {
       struct handlebars_ast_node * program = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_PROGRAM);
       (yyval.ast_node) = handlebars_ast_helper_prepare_partial_block(parser, (yyvsp[-1].ast_node), program, (yyvsp[0].ast_node), &(yyloc));
   }
-#line 1921 "handlebars.tab.c"
+#line 1923 "handlebars.tab.c"
     break;
 
   case 45:
-#line 395 "handlebars.y"
+#line 397 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[-3].ast_node), (yyvsp[-2].ast_list), (yyvsp[-1].ast_node),
       			handlebars_ast_helper_strip_flags((yyvsp[-4].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1930 "handlebars.tab.c"
+#line 1932 "handlebars.tab.c"
     break;
 
   case 46:
-#line 399 "handlebars.y"
+#line 401 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[-2].ast_node), (yyvsp[-1].ast_list), NULL,
       			handlebars_ast_helper_strip_flags((yyvsp[-3].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1939 "handlebars.tab.c"
+#line 1941 "handlebars.tab.c"
     break;
 
   case 47:
-#line 403 "handlebars.y"
+#line 405 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[-2].ast_node), NULL, (yyvsp[-1].ast_node),
               handlebars_ast_helper_strip_flags((yyvsp[-3].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1948 "handlebars.tab.c"
+#line 1950 "handlebars.tab.c"
     break;
 
   case 48:
-#line 407 "handlebars.y"
+#line 409 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[-1].ast_node), NULL, NULL,
               handlebars_ast_helper_strip_flags((yyvsp[-2].string), (yyvsp[0].string)), &(yyloc));
     }
-#line 1957 "handlebars.tab.c"
+#line 1959 "handlebars.tab.c"
     break;
 
   case 49:
-#line 414 "handlebars.y"
+#line 416 "handlebars.y"
     {
       (yyval.ast_list) = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append((yyval.ast_list), (yyvsp[0].ast_node));
     }
-#line 1966 "handlebars.tab.c"
+#line 1968 "handlebars.tab.c"
     break;
 
   case 50:
-#line 418 "handlebars.y"
+#line 420 "handlebars.y"
     {
       handlebars_ast_list_append((yyvsp[-1].ast_list), (yyvsp[0].ast_node));
       (yyval.ast_list) = (yyvsp[-1].ast_list);
     }
-#line 1975 "handlebars.tab.c"
+#line 1977 "handlebars.tab.c"
     break;
 
   case 51:
-#line 425 "handlebars.y"
+#line 427 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 1983 "handlebars.tab.c"
+#line 1985 "handlebars.tab.c"
     break;
 
   case 52:
-#line 428 "handlebars.y"
+#line 430 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 1991 "handlebars.tab.c"
+#line 1993 "handlebars.tab.c"
     break;
 
   case 53:
-#line 434 "handlebars.y"
+#line 436 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_sexpr(parser, (yyvsp[-1].ast_node), &(yyloc));
     }
-#line 1999 "handlebars.tab.c"
+#line 2001 "handlebars.tab.c"
     break;
 
   case 54:
-#line 440 "handlebars.y"
+#line 442 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[-1].ast_node);
       (yyval.ast_node)->node.intermediate.block_param1 = (yyvsp[0].block_params).block_param1;
       (yyval.ast_node)->node.intermediate.block_param2 = (yyvsp[0].block_params).block_param2;
     }
-#line 2009 "handlebars.tab.c"
+#line 2011 "handlebars.tab.c"
     break;
 
   case 56:
-#line 449 "handlebars.y"
+#line 451 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[-2].ast_node), (yyvsp[-1].ast_list), (yyvsp[0].ast_node), 0, &(yyloc));
     }
-#line 2017 "handlebars.tab.c"
+#line 2019 "handlebars.tab.c"
     break;
 
   case 57:
-#line 452 "handlebars.y"
+#line 454 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[-1].ast_node), NULL, (yyvsp[0].ast_node), 0, &(yyloc));
     }
-#line 2025 "handlebars.tab.c"
+#line 2027 "handlebars.tab.c"
     break;
 
   case 58:
-#line 455 "handlebars.y"
+#line 457 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[-1].ast_node), (yyvsp[0].ast_list), NULL, 0, &(yyloc));
     }
-#line 2033 "handlebars.tab.c"
+#line 2035 "handlebars.tab.c"
     break;
 
   case 59:
-#line 458 "handlebars.y"
+#line 460 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_intermediate(parser, (yyvsp[0].ast_node), NULL, NULL, 0, &(yyloc));
     }
-#line 2041 "handlebars.tab.c"
+#line 2043 "handlebars.tab.c"
     break;
 
   case 60:
-#line 464 "handlebars.y"
+#line 466 "handlebars.y"
     {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_HASH);
       ast_node->node.hash.pairs = (yyvsp[0].ast_list);
       (yyval.ast_node) = ast_node;
     }
-#line 2051 "handlebars.tab.c"
+#line 2053 "handlebars.tab.c"
     break;
 
   case 61:
-#line 472 "handlebars.y"
+#line 474 "handlebars.y"
     {
       handlebars_ast_list_append((yyvsp[-1].ast_list), (yyvsp[0].ast_node));
       (yyval.ast_list) = (yyvsp[-1].ast_list);
     }
-#line 2060 "handlebars.tab.c"
+#line 2062 "handlebars.tab.c"
     break;
 
   case 62:
-#line 476 "handlebars.y"
+#line 478 "handlebars.y"
     {
       (yyval.ast_list) = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append((yyval.ast_list), (yyvsp[0].ast_node));
     }
-#line 2069 "handlebars.tab.c"
+#line 2071 "handlebars.tab.c"
     break;
 
   case 63:
-#line 483 "handlebars.y"
+#line 485 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_hash_pair(parser, (yyvsp[-2].string), (yyvsp[0].ast_node), &(yyloc));
     }
-#line 2077 "handlebars.tab.c"
+#line 2079 "handlebars.tab.c"
     break;
 
   case 64:
-#line 489 "handlebars.y"
+#line 491 "handlebars.y"
     {
       (yyval.block_params).block_param1 = handlebars_string_copy_ctor(CONTEXT, (yyvsp[-2].string));
       (yyval.block_params).block_param2 = handlebars_string_copy_ctor(CONTEXT, (yyvsp[-1].string));
     }
-#line 2086 "handlebars.tab.c"
+#line 2088 "handlebars.tab.c"
     break;
 
   case 65:
-#line 493 "handlebars.y"
+#line 495 "handlebars.y"
     {
       (yyval.block_params).block_param1 = handlebars_string_copy_ctor(CONTEXT, (yyvsp[-1].string));
       (yyval.block_params).block_param2 = NULL;
     }
-#line 2095 "handlebars.tab.c"
+#line 2097 "handlebars.tab.c"
     break;
 
   case 66:
-#line 500 "handlebars.y"
+#line 502 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 2103 "handlebars.tab.c"
+#line 2105 "handlebars.tab.c"
     break;
 
   case 67:
-#line 503 "handlebars.y"
+#line 505 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 2111 "handlebars.tab.c"
+#line 2113 "handlebars.tab.c"
     break;
 
   case 68:
-#line 506 "handlebars.y"
+#line 508 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_string(parser, (yyvsp[0].string), &(yyloc));
     }
-#line 2119 "handlebars.tab.c"
+#line 2121 "handlebars.tab.c"
     break;
 
   case 69:
-#line 509 "handlebars.y"
+#line 511 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_number(parser, (yyvsp[0].string), &(yyloc));
     }
-#line 2127 "handlebars.tab.c"
+#line 2129 "handlebars.tab.c"
     break;
 
   case 70:
-#line 512 "handlebars.y"
+#line 514 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_boolean(parser, (yyvsp[0].string), &(yyloc));
     }
-#line 2135 "handlebars.tab.c"
+#line 2137 "handlebars.tab.c"
     break;
 
   case 71:
-#line 515 "handlebars.y"
+#line 517 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_undefined(parser, (yyvsp[0].string), &(yyloc));
     }
-#line 2143 "handlebars.tab.c"
+#line 2145 "handlebars.tab.c"
     break;
 
   case 72:
-#line 518 "handlebars.y"
+#line 520 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_node_ctor_null(parser, (yyvsp[0].string), &(yyloc));
     }
-#line 2151 "handlebars.tab.c"
+#line 2153 "handlebars.tab.c"
     break;
 
   case 73:
-#line 524 "handlebars.y"
+#line 526 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 2159 "handlebars.tab.c"
+#line 2161 "handlebars.tab.c"
     break;
 
   case 74:
-#line 527 "handlebars.y"
+#line 529 "handlebars.y"
     {
       (yyval.ast_node) = (yyvsp[0].ast_node);
     }
-#line 2167 "handlebars.tab.c"
+#line 2169 "handlebars.tab.c"
     break;
 
   case 75:
-#line 533 "handlebars.y"
+#line 535 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_path(parser, (yyvsp[0].ast_list), 1, &(yyloc));
     }
-#line 2175 "handlebars.tab.c"
+#line 2177 "handlebars.tab.c"
     break;
 
   case 76:
-#line 539 "handlebars.y"
+#line 541 "handlebars.y"
     {
       (yyval.ast_node) = handlebars_ast_helper_prepare_path(parser, (yyvsp[0].ast_list), 0, &(yyloc));
     }
-#line 2183 "handlebars.tab.c"
+#line 2185 "handlebars.tab.c"
     break;
 
   case 77:
-#line 545 "handlebars.y"
+#line 547 "handlebars.y"
     {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor_path_segment(parser, (yyvsp[0].string), (yyvsp[-1].string), &(yyloc));
 
       handlebars_ast_list_append((yyvsp[-2].ast_list), ast_node);
       (yyval.ast_list) = (yyvsp[-2].ast_list);
     }
-#line 2194 "handlebars.tab.c"
+#line 2196 "handlebars.tab.c"
     break;
 
   case 78:
-#line 551 "handlebars.y"
+#line 553 "handlebars.y"
     {
       struct handlebars_ast_node * ast_node;
       MEMCHK((yyvsp[0].string)); // this is weird
@@ -2205,11 +2207,11 @@ yyreduce:
       (yyval.ast_list) = handlebars_ast_list_ctor(CONTEXT);
       handlebars_ast_list_append((yyval.ast_list), ast_node);
     }
-#line 2209 "handlebars.tab.c"
+#line 2211 "handlebars.tab.c"
     break;
 
 
-#line 2213 "handlebars.tab.c"
+#line 2215 "handlebars.tab.c"
 
       default: break;
     }

@@ -33,6 +33,9 @@
 /* Define the handlebars spec version */
 #undef HANDLEBARS_SPEC_VERSION_STRING
 
+/* Export some symbols used for testing */
+#undef HANDLEBARS_TESTING_EXPORTS
+
 /* Define the version integer. */
 #undef HANDLEBARS_VERSION_INT
 
@@ -56,6 +59,9 @@
 
 /* Define to 1 if the system has the `returns_nonnull' function attribute */
 #undef HAVE_FUNC_ATTRIBUTE_RETURNS_NONNULL
+
+/* Define to 1 if the system has the `visibility' function attribute */
+#undef HAVE_FUNC_ATTRIBUTE_VISIBILITY
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -162,6 +168,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* If the compiler supports a TLS storage class define it to that here */
+#undef TLS
 
 /* Version number of package */
 #undef VERSION

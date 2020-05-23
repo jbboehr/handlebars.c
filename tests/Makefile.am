@@ -15,35 +15,39 @@ LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
 check_PROGRAMS = \
 	test_main \
 	test_ast \
-	test_ast_helpers \
 	test_ast_list \
 	test_compiler \
 	test_map \
 	test_opcode_printer \
 	test_opcodes \
-	test_scanners \
 	test_stack \
 	test_string \
 	test_token \
-	test_utils \
 	test_value
 
 COMMONFILES = utils.h utils.c fixtures.c adler32.c
 
 test_main_SOURCES = $(COMMONFILES) test_main.c
 test_ast_SOURCES = $(COMMONFILES) test_ast.c
-test_ast_helpers_SOURCES = $(COMMONFILES) test_ast_helpers.c
 test_ast_list_SOURCES = $(COMMONFILES) test_ast_list.c
 test_compiler_SOURCES = $(COMMONFILES) test_compiler.c
 test_map_SOURCES = $(COMMONFILES) test_map.c
 test_opcode_printer_SOURCES = $(COMMONFILES) test_opcode_printer.c
 test_opcodes_SOURCES = $(COMMONFILES) test_opcodes.c
-test_scanners_SOURCES = $(COMMONFILES) test_scanners.c
 test_stack_SOURCES = $(COMMONFILES) test_stack.c
 test_string_SOURCES = $(COMMONFILES) test_string.c
 test_token_SOURCES = $(COMMONFILES) test_token.c
-test_utils_SOURCES = $(COMMONFILES) test_utils.c
 test_value_SOURCES = $(COMMONFILES) test_value.c
+
+if TESTING_EXPORTS
+test_ast_helpers_SOURCES = $(COMMONFILES) test_ast_helpers.c
+test_scanners_SOURCES = $(COMMONFILES) test_scanners.c
+test_utils_SOURCES = $(COMMONFILES) test_utils.c
+check_PROGRAMS += \
+	test_ast_helpers \
+	test_scanners \
+	test_utils
+endif
 
 if JSON
 test_cache_SOURCES = $(COMMONFILES) test_cache.c
