@@ -86,9 +86,15 @@ const size_t HANDLEBARS_VALUE_INTERNALS_SIZE = sizeof(union handlebars_value_int
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void value_rc_dtor(struct handlebars_rc * rc)
 {
-    struct handlebars_value * value = talloc_get_type_abort(hbs_container_of(rc, struct handlebars_value, rc), struct handlebars_value);
+    struct handlebars_value * value = /*talloc_get_type_abort(*/hbs_container_of(rc, struct handlebars_value, rc)/*, struct handlebars_value)*/;
+    // this isn't really safe
+    // if (value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED) {
+        value = talloc_get_type_abort(value, struct handlebars_value);
+    // }
     handlebars_value_dtor(value);
-    handlebars_talloc_free(value);
+    if( value->flags & HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED ) {
+        handlebars_talloc_free(value);
+    }
 }
 #endif
 

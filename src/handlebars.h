@@ -109,6 +109,13 @@
 #define HBS_LOCAL
 #endif
 
+// cleanup
+#if (__GNUC__ >= 4)
+#define HBS_ATTR_CLEANUP(func) __attribute__ ((__cleanup__(func)))
+#else
+#define HBS_ATTR_CLEANUP(func)
+#endif
+
 // Macros
 #define HBS_STRL(str) str, sizeof(str) - 1
 #define HBS_S1(x) #x

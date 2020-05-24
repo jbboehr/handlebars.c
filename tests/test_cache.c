@@ -112,6 +112,7 @@ static void execute_gc_test(struct handlebars_cache * cache)
     //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
     struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
     handlebars_value_convert(value);
+    handlebars_value_addref(value);
 
     struct handlebars_value * partial = handlebars_value_ctor(context);
     handlebars_value_str(partial, handlebars_string_ctor(context, HBS_STRL("{{bar}}")));
@@ -151,6 +152,8 @@ static void execute_gc_test(struct handlebars_cache * cache)
     cache->max_age = 0;
     handlebars_cache_gc(cache);
 
+    handlebars_value_delref(value);
+
     // @todo fixme
     //ck_assert_int_eq(0, handlebars_cache_stat(cache).current_entries);
 }
@@ -162,6 +165,7 @@ static void execute_reset_test(struct handlebars_cache * cache)
     //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
     struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
     handlebars_value_convert(value);
+    handlebars_value_addref(value);
 
     struct handlebars_value * partial = handlebars_value_ctor(context);
     handlebars_value_str(partial, handlebars_string_ctor(context, HBS_STRL("{{bar}}")));
@@ -205,6 +209,8 @@ static void execute_reset_test(struct handlebars_cache * cache)
     // This shouldn't use the cache
     buffer = handlebars_vm_execute(vm, module, value);
     ck_assert_str_eq(hbs_str_val(buffer), "baz");
+
+    handlebars_value_delref(value);
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);

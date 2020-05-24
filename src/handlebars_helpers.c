@@ -141,6 +141,7 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         handlebars_value_addref(first);
         handlebars_value_addref(last);
         handlebars_value_addref(block_params);
+        handlebars_value_addref(data);
     }
 
 
