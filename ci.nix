@@ -17,50 +17,30 @@ in
 builtins.mapAttrs (k: _v:
   let
     path = builtins.fetchTarball {
-        url = https://github.com/NixOS/nixpkgs/archive/release-19.09.tar.gz;
-        name = "nixpkgs-19.09";
+      url = https://github.com/NixOS/nixpkgs/archive/release-20.03.tar.gz;
+      name = "nixpkgs-20.03";
     };
     pkgs = import (path) { system = k; };
   in
   pkgs.recurseIntoAttrs {
-    n1809 = let
+    n1909 = let
         path = builtins.fetchTarball {
-           url = https://github.com/NixOS/nixpkgs/archive/release-18.09.tar.gz;
-           name = "nixpkgs-18.09";
-        };
-        pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2  {
-      inherit pkgs;
-    };
-
-    n1903 = let
-      path = builtins.fetchTarball {
-        url = https://github.com/NixOS/nixpkgs/archive/release-19.03.tar.gz;
-        name = "nixpkgs-19.03";
-      };
-      pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2  {
-      inherit pkgs;
-    };
-
-    n1909 = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs;
-    };
-
-    # test once with cmake
-    n1909cmake = generateHandlebarsCTestsForPlatform2  {
-      inherit pkgs;
-      handlebarscWithCmake = true;
-    };
-
-    n2003 = let
-        path = builtins.fetchTarball {
-           url = https://github.com/NixOS/nixpkgs/archive/release-20.03.tar.gz;
-           name = "nixpkgs-20.03";
+          url = https://github.com/NixOS/nixpkgs/archive/release-19.09.tar.gz;
+          name = "nixpkgs-19.09";
         };
         pkgs = import (path) { system = k; };
     in generateHandlebarsCTestsForPlatform2 {
       inherit pkgs;
+    };
+
+    n2003 = generateHandlebarsCTestsForPlatform2 {
+      inherit pkgs;
+    };
+
+    # test once with cmake
+    n2003cmake = generateHandlebarsCTestsForPlatform2  {
+      inherit pkgs;
+      handlebarscWithCmake = true;
     };
 
     unstable = let
