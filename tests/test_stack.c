@@ -53,7 +53,7 @@ START_TEST(test_stack_copy_ctor)
 
     ck_assert_uint_eq(handlebars_stack_count(stack), 3);
 
-    stack_copy = handlebars_stack_copy_ctor(stack);
+    stack_copy = handlebars_stack_copy_ctor(stack, 0);
 
     ck_assert_ptr_ne(stack_copy, NULL);
     ck_assert_ptr_ne(stack, stack_copy);

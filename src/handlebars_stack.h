@@ -86,7 +86,8 @@ struct handlebars_stack * handlebars_stack_ctor(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_stack * handlebars_stack_copy_ctor(
-    struct handlebars_stack * stack
+    struct handlebars_stack * stack,
+    size_t capacity
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
