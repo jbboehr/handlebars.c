@@ -54,7 +54,7 @@ union handlebars_value_internals
     struct handlebars_map * map;
     struct handlebars_stack * stack;
     struct handlebars_user * user;
-    void * ptr;
+    struct handlebars_ptr * ptr;
     handlebars_helper_func helper;
     struct handlebars_options * options;
 };
@@ -146,7 +146,7 @@ void handlebars_value_dtor(struct handlebars_value * value)
             handlebars_user_delref(value->v.user);
             break;
         case HANDLEBARS_VALUE_TYPE_PTR:
-            handlebars_talloc_free(value->v.ptr);
+            handlebars_user_delref((struct handlebars_user *) value->v.ptr);
             break;
         default:
             // do nothing
@@ -205,7 +205,7 @@ struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value
 void * handlebars_value_get_ptr(struct handlebars_value * value)
 {
     if (value->type == HANDLEBARS_VALUE_TYPE_PTR) {
-        return value->v.ptr;
+        return handlebars_ptr_get_ptr(value->v.ptr);
     } else {
         return NULL;
     }
@@ -447,8 +447,9 @@ void handlebars_value_str(struct handlebars_value * value, struct handlebars_str
     value->v.string = string;
 }
 
-void handlebars_value_ptr(struct handlebars_value * value, void * ptr)
+void handlebars_value_ptr(struct handlebars_value * value, struct handlebars_ptr * ptr)
 {
+    handlebars_user_addref((struct handlebars_user *) ptr);
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_PTR;
     value->v.ptr = ptr;

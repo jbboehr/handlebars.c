@@ -37,6 +37,7 @@ HBS_EXTERN_C_START
 struct handlebars_context;
 struct handlebars_map;
 struct handlebars_options;
+struct handlebars_ptr;
 struct handlebars_stack;
 struct handlebars_user;
 struct handlebars_value;
@@ -293,7 +294,7 @@ void handlebars_value_float(struct handlebars_value * value, double dval) HBS_AT
  */
 void handlebars_value_str(struct handlebars_value * value, struct handlebars_string * string) HBS_ATTR_NONNULL_ALL;
 
-void handlebars_value_ptr(struct handlebars_value * value, void * ptr) HBS_ATTR_NONNULL_ALL;
+void handlebars_value_ptr(struct handlebars_value * value, struct handlebars_ptr * ptr) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_value_user(struct handlebars_value * value, struct handlebars_user * user) HBS_ATTR_NONNULL_ALL;
 

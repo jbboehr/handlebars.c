@@ -74,3 +74,51 @@ void handlebars_user_init(struct handlebars_user * user, struct handlebars_conte
 handlebars_count_func handlebars_value_handlers_get_count_fn(const struct handlebars_value_handlers * handlers) {
     return handlers->count;
 }
+
+
+
+
+
+struct handlebars_ptr {
+    struct handlebars_user user;
+    void * ptr;
+};
+
+static void hbs_ptr_dtor(struct handlebars_user * user)
+{
+    struct handlebars_ptr * uptr = (struct handlebars_ptr *) user;
+    if( uptr && uptr->ptr ) {
+        handlebars_talloc_free(uptr->ptr);
+        uptr->ptr = NULL;
+    }
+}
+
+static const struct handlebars_value_handlers ptr_handlers = {
+    "ptr",
+    NULL,
+    &hbs_ptr_dtor,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+struct handlebars_ptr * handlebars_ptr_ctor(
+    struct handlebars_context * ctx,
+    void * ptr
+) {
+    struct handlebars_ptr * uptr = handlebars_talloc(ctx, struct handlebars_ptr);
+    HANDLEBARS_MEMCHECK(uptr, ctx);
+    handlebars_user_init((struct handlebars_user *) uptr, ctx, &ptr_handlers);
+    // talloc_set_destructor(uptr, hbs_ptr_dtor);
+    uptr->ptr = ptr;
+    return uptr;
+}
+
+void * handlebars_ptr_get_ptr(struct handlebars_ptr * uptr)
+{
+    return uptr->ptr;
+}

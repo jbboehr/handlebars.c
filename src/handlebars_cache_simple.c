@@ -34,6 +34,7 @@
 #include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
+#include "handlebars_value_handlers.h"
 #include "handlebars_opcode_serializer.h"
 
 
@@ -157,8 +158,9 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
 
     time(&module->ts);
 
+    struct handlebars_ptr * uptr = handlebars_ptr_ctor(HBSCTX(cache), talloc_steal(cache, module));
     value = handlebars_value_ctor(HBSCTX(cache));
-    handlebars_value_ptr(value, talloc_steal(cache, module));
+    handlebars_value_ptr(value, uptr);
 
     intern->map = map = handlebars_map_add(map, tmpl, value);
 
