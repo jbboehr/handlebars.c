@@ -114,15 +114,15 @@ builtins.mapAttrs (k: _v:
       valgrindSupport = true;
     };
 
-    unstable = let
-       path = builtins.fetchTarball {
-          url = https://github.com/NixOS/nixpkgs/archive/master.tar.gz;
-          name = "nixpkgs-unstable";
-       };
-       pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
-    };
+    # unstable = let
+    #    path = builtins.fetchTarball {
+    #       url = https://github.com/NixOS/nixpkgs/archive/master.tar.gz;
+    #       name = "nixpkgs-unstable";
+    #    };
+    #    pkgs = import (path) { system = k; };
+    # in generateHandlebarsCTestsForPlatform2 {
+    #  inherit pkgs;
+    # };
   }
 ) {
   x86_64-linux = {};
