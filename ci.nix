@@ -33,6 +33,8 @@ builtins.mapAttrs (k: _v:
       filter = (path: type: (builtins.all (x: x != baseNameOf path) [".idea" ".git" "ci.nix" ".travis.sh" ".travis.yml"]));
       src = gitignoreSource ./.;
     };
+    generateHandlebarsCTestsForPlatform3 = { ... }@args:
+      generateHandlebarsCTestsForPlatform2 { inherit pkgs handlebarscSrc; } // args;
   in
   pkgs.recurseIntoAttrs {
     n1909 = let
@@ -41,17 +43,14 @@ builtins.mapAttrs (k: _v:
           name = "nixpkgs-19.09";
         };
         pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    in generateHandlebarsCTestsForPlatform3 {
+      inherit pkgs;
     };
 
-    n2003 = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
-    };
+    n2003 = generateHandlebarsCTestsForPlatform3 {};
 
     # cmake
-    n2003-cmake = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    n2003-cmake = generateHandlebarsCTestsForPlatform3 {
       cmakeSupport = true;
     };
 
@@ -65,28 +64,24 @@ builtins.mapAttrs (k: _v:
     };
 
     # refcounting disabled
-    n2003-norc = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    n2003-norc = generateHandlebarsCTestsForPlatform3 {
       noRefcountingSupport = true;
     };
 
     # debug
-    n2003-debug = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    n2003-debug = generateHandlebarsCTestsForPlatform3 {
       debugSupport = true;
       hardeningSupport = false;
     };
 
     # lto
-    n2003-lto = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    n2003-lto = generateHandlebarsCTestsForPlatform3 {
       ltoSupport = true;
       sharedSupport = false;
     };
 
     # minimal
-    n2003-minimal = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    n2003-minimal = generateHandlebarsCTestsForPlatform3 {
       debugSupport = false;
       hardeningSupport = false;
       jsonSupport = false;
@@ -97,30 +92,28 @@ builtins.mapAttrs (k: _v:
     };
 
     # static only
-    n2003-static = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    n2003-static = generateHandlebarsCTestsForPlatform3 {
       sharedSupport = false;
     };
 
     # shared only
-    n2003-shared = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    n2003-shared = generateHandlebarsCTestsForPlatform3 {
       staticSupport = false;
     };
 
     # valgrind
-    n2003-valgrind = generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
+    n2003-valgrind = generateHandlebarsCTestsForPlatform3 {
       valgrindSupport = true;
     };
 
+    # Uncomment to test build against unstable nixpkgs too
     # unstable = let
     #    path = builtins.fetchTarball {
     #       url = https://github.com/NixOS/nixpkgs/archive/master.tar.gz;
     #       name = "nixpkgs-unstable";
     #    };
     #    pkgs = import (path) { system = k; };
-    # in generateHandlebarsCTestsForPlatform2 {
+    # in generateHandlebarsCTestsForPlatform3 {
     #  inherit pkgs;
     # };
   }
