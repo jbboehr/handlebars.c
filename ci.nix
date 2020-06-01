@@ -43,15 +43,15 @@ builtins.mapAttrs (k: _v:
       handlebarscWithCmake = true;
     };
 
-    unstable = let
-       path = builtins.fetchTarball {
-          url = https://github.com/NixOS/nixpkgs/archive/master.tar.gz;
-          name = "nixpkgs-unstable";
-       };
-       pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2 {
-     inherit pkgs;
-    };
+    # unstable = let
+    #    path = builtins.fetchTarball {
+    #       url = https://github.com/NixOS/nixpkgs/archive/master.tar.gz;
+    #       name = "nixpkgs-unstable";
+    #    };
+    #    pkgs = import (path) { system = k; };
+    # in generateHandlebarsCTestsForPlatform2 {
+    #  inherit pkgs;
+    # };
   }
 ) {
   x86_64-linux = {};
