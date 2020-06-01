@@ -18,8 +18,8 @@ in
 builtins.mapAttrs (k: _v:
   let
     path = builtins.fetchTarball {
-        url = https://github.com/NixOS/nixpkgs/archive/release-19.09.tar.gz;
-        name = "nixpkgs-19.09";
+      url = https://github.com/NixOS/nixpkgs/archive/release-20.03.tar.gz;
+      name = "nixpkgs-20.03";
     };
     pkgs = import (path) { system = k; };
     gitignoreSrc = pkgs.fetchFromGitHub {
@@ -35,38 +35,28 @@ builtins.mapAttrs (k: _v:
     };
   in
   pkgs.recurseIntoAttrs {
-    n1809 = let
+    n1909 = let
         path = builtins.fetchTarball {
-           url = https://github.com/NixOS/nixpkgs/archive/release-18.09.tar.gz;
-           name = "nixpkgs-18.09";
+          url = https://github.com/NixOS/nixpkgs/archive/release-19.09.tar.gz;
+          name = "nixpkgs-19.09";
         };
         pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2  {
-      inherit pkgs handlebarscSrc;
-    };
-
-    n1903 = let
-      path = builtins.fetchTarball {
-        url = https://github.com/NixOS/nixpkgs/archive/release-19.03.tar.gz;
-        name = "nixpkgs-19.03";
-      };
-      pkgs = import (path) { system = k; };
     in generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
     };
 
-    n1909 = generateHandlebarsCTestsForPlatform2 {
+    n2003 = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
     };
 
     # cmake
-    n1909-cmake = generateHandlebarsCTestsForPlatform2 {
+    n2003-cmake = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
       cmakeSupport = true;
     };
 
     # 32bit (gcc only)
-   n1909-32bit = pkgs.recurseIntoAttrs {
+    n2003-32bit = pkgs.recurseIntoAttrs {
       gcc = generateHandlebarsCTestsForPlatform {
         inherit handlebarscSrc;
         pkgs = pkgs.pkgsi686Linux;
@@ -75,27 +65,27 @@ builtins.mapAttrs (k: _v:
     };
 
     # refcounting disabled
-    n1909-norc = generateHandlebarsCTestsForPlatform2 {
+    n2003-norc = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
       noRefcountingSupport = true;
     };
 
     # debug
-    n1909-debug = generateHandlebarsCTestsForPlatform2 {
+    n2003-debug = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
       debugSupport = true;
       hardeningSupport = false;
     };
 
     # lto
-    n1909-lto = generateHandlebarsCTestsForPlatform2 {
+    n2003-lto = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
       ltoSupport = true;
       sharedSupport = false;
     };
 
     # minimal
-    n1909-minimal = generateHandlebarsCTestsForPlatform2 {
+    n2003-minimal = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
       debugSupport = false;
       hardeningSupport = false;
@@ -107,31 +97,21 @@ builtins.mapAttrs (k: _v:
     };
 
     # static only
-    n1909-static = generateHandlebarsCTestsForPlatform2 {
+    n2003-static = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
       sharedSupport = false;
     };
 
     # shared only
-    n1909-shared = generateHandlebarsCTestsForPlatform2 {
+    n2003-shared = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
       staticSupport = false;
     };
 
     # valgrind
-    n1909-valgrind = generateHandlebarsCTestsForPlatform2 {
+    n2003-valgrind = generateHandlebarsCTestsForPlatform2 {
       inherit pkgs handlebarscSrc;
       valgrindSupport = true;
-    };
-
-    n2003 = let
-        path = builtins.fetchTarball {
-           url = https://github.com/NixOS/nixpkgs/archive/release-20.03.tar.gz;
-           name = "nixpkgs-20.03";
-        };
-        pkgs = import (path) { system = k; };
-    in generateHandlebarsCTestsForPlatform2 {
-      inherit pkgs handlebarscSrc;
     };
 
     unstable = let
