@@ -457,6 +457,7 @@ void handlebars_value_ptr(struct handlebars_value * value, struct handlebars_ptr
 
 void handlebars_value_user(struct handlebars_value * value, struct handlebars_user * user)
 {
+    handlebars_user_addref(user);
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_USER;
     value->v.user = user;
