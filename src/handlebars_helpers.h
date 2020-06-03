@@ -21,6 +21,7 @@
 #define HANDLEBARS_HELPERS_H
 
 #include "handlebars.h"
+#include "handlebars_types.h"
 
 HBS_EXTERN_C_START
 
@@ -31,13 +32,7 @@ struct handlebars_options;
 
 extern const size_t HANDLEBARS_OPTIONS_SIZE;
 
-typedef struct handlebars_value * (*handlebars_helper_func)(
-    int argc,
-    struct handlebars_value * argv[],
-    struct handlebars_options * options
-);
-
-#define HANDLEBARS_HELPER_ARGS int argc, struct handlebars_value * argv[], struct handlebars_options * options
+#define HANDLEBARS_HELPER_ARGS int argc, struct handlebars_value * argv[], struct handlebars_options * options, struct handlebars_value * rv
 #define HANDLEBARS_HELPER_ATTRS HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 
 void handlebars_options_deinit(
@@ -77,20 +72,6 @@ struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS) HANDLEB
 struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;
 struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;
 struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;
-
-#ifdef HANDLEBARS_HELPERS_PRIVATE
-
-struct handlebars_options {
-    struct handlebars_vm * vm;
-    long inverse;
-    long program;
-    struct handlebars_string * name;
-    struct handlebars_value * scope;
-    struct handlebars_value * data;
-    struct handlebars_value * hash;
-};
-
-#endif /* HANDLEBARS_HELPERS_PRIVATE */
 
 HBS_EXTERN_C_END
 

@@ -140,9 +140,12 @@ AC_PROG_YACC
 AC_PATH_PROGS(LCOV, [lcov], no)
 AC_PATH_PROGS(RE2C, [re2c], no)
 
-AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
 AM_CONDITIONAL([RE2C], [test x$RE2C != xno])
+AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
+AS_IF([test "x$enable_debug" = "xyes"], [
+	AC_DEFINE([HANDLEBARS_ENABLE_DEBUG], [1], [Enable handlebars debugging])
+])
 
 # Checks for header files
 AC_HEADER_STDC

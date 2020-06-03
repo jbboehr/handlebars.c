@@ -143,6 +143,9 @@ static void string_rc_dtor(struct handlebars_rc * rc)
 }
 #endif
 
+#undef handlebars_string_addref
+#undef handlebars_string_delref
+
 void handlebars_string_addref(struct handlebars_string * string)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -153,9 +156,32 @@ void handlebars_string_addref(struct handlebars_string * string)
 void handlebars_string_delref(struct handlebars_string * string)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_delref(&string->rc);
+    handlebars_rc_delref(&string->rc, string_rc_dtor);
 #endif
 }
+
+void handlebars_string_addref_ex(struct handlebars_string * string, const char * expr, const char * loc)
+{
+    if (getenv("HANDLEBARS_RC_DEBUG")) {
+        size_t rc = handlebars_rc_refcount(&string->rc);
+        fprintf(stderr, "STR ADDREF %p (%zu -> %zu) %s %s\n", string, rc, rc + 1, expr, loc);
+    }
+    handlebars_string_addref(string);
+}
+
+void handlebars_string_delref_ex(struct handlebars_string * string, const char * expr, const char * loc)
+{
+    if (getenv("HANDLEBARS_RC_DEBUG")) {
+        size_t rc = handlebars_rc_refcount(&string->rc);
+        fprintf(stderr, "STR DELREF %p (%zu -> %zu) %s %s\n", string, rc, rc - 1, expr, loc);
+    }
+    handlebars_string_delref(string);
+}
+
+#ifndef NDEBUG
+#define handlebars_string_addref(string) handlebars_string_addref_ex(string, #string, HBS_LOC)
+#define handlebars_string_delref(string) handlebars_string_delref_ex(string, #string, HBS_LOC)
+#endif
 
 static inline struct handlebars_string * separate_string(struct handlebars_string * string)
 {
@@ -165,6 +191,9 @@ static inline struct handlebars_string * separate_string(struct handlebars_strin
         void * parent = talloc_parent(string);
         assert(parent != NULL);
         string = handlebars_string_copy_ctor(HBSCTX(parent), string);
+        if (handlebars_rc_refcount(&prev_string->rc) >= 1) { // ugh
+            handlebars_string_addref(string);
+        }
         handlebars_string_delref(prev_string);
     }
 #endif
@@ -185,7 +214,7 @@ struct handlebars_string * handlebars_string_init(
     talloc_set_type(st, struct handlebars_string);
     st->val[0] = 0;
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_init(&st->rc, string_rc_dtor);
+    handlebars_rc_init(&st->rc);
 #endif
     return st;
 }
@@ -223,7 +252,7 @@ struct handlebars_string * handlebars_string_copy_ctor(
     talloc_set_type(st, struct handlebars_string);
     memcpy(st, string, size);
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_init(&st->rc, string_rc_dtor);
+    handlebars_rc_init(&st->rc);
 #endif
     return st;
 }

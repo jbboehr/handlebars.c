@@ -44,6 +44,9 @@ static void user_rc_dtor(struct handlebars_rc * rc)
 }
 #endif
 
+#undef handlebars_user_addref
+#undef handlebars_user_delref
+
 void handlebars_user_addref(struct handlebars_user * user)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -54,9 +57,32 @@ void handlebars_user_addref(struct handlebars_user * user)
 void handlebars_user_delref(struct handlebars_user * user)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_delref(&user->rc);
+    handlebars_rc_delref(&user->rc, user_rc_dtor);
 #endif
 }
+
+void handlebars_user_addref_ex(struct handlebars_user * user, const char * expr, const char * loc)
+{
+    if (getenv("HANDLEBARS_RC_DEBUG")) {
+        size_t rc = handlebars_rc_refcount(&user->rc);
+        fprintf(stderr, "USR ADDREF %p (%zu -> %zu) %s %s\n", user, rc, rc + 1, expr, loc);
+    }
+    handlebars_user_addref(user);
+}
+
+void handlebars_user_delref_ex(struct handlebars_user * user, const char * expr, const char * loc)
+{
+    if (getenv("HANDLEBARS_RC_DEBUG")) {
+        size_t rc = handlebars_rc_refcount(&user->rc);
+        fprintf(stderr, "USR DELREF %p (%zu -> %zu) %s %s\n", user, rc, rc - 1, expr, loc);
+    }
+    handlebars_user_delref(user);
+}
+
+#ifndef NDEBUG
+#define handlebars_user_addref(user) handlebars_user_addref_ex(user, #user, HBS_LOC)
+#define handlebars_user_delref(user) handlebars_user_delref_ex(user, #user, HBS_LOC)
+#endif
 
 // }}} Reference Counting
 
@@ -67,7 +93,7 @@ void handlebars_user_init(struct handlebars_user * user, struct handlebars_conte
     user->ctx = ctx;
     user->handlers = handlers;
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_init(&user->rc, user_rc_dtor);
+    handlebars_rc_init(&user->rc);
 #endif
 }
 

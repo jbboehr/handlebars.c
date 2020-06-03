@@ -25,9 +25,12 @@
 #include <talloc.h>
 
 #include "handlebars.h"
-#include "handlebars_map.h"
 #include "handlebars_memory.h"
+
+#include "handlebars_map.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
+
 #include "utils.h"
 
 
@@ -70,9 +73,10 @@ START_TEST(test_map)
             continue;
         }
 
-        struct handlebars_value * value = handlebars_value_ctor(context);
+        HANDLEBARS_VALUE_DECL(value);
         handlebars_value_integer(value, pos++);
         map = handlebars_map_add(map, key, value);
+        HANDLEBARS_VALUE_UNDECL(value);
     }
 
     fprintf(
@@ -100,7 +104,7 @@ START_TEST(test_map)
         ck_assert_ptr_ne(key, NULL);
         ck_assert_ptr_ne(value, NULL);
 
-        handlebars_value_addref(value);
+        long intval = handlebars_value_get_intval(value);
 
         map = handlebars_map_remove(map, key);
 
@@ -108,9 +112,7 @@ START_TEST(test_map)
         ck_assert_uint_eq(--pos, handlebars_map_count(map));
 
         // make sure the right element was removed
-        ck_assert_int_eq(i++, handlebars_value_get_intval(value));
-
-        handlebars_value_delref(value);
+        ck_assert_int_eq(i++, intval);
     } handlebars_map_foreach_end(map);
 
     // Make sure it's empty
@@ -154,11 +156,11 @@ START_TEST(test_map_sort)
         struct handlebars_string * key = handlebars_string_ctor(HBSCTX(context), tmp, strlen(tmp));
         handlebars_string_addref(key);
 
-        struct handlebars_value * value = handlebars_value_ctor(context);
+        HANDLEBARS_VALUE_DECL(value);
         handlebars_value_integer(value, i);
-        ck_assert_ptr_ne(value, NULL);
         map = handlebars_map_add(map, key, value);
         handlebars_string_delref(key);
+        HANDLEBARS_VALUE_UNDECL(value);
     }
 
     do {
@@ -218,27 +220,24 @@ START_TEST(test_map_copy_ctor)
 {
     struct handlebars_map * map;
     struct handlebars_map * map_copy;
-    struct handlebars_value * tmp;
-    struct  handlebars_string * str1;
-    struct  handlebars_string * str2;
-    struct  handlebars_string * str3;
+    struct handlebars_string * str1;
+    struct handlebars_string * str2;
+    struct handlebars_string * str3;
+    HANDLEBARS_VALUE_DECL(tmp);
 
     map = handlebars_map_ctor(context, 3);
     handlebars_map_addref(map);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
     str1 = handlebars_string_ctor(context, HBS_STRL("a"));
     handlebars_string_addref(str1);
     map = handlebars_map_update(map, str1, tmp);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
     str2 = handlebars_string_ctor(context, HBS_STRL("b"));
     handlebars_string_addref(str2);
     map = handlebars_map_update(map, str2, tmp);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
     str3 = handlebars_string_ctor(context, HBS_STRL("c"));
     handlebars_string_addref(str3);
@@ -263,6 +262,7 @@ START_TEST(test_map_copy_ctor)
     handlebars_map_delref(map);
     handlebars_map_delref(map_copy);
 
+    HANDLEBARS_VALUE_UNDECL(tmp);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -272,21 +272,19 @@ START_TEST(test_map_add_with_separation)
 {
     struct handlebars_map * map;
     struct handlebars_map * map_copy;
-    struct handlebars_value * tmp;
     struct  handlebars_string * str1;
     struct  handlebars_string * str2;
     struct  handlebars_string * str3;
+    HANDLEBARS_VALUE_DECL(tmp);
 
     map = handlebars_map_ctor(context, 3);
     handlebars_map_addref(map);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
     str1 = handlebars_string_ctor(context, HBS_STRL("a"));
     handlebars_string_addref(str1);
     map = handlebars_map_update(map, str1, tmp);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
     str2 = handlebars_string_ctor(context, HBS_STRL("b"));
     handlebars_string_addref(str2);
@@ -295,7 +293,6 @@ START_TEST(test_map_add_with_separation)
     handlebars_map_addref(map);
     map_copy = map;
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
     str3 = handlebars_string_ctor(context, HBS_STRL("c"));
     handlebars_string_addref(str3);
@@ -318,6 +315,7 @@ START_TEST(test_map_add_with_separation)
     handlebars_map_delref(map);
     handlebars_map_delref(map_copy);
 
+    HANDLEBARS_VALUE_UNDECL(tmp);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST

@@ -33,64 +33,70 @@
 
 START_TEST(test_boolean_yaml_true)
 {
-    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\ntrue");
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_init_yaml_string(context, value, "---\ntrue");
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_TRUE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 1);
-    handlebars_value_delref(value);
+    HANDLEBARS_VALUE_UNDECL(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
 START_TEST(test_boolean_yaml_false)
 {
-    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\nfalse");
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_init_yaml_string(context, value, "---\nfalse");
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FALSE);
     ck_assert_int_eq(handlebars_value_get_boolval(value), 0);
-    handlebars_value_delref(value);
+    HANDLEBARS_VALUE_UNDECL(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
 START_TEST(test_int_yaml)
 {
-    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\n2358");
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_init_yaml_string(context, value, "---\n2358");
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
     ck_assert_int_eq(handlebars_value_get_intval(value), 2358);
-    handlebars_value_delref(value);
+    HANDLEBARS_VALUE_UNDECL(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
 START_TEST(test_float_yaml)
 {
-    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\n1234.4321");
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_init_yaml_string(context, value, "---\n1234.4321");
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
     // Note: converting to int - precision issue
     ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
-    handlebars_value_delref(value);
+    HANDLEBARS_VALUE_UNDECL(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
 START_TEST(test_string_yaml)
 {
-	struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\n\"test\"");
+    HANDLEBARS_VALUE_DECL(value);
+	handlebars_value_init_yaml_string(context, value, "---\n\"test\"");
 	ck_assert_ptr_ne(value, NULL);
 	ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_STRING);
     const char * tmp = handlebars_value_get_strval(value);
 	ck_assert_str_eq(tmp, "test");
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
-    handlebars_value_delref(value);
+    HANDLEBARS_VALUE_UNDECL(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
 
 START_TEST(test_parse_error_yaml)
 {
+    HANDLEBARS_VALUE_DECL(value);
     jmp_buf buf;
 
     if( handlebars_setjmp_ex(context, &buf) ) {
@@ -101,9 +107,11 @@ START_TEST(test_parse_error_yaml)
         return;
     }
 
-    struct handlebars_value * value = handlebars_value_from_yaml_string(context, "---\n'");
+    handlebars_value_init_yaml_string(context, value, "---\n'");
     (void) value;
     ck_assert_msg(0, "Parse error should have longjmp'd");
+
+    HANDLEBARS_VALUE_UNDECL(value);
 }
 END_TEST
 

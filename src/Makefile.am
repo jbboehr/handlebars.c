@@ -86,6 +86,7 @@ pkginclude_HEADERS = \
 	handlebars_stack.h \
 	handlebars_string.h \
 	handlebars_token.h \
+	handlebars_types.h \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
 	handlebars_vm.h \
@@ -98,6 +99,7 @@ pkginclude_HEADERS = \
 # handlebars_private.h
 # handlebars_scanners.h
 # handlebars_whitespace.h
+# handlebars_value_private.h
 
 CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
 BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)

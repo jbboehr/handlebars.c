@@ -720,12 +720,12 @@ BISON_TRUE
 BISON_VERSION
 BISON
 BISONFLAGS
+DEBUG_FALSE
+DEBUG_TRUE
 RE2C_FALSE
 RE2C_TRUE
 LCOV_FALSE
 LCOV_TRUE
-DEBUG_FALSE
-DEBUG_TRUE
 RE2C
 LCOV
 YFLAGS
@@ -17139,14 +17139,6 @@ done
 test -n "$RE2C" || RE2C="no"
 
 
- if test x$enable_debug = xyes; then
-  DEBUG_TRUE=
-  DEBUG_FALSE='#'
-else
-  DEBUG_TRUE='#'
-  DEBUG_FALSE=
-fi
-
  if test x$LCOV != xno; then
   LCOV_TRUE=
   LCOV_FALSE='#'
@@ -17163,6 +17155,21 @@ else
   RE2C_FALSE=
 fi
 
+ if test x$enable_debug = xyes; then
+  DEBUG_TRUE=
+  DEBUG_FALSE='#'
+else
+  DEBUG_TRUE='#'
+  DEBUG_FALSE=
+fi
+
+if test "x$enable_debug" = "xyes"; then :
+
+
+$as_echo "#define HANDLEBARS_ENABLE_DEBUG 1" >>confdefs.h
+
+
+fi
 
 # Checks for header files
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ANSI C header files" >&5
@@ -21900,16 +21907,16 @@ if test -z "${GCC_TRUE}" && test -z "${GCC_FALSE}"; then
   as_fn_error $? "conditional \"GCC\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${DEBUG_TRUE}" && test -z "${DEBUG_FALSE}"; then
-  as_fn_error $? "conditional \"DEBUG\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${LCOV_TRUE}" && test -z "${LCOV_FALSE}"; then
   as_fn_error $? "conditional \"LCOV\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${RE2C_TRUE}" && test -z "${RE2C_FALSE}"; then
   as_fn_error $? "conditional \"RE2C\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${DEBUG_TRUE}" && test -z "${DEBUG_FALSE}"; then
+  as_fn_error $? "conditional \"DEBUG\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${BISON_TRUE}" && test -z "${BISON_FALSE}"; then

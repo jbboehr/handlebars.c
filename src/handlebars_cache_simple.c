@@ -110,13 +110,13 @@ static int cache_gc(struct handlebars_cache * cache)
         }
     } handlebars_map_foreach_end(map);
 
-    map = handlebars_map_rehash(map, false);
-
     for( i = 0; i < remove_keys_i; i++ ) {
         struct handlebars_string * key = remove_keys[i];
         map = handlebars_map_remove(map, key);
         handlebars_string_delref(key);
     }
+
+    map = handlebars_map_rehash(map, false);
 
     intern->map = map;
 
@@ -149,7 +149,7 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
     struct handlebars_map * map = intern->map;
     struct handlebars_cache_stat * stat = &intern->stat;
-    struct handlebars_value * value;
+    HANDLEBARS_VALUE_DECL(value);
 
     // Check if it would exceed the size
     if( should_gc(cache) ) {
@@ -159,7 +159,6 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     time(&module->ts);
 
     struct handlebars_ptr * uptr = handlebars_ptr_ctor(HBSCTX(cache), talloc_steal(cache, module));
-    value = handlebars_value_ctor(HBSCTX(cache));
     handlebars_value_ptr(value, uptr);
 
     intern->map = map = handlebars_map_add(map, tmpl, value);
@@ -167,6 +166,8 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     // Update master
     stat->current_entries++;
     stat->current_size += module->size;
+
+    HANDLEBARS_VALUE_UNDECL(value);
 }
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)

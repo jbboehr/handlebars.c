@@ -18,10 +18,15 @@ pkgconfig_DATA = handlebars.pc
 # Alias for test (old habits die hard)
 test: check
 
+my-clean-local:
+	find -name 'vgcore.*' -delete
+
 if CODE_COVERAGE_ENABLED
 CODE_COVERAGE_OUTPUT_FILE = $(PACKAGE_NAME)-coverage.info
 CODE_COVERAGE_OUTPUT_DIRECTORY = $(PACKAGE_NAME)-coverage
 include $(top_srcdir)/build/aminclude_static.am
-clean-local: code-coverage-clean
+clean-local: code-coverage-clean my-clean-local
 distclean-local: code-coverage-dist-clean
+else
+clean-local: my-clean-local
 endif

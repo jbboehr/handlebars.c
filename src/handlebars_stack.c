@@ -28,6 +28,8 @@
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_value_private.h"
+
 #include "handlebars_stack.h"
 #include "handlebars_value.h"
 
@@ -56,13 +58,13 @@ struct handlebars_stack {
     //! Number of elements to protect from popping or setting
     size_t protect;
     //! Data
-    struct handlebars_value * v[];
+    struct handlebars_value v[];
 };
 
 void * HANDLEBARS_STACK_ALLOC_PTR = NULL;
 
 size_t handlebars_stack_size(size_t capacity) {
-    return (sizeof(struct handlebars_stack) + sizeof(struct handlebars_value *) * (capacity + 1));
+    return (sizeof(struct handlebars_stack) + sizeof(struct handlebars_value) * (capacity + 1));
 }
 
 // {{{ Reference Counting
@@ -85,7 +87,7 @@ void handlebars_stack_addref(struct handlebars_stack * stack)
 void handlebars_stack_delref(struct handlebars_stack * stack)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_delref(&stack->rc);
+    handlebars_rc_delref(&stack->rc, stack_rc_dtor);
 #endif
 }
 
@@ -116,7 +118,7 @@ struct handlebars_stack * handlebars_stack_init(struct handlebars_context * ctx,
     stack->ctx = ctx;
     stack->capacity = elem;
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_init(&stack->rc, stack_rc_dtor);
+    handlebars_rc_init(&stack->rc);
 #endif
     return stack;
 }
@@ -131,7 +133,7 @@ struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx,
     stack->capacity = capacity;
     stack->flags = HANDLEBARS_STACK_TALLOCATED;
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_init(&stack->rc, stack_rc_dtor);
+    handlebars_rc_init(&stack->rc);
 #endif
     return stack;
 }
@@ -144,11 +146,10 @@ struct handlebars_stack * handlebars_stack_copy_ctor(struct handlebars_stack * p
 
     struct handlebars_stack * stack = handlebars_stack_ctor(prev_stack->ctx, new_capacity);
     for ( size_t i = 0; i < prev_stack->i; i++ ) {
-        stack->v[i] = prev_stack->v[i];
-        handlebars_value_addref(stack->v[i]);
+        handlebars_value_init(&stack->v[i]);
+        handlebars_value_value(&stack->v[i], &prev_stack->v[i]);
     }
     stack->i = prev_stack->i;
-    stack->v[stack->i] = NULL;
     return stack;
 }
 
@@ -157,7 +158,7 @@ void handlebars_stack_dtor(struct handlebars_stack * stack)
 #ifndef HANDLEBARS_NO_REFCOUNT
     size_t i;
     for( i = 0; i < stack->i; i++ ) {
-        handlebars_value_delref(stack->v[i]);
+        handlebars_value_dtor(&stack->v[i]);
     }
 #endif
     if (stack->flags & HANDLEBARS_STACK_TALLOCATED) {
@@ -176,7 +177,7 @@ HBS_ATTR_UNUSED
 static void handlebars_stack_dump(struct handlebars_stack * stack) {
     size_t i;
     for (i = 0; i < stack->i; i++) {
-        fprintf(stderr, "STACK[%zu]: %s\n", i, handlebars_value_dump(stack->v[i], stack->ctx, 0));
+        fprintf(stderr, "STACK[%zu]: %s\n", i, handlebars_value_dump(&stack->v[i], stack->ctx, 0));
     }
 }
 
@@ -203,15 +204,14 @@ struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack,
         handlebars_stack_addref(stack);
     }
 
-    handlebars_value_addref(value);
-
-    stack->v[stack->i++] = value;
-    stack->v[stack->i] = NULL; // we don't *really* need to null-terminate
+    handlebars_value_init(&stack->v[stack->i]);
+    handlebars_value_value(&stack->v[stack->i], value);
+    stack->i++;
 
     return stack;
 }
 
-struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack)
+struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack, struct handlebars_value * rv)
 {
     if( stack->i <= 0 ) {
         return NULL;
@@ -228,9 +228,11 @@ struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack)
         handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to pop protected stack segment i=%zu protect=%zu", stack->i, stack->protect);
     }
 
-    struct handlebars_value * value = stack->v[--stack->i];
-    stack->v[stack->i] = NULL; // we don't *really* need to null-terminate
-    return value;
+    --stack->i;
+    struct handlebars_value * value = &stack->v[stack->i];
+    handlebars_value_value(rv, value);
+    handlebars_value_null(value);
+    return rv;
 }
 
 struct handlebars_value * handlebars_stack_top(struct handlebars_stack * stack)
@@ -239,7 +241,7 @@ struct handlebars_value * handlebars_stack_top(struct handlebars_stack * stack)
         return NULL;
     }
 
-    return stack->v[stack->i - 1];
+    return &stack->v[stack->i - 1];
 }
 
 struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, size_t offset)
@@ -248,13 +250,11 @@ struct handlebars_value * handlebars_stack_get(struct handlebars_stack * stack, 
         return NULL;
     }
 
-    return stack->v[offset];
+    return &stack->v[offset];
 }
 
 struct handlebars_stack * handlebars_stack_set(struct handlebars_stack * stack, size_t offset, struct handlebars_value * value)
 {
-    struct handlebars_value * old;
-
     assert(value != NULL);
 
     // As a special case, push
@@ -276,15 +276,11 @@ struct handlebars_stack * handlebars_stack_set(struct handlebars_stack * stack, 
     }
 
     // As a special case, ignore
-    if( value == stack->v[offset] ) {
+    if( value == &stack->v[offset] ) {
         return stack;
     }
 
-    old = stack->v[offset];
-    stack->v[offset] = value;
-
-    handlebars_value_addref(value);
-    handlebars_value_delref(old);
+    handlebars_value_value(&stack->v[offset], value);
 
     return stack;
 }
@@ -302,10 +298,12 @@ void handlebars_stack_truncate(
     struct handlebars_stack * stack,
     size_t num
 ) {
+    HANDLEBARS_VALUE_DECL(rv);
     while (handlebars_stack_count(stack) > num) {
-        struct handlebars_value * value = handlebars_stack_pop(stack);
-        handlebars_value_delref(value);
+        struct handlebars_value * value = handlebars_stack_pop(stack, rv);
+        handlebars_value_dtor(value);
     }
+    HANDLEBARS_VALUE_UNDECL(rv);
 }
 
 struct handlebars_stack_save_buf handlebars_stack_save(struct handlebars_stack * stack)

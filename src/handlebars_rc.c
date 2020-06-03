@@ -26,28 +26,7 @@
 #include "handlebars.h"
 #include "handlebars_rc.h"
 
-void handlebars_rc_init(struct handlebars_rc * rc, handlebars_rc_dtor_func dtor)
-{
-    rc->refcount = 0;
-    rc->dtor = dtor;
-}
-
-void handlebars_rc_addref(struct handlebars_rc * rc)
-{
-    rc->refcount++;
-}
-
-void handlebars_rc_delref(struct handlebars_rc * rc)
-{
-    if (rc->refcount <= 1) {
-        rc->refcount = 0;
-        rc->dtor(rc);
-    } else {
-        rc->refcount--;
-    }
-}
-
-size_t handlebars_rc_refcount(struct handlebars_rc * rc)
-{
-    return rc->refcount;
-}
+extern inline void handlebars_rc_init(struct handlebars_rc * rc);
+extern inline void handlebars_rc_addref(struct handlebars_rc * rc);
+extern inline void handlebars_rc_delref(struct handlebars_rc * rc, handlebars_rc_dtor_func dtor);
+extern inline size_t handlebars_rc_refcount(struct handlebars_rc * rc);

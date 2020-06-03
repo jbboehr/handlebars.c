@@ -32,11 +32,12 @@ HBS_EXTERN_C_START
 struct handlebars_context;
 struct handlebars_string;
 
-struct handlebars_value * handlebars_value_partial_loader_ctor(
+struct handlebars_value * handlebars_value_partial_loader_init(
     struct handlebars_context * context,
     struct handlebars_string * base_path,
-    struct handlebars_string * extension
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+    struct handlebars_string * extension,
+    struct handlebars_value * rv
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 HBS_EXTERN_C_END
 

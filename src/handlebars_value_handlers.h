@@ -36,14 +36,15 @@ typedef struct handlebars_value * (*handlebars_copy_func)(struct handlebars_valu
 typedef void (*handlebars_value_dtor_func)(struct handlebars_user * user);
 typedef void (*handlebars_value_convert_func)(struct handlebars_value * value, bool recurse);
 typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
-typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, struct handlebars_string * key);
-typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index);
+typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, struct handlebars_string * key, struct handlebars_value * rv);
+typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index, struct handlebars_value * rv);
 typedef bool (*handlebars_iterator_init_func)(struct handlebars_value_iterator * it, struct handlebars_value * value);
 typedef struct handlebars_value * (*handlebars_call_func)(
     struct handlebars_value * value,
     int argc,
     struct handlebars_value * argv[],
-    struct handlebars_options * options
+    struct handlebars_options * options,
+    struct handlebars_value * rv
 );
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
 
@@ -55,13 +56,19 @@ void handlebars_user_init(struct handlebars_user * user, struct handlebars_conte
     HBS_ATTR_NONNULL_ALL;
 
 // {{{ Reference Counting
-
 void handlebars_user_addref(struct handlebars_user * user)
     HBS_ATTR_NONNULL_ALL;
-
 void handlebars_user_delref(struct handlebars_user * user)
     HBS_ATTR_NONNULL_ALL;
+void handlebars_user_addref_ex(struct handlebars_user * user, const char * expr, const char * loc)
+    HBS_ATTR_NONNULL_ALL;
+void handlebars_user_delref_ex(struct handlebars_user * user, const char * expr, const char * loc)
+    HBS_ATTR_NONNULL_ALL;
 
+#ifndef NDEBUG
+#define handlebars_user_addref(user) handlebars_user_addref_ex(user, #user, HBS_LOC)
+#define handlebars_user_delref(user) handlebars_user_delref_ex(user, #user, HBS_LOC)
+#endif
 // }}} Reference Counting
 
 struct handlebars_ptr * handlebars_ptr_ctor(

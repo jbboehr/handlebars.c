@@ -127,8 +127,9 @@ START_TEST(test_random_alloc_fail_vm)
         //     struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
         //     struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
         //     struct handlebars_vm * vm = handlebars_vm_ctor(ctx);
-            struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": 2}}");
             struct handlebars_string * result;
+            HANDLEBARS_VALUE_DECL(value);
+            handlebars_value_init_json_string(context, value, "{\"foo\": {\"bar\": 2}}");
             handlebars_value_convert(value);
 
             struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
@@ -142,6 +143,8 @@ START_TEST(test_random_alloc_fail_vm)
             result = handlebars_vm_execute(vm, module, value);
             (void) result;
             handlebars_memory_fail_disable();
+
+            HANDLEBARS_VALUE_UNDECL(value);
 
         //     handlebars_context_dtor(ctx);
         // }

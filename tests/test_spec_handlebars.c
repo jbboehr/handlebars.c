@@ -35,12 +35,13 @@
 #pragma GCC diagnostic pop
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_json.h"
 #include "handlebars_opcode_serializer.h"
-#include "handlebars_memory.h"
+#include "handlebars_map.h"
 #include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -405,7 +406,6 @@ static bool should_skip(struct generic_test * test)
 
 static inline void run_test(struct generic_test * test, int _i)
 {
-    struct handlebars_value * input;
     struct handlebars_module * module;
 
 #ifndef NDEBUG
@@ -454,34 +454,36 @@ static inline void run_test(struct generic_test * test, int _i)
     handlebars_vm_set_flags(vm, test->flags);
 
     // Setup helpers
-    struct handlebars_value * helpers;
+    HANDLEBARS_VALUE_DECL(helpers);
     if( test->helpers ) {
-        helpers = handlebars_value_from_json_object(context, test->helpers);
+        handlebars_value_init_json_object(context, helpers, test->helpers);
         load_fixtures(helpers);
     } else {
-        helpers = handlebars_value_ctor(HBSCTX(vm));
         handlebars_value_map(helpers, handlebars_map_ctor(HBSCTX(vm), 0));
     }
     handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partials
-    struct handlebars_value * partials;
+    HANDLEBARS_VALUE_DECL(partials);
     if( test->partials ) {
-        partials = handlebars_value_from_json_object(context, test->partials);
+        handlebars_value_init_json_object(context, partials, test->partials);
         load_fixtures(partials);
     } else {
-        partials = handlebars_value_ctor(context);
         handlebars_value_map(partials, handlebars_map_ctor(HBSCTX(vm), 0));
     }
     handlebars_vm_set_partials(vm, partials);
 
     // Load context
-    input = test->context ? handlebars_value_from_json_object(context, test->context) : handlebars_value_ctor(context);
-    load_fixtures(input);
+    HANDLEBARS_VALUE_DECL(input);
+    if (test->context) {
+        handlebars_value_init_json_object(context, input, test->context);
+        load_fixtures(input);
+    }
 
     // Load data
+    HANDLEBARS_VALUE_DECL(data);
     if( test->data ) {
-        struct handlebars_value * data = handlebars_value_from_json_object(context, test->data);
+        handlebars_value_init_json_object(context, data, test->data);
         load_fixtures(data);
         handlebars_vm_set_data(vm, data);
     }
@@ -537,6 +539,11 @@ static inline void run_test(struct generic_test * test, int _i)
             ck_abort_msg(tmp);
         }
     }
+
+    HANDLEBARS_VALUE_UNDECL(data);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(helpers);
 
     // Memdebug
     // handlebars_vm_dtor(vm);

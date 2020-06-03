@@ -37,9 +37,11 @@
 #include "sort_r.h"
 
 #include "handlebars.h"
-#include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
+#include "handlebars_value_private.h"
+
+#include "handlebars_map.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 
@@ -67,7 +69,7 @@ struct handlebars_map {
 
 struct handlebars_map_entry {
     struct handlebars_string * key;
-    struct handlebars_value * value;
+    struct handlebars_value value;
     uint32_t table_offset;
 };
 
@@ -227,8 +229,8 @@ static inline void map_add_at_table_offset(
     HANDLEBARS_MEMCHECK(entry->key, map->ctx);
 #endif
 
-    entry->value = value;
-    handlebars_value_addref(value);
+    handlebars_value_init(&entry->value);
+    handlebars_value_value(&entry->value, value);
 
     entry->table_offset = offset;
 
@@ -273,7 +275,7 @@ void handlebars_map_addref(struct handlebars_map * map)
 void handlebars_map_delref(struct handlebars_map * map)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_delref(&map->rc);
+    handlebars_rc_delref(&map->rc, map_rc_dtor);
 #endif
 }
 
@@ -324,7 +326,7 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
 #endif
 
 #ifndef HANDLEBARS_NO_REFCOUNT
-    handlebars_rc_init(&map->rc, map_rc_dtor);
+    handlebars_rc_init(&map->rc);
 #endif
 
     return map;
@@ -354,7 +356,7 @@ void handlebars_map_dtor(struct handlebars_map * map)
 {
     handlebars_map_foreach(map, index, key, value) {
         handlebars_string_delref(key);
-        handlebars_value_delref(value);
+        handlebars_value_dtor(value);
     } handlebars_map_foreach_end(map);
 
     handlebars_talloc_free(map);
@@ -389,7 +391,7 @@ struct handlebars_map * handlebars_map_remove(struct handlebars_map * map, struc
         return map;
     }
 
-    struct handlebars_value * value = entry->value;
+    handlebars_value_null(&entry->value);
 
     // Remove from hash table
     struct handlebars_map_entry ** table = map_table(map);
@@ -400,7 +402,6 @@ struct handlebars_map * handlebars_map_remove(struct handlebars_map * map, struc
 
     // Free
     map->i--;
-    handlebars_value_delref(value);
 
     return map;
 }
@@ -409,7 +410,7 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struc
 {
     struct ht_find_result o = map_find_entry(map, key);
     if (o.entry) {
-        return o.entry->value;
+        return &o.entry->value;
     } else {
         return NULL;
     }
@@ -424,9 +425,7 @@ struct handlebars_map * handlebars_map_update(struct handlebars_map * map, struc
     struct ht_find_result o = map_find_entry(map, key);
     struct handlebars_map_entry * entry = o.entry;
     if (entry) {
-        handlebars_value_delref(entry->value);
-        entry->value = value;
-        handlebars_value_addref(entry->value);
+        handlebars_value_value(&entry->value, value);
         return map;
     }
 
@@ -466,7 +465,7 @@ void handlebars_map_get_kv_at_index(struct handlebars_map * map, size_t index, s
 
     struct handlebars_map_entry * vec = map_vec(map);
     *key = vec[index].key;
-    *value = vec[index].value;
+    *value = &vec[index].value;
 }
 
 bool handlebars_map_is_sparse(struct handlebars_map * map)
@@ -490,6 +489,9 @@ struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool 
         size_t vec_capacity = 1 << map_choose_vec_capacity_log2(map->i + 1);
         struct handlebars_map * prev_map = map;
         map = handlebars_map_copy_ctor(prev_map, vec_capacity);
+        if (handlebars_rc_refcount(&prev_map->rc) >= 1) { // ugh
+            handlebars_map_addref(map);
+        }
         handlebars_map_delref(prev_map);
     }
 
@@ -551,12 +553,12 @@ static int map_entry_compare(const void * ptr1, const void * ptr2, void * arg)
     struct handlebars_map_entry * map_entry2 = (struct handlebars_map_entry *) ptr2;
 
     assert(map_entry1->key != NULL);
-    assert(map_entry1->value != NULL);
+    // assert(map_entry1->value != NULL);
     assert(map_entry2->key != NULL);
-    assert(map_entry2->value != NULL);
+    // assert(map_entry2->value != NULL);
 
-    struct handlebars_map_kv_pair kv1 = {map_entry1->key, map_entry1->value};
-    struct handlebars_map_kv_pair kv2 = {map_entry2->key, map_entry2->value};
+    struct handlebars_map_kv_pair kv1 = {map_entry1->key, &map_entry1->value};
+    struct handlebars_map_kv_pair kv2 = {map_entry2->key, &map_entry2->value};
     return compare(&kv1, &kv2);
 }
 
@@ -585,12 +587,12 @@ static int map_entry_compare_r(const void * ptr1, const void * ptr2, void * arg)
 
     assert(sort_r_arg->compare != NULL);
     assert(map_entry1->key != NULL);
-    assert(map_entry1->value != NULL);
+    // assert(map_entry1->value != NULL);
     assert(map_entry2->key != NULL);
-    assert(map_entry2->value != NULL);
+    // assert(map_entry2->value != NULL);
 
-    struct handlebars_map_kv_pair kv1 = {map_entry1->key, map_entry1->value};
-    struct handlebars_map_kv_pair kv2 = {map_entry2->key, map_entry2->value};
+    struct handlebars_map_kv_pair kv1 = {map_entry1->key, &map_entry1->value};
+    struct handlebars_map_kv_pair kv2 = {map_entry2->key, &map_entry2->value};
     return sort_r_arg->compare(&kv1, &kv2, sort_r_arg->arg);
 }
 

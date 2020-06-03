@@ -26,6 +26,9 @@
 #include "handlebars.h"
 #include "handlebars_private.h"
 #include "handlebars_memory.h"
+#include "handlebars_map.h"
+#include "handlebars_stack.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_yaml.h"
 
@@ -45,7 +48,7 @@ static int _yaml_ctx_dtor(struct _yaml_ctx * holder)
 
 void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct handlebars_value * value, struct yaml_document_s * document, struct yaml_node_s * node)
 {
-    struct handlebars_value * tmp;
+    HANDLEBARS_VALUE_DECL(tmp);
     yaml_node_pair_t * pair;
     yaml_node_item_t * item;
     char * end = NULL;
@@ -57,7 +60,7 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
                 yaml_node_t * keyNode = yaml_document_get_node(document, pair->key);
                 yaml_node_t * valueNode = yaml_document_get_node(document, pair->value);
                 assert(keyNode->type == YAML_SCALAR_NODE);
-                tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
+                handlebars_value_init_yaml_node(ctx, tmp, document, valueNode);
                 map = handlebars_map_str_update(map, (const char *) keyNode->data.scalar.value, keyNode->data.scalar.length, tmp);
             }
             handlebars_value_map(value, map);
@@ -67,7 +70,7 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
             struct handlebars_stack * stack = handlebars_stack_ctor(ctx, node->data.sequence.items.top - node->data.sequence.items.start);
             for( item = node->data.sequence.items.start; item < node->data.sequence.items.top; item++) {
                 yaml_node_t * valueNode = yaml_document_get_node(document, *item);
-                tmp = handlebars_value_from_yaml_node(ctx, document, valueNode);
+                handlebars_value_init_yaml_node(ctx, tmp, document, valueNode);
                 stack = handlebars_stack_push(stack, tmp);
             }
             handlebars_value_array(value, stack);
@@ -85,13 +88,13 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
                 lval = strtol((const char *) node->data.scalar.value, &end, 10);
                 if( !*end ) {
                     handlebars_value_integer(value, lval);
-                    return;
+                    goto done;
                 }
                 // Double
                 dval = strtod((const char *) node->data.scalar.value, &end);
                 if( !*end ) {
                     handlebars_value_float(value, dval);
-                    return;
+                    goto done;
                 }
                 // String
                 handlebars_value_str(value, handlebars_string_ctor(ctx, (const char *) node->data.scalar.value, node->data.scalar.length));
@@ -102,6 +105,9 @@ void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct hand
             assert(0);
             break;
     }
+
+done:
+    HANDLEBARS_VALUE_UNDECL(tmp);
 }
 
 void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct handlebars_value * value, const char * yaml)
@@ -120,18 +126,4 @@ void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct h
         handlebars_throw(ctx, HANDLEBARS_ERROR, "YAML Parse Error: [%d] %s", yctx->parser.error, yctx->parser.problem);
     }
     handlebars_talloc_free(yctx);
-}
-
-struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node)
-{
-    struct handlebars_value * value = handlebars_value_ctor(ctx);
-    handlebars_value_init_yaml_node(ctx, value, document, node);
-    return value;
-}
-
-struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml)
-{
-    struct handlebars_value * value = handlebars_value_ctor(ctx);
-    handlebars_value_init_yaml_string(ctx, value, yaml);
-    return value;
 }

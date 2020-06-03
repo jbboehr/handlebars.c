@@ -55,30 +55,6 @@ void handlebars_value_init_yaml_string(
     const char * yaml
 ) HBS_ATTR_NONNULL_ALL;
 
-/**
- * @brief Construct a value from a YAML node
- * @param[in] ctx The handlebars context
- * @param[in] document
- * @param[in] node
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_yaml_node(
-    struct handlebars_context * ctx,
-    struct yaml_document_s * document,
-    struct yaml_node_s * node
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
-/**
- * @brief Initialize a value from a YAML string
- * @param[in] ctx The handlebars context
- * @param[in] yaml The YAML string
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_yaml_string(
-    struct handlebars_context * ctx,
-    const char * yaml
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
 HBS_EXTERN_C_END
 
 #endif /* HANDLEBARS_YAML_H */

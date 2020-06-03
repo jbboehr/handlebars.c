@@ -75,4 +75,9 @@
 #undef HANDLEBARS_HAVE_YAML
 #endif
 
+/* Enable handlebars debugging */
+#ifndef HANDLEBARS_ENABLE_DEBUG
+#undef HANDLEBARS_ENABLE_DEBUG
+#endif
+
 #endif

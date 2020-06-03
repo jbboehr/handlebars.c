@@ -53,6 +53,8 @@
 #define HBS_ATTR_NONNULL(...) __attribute__((nonnull (__VA_ARGS__)))
 #define HBS_ATTR_NONNULL_ALL __attribute__((nonnull))
 #define HBS_ATTR_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#define HBS_ATTR_ALWAYS_INLINE __attribute__((always_inline))
+#define HBS_ATTR_DEPRECATED __attribute__((deprecated))
 #else
 #define HBS_ATTR_UNUSED
 #define HBS_ATTR_NORETURN
@@ -61,6 +63,8 @@
 #define HBS_ATTR_NONNULL(...)
 #define HBS_ATTR_NONNULL_ALL
 #define HBS_ATTR_WARN_UNUSED_RESULT
+#define HBS_ATTR_ALWAYS_INLINE
+#define HBS_ATTR_DEPRECATED
 #endif
 
 #if (__GNUC__ >= 3)
@@ -112,6 +116,7 @@
 // cleanup
 #if (__GNUC__ >= 4)
 #define HBS_ATTR_CLEANUP(func) __attribute__ ((__cleanup__(func)))
+#define HBS_HAVE_ATTR_CLEANUP 1
 #else
 #define HBS_ATTR_CLEANUP(func)
 #endif

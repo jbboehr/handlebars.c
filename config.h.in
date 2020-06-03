@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Enable handlebars debugging */
+#undef HANDLEBARS_ENABLE_DEBUG
+
 /* Use check */
 #undef HANDLEBARS_HAVE_CHECK
 

@@ -62,9 +62,17 @@ uint32_t handlebars_string_hash(const char * str, size_t len)
 // {{{ Reference Counting
 void handlebars_string_addref(struct handlebars_string * string)
     HBS_ATTR_NONNULL_ALL;
-
 void handlebars_string_delref(struct handlebars_string * string)
     HBS_ATTR_NONNULL_ALL;
+void handlebars_string_addref_ex(struct handlebars_string * string, const char * expr, const char * loc)
+    HBS_ATTR_NONNULL_ALL;
+void handlebars_string_delref_ex(struct handlebars_string * string, const char * expr, const char * loc)
+    HBS_ATTR_NONNULL_ALL;
+
+#ifndef NDEBUG
+#define handlebars_string_addref(string) handlebars_string_addref_ex(string, #string, HBS_LOC)
+#define handlebars_string_delref(string) handlebars_string_delref_ex(string, #string, HBS_LOC)
+#endif
 // }}} Reference Counting
 
 /**

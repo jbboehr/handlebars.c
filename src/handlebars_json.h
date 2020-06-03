@@ -48,32 +48,10 @@ void handlebars_value_init_json_object(
  * @param[in] json The JSON string
  */
 void handlebars_value_init_json_string(
-    struct handlebars_context *ctx,
+    struct handlebars_context * ctx,
     struct handlebars_value * value,
     const char * json
 ) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Construct a value from a JSON string
- * @param[in] ctx The handlebars context
- * @param[in] json The JSON string
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_json_string(
-    struct handlebars_context *ctx,
-    const char * json
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
-/**
- * @brief Construct a value from a JSON object
- * @param[in] ctx The handlebars context
- * @param[in] json The JSON object
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_json_object(
-    struct handlebars_context * ctx,
-    struct json_object * json
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 HBS_EXTERN_C_END
 

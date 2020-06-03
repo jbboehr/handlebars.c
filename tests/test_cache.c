@@ -33,11 +33,12 @@
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_cache.h"
 #include "handlebars_compiler.h"
 #include "handlebars_json.h"
+#include "handlebars_map.h"
 #include "handlebars_opcode_serializer.h"
-#include "handlebars_memory.h"
 #include "handlebars_parser.h"
 #include "handlebars_helpers.h"
 #include "handlebars_string.h"
@@ -109,15 +110,16 @@ END_TEST
 
 static void execute_gc_test(struct handlebars_cache * cache)
 {
-    //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
-    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
-    handlebars_value_convert(value);
-    handlebars_value_addref(value);
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(helpers);
 
-    struct handlebars_value * partial = handlebars_value_ctor(context);
+    handlebars_value_init_json_string(context, value, "{\"bar\": \"baz\"}");
+    handlebars_value_convert(value);
+
     handlebars_value_str(partial, handlebars_string_ctor(context, HBS_STRL("{{bar}}")));
 
-    struct handlebars_value * partials = handlebars_value_ctor(context);
     do {
         struct handlebars_map * tmp_map = handlebars_map_ctor(context, 0);
         tmp_map = handlebars_map_str_add(tmp_map, HBS_STRL("foo"), partial);
@@ -129,7 +131,6 @@ static void execute_gc_test(struct handlebars_cache * cache)
 
     struct handlebars_module * module = handlebars_program_serialize(context, program);
 
-    struct handlebars_value * helpers = handlebars_value_ctor(context);
     handlebars_value_map(helpers, handlebars_map_ctor(context, 0));
     handlebars_vm_set_helpers(vm, helpers);
 
@@ -152,7 +153,10 @@ static void execute_gc_test(struct handlebars_cache * cache)
     cache->max_age = 0;
     handlebars_cache_gc(cache);
 
-    handlebars_value_delref(value);
+    HANDLEBARS_VALUE_UNDECL(helpers);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(value);
 
     // @todo fixme
     //ck_assert_int_eq(0, handlebars_cache_stat(cache).current_entries);
@@ -160,17 +164,17 @@ static void execute_gc_test(struct handlebars_cache * cache)
 
 static void execute_reset_test(struct handlebars_cache * cache)
 {
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(helpers);
     struct handlebars_string * buffer;
 
-    //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
-    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_init_json_string(context, value, "{\"bar\": \"baz\"}");
     handlebars_value_convert(value);
-    handlebars_value_addref(value);
 
-    struct handlebars_value * partial = handlebars_value_ctor(context);
     handlebars_value_str(partial, handlebars_string_ctor(context, HBS_STRL("{{bar}}")));
 
-    struct handlebars_value * partials = handlebars_value_ctor(context);
     do {
         struct handlebars_map * tmp_map = handlebars_map_ctor(context, 0);
         tmp_map = handlebars_map_str_add(tmp_map, HBS_STRL("foo"), partial);
@@ -182,7 +186,6 @@ static void execute_reset_test(struct handlebars_cache * cache)
 
     struct handlebars_module * module = handlebars_program_serialize(context, program);
 
-    struct handlebars_value * helpers = handlebars_value_ctor(context);
     handlebars_value_map(helpers, handlebars_map_ctor(context, 0));
     handlebars_vm_set_helpers(vm, helpers);
 
@@ -210,7 +213,10 @@ static void execute_reset_test(struct handlebars_cache * cache)
     buffer = handlebars_vm_execute(vm, module, value);
     ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
-    handlebars_value_delref(value);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(helpers);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);

@@ -77,6 +77,7 @@ set(HEADERS
     handlebars_rc.h
     handlebars_stack.h
     handlebars_string.h
+	handlebars_types.h
     handlebars_token.h
     handlebars_value.h
     handlebars_value_handlers.h
@@ -90,6 +91,7 @@ set(HEADERS
 # handlebars_private.h
 # handlebars_scanners.h
 # handlebars_whitespace.h
+# handlebars_value_private.h
 
 link_libraries(${LIBS})
 

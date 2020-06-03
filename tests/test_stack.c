@@ -35,19 +35,16 @@ START_TEST(test_stack_copy_ctor)
 {
     struct handlebars_stack * stack;
     struct handlebars_stack * stack_copy;
-    struct handlebars_value * tmp;
+    HANDLEBARS_VALUE_DECL(tmp);
 
     stack = handlebars_stack_ctor(context, 3);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
     stack = handlebars_stack_push(stack, tmp);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
     stack = handlebars_stack_push(stack, tmp);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 3);
     stack = handlebars_stack_push(stack, tmp);
 
@@ -64,6 +61,7 @@ START_TEST(test_stack_copy_ctor)
 
     handlebars_stack_delref(stack);
     handlebars_stack_delref(stack_copy);
+    HANDLEBARS_VALUE_UNDECL(tmp);
 
     ASSERT_INIT_BLOCKS();
 }
@@ -74,19 +72,17 @@ START_TEST(test_stack_push_with_separation)
 {
     struct handlebars_stack * stack;
     struct handlebars_stack * stack_copy;
-    struct handlebars_value * tmp;
+    HANDLEBARS_VALUE_DECL(tmp);
 
     stack = handlebars_stack_ctor(context, 1);
     handlebars_stack_addref(stack);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 1);
     stack = handlebars_stack_push(stack, tmp);
 
     stack_copy = stack;
     handlebars_stack_addref(stack);
 
-    tmp = handlebars_value_ctor(context);
     handlebars_value_integer(tmp, 2);
     stack = handlebars_stack_push(stack, tmp);
 
@@ -98,6 +94,7 @@ START_TEST(test_stack_push_with_separation)
     ck_assert_int_eq(handlebars_value_get_intval(handlebars_stack_get(stack, 0)), handlebars_value_get_intval(handlebars_stack_get(stack_copy, 0)));
     ck_assert_int_eq(handlebars_value_get_intval(handlebars_stack_get(stack, 1)), 2);
 
+    HANDLEBARS_VALUE_UNDECL(tmp);
     handlebars_stack_delref(stack);
     handlebars_stack_delref(stack_copy);
 

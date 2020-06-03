@@ -29,6 +29,7 @@
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_json.h"
+#include "handlebars_map.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_parser.h"
 #include "handlebars_partial_loader.h"
@@ -45,7 +46,6 @@ static struct handlebars_string * execute_template(const char *template)
 {
     struct handlebars_string *retval = NULL;
     struct handlebars_module * module;
-    struct handlebars_value *input;
 
     // Parse
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), template, strlen(template)), 0);
@@ -67,24 +67,25 @@ static struct handlebars_string * execute_template(const char *template)
     // Serialize
     module = handlebars_program_serialize(context, program);
 
-    // Setup VM
-    vm = handlebars_vm_ctor(context);
-
     // Setup helpers
-    struct handlebars_value * helpers = handlebars_value_ctor(HBSCTX(vm));
+    HANDLEBARS_VALUE_DECL(helpers);
     handlebars_value_map(helpers, handlebars_map_ctor(HBSCTX(vm), 0));
     handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partial loader
+    HANDLEBARS_VALUE_DECL(partials);
     handlebars_vm_set_partials(
         vm,
-        handlebars_value_partial_loader_ctor(HBSCTX(vm),
+        handlebars_value_partial_loader_init(HBSCTX(vm),
             handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".")),
-            handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".hbs")))
+            handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".hbs")),
+            partials)
     );
 
     // setup context
-    input = handlebars_value_from_json_string(context, "{\"foo\":\"bar\"}");
+    HANDLEBARS_VALUE_DECL(input);
+    handlebars_value_init_json_string(context, input, "{\"foo\":\"bar\"}");
+    handlebars_value_convert(input); // @TODO shouldn't have to do this
 
     // Execute
     struct handlebars_string * buffer = handlebars_vm_execute(vm, module, input);
@@ -92,6 +93,10 @@ static struct handlebars_string * execute_template(const char *template)
     ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
 
     retval = talloc_steal(NULL, buffer);
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(helpers);
 
     return retval;
 }

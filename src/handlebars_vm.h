@@ -85,7 +85,8 @@ struct handlebars_value * handlebars_vm_call_helper_str(
     unsigned int len,
     int argc,
     struct handlebars_value * argv[],
-    struct handlebars_options * options
+    struct handlebars_options * options,
+    struct handlebars_value * rv
 ) HBS_ATTR_NONNULL(1, 4, 5) HBS_ATTR_WARN_UNUSED_RESULT;
 
 void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned flags) HBS_ATTR_NONNULL_ALL;

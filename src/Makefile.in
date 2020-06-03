@@ -306,8 +306,9 @@ am__pkginclude_HEADERS_DIST = handlebars.h handlebars.lex.h \
 	handlebars_opcode_printer.h handlebars_opcode_serializer.h \
 	handlebars_opcodes.h handlebars_parser.h \
 	handlebars_partial_loader.h handlebars_rc.h handlebars_stack.h \
-	handlebars_string.h handlebars_token.h handlebars_value.h \
-	handlebars_value_handlers.h handlebars_vm.h handlebars_yaml.h
+	handlebars_string.h handlebars_token.h handlebars_types.h \
+	handlebars_value.h handlebars_value_handlers.h handlebars_vm.h \
+	handlebars_yaml.h
 HEADERS = $(pkginclude_HEADERS)
 am__extra_recursive_targets = check-valgrind-recursive \
 	check-valgrind-memcheck-recursive \
@@ -563,6 +564,7 @@ pkginclude_HEADERS = \
 	handlebars_stack.h \
 	handlebars_string.h \
 	handlebars_token.h \
+	handlebars_types.h \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
 	handlebars_vm.h \
@@ -576,6 +578,7 @@ pkginclude_HEADERS = \
 # handlebars_private.h
 # handlebars_scanners.h
 # handlebars_whitespace.h
+# handlebars_value_private.h
 CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
 BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)
 lib_LTLIBRARIES = libhandlebars.la

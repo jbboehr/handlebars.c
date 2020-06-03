@@ -240,8 +240,8 @@ am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(top_srcdir)/build/config.sub $(top_srcdir)/build/install-sh \
 	$(top_srcdir)/build/ltmain.sh $(top_srcdir)/build/missing \
 	$(top_srcdir)/build/tap-driver.sh build/ar-lib build/compile \
-	build/config.guess build/config.sub build/depcomp \
-	build/install-sh build/ltmain.sh build/missing
+	build/config.guess build/config.sub build/install-sh \
+	build/ltmain.sh build/missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -917,7 +917,6 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-@CODE_COVERAGE_ENABLED_FALSE@clean-local:
 @CODE_COVERAGE_ENABLED_FALSE@distclean-local:
 check-valgrind: check-valgrind-recursive
 
@@ -1040,6 +1039,9 @@ uninstall-am: uninstall-pkgconfigDATA
 # Alias for test (old habits die hard)
 test: check
 
+my-clean-local:
+	find -name 'vgcore.*' -delete
+
 # Code coverage
 #
 # Optional:
@@ -1139,8 +1141,9 @@ test: check
 @CODE_COVERAGE_ENABLED_TRUE@code-coverage-capture-hook:
 
 @CODE_COVERAGE_ENABLED_TRUE@.PHONY: check-code-coverage code-coverage-capture code-coverage-dist-clean code-coverage-clean code-coverage-capture-hook
-@CODE_COVERAGE_ENABLED_TRUE@clean-local: code-coverage-clean
+@CODE_COVERAGE_ENABLED_TRUE@clean-local: code-coverage-clean my-clean-local
 @CODE_COVERAGE_ENABLED_TRUE@distclean-local: code-coverage-dist-clean
+@CODE_COVERAGE_ENABLED_FALSE@clean-local: my-clean-local
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -29,11 +29,12 @@
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
 #include "handlebars_helpers.h"
-#include "handlebars_memory.h"
+#include "handlebars_map.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_parser.h"
 #include "handlebars_string.h"
@@ -74,7 +75,10 @@ static bool loadSpecTestPartials(yaml_document_t * document, yaml_node_t * node,
         return false;
     }
 
-    test->partials = handlebars_value_from_yaml_node(test->ctx, document, node);
+    // ugh
+    test->partials = handlebars_talloc_size(test->ctx, HANDLEBARS_VALUE_SIZE);
+    handlebars_value_init(test->partials);
+    handlebars_value_init_yaml_node(test->ctx, test->partials, document, node);
     return true;
 }
 
@@ -106,7 +110,9 @@ static bool loadSpecTest(yaml_document_t * document, yaml_node_t * node, const c
             assert(value->type == YAML_SCALAR_NODE);
             test->desc = handlebars_talloc_strdup(tests, value->data.scalar.value);
         } else if( 0 == strcmp("data", key->data.scalar.value) ) {
-            test->data = handlebars_value_from_yaml_node(test->ctx, document, value);
+            test->data = handlebars_talloc_size(test->ctx, HANDLEBARS_VALUE_SIZE);
+            handlebars_value_init(test->data);
+            handlebars_value_init_yaml_node(test->ctx, test->data, document, value);
         } else if( 0 == strcmp("template", key->data.scalar.value) ) {
             assert(value->type == YAML_SCALAR_NODE);
             test->tmpl = handlebars_talloc_strdup(tests, value->data.scalar.value);
@@ -302,20 +308,11 @@ START_TEST(test_mustache_spec)
     vm = handlebars_vm_ctor(context);
     handlebars_vm_set_flags(vm, test->flags);
 
-    // Setup helpers
-    struct handlebars_value * helpers = handlebars_value_ctor(HBSCTX(vm));
-    handlebars_vm_set_helpers(vm, helpers);
-
     // Setup partials
-    struct handlebars_value * partials;
     if( test->partials ) {
         // @TODO this may have the wrong parent - might be bad
-        partials = test->partials;
-    } else {
-        partials = handlebars_value_ctor(context);
-        handlebars_value_map(partials, handlebars_map_ctor(context, 0));
+        handlebars_vm_set_partials(vm, test->partials);
     }
-    handlebars_vm_set_partials(vm, partials);
 
     // Setup input
     struct handlebars_value * input = test->data;
@@ -366,7 +363,7 @@ START_TEST(test_mustache_spec)
     }
 
     // ugh
-    talloc_free(test->ctx);
+    // talloc_free(test->ctx);
 }
 END_TEST
 

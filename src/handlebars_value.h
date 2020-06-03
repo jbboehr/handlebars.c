@@ -24,11 +24,7 @@
 #include <string.h>
 
 #include "handlebars.h"
-#include "handlebars_helpers.h"
-#include "handlebars_map.h"
-#include "handlebars_memory.h"
-#include "handlebars_stack.h"
-#include "handlebars_string.h"
+#include "handlebars_types.h"
 
 HBS_EXTERN_C_START
 
@@ -42,45 +38,65 @@ struct handlebars_stack;
 struct handlebars_user;
 struct handlebars_value;
 struct handlebars_value_handlers;
+struct handlebars_value_iterator;
 struct json_object;
 struct yaml_document_s;
 struct yaml_node_s;
 
-/**
- * @brief Enumeration of value types
- */
-enum handlebars_value_type
-{
-    HANDLEBARS_VALUE_TYPE_NULL = 0,
-    HANDLEBARS_VALUE_TYPE_TRUE = 1,
-    HANDLEBARS_VALUE_TYPE_FALSE = 2,
-    HANDLEBARS_VALUE_TYPE_INTEGER = 3,
-    HANDLEBARS_VALUE_TYPE_FLOAT = 4,
-    HANDLEBARS_VALUE_TYPE_STRING = 5,
-    HANDLEBARS_VALUE_TYPE_ARRAY = 6,
-    HANDLEBARS_VALUE_TYPE_MAP = 7,
-    //! A user-defined value type, must implement #handlebars_value_handlers
-    HANDLEBARS_VALUE_TYPE_USER = 8,
-    //! An opaque pointer type
-    HANDLEBARS_VALUE_TYPE_PTR = 9,
-    HANDLEBARS_VALUE_TYPE_HELPER = 10
-};
-
-enum handlebars_value_flags
-{
-    HANDLEBARS_VALUE_FLAG_NONE = 0,
-    //! Indicates that the string value should not be escaped when appending to the output buffer
-    HANDLEBARS_VALUE_FLAG_SAFE_STRING = 1,
-    //! Indicates that the value was not stack allocated, but allocated using talloc
-    HANDLEBARS_VALUE_FLAG_HEAP_ALLOCATED = 2
-};
-
+#ifndef HANDLEBARS_VALUE_SIZE
 extern const size_t HANDLEBARS_VALUE_SIZE;
+#endif
+#ifndef HANDLEBARS_VALUE_INTERNALS_SIZE
 extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
+#endif
+#ifndef HANDLEBARS_VALUE_SIZE
+extern const size_t HANDLEBARS_VALUE_ITERATOR_SIZE;
+#endif
 
 // }}} Prototypes & Variables
 
 // {{{ Constructors and Destructors
+
+#if defined(HANDLEBARS_ENABLE_DEBUG) && defined(HBS_HAVE_ATTR_CLEANUP)
+#define HANDLEBARS_VALUE_DECL_CLEANUP HBS_ATTR_CLEANUP(handlebars_value_cleanup)
+#else
+#define HANDLEBARS_VALUE_DECL_CLEANUP
+#endif
+
+#if defined(HANDLEBARS_VALUE_SIZE)
+// We know the size at compile-time
+#define HANDLEBARS_VALUE_DECL_PRED(name) \
+    struct handlebars_value mem_ ## name = {0}; \
+    struct handlebars_value * const name HANDLEBARS_VALUE_DECL_CLEANUP = &mem_ ## name
+#elif !defined(__STDC_NO_VLA__)
+// Use a char vla
+#define HANDLEBARS_VALUE_DECL_PRED(name) \
+    char mem_ ## name[HANDLEBARS_VALUE_SIZE]; \
+    struct handlebars_value * const name HANDLEBARS_VALUE_DECL_CLEANUP = (void *) mem_ ## name; \
+    handlebars_value_init(name);
+#else
+// Use alloca
+#define HANDLEBARS_VALUE_DECL_PRED(name) \
+    struct handlebars_value * const name HANDLEBARS_VALUE_DECL_CLEANUP = alloca(HANDLEBARS_VALUE_SIZE); \
+    handlebars_value_init(name);
+#endif
+
+#if defined(HANDLEBARS_ENABLE_DEBUG) && defined(HBS_HAVE_ATTR_CLEANUP)
+// The cleanup variable helps makes sure there is a matching pair of DECL/UNDECL
+#define HANDLEBARS_VALUE_DECL(name) \
+    void * cleanup_ ## name = NULL; \
+    HANDLEBARS_VALUE_DECL_PRED(name)
+
+#define HANDLEBARS_VALUE_UNDECL(name) \
+    handlebars_value_dtor(name); \
+    (void) cleanup_ ## name
+#else
+#define HANDLEBARS_VALUE_DECL(name) \
+    HANDLEBARS_VALUE_DECL_PRED(name)
+
+#define HANDLEBARS_VALUE_UNDECL(name) \
+    handlebars_value_dtor(name)
+#endif
 
 /**
  * @brief Construct a new value
@@ -89,7 +105,7 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
  */
 struct handlebars_value * handlebars_value_ctor(
     struct handlebars_context * ctx
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT HBS_ATTR_DEPRECATED;
 
 /**
  * @brief Destruct a value. Does not free the value object itself. Frees any child resources and sets the value to null.
@@ -100,17 +116,14 @@ void handlebars_value_dtor(
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL;
 
+struct handlebars_value * handlebars_value_init(
+    struct handlebars_value * value
+) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_value_cleanup(struct handlebars_value * const * value);
+
 // }}} Constructors and Destructors
 
-// {{{ Reference Counting
-
-void handlebars_value_addref(struct handlebars_value * value)
-    HBS_ATTR_NONNULL_ALL;
-
-void handlebars_value_delref(struct handlebars_value * value)
-    HBS_ATTR_NONNULL_ALL;
-
-// }}} Reference Counting
 // {{{ Getters
 
 /**
@@ -124,7 +137,7 @@ enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * v
 enum handlebars_value_type handlebars_value_get_real_type(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
-unsigned long handlebars_value_get_flags(struct handlebars_value * value)
+unsigned char handlebars_value_get_flags(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
 /**
@@ -251,6 +264,11 @@ void handlebars_value_convert_ex(
 
 #define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
 
+bool handlebars_value_eq(
+    struct handlebars_value * value1,
+    struct handlebars_value * value2
+) HBS_ATTR_NONNULL_ALL;
+
 // }}} Conversion
 
 // {{{ Mutators
@@ -304,7 +322,9 @@ void handlebars_value_array(struct handlebars_value * value, struct handlebars_s
 
 void handlebars_value_helper(struct handlebars_value * value, handlebars_helper_func helper) HBS_ATTR_NONNULL_ALL;
 
-void handlebars_value_set_flag(struct handlebars_value * value, unsigned long flag)
+void handlebars_value_value(struct handlebars_value * dest, struct handlebars_value * src) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_value_set_flag(struct handlebars_value * value, enum handlebars_value_flags flag)
     HBS_ATTR_NONNULL_ALL;
 
 // }}} Mutators
@@ -362,34 +382,31 @@ void handlebars_value_array_push(
  */
 struct handlebars_value * handlebars_value_array_find(
     struct handlebars_value * value,
-    size_t index
+    size_t index,
+    struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL;
 
 // }}} Array
 
 // {{{ Map
 
-/**
- * @brief Lookup a key in a map
- * @param[in] value
- * @param[in] key
- * @return The found element, or NULL
- */
 struct handlebars_value * handlebars_value_map_find(
     struct handlebars_value * value,
-    struct handlebars_string * key
+    struct handlebars_string * key,
+    struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL;
 
-/**
- * @brief Lookup a key in a map
- * @param[in] value
- * @param[in] key
- * @param[in] len
- * @return The found element, or NULL
- */
 struct handlebars_value * handlebars_value_map_str_find(
     struct handlebars_value * value,
-    const char * key, size_t len
+    const char * key,
+    size_t len,
+    struct handlebars_value * rv
+) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_value_map_update(
+    struct handlebars_value * value,
+    struct handlebars_string * key,
+    struct handlebars_value * child
 ) HBS_ATTR_NONNULL_ALL;
 
 // }}} Map
@@ -414,74 +431,52 @@ struct handlebars_value * handlebars_value_call(
     struct handlebars_value * value,
     int argc,
     struct handlebars_value * argv[],
-    struct handlebars_options * options
+    struct handlebars_options * options,
+    struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 // }}} Misc
 
 // {{{ Iteration
 
-/**
- * @brief Value iterator context. Should be stack allocated. Must be initialized with #handlebars_value_iterator_init
- */
-struct handlebars_value_iterator
-{
-    //! The number of child elements
-    size_t length;
-
-    //! The current array index. Unused for map
-    size_t index;
-
-    //! The current map index. Unused for array
-    struct handlebars_string * key;
-
-    //! The element being iterated over
-    struct handlebars_value * value;
-
-    //! The current child element
-    struct handlebars_value * current;
-
-    //! Opaque pointer for user-defined types
-    void * usr;
-
-    //! A function pointer to move to the next child element
-    bool (*next)(struct handlebars_value_iterator * it);
-};
-
 #define HANDLEBARS_VALUE_FOREACH(value, v) \
     do { \
-        struct handlebars_value_iterator iter; \
-        if (handlebars_value_iterator_init(&iter, value)) { \
+        struct handlebars_value_iterator * iter = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE); \
+        if (handlebars_value_iterator_init(iter, value)) { \
             do { \
-                struct handlebars_value * v = iter.current;
+                struct handlebars_value * v; \
+                handlebars_value_iterator_unpack(iter, NULL, NULL, &v); \
 
 #define HANDLEBARS_VALUE_FOREACH_IDX(value, idx, v) \
     do { \
-        struct handlebars_value_iterator iter; \
-        if (handlebars_value_iterator_init(&iter, value)) { \
+        struct handlebars_value_iterator * iter = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE); \
+        if (handlebars_value_iterator_init(iter, value)) { \
             do { \
-                size_t idx = iter.index; \
-                struct handlebars_value * v = iter.current;
+                size_t idx; \
+                struct handlebars_value * v; \
+                handlebars_value_iterator_unpack(iter, &idx, NULL, &v);
 
 #define HANDLEBARS_VALUE_FOREACH_KV(value, k, v) \
     do { \
-        struct handlebars_value_iterator iter; \
-        if (handlebars_value_iterator_init(&iter, value)) { \
+        struct handlebars_value_iterator * iter = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE); \
+        if (handlebars_value_iterator_init(iter, value)) { \
             do { \
-                struct handlebars_string * k = iter.key; \
-                struct handlebars_value * v = iter.current;
+                struct handlebars_string * k; \
+                struct handlebars_value * v; \
+                handlebars_value_iterator_unpack(iter, NULL, &k, &v);
 
 #define HANDLEBARS_VALUE_FOREACH_IDX_KV(value, idx, k, v) \
     do { \
-        struct handlebars_value_iterator iter; \
-        if (handlebars_value_iterator_init(&iter, value)) { \
+        struct handlebars_value_iterator * iter = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE); \
+        if (handlebars_value_iterator_init(iter, value)) { \
             do { \
-                size_t idx = iter.index; \
-                struct handlebars_string * k = iter.key; \
-                struct handlebars_value * v = iter.current;
+                size_t idx; \
+                struct handlebars_string * k; \
+                struct handlebars_value * v; \
+                handlebars_value_iterator_unpack(iter, &idx, &k, &v);
 
 #define HANDLEBARS_VALUE_FOREACH_END() \
-            } while (handlebars_value_iterator_next(&iter)); \
+            } while (handlebars_value_iterator_next(iter)); \
         } \
     } while(0)
 
@@ -495,6 +490,13 @@ bool handlebars_value_iterator_init(
     struct handlebars_value_iterator * it,
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_value_iterator_unpack(
+    struct handlebars_value_iterator * it,
+    size_t * index,
+    struct handlebars_string ** key,
+    struct handlebars_value ** current
+) HBS_ATTR_NONNULL(1);
 
 bool handlebars_value_iterator_next(
     struct handlebars_value_iterator * it

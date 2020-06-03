@@ -137,7 +137,8 @@ struct handlebars_stack * handlebars_stack_push(
  * @return The popped value
  */
 struct handlebars_value * handlebars_stack_pop(
-    struct handlebars_stack * stack
+    struct handlebars_stack * stack,
+    struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**

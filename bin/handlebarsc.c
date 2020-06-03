@@ -29,6 +29,11 @@
 #include <assert.h>
 #include <getopt.h>
 
+#ifdef HANDLEBARS_HAVE_VALGRIND
+#include <valgrind/valgrind.h>
+#include <valgrind/memcheck.h>
+#endif
+
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
@@ -36,12 +41,15 @@
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
 #include "handlebars_json.h"
+#include "handlebars_helpers.h"
+#include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_parser.h"
 #include "handlebars_partial_loader.h"
+#include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars_value.h"
@@ -402,6 +410,7 @@ static int do_debug(void)
     fprintf(stderr, "sizeof(struct handlebars_string): %lu\n", (long unsigned) HANDLEBARS_STRING_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) HANDLEBARS_VALUE_SIZE);
     fprintf(stderr, "sizeof(union handlebars_value_internals): %lu\n", (long unsigned) HANDLEBARS_VALUE_INTERNALS_SIZE);
+    fprintf(stderr, "sizeof(enum handlebars_value_type): %lu\n", (long unsigned) sizeof(enum handlebars_value_type));
     fprintf(stderr, "sizeof(struct handlebars_vm): %lu\n", (long unsigned) HANDLEBARS_VM_SIZE);
     return 0;
 }
@@ -543,7 +552,7 @@ static int do_execute(void)
     struct handlebars_string * tmpl;
     struct handlebars_ast_node * ast;
     struct handlebars_program * program;
-    struct handlebars_value * partials;
+    HANDLEBARS_VALUE_DECL(partials);
     jmp_buf jmp;
 
     ctx = handlebars_context_ctor_ex(root);
@@ -563,9 +572,7 @@ static int do_execute(void)
         struct handlebars_string *partial_extension_str = NULL;
         partial_path_str = handlebars_string_ctor(ctx, partial_path, strlen(partial_path));
         partial_extension_str = handlebars_string_ctor(ctx, partial_extension, strlen(partial_extension));
-        partials = handlebars_value_partial_loader_ctor(ctx, partial_path_str, partial_extension_str);
-    } else {
-        partials = handlebars_value_ctor(ctx);
+        (void) handlebars_value_partial_loader_init(ctx, partial_path_str, partial_extension_str, partials);
     }
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
@@ -580,26 +587,26 @@ static int do_execute(void)
     }
 
     // Read context
-    struct handlebars_value * context = NULL;
+    HANDLEBARS_VALUE_DECL(input);
     if( input_data_name ) {
         size_t input_data_name_len = strlen(input_data_name);
-        char * context_str = file_get_contents(input_data_name);
-        if (context_str && strlen(context_str)) {
-            if (!context && input_data_name_len > 5 && (0 == strcmp(input_data_name + input_data_name_len - 5, ".yaml") ||
+        char * input_str = file_get_contents(input_data_name);
+        if (input_str && strlen(input_str)) {
+            if (handlebars_value_is_empty(input) && input_data_name_len > 5 && (0 == strcmp(input_data_name + input_data_name_len - 5, ".yaml") ||
                     0 == strcmp(input_data_name + input_data_name_len - 4, ".yml"))) {
 #ifdef HANDLEBARS_HAVE_YAML
-                context = handlebars_value_from_yaml_string(ctx, context_str);
+                handlebars_value_init_yaml_string(ctx, input, input_str);
 #else
                 fprintf(stderr, "Failed to process input data: YAML support is disabled");
                 exit(1);
 #endif
             }
-            if (!context) {
+            if (handlebars_value_is_empty(input)) {
 #ifdef HANDLEBARS_HAVE_JSON
                 // assume json
-                context = handlebars_value_from_json_string(ctx, context_str);
+                handlebars_value_init_json_string(ctx, input, input_str);
                 if (convert_input) {
-                    handlebars_value_convert(context);
+                    handlebars_value_convert(input);
                 }
 #else
                 fprintf(stderr, "Failed to process input data: JSON support is disabled");
@@ -608,10 +615,6 @@ static int do_execute(void)
             }
         }
     }
-    if( !context ) {
-        context = handlebars_value_ctor(ctx);
-    }
-    handlebars_value_addref(context); // need this for multiple runs
 
     // Parse
     ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
@@ -633,10 +636,9 @@ static int do_execute(void)
         struct handlebars_vm * vm;
         vm = handlebars_vm_ctor(ctx);
         handlebars_vm_set_flags(vm, compiler_flags);
-        handlebars_vm_set_helpers(vm, handlebars_value_ctor(ctx));
         handlebars_vm_set_partials(vm, partials);
 
-        buffer = handlebars_vm_execute(vm, module, context);
+        buffer = handlebars_vm_execute(vm, module, input);
         buffer = talloc_steal(ctx, buffer);
 
         handlebars_vm_dtor(vm);
@@ -650,12 +652,20 @@ static int do_execute(void)
         fwrite("\n", sizeof(char), 1, stdout);
     }
 
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(partials);
     handlebars_context_dtor(ctx);
     return 0;
 }
 
 int main(int argc, char * argv[])
 {
+#ifdef HANDLEBARS_HAVE_VALGRIND
+    if (RUNNING_ON_VALGRIND) {
+        pool_size = 0;
+    }
+#endif
+
     root = talloc_new(NULL);
 
     if( argc <= 1 ) {

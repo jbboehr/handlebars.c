@@ -78,6 +78,8 @@ function configure_handlebars() {
 		export CFLAGS="$CFLAGS -Wno-unused-function -Wno-error=unused-function -Wno-inline -Wno-error=inline -Wno-redundant-decls -Wno-error=redundant-decls"
 		# these are apparently just broken?
 		export CFLAGS="$CFLAGS -Wno-missing-braces -Wno-error=missing-braces"
+		# this seems to have issues
+		export CFLAGS="$CFLAGS -Wno-missing-declarations -Wno-error=missing-declarations"
 	fi
 
 	# configure flags
