@@ -363,3 +363,23 @@ void handlebars_module_patch_pointers(struct handlebars_module * module)
 
     module->addr = baseaddr;
 }
+
+size_t handlebars_module_get_size(struct handlebars_module * module)
+{
+    return module->size;
+}
+
+int handlebars_module_get_version(struct handlebars_module * module)
+{
+    return module->version;
+}
+
+time_t handlebars_module_get_ts(struct handlebars_module * module)
+{
+    return module->ts;
+}
+
+long handlebars_module_get_flags(struct handlebars_module * module)
+{
+    return module->flags;
+}

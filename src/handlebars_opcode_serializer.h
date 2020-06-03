@@ -58,6 +58,11 @@ void handlebars_module_patch_pointers(
     struct handlebars_module * module
 ) HBS_ATTR_NONNULL_ALL;
 
+size_t handlebars_module_get_size(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+int handlebars_module_get_version(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+time_t handlebars_module_get_ts(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+long handlebars_module_get_flags(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+
 #ifdef HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
 /**
