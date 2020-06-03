@@ -24,7 +24,7 @@
   hardeningSupport ? true,
   jsonSupport ? true,
   lmdbSupport ? true,
-  ltoSupport ? true,
+  ltoSupport ? false,
   noRefcountingSupport ? false,
   pthreadSupport ? true,
   sharedSupport ? true,

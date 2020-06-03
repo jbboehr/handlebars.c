@@ -18,8 +18,8 @@ in
 builtins.mapAttrs (k: _v:
   let
     path = builtins.fetchTarball {
-      url = https://github.com/NixOS/nixpkgs/archive/release-20.03.tar.gz;
-      name = "nixpkgs-20.03";
+      url = https://github.com/NixOS/nixpkgs-channels/archive/nixos-20.03.tar.gz;
+      name = "nixos-20.03";
     };
     pkgs = import (path) { system = k; };
     gitignoreSrc = pkgs.fetchFromGitHub {
@@ -39,8 +39,8 @@ builtins.mapAttrs (k: _v:
   pkgs.recurseIntoAttrs {
     n1909 = let
         path = builtins.fetchTarball {
-          url = https://github.com/NixOS/nixpkgs/archive/release-19.09.tar.gz;
-          name = "nixpkgs-19.09";
+          url = https://github.com/NixOS/nixpkgs-channels/archive/nixos-19.09.tar.gz;
+          name = "nixos-19.09";
         };
         pkgs = import (path) { system = k; };
     in generateHandlebarsCTestsForPlatform3 {

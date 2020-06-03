@@ -141,7 +141,10 @@ PROGRAMS = $(bin_PROGRAMS)
 am_handlebarsc_OBJECTS = handlebarsc.$(OBJEXT)
 handlebarsc_OBJECTS = $(am_handlebarsc_OBJECTS)
 handlebarsc_LDADD = $(LDADD)
-handlebarsc_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+am__DEPENDENCIES_1 =
+handlebarsc_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(top_builddir)/src/libhandlebars.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -398,8 +401,8 @@ valgrind_enabled_tools = @valgrind_enabled_tools@
 valgrind_tools = @valgrind_tools@
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS)
-AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS)
-LDADD = $(top_builddir)/src/libhandlebars.la
+AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS)
+LDADD = $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS) $(top_builddir)/src/libhandlebars.la
 handlebarsc_SOURCES = handlebarsc.c
 all: all-am
 

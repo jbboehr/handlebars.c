@@ -176,7 +176,12 @@ am__objects_1 = utils.$(OBJEXT) fixtures.$(OBJEXT) adler32.$(OBJEXT)
 am_test_ast_OBJECTS = $(am__objects_1) test_ast.$(OBJEXT)
 test_ast_OBJECTS = $(am_test_ast_OBJECTS)
 test_ast_LDADD = $(LDADD)
-test_ast_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+am__DEPENDENCIES_1 =
+test_ast_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -187,46 +192,82 @@ am__test_ast_helpers_SOURCES_DIST = utils.h utils.c fixtures.c \
 @TESTING_EXPORTS_TRUE@	test_ast_helpers.$(OBJEXT)
 test_ast_helpers_OBJECTS = $(am_test_ast_helpers_OBJECTS)
 test_ast_helpers_LDADD = $(LDADD)
-test_ast_helpers_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_ast_helpers_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_ast_list_OBJECTS = $(am__objects_1) test_ast_list.$(OBJEXT)
 test_ast_list_OBJECTS = $(am_test_ast_list_OBJECTS)
 test_ast_list_LDADD = $(LDADD)
-test_ast_list_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_ast_list_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__test_cache_SOURCES_DIST = utils.h utils.c fixtures.c adler32.c \
 	test_cache.c
 @JSON_TRUE@am_test_cache_OBJECTS = $(am__objects_1) \
 @JSON_TRUE@	test_cache.$(OBJEXT)
 test_cache_OBJECTS = $(am_test_cache_OBJECTS)
 test_cache_LDADD = $(LDADD)
-test_cache_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_cache_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_compiler_OBJECTS = $(am__objects_1) test_compiler.$(OBJEXT)
 test_compiler_OBJECTS = $(am_test_compiler_OBJECTS)
 test_compiler_LDADD = $(LDADD)
-test_compiler_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_compiler_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__test_json_SOURCES_DIST = utils.h utils.c fixtures.c adler32.c \
 	test_json.c
 @JSON_TRUE@am_test_json_OBJECTS = $(am__objects_1) test_json.$(OBJEXT)
 test_json_OBJECTS = $(am_test_json_OBJECTS)
 test_json_LDADD = $(LDADD)
-test_json_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_json_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_main_OBJECTS = $(am__objects_1) test_main.$(OBJEXT)
 test_main_OBJECTS = $(am_test_main_OBJECTS)
 test_main_LDADD = $(LDADD)
-test_main_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_main_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_map_OBJECTS = $(am__objects_1) test_map.$(OBJEXT)
 test_map_OBJECTS = $(am_test_map_OBJECTS)
 test_map_LDADD = $(LDADD)
-test_map_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_map_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_opcode_printer_OBJECTS = $(am__objects_1) \
 	test_opcode_printer.$(OBJEXT)
 test_opcode_printer_OBJECTS = $(am_test_opcode_printer_OBJECTS)
 test_opcode_printer_LDADD = $(LDADD)
 test_opcode_printer_DEPENDENCIES =  \
-	$(top_builddir)/src/libhandlebars.la
+	$(top_builddir)/src/libhandlebars.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am_test_opcodes_OBJECTS = $(am__objects_1) test_opcodes.$(OBJEXT)
 test_opcodes_OBJECTS = $(am_test_opcodes_OBJECTS)
 test_opcodes_LDADD = $(LDADD)
-test_opcodes_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_opcodes_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__test_partial_loader_SOURCES_DIST = utils.h utils.c fixtures.c \
 	adler32.c test_partial_loader.c
 @JSON_TRUE@am_test_partial_loader_OBJECTS = $(am__objects_1) \
@@ -234,7 +275,11 @@ am__test_partial_loader_SOURCES_DIST = utils.h utils.c fixtures.c \
 test_partial_loader_OBJECTS = $(am_test_partial_loader_OBJECTS)
 test_partial_loader_LDADD = $(LDADD)
 test_partial_loader_DEPENDENCIES =  \
-	$(top_builddir)/src/libhandlebars.la
+	$(top_builddir)/src/libhandlebars.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am__test_random_alloc_fail_SOURCES_DIST = utils.h utils.c fixtures.c \
 	adler32.c test_random_alloc_fail.c
 @HANDLEBARS_MEMORY_TRUE@am_test_random_alloc_fail_OBJECTS =  \
@@ -243,14 +288,22 @@ am__test_random_alloc_fail_SOURCES_DIST = utils.h utils.c fixtures.c \
 test_random_alloc_fail_OBJECTS = $(am_test_random_alloc_fail_OBJECTS)
 test_random_alloc_fail_LDADD = $(LDADD)
 test_random_alloc_fail_DEPENDENCIES =  \
-	$(top_builddir)/src/libhandlebars.la
+	$(top_builddir)/src/libhandlebars.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am__test_scanners_SOURCES_DIST = utils.h utils.c fixtures.c adler32.c \
 	test_scanners.c
 @TESTING_EXPORTS_TRUE@am_test_scanners_OBJECTS = $(am__objects_1) \
 @TESTING_EXPORTS_TRUE@	test_scanners.$(OBJEXT)
 test_scanners_OBJECTS = $(am_test_scanners_OBJECTS)
 test_scanners_LDADD = $(LDADD)
-test_scanners_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_scanners_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__test_spec_handlebars_SOURCES_DIST = utils.h utils.c fixtures.c \
 	adler32.c test_spec_handlebars.c
 @JSON_TRUE@am_test_spec_handlebars_OBJECTS = $(am__objects_1) \
@@ -258,7 +311,11 @@ am__test_spec_handlebars_SOURCES_DIST = utils.h utils.c fixtures.c \
 test_spec_handlebars_OBJECTS = $(am_test_spec_handlebars_OBJECTS)
 test_spec_handlebars_LDADD = $(LDADD)
 test_spec_handlebars_DEPENDENCIES =  \
-	$(top_builddir)/src/libhandlebars.la
+	$(top_builddir)/src/libhandlebars.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am__test_spec_handlebars_compiler_SOURCES_DIST = utils.h utils.c \
 	fixtures.c adler32.c test_spec_handlebars_compiler.c
 @JSON_TRUE@am_test_spec_handlebars_compiler_OBJECTS =  \
@@ -268,7 +325,11 @@ test_spec_handlebars_compiler_OBJECTS =  \
 	$(am_test_spec_handlebars_compiler_OBJECTS)
 test_spec_handlebars_compiler_LDADD = $(LDADD)
 test_spec_handlebars_compiler_DEPENDENCIES =  \
-	$(top_builddir)/src/libhandlebars.la
+	$(top_builddir)/src/libhandlebars.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am__test_spec_handlebars_parser_SOURCES_DIST = utils.h utils.c \
 	fixtures.c adler32.c test_spec_handlebars_parser.c
 @JSON_TRUE@am_test_spec_handlebars_parser_OBJECTS = $(am__objects_1) \
@@ -277,7 +338,11 @@ test_spec_handlebars_parser_OBJECTS =  \
 	$(am_test_spec_handlebars_parser_OBJECTS)
 test_spec_handlebars_parser_LDADD = $(LDADD)
 test_spec_handlebars_parser_DEPENDENCIES =  \
-	$(top_builddir)/src/libhandlebars.la
+	$(top_builddir)/src/libhandlebars.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am__test_spec_handlebars_tokenizer_SOURCES_DIST = utils.h utils.c \
 	fixtures.c adler32.c test_spec_handlebars_tokenizer.c
 @JSON_TRUE@am_test_spec_handlebars_tokenizer_OBJECTS =  \
@@ -287,7 +352,11 @@ test_spec_handlebars_tokenizer_OBJECTS =  \
 	$(am_test_spec_handlebars_tokenizer_OBJECTS)
 test_spec_handlebars_tokenizer_LDADD = $(LDADD)
 test_spec_handlebars_tokenizer_DEPENDENCIES =  \
-	$(top_builddir)/src/libhandlebars.la
+	$(top_builddir)/src/libhandlebars.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am__test_spec_mustache_SOURCES_DIST = utils.h utils.c fixtures.c \
 	adler32.c test_spec_mustache.c
 @YAML_TRUE@am_test_spec_mustache_OBJECTS = $(am__objects_1) \
@@ -295,36 +364,64 @@ am__test_spec_mustache_SOURCES_DIST = utils.h utils.c fixtures.c \
 test_spec_mustache_OBJECTS = $(am_test_spec_mustache_OBJECTS)
 test_spec_mustache_LDADD = $(LDADD)
 test_spec_mustache_DEPENDENCIES =  \
-	$(top_builddir)/src/libhandlebars.la
+	$(top_builddir)/src/libhandlebars.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am_test_stack_OBJECTS = $(am__objects_1) test_stack.$(OBJEXT)
 test_stack_OBJECTS = $(am_test_stack_OBJECTS)
 test_stack_LDADD = $(LDADD)
-test_stack_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_stack_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_string_OBJECTS = $(am__objects_1) test_string.$(OBJEXT)
 test_string_OBJECTS = $(am_test_string_OBJECTS)
 test_string_LDADD = $(LDADD)
-test_string_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_string_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_token_OBJECTS = $(am__objects_1) test_token.$(OBJEXT)
 test_token_OBJECTS = $(am_test_token_OBJECTS)
 test_token_LDADD = $(LDADD)
-test_token_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_token_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__test_utils_SOURCES_DIST = utils.h utils.c fixtures.c adler32.c \
 	test_utils.c
 @TESTING_EXPORTS_TRUE@am_test_utils_OBJECTS = $(am__objects_1) \
 @TESTING_EXPORTS_TRUE@	test_utils.$(OBJEXT)
 test_utils_OBJECTS = $(am_test_utils_OBJECTS)
 test_utils_LDADD = $(LDADD)
-test_utils_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_utils_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_test_value_OBJECTS = $(am__objects_1) test_value.$(OBJEXT)
 test_value_OBJECTS = $(am_test_value_OBJECTS)
 test_value_LDADD = $(LDADD)
-test_value_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_value_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__test_yaml_SOURCES_DIST = utils.h utils.c fixtures.c adler32.c \
 	test_yaml.c
 @YAML_TRUE@am_test_yaml_OBJECTS = $(am__objects_1) test_yaml.$(OBJEXT)
 test_yaml_OBJECTS = $(am_test_yaml_OBJECTS)
 test_yaml_LDADD = $(LDADD)
-test_yaml_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la
+test_yaml_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -828,8 +925,8 @@ valgrind_tools = @valgrind_tools@
 EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS) $(CHECK_CFLAGS) $(PCRE_CFLAGS) $(SUBUNIT_CFLAGS)
-AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS) $(CHECK_LIBS) $(PCRE_LIBS) $(SUBUNIT_LIBS) -static  # for speed and Valgrind
-LDADD = $(top_builddir)/src/libhandlebars.la
+AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) -static # for valgrind
+LDADD = $(top_builddir)/src/libhandlebars.la $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS) $(CHECK_LIBS) $(PCRE_LIBS) $(SUBUNIT_LIBS)
 
 #if CHECK_HAS_TAP
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \

@@ -1,7 +1,8 @@
 
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_srcdir)/vendor/sort_r -I$(top_srcdir)/vendor/xxhash
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(VALGRIND_CFLAGS) $(YAML_CFLAGS)
-AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_LDFLAGS) $(CODE_COVERAGE_LIBS) $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(VALGRIND_LIBS) $(YAML_LIBS)
+AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_LDFLAGS) $(CODE_COVERAGE_LIBS)
+LIBADD = $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(VALGRIND_LIBS) $(YAML_LIBS)
 
 EXTRA_DIST = handlebars.l handlebars.y handlebars_scanners.re handlebars_helpers_ht.gperf
 GENSOURCE = handlebars_config.h
@@ -173,6 +174,8 @@ libhandlebars_la_SOURCES = \
 if HANDLEBARS_MEMORY
 libhandlebars_la_SOURCES += handlebars_memory.c
 endif
+
+libhandlebars_la_LIBADD = $(LIBADD)
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libhandlebars_la_LDFLAGS = \

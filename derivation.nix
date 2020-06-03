@@ -56,7 +56,8 @@ stdenv.mkDerivation rec {
     ++ lib.optional  yamlSupport libyaml
     ;
 
-  propagatedBuildInputs = [ talloc pkgconfig ];
+  propagatedBuildInputs = [ talloc ]
+    ;
 
   nativeBuildInputs = []
     ++ lib.optionals checkSupport [ handlebars_spec mustache_spec check subunit ]
@@ -66,6 +67,8 @@ stdenv.mkDerivation rec {
     ++ lib.optional  doxygenSupport doxygen
     ++ lib.optional  valgrindSupport valgrind
     ;
+
+  propagatedNativeBuildInputs = [ pkgconfig ];
 
   configureFlags = [ "--bindir=$(bin)/bin" ]
     ++ lib.optionals checkSupport [
