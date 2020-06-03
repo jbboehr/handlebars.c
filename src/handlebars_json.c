@@ -186,15 +186,14 @@ static bool hbs_json_iterator_next_object(struct handlebars_value_iterator * it)
 
     entry = (struct lh_entry *) it->usr;
     if( !entry || !entry->next ) {
-        handlebars_value_dtor(&it->current);
+        handlebars_value_dtor(it->cur);
         return false;
     }
 
     it->usr = (void *) (entry = entry->next);
     tmp = (char *) entry->k;
     it->key = handlebars_string_ctor(intern->user.ctx, tmp, strlen(tmp));
-    // it->current = handlebars_value_from_json_object(intern->user.ctx, (struct json_object *) entry->v);
-    handlebars_value_init_json_object(intern->user.ctx, &it->current, (struct json_object *) entry->v);
+    handlebars_value_init_json_object(intern->user.ctx, it->cur, (struct json_object *) entry->v);
     handlebars_string_addref(it->key);
     return true;
 }
@@ -209,12 +208,11 @@ static bool hbs_json_iterator_next_array(struct handlebars_value_iterator * it)
 
     it->index++;
     if( it->index >= (size_t) json_object_array_length(intern->object) ) {
-        handlebars_value_dtor(&it->current);
+        handlebars_value_dtor(it->cur);
         return false;
     }
 
-    // it->current = handlebars_value_from_json_object(intern->user.ctx, json_object_array_get_idx(intern->object, it->index));
-    handlebars_value_init_json_object(intern->user.ctx, &it->current, json_object_array_get_idx(intern->object, it->index));
+    handlebars_value_init_json_object(intern->user.ctx, it->cur, json_object_array_get_idx(intern->object, it->index));
     return true;
 }
 
@@ -232,8 +230,7 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
                 char * tmp = (char *) entry->k;
                 it->usr = (void *) entry;
                 it->key = handlebars_string_ctor(intern->user.ctx, tmp, strlen(tmp));
-                handlebars_value_init_json_object(intern->user.ctx, &it->current, (json_object *) entry->v);
-                it->length = (size_t) json_object_object_length(intern->object);
+                handlebars_value_init_json_object(intern->user.ctx, it->cur, (json_object *) entry->v);
                 it->next = &hbs_json_iterator_next_object;
                 handlebars_string_addref(it->key);
                 return true;
@@ -243,8 +240,7 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
             break;
         case json_type_array:
             it->index = 0;
-            handlebars_value_init_json_object(intern->user.ctx, &it->current, json_object_array_get_idx(intern->object, (int) it->index));
-            it->length = (size_t) json_object_array_length(intern->object);
+            handlebars_value_init_json_object(intern->user.ctx, it->cur, json_object_array_get_idx(intern->object, (int) it->index));
             it->next = &hbs_json_iterator_next_array;
             return true;
         default:

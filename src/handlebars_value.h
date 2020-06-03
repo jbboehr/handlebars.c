@@ -43,15 +43,37 @@ struct json_object;
 struct yaml_document_s;
 struct yaml_node_s;
 
+/**
+ * @brief Value iterator context. Should be stack allocated. Must be initialized with #handlebars_value_iterator_init
+ */
+struct handlebars_value_iterator
+{
+    //! The current array index. Unused for map
+    size_t index;
+
+    //! The current map index. Unused for array
+    struct handlebars_string * key;
+
+    //! The element being iterated over
+    struct handlebars_value * value;
+
+    //! The current child element
+    struct handlebars_value * cur;
+
+    //! Opaque pointer for user-defined types
+    void * usr;
+
+    //! A function pointer to move to the next child element
+    bool (*next)(struct handlebars_value_iterator * it);
+};
+
 #ifndef HANDLEBARS_VALUE_SIZE
 extern const size_t HANDLEBARS_VALUE_SIZE;
 #endif
 #ifndef HANDLEBARS_VALUE_INTERNALS_SIZE
 extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
 #endif
-#ifndef HANDLEBARS_VALUE_SIZE
-extern const size_t HANDLEBARS_VALUE_ITERATOR_SIZE;
-#endif
+#define HANDLEBARS_VALUE_ITERATOR_SIZE sizeof(struct handlebars_value_iterator)
 
 // }}} Prototypes & Variables
 
@@ -439,41 +461,53 @@ struct handlebars_value * handlebars_value_call(
 
 // {{{ Iteration
 
+#if defined(HANDLEBARS_VALUE_ITERATOR_SIZE) && defined(HANDLEBARS_VALUE_SIZE)
+// We know the size at compile-time
+#define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
+    struct { struct handlebars_value_iterator it; struct handlebars_value value; } mem_ ## name; \
+    struct handlebars_value_iterator * name = (void *) &mem_ ## name
+#elif !defined(__STDC_NO_VLA__)
+// Use a char vla
+#define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
+    char mem_ ## name[HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE]; \
+    struct handlebars_value_iterator * name = (void *) mem_ ## name;
+#else
+// Use alloca
+#define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
+    struct handlebars_value_iterator * name = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE);
+#endif
+
 #define HANDLEBARS_VALUE_FOREACH(value, v) \
     do { \
-        struct handlebars_value_iterator * iter = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE); \
+        HANDLEBARS_VALUE_ITERATOR_DECL(iter); \
         if (handlebars_value_iterator_init(iter, value)) { \
             do { \
-                struct handlebars_value * v; \
-                handlebars_value_iterator_unpack(iter, NULL, NULL, &v); \
+                struct handlebars_value * v = iter->cur; \
 
 #define HANDLEBARS_VALUE_FOREACH_IDX(value, idx, v) \
     do { \
-        struct handlebars_value_iterator * iter = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE); \
+        HANDLEBARS_VALUE_ITERATOR_DECL(iter); \
         if (handlebars_value_iterator_init(iter, value)) { \
             do { \
-                size_t idx; \
-                struct handlebars_value * v; \
-                handlebars_value_iterator_unpack(iter, &idx, NULL, &v);
+                size_t idx = iter->index; \
+                struct handlebars_value * v = iter->cur;
 
 #define HANDLEBARS_VALUE_FOREACH_KV(value, k, v) \
     do { \
-        struct handlebars_value_iterator * iter = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE); \
+        HANDLEBARS_VALUE_ITERATOR_DECL(iter); \
         if (handlebars_value_iterator_init(iter, value)) { \
             do { \
-                struct handlebars_string * k; \
-                struct handlebars_value * v; \
-                handlebars_value_iterator_unpack(iter, NULL, &k, &v);
+                struct handlebars_string * k = iter->key; \
+                struct handlebars_value * v = iter->cur;
 
 #define HANDLEBARS_VALUE_FOREACH_IDX_KV(value, idx, k, v) \
     do { \
-        struct handlebars_value_iterator * iter = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE); \
+        HANDLEBARS_VALUE_ITERATOR_DECL(iter); \
         if (handlebars_value_iterator_init(iter, value)) { \
             do { \
-                size_t idx; \
-                struct handlebars_string * k; \
-                struct handlebars_value * v; \
-                handlebars_value_iterator_unpack(iter, &idx, &k, &v);
+                size_t idx = iter->index; \
+                struct handlebars_string * k = iter->key; \
+                struct handlebars_value * v = iter->cur;
 
 #define HANDLEBARS_VALUE_FOREACH_END() \
             } while (handlebars_value_iterator_next(iter)); \
@@ -490,13 +524,6 @@ bool handlebars_value_iterator_init(
     struct handlebars_value_iterator * it,
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL;
-
-void handlebars_value_iterator_unpack(
-    struct handlebars_value_iterator * it,
-    size_t * index,
-    struct handlebars_string ** key,
-    struct handlebars_value ** current
-) HBS_ATTR_NONNULL(1);
 
 bool handlebars_value_iterator_next(
     struct handlebars_value_iterator * it

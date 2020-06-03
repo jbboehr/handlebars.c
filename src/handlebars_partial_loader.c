@@ -158,14 +158,14 @@ static bool hbs_partial_loader_iterator_next_map(struct handlebars_value_iterato
     assert(handlebars_value_get_type(it->value) == HANDLEBARS_VALUE_TYPE_MAP);
 
     if( it->index >= handlebars_map_count(map) - 1 ) {
-        handlebars_value_dtor(&it->current);
+        handlebars_value_dtor(it->cur);
         handlebars_map_set_is_in_iteration(map, false); // @todo we should restore the previous flag?
         return false;
     }
 
     it->index++;
     handlebars_map_get_kv_at_index(map, it->index, &it->key, &tmp);
-    handlebars_value_value(&it->current, tmp);
+    handlebars_value_value(it->cur, tmp);
     return true;
 }
 
@@ -183,9 +183,8 @@ static bool hbs_partial_loader_iterator_init(struct handlebars_value_iterator * 
     handlebars_map_sparse_array_compact(map); // meh
     it->value = value;
     it->index = 0;
-    it->length = handlebars_map_count(map);
     handlebars_map_get_kv_at_index(map, it->index, &it->key, &tmp);
-    handlebars_value_value(&it->current, tmp);
+    handlebars_value_value(it->cur, tmp);
     it->next = &hbs_partial_loader_iterator_next_map;
     handlebars_map_set_is_in_iteration(map, true); // @todo we should store the result
 

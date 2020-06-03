@@ -745,12 +745,12 @@ static bool handlebars_value_iterator_next_stack(struct handlebars_value_iterato
     assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
 
     if( it->index >= handlebars_stack_count(value->v.stack) - 1 ) {
-        handlebars_value_dtor(&it->current);
+        handlebars_value_dtor(it->cur);
         return false;
     }
 
     it->index++;
-    handlebars_value_value(&it->current, handlebars_stack_get(value->v.stack, it->index));
+    handlebars_value_value(it->cur, handlebars_stack_get(value->v.stack, it->index));
     return true;
 }
 
@@ -763,14 +763,14 @@ static bool handlebars_value_iterator_next_map(struct handlebars_value_iterator 
 
 
     if( it->index >= handlebars_map_count(it->value->v.map) - 1 ) {
-        handlebars_value_dtor(&it->current);
+        handlebars_value_dtor(it->cur);
         handlebars_map_set_is_in_iteration(it->value->v.map, false); // @todo we should restore the previous flag?
         return false;
     }
 
     it->index++;
     handlebars_map_get_kv_at_index(it->value->v.map, it->index, &it->key, &tmp);
-    handlebars_value_value(&it->current, tmp);
+    handlebars_value_value(it->cur, tmp);
     return true;
 }
 
@@ -778,7 +778,8 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
 {
     struct handlebars_value * tmp;
 
-    memset(it, 0, sizeof(struct handlebars_value_iterator));
+    memset(it, 0, HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE);
+    it->cur = (struct handlebars_value *) (void *) (((char *) it) + HANDLEBARS_VALUE_ITERATOR_SIZE);
 
     // @TODO make sure this works for type_user?
     if (handlebars_value_count(value) <= 0) {
@@ -790,8 +791,7 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             it->value = value;
             it->index = 0;
-            it->length = handlebars_stack_count(value->v.stack);
-            handlebars_value_value(&it->current, handlebars_stack_get(value->v.stack, it->index));
+            handlebars_value_value(it->cur, handlebars_stack_get(value->v.stack, it->index));
             it->next = &handlebars_value_iterator_next_stack;
             return true;
 
@@ -799,9 +799,8 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
             handlebars_map_sparse_array_compact(value->v.map); // meh
             it->value = value;
             it->index = 0;
-            it->length = handlebars_map_count(value->v.map);
             handlebars_map_get_kv_at_index(value->v.map, it->index, &it->key, &tmp);
-            handlebars_value_value(&it->current, tmp);
+            handlebars_value_value(it->cur, tmp);
             it->next = &handlebars_value_iterator_next_map;
             handlebars_map_set_is_in_iteration(value->v.map, true); // @todo we should store the result
             return true;
@@ -815,23 +814,6 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
     }
 
     return false;
-}
-
-void handlebars_value_iterator_unpack(
-    struct handlebars_value_iterator * it,
-    size_t * index,
-    struct handlebars_string ** key,
-    struct handlebars_value ** current
-) {
-    if (index) {
-        *index = it->index;
-    }
-    if (key) {
-        *key = it->key;
-    }
-    if (current) {
-        *current = &it->current;
-    }
 }
 
 bool handlebars_value_iterator_next(

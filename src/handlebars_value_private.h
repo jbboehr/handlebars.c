@@ -65,36 +65,8 @@ struct handlebars_value
     union handlebars_value_internals v;
 };
 
-/**
- * @brief Value iterator context. Should be stack allocated. Must be initialized with #handlebars_value_iterator_init
- */
-struct handlebars_value_iterator
-{
-    //! The number of child elements
-    size_t length;
-
-    //! The current array index. Unused for map
-    size_t index;
-
-    //! The current map index. Unused for array
-    struct handlebars_string * key;
-
-    //! The element being iterated over
-    struct handlebars_value * value;
-
-    //! The current child element
-    struct handlebars_value current;
-
-    //! Opaque pointer for user-defined types
-    void * usr;
-
-    //! A function pointer to move to the next child element
-    bool (*next)(struct handlebars_value_iterator * it);
-};
-
 #define HANDLEBARS_VALUE_SIZE sizeof(struct handlebars_value)
 #define HANDLEBARS_VALUE_INTERNALS_SIZE sizeof(union handlebars_value_internals)
-#define HANDLEBARS_VALUE_ITERATOR_SIZE sizeof(struct handlebars_value_iterator)
 
 HBS_EXTERN_C_END
 
