@@ -74,6 +74,9 @@ static const struct htmlspecialchars_pair htmlspecialchars[256] = {
 
 const size_t HANDLEBARS_STRING_SIZE = sizeof(struct handlebars_string);
 
+const char * HANDLEBARS_XXHASH_VERSION = HBS_S2(XXH_VERSION_MAJOR) "." HBS_S2(XXH_VERSION_MINOR) "." HBS_S2(XXH_VERSION_RELEASE);
+const unsigned HANDLEBARS_XXHASH_VERSION_ID = (XXH_VERSION_MAJOR * 100 * 100) + (XXH_VERSION_MINOR * 100) + XXH_VERSION_RELEASE;
+
 
 
 // {{{ Accessors

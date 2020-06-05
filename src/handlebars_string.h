@@ -46,6 +46,9 @@ uint32_t hbs_str_hash(struct handlebars_string * str)
 // }}} Accessors
 
 // {{{ Hash functions
+extern const char * HANDLEBARS_XXHASH_VERSION;
+extern const unsigned HANDLEBARS_XXHASH_VERSION_ID;
+
 uint32_t handlebars_hash_djbx33a(const char * str, size_t len)
     HBS_ATTR_NONNULL_ALL;
 

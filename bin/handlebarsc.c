@@ -395,6 +395,8 @@ static int do_debug(void)
     fprintf(stderr, "YAML support: disabled\n");
 #endif
 
+    fprintf(stderr, "XXHash version: %s (%u)\n", HANDLEBARS_XXHASH_VERSION, HANDLEBARS_XXHASH_VERSION_ID);
+
     fprintf(stderr, "sizeof(void *): %lu\n", (long unsigned) sizeof(void *));
     fprintf(stderr, "sizeof(struct handlebars_cache): %lu\n", (long unsigned) HANDLEBARS_CACHE_SIZE);
     fprintf(stderr, "sizeof(struct handlebars_cache_stat): %lu\n", (long unsigned) sizeof(struct handlebars_cache_stat));
