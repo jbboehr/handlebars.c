@@ -559,7 +559,7 @@ long handlebars_value_count(struct handlebars_value * value)
         case HANDLEBARS_VALUE_TYPE_MAP:
             return handlebars_map_count(value->v.map);
         case HANDLEBARS_VALUE_TYPE_USER:
-            return (handlebars_value_handlers_get_count_fn(handlebars_value_get_handlers(value)))(value);
+            return handlebars_value_get_handlers(value)->count(value);
         default:
             return -1;
     }
@@ -586,15 +586,21 @@ struct handlebars_value * handlebars_value_array_find(
     size_t index,
     struct handlebars_value * rv
 ) {
-	if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
-		if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-			rv = handlebars_value_get_handlers(value)->array_find(value, index, rv);
-		}
-	} else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        rv = handlebars_stack_get(value->v.stack, index);
+    struct handlebars_value * result = NULL;
+
+    if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+        if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+            result = handlebars_value_get_handlers(value)->array_find(value, index, rv);
+        }
+    } else if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        struct handlebars_value * tmp = handlebars_stack_get(value->v.stack, index);
+        if (tmp) {
+            handlebars_value_value(rv, tmp);
+            result = rv;
+        }
     }
 
-	return rv;
+    return result;
 }
 
 // }}} Array
@@ -701,22 +707,25 @@ char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_
             buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%.*s)", (int) hbs_str_len(value->v.string), hbs_str_val(value->v.string));
             break;
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "[");
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "[%s", handlebars_value_count(value) ? "\n" : "");
             HANDLEBARS_VALUE_FOREACH_IDX(value, index, child) {
                 char * tmp = handlebars_value_dump(child, context, depth + 1);
                 buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%zd => %s\n", indent2, index, tmp);
                 handlebars_talloc_free(tmp);
             } HANDLEBARS_VALUE_FOREACH_END();
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "]");
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s]", handlebars_value_count(value) ? indent : "");
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s\n", "{");
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "{%s", handlebars_value_count(value) ? "\n" : "");
             HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
                 char * tmp = handlebars_value_dump(child, context, depth + 1);
                 buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%.*s => %s\n", indent2, (int) hbs_str_len(key), hbs_str_val(key), tmp);
                 handlebars_talloc_free(tmp);
             } HANDLEBARS_VALUE_FOREACH_END();
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%s", indent, "}");
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s}", handlebars_value_count(value) ? indent : "");
+            break;
+        case HANDLEBARS_VALUE_TYPE_HELPER:
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "(function, real type %d)", value->type);
             break;
         default:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "unknown type %d", value->type);
@@ -781,14 +790,12 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
     memset(it, 0, HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE);
     it->cur = (struct handlebars_value *) (void *) (((char *) it) + HANDLEBARS_VALUE_ITERATOR_SIZE);
 
-    // @TODO make sure this works for type_user?
-    if (handlebars_value_count(value) <= 0) {
-        it->next = &handlebars_value_iterator_next_void;
-        return false;
-    }
-
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
+            if (handlebars_stack_count(value->v.stack) <= 0) {
+                it->next = &handlebars_value_iterator_next_void;
+                return false;
+            }
             it->value = value;
             it->index = 0;
             handlebars_value_value(it->cur, handlebars_stack_get(value->v.stack, it->index));
@@ -796,6 +803,10 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
             return true;
 
         case HANDLEBARS_VALUE_TYPE_MAP:
+            if (handlebars_map_count(value->v.map) <= 0) {
+                it->next = &handlebars_value_iterator_next_void;
+                return false;
+            }
             handlebars_map_sparse_array_compact(value->v.map); // meh
             it->value = value;
             it->index = 0;

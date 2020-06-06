@@ -62,24 +62,6 @@
 #define ACCEPT_NAMED_FUNCTION(name) static inline void name (struct handlebars_vm * vm, struct handlebars_opcode * opcode)
 #define ACCEPT_FUNCTION(name) ACCEPT_NAMED_FUNCTION(ACCEPT_FN(name))
 
-static inline struct handlebars_value * _get(struct handlebars_stack * stack, size_t pos) {
-    if (handlebars_stack_count(stack) < pos + 1) {
-        return NULL;
-    }
-    return handlebars_stack_get(stack, handlebars_stack_count(stack) - pos - 1);
-}
-
-static inline struct handlebars_value * _pop(struct handlebars_stack * stack, struct handlebars_value * rv)
-{
-    return handlebars_stack_pop(stack, rv);
-}
-
-#define LEN(stack) handlebars_stack_count(stack)
-#define TOP(stack) handlebars_stack_top(stack)
-#define POP(stack, rv) _pop(stack, rv)
-#define GET(stack, pos) _get(stack, pos)
-#define PUSH(stack, value) (stack = handlebars_stack_push(stack, value))
-
 #undef CONTEXT
 #define CONTEXT HBSCTX(vm)
 
@@ -96,7 +78,7 @@ struct handlebars_vm {
     struct handlebars_module * module;
 
     long depth;
-    long flags;
+    unsigned long flags;
 
     struct handlebars_string * buffer;
 
@@ -116,6 +98,40 @@ struct handlebars_vm {
 const size_t HANDLEBARS_VM_SIZE = sizeof(struct handlebars_vm);
 
 // }}} Prototypes & Variables
+
+// {{{ Macros
+
+static inline struct handlebars_value * _get(struct handlebars_stack * stack, size_t pos) {
+    if (handlebars_stack_count(stack) < pos + 1) {
+        return NULL;
+    }
+    return handlebars_stack_get(stack, handlebars_stack_count(stack) - pos - 1);
+}
+
+#define LEN(stack) handlebars_stack_count(stack)
+#define TOP(stack) handlebars_stack_top(stack)
+#define GET(stack, pos) _get(stack, pos)
+
+#if 0
+static inline struct handlebars_stack * push(struct handlebars_stack * stack, struct handlebars_value * value, struct handlebars_vm * vm, int line)
+{
+    fprintf(stderr, "V[%ld] L[%d] PUSH %s\n", vm->depth, line, handlebars_value_dump(value, HBSCTX(vm), 0));
+    return handlebars_stack_push(stack, value);
+}
+#define PUSH(stack, value) (stack = push(stack, value, vm, __LINE__))
+static inline struct handlebars_value * pop(struct handlebars_stack * stack, struct handlebars_value * rv, struct handlebars_vm * vm, int line)
+{
+    rv = handlebars_stack_pop(stack, rv);
+    fprintf(stderr, "V[%ld] L[%d] POP %s\n", vm->depth, line, rv ? handlebars_value_dump(rv, HBSCTX(vm), 0) : "(nil)");
+    return rv;
+}
+#define POP(stack, rv) pop(stack, rv, vm, __LINE__)
+#else
+#define POP(stack, rv) handlebars_stack_pop(stack, rv)
+#define PUSH(stack, value) (stack = handlebars_stack_push(stack, value))
+#endif
+
+// }}} Macros
 
 // {{{ Constructors & Destructors
 
@@ -143,7 +159,7 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
 
 // {{{ Getters & Setters
 
-void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned flags)
+void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned long flags)
 {
     vm->flags = flags;
 }
@@ -214,6 +230,8 @@ static inline void setup_options(struct handlebars_vm * vm, int argc, struct han
     options->hash = POP(vm->stack, mem++);
     options->scope = mem++;
     handlebars_value_value(options->scope, TOP(vm->contextStack));
+    options->data = mem++;
+    handlebars_value_value(options->data, &vm->data);
     options->vm = vm;
 
     // programs
@@ -237,18 +255,11 @@ static inline void setup_options(struct handlebars_vm * vm, int argc, struct han
     while( i-- ) {
         argv[i] = POP(vm->stack, --mem);
     }
-
-    // Data
-    // @todo check useData
-    options->data = &vm->data;
-    // @TODO fixme this isn't working
-    // options->data = mem++;
-    // handlebars_value_value(options->data, &vm->data);
 }
 
 #define VM_SETUP_OPTIONS(argc) \
     struct handlebars_options options = {0}; \
-    struct handlebars_value argv_mem[argc + 4]; \
+    struct handlebars_value argv_mem[argc + 5]; \
     struct handlebars_value * argv[argc]; \
     memset(&argv_mem, 0, sizeof(argv_mem)); \
     setup_options(vm, argc, argv, &options, argv_mem)
@@ -433,16 +444,17 @@ ACCEPT_FUNCTION(ambiguous_block_value)
 
     if( vm->last_helper == NULL ) {
         VM_SETUP_OPTIONS(1);
-        options.name = vm->last_helper; // @todo dupe?
         struct handlebars_value * result = handlebars_vm_call_helper_str(HBS_STRL("blockHelperMissing"), 1, argv, &options, rv);
         assert(result != NULL);
         PUSH(vm->stack, result);
         VM_TEARDOWN_OPTIONS(1);
     } else if (hbs_str_eq_strl(vm->last_helper, HBS_STRL("lambda"))) {
         VM_SETUP_OPTIONS(0);
-        options.name = vm->last_helper; // @todo dupe?
         handlebars_string_delref(vm->last_helper);
         vm->last_helper = NULL;
+        VM_TEARDOWN_OPTIONS(0);
+    } else {
+        VM_SETUP_OPTIONS(0);
         VM_TEARDOWN_OPTIONS(0);
     }
 
@@ -603,7 +615,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         vm->last_helper = handlebars_string_ctor(CONTEXT, HBS_STRL("lambda")); // hackey but it works
         handlebars_string_addref(vm->last_helper);
     } else if( NULL != (result = call_helper(options.name, argc, argv, &options, rv)) ) {
-        append_to_buffer(vm, result, 0);
+        PUSH(vm->stack, result);
         vm->last_helper = options.name;
         handlebars_string_addref(vm->last_helper);
     } else if( value && handlebars_value_is_callable(value) ) {
@@ -611,8 +623,11 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         PUSH(vm->stack, result);
     } else {
         result = handlebars_vm_call_helper_str(HBS_STRL("helperMissing"), argc, argv, &options, rv);
-        append_to_buffer(vm, result, 0);
-        PUSH(vm->stack, value);
+        if (result && result->type != HANDLEBARS_VALUE_TYPE_NULL) {
+            PUSH(vm->stack, result);
+        } else {
+            PUSH(vm->stack, value);
+        }
     }
 
     VM_TEARDOWN_OPTIONS(argc);
@@ -896,7 +911,13 @@ ACCEPT_FUNCTION(lookup_data)
         done_and_null:
         if( require_terminal ) {
             done_and_err:
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
+            handlebars_throw_ex(
+                CONTEXT,
+                HANDLEBARS_ERROR,
+                &opcode->loc,
+                "\"%.*s\" not defined in object",
+                (int) hbs_str_len(arr->string), hbs_str_val(arr->string)
+            );
         }
     }
 
@@ -911,6 +932,7 @@ ACCEPT_FUNCTION(lookup_on_context)
 {
     HANDLEBARS_VALUE_DECL(empty_value);
     HANDLEBARS_VALUE_DECL(rv);
+    HANDLEBARS_VALUE_DECL(rv2);
     struct handlebars_value * value;
 
     assert(opcode->op1.type == handlebars_operand_type_array);
@@ -936,21 +958,21 @@ ACCEPT_FUNCTION(lookup_on_context)
     do {
         bool is_last = arr == arr_end - 1;
         if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            value = handlebars_value_map_find(value, arr->string, rv);
+            value = handlebars_value_map_find(value, arr->string, rv2);
         } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
             if (sscanf(hbs_str_val(arr->string), "%ld", &index)) {
-                value = handlebars_value_array_find(value, index, rv);
+                value = handlebars_value_array_find(value, index, rv2);
             } else {
                 value = NULL;
             }
         } else if( vm->flags & handlebars_compiler_flag_assume_objects && is_last ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
+            goto done_and_err;
         } else {
             goto done_and_null;
         }
         if( !value ) {
             if( is_strict && !is_last ) {
-                handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
+                goto done_and_err;
             }
             goto done_and_null;
         }
@@ -959,7 +981,15 @@ ACCEPT_FUNCTION(lookup_on_context)
     if( value == NULL ) {
         done_and_null:
         if( require_terminal ) {
-            handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "\"%.*s\" not defined in object", (int) hbs_str_len(arr->string), hbs_str_val(arr->string));
+            done_and_err:
+            handlebars_throw_ex(
+                CONTEXT,
+                HANDLEBARS_ERROR,
+                &opcode->loc,
+                "\"%.*s\" not defined in object",
+                (int) hbs_str_len(arr->string),
+                hbs_str_val(arr->string)
+            );
         } else {
             value = empty_value;
         }
@@ -967,6 +997,7 @@ ACCEPT_FUNCTION(lookup_on_context)
 
     PUSH(vm->stack, value);
 
+    HANDLEBARS_VALUE_UNDECL(rv2);
     HANDLEBARS_VALUE_UNDECL(rv);
     HANDLEBARS_VALUE_UNDECL(empty_value);
 }
@@ -1056,40 +1087,51 @@ ACCEPT_FUNCTION(push_string)
 
 ACCEPT_FUNCTION(resolve_possible_lambda)
 {
-    HANDLEBARS_VALUE_DECL(rv);
     HANDLEBARS_VALUE_DECL(value);
 
     HBS_ASSERT(POP(vm->stack, value));
 
     if( handlebars_value_is_callable(value) ) {
+        HANDLEBARS_VALUE_DECL(rv);
+        HANDLEBARS_VALUE_DECL(arg);
         struct handlebars_options options = {0};
         int argc = 1;
         struct handlebars_value * argv[1];
-        argv[0] = alloca(HANDLEBARS_VALUE_SIZE);
-        handlebars_value_init(argv[0]);
-        handlebars_value_value(argv[0], TOP(vm->contextStack));
+        handlebars_value_value(arg, TOP(vm->contextStack));
+        argv[0] = arg;
         options.vm = vm;
-        options.scope = argv[0];
+        options.scope = arg;
         struct handlebars_value * result = handlebars_value_call(value, argc, argv, &options, rv);
         HBS_ASSERT(result);
         PUSH(vm->stack, result);
         handlebars_options_deinit(&options);
+        HANDLEBARS_VALUE_UNDECL(arg);
+        HANDLEBARS_VALUE_UNDECL(rv);
     } else {
         PUSH(vm->stack, value);
     }
 
     HANDLEBARS_VALUE_UNDECL(value);
-    HANDLEBARS_VALUE_UNDECL(rv);
 }
 
 static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_module_table_entry * entry)
 {
+#if 0
+#define ACCEPT_DEBUG() \
+    do { \
+        struct handlebars_string * tmp = handlebars_opcode_print(HBSCTX(vm), opcode, 0); \
+        fprintf(stdout, "V[%ld] P[%ld] OPCODE: %.*s\n", vm->depth, entry->guid, (int) hbs_str_len(tmp), hbs_str_val(tmp)); \
+        talloc_free(tmp); \
+    } while (0)
+#else
+#define ACCEPT_DEBUG()
+#endif
 #define ACCEPT_ERROR handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
 #if HAVE_COMPUTED_GOTOS
 #define DISPATCH() goto *dispatch_table[opcode->type]
 #define ACCEPT_LABEL(name) do_ ## name
 #define ACCEPT_CASE(name) ACCEPT_LABEL(name):
-#define ACCEPT(name) ACCEPT_LABEL(name): ACCEPT_FN(name)(vm, opcode); opcode++; DISPATCH();
+#define ACCEPT(name) ACCEPT_LABEL(name): ACCEPT_DEBUG(); ACCEPT_FN(name)(vm, opcode); opcode++; DISPATCH();
     static void * dispatch_table[] = {
             &&do_nil, &&do_ambiguous_block_value, &&do_append, &&do_append_escaped, &&do_empty_hash,
             &&do_pop_hash, &&do_push_context, &&do_push_hash, &&do_resolve_possible_lambda, &&do_get_context,
@@ -1108,16 +1150,6 @@ static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_mo
 #define START_ACCEPT start: switch( opcode->type ) {
 #define END_ACCEPT } goto start;
 #endif
-
-/*
-#ifndef NDEBUG
-    if( getenv("DEBUG") ) {
-        struct handlebars_string * tmp = handlebars_opcode_print(HBSCTX(vm), opcode, 0);
-        fprintf(stdout, "V[%ld] P[%ld] OPCODE: %.*s\n", vm->depth, entry->guid, (int) tmp->len, tmp->val);
-        talloc_free(tmp);
-    }
-#endif
-*/
 
     struct handlebars_opcode * opcode = entry->opcodes;
     START_ACCEPT
@@ -1191,7 +1223,7 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_stack_save_buf bst = handlebars_stack_save(vm->blockParamStack);
 
     // Push the context stack
-    if( /*context &&*/ (LEN(vm->contextStack) <= 0 || !handlebars_value_eq(TOP(vm->contextStack), context)) ) {
+    if(LEN(vm->contextStack) <= 0 || !handlebars_value_eq(TOP(vm->contextStack), context)) {
         PUSH(vm->contextStack, context);
     }
 
@@ -1274,6 +1306,7 @@ struct handlebars_string * handlebars_vm_execute(
     }
 
     vm->module = module;
+    vm->flags |= module->flags;
 
     // Execute
     vm->buffer = handlebars_vm_execute_program_ex(vm, 0, context, NULL, NULL);

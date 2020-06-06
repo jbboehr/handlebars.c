@@ -71,6 +71,8 @@ void handlebars_string_addref_ex(struct handlebars_string * string, const char *
     HBS_ATTR_NONNULL_ALL;
 void handlebars_string_delref_ex(struct handlebars_string * string, const char * expr, const char * loc)
     HBS_ATTR_NONNULL_ALL;
+void handlebars_string_immortalize(struct handlebars_string * string)
+    HBS_ATTR_NONNULL_ALL;
 
 #ifndef NDEBUG
 #define handlebars_string_addref(string) handlebars_string_addref_ex(string, #string, HBS_LOC)

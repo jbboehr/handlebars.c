@@ -136,6 +136,8 @@ void handlebars_compiler_compile(
     struct handlebars_ast_node * node
 ) HBS_ATTR_NONNULL_ALL;
 
+// {{{ Constructors and Destructors
+
 /**
  * @brief Construct a compiler context object.
  *
@@ -156,6 +158,10 @@ void handlebars_compiler_dtor(
     struct handlebars_compiler * compiler
 ) HBS_ATTR_NONNULL_ALL;
 
+// }}} Constructors and Destructors
+
+// {{{ Getters
+
 /**
  * @brief Get the compiler flags.
  *
@@ -165,6 +171,18 @@ void handlebars_compiler_dtor(
 unsigned long handlebars_compiler_get_flags(
     struct handlebars_compiler * compiler
 ) HBS_ATTR_NONNULL_ALL;
+
+const char ** handlebars_compiler_get_known_helpers(
+    struct handlebars_compiler * compiler
+);
+
+struct handlebars_program * handlebars_compiler_get_program(
+    struct handlebars_compiler * compiler
+) HBS_ATTR_NONNULL_ALL;
+
+// }}} Getters
+
+// {{{ Mutators
 
 /**
  * @brief Set the compiler flags, with handlebars_compiler_flag_all as a mask.
@@ -178,14 +196,12 @@ void handlebars_compiler_set_flags(
     unsigned long flags
 ) HBS_ATTR_NONNULL_ALL;
 
-struct handlebars_program * handlebars_compiler_get_program(
-    struct handlebars_compiler * compiler
-) HBS_ATTR_NONNULL_ALL;
-
 void handlebars_compiler_set_known_helpers(
     struct handlebars_compiler * compiler,
     const char ** known_helpers
 ) HBS_ATTR_NONNULL_ALL;
+
+// }}} Mutators
 
 // {{{ Extern for test suite only
 

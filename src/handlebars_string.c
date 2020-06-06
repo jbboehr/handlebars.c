@@ -141,6 +141,11 @@ uint32_t handlebars_string_hash(const char * str, size_t len)
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void string_rc_dtor(struct handlebars_rc * rc)
 {
+#ifndef NDEBUG
+    if (getenv("HANDLEBARS_RC_DEBUG")) {
+        fprintf(stderr, "STR DTOR %p\n", hbs_container_of(rc, struct handlebars_string, rc));
+    }
+#endif
     struct handlebars_string * string = talloc_get_type_abort(hbs_container_of(rc, struct handlebars_string, rc), struct handlebars_string);
     handlebars_talloc_free(string);
 }
@@ -204,6 +209,10 @@ static inline struct handlebars_string * separate_string(struct handlebars_strin
     return string;
 }
 
+void handlebars_string_immortalize(struct handlebars_string * string)
+{
+    string->rc.refcount = UINT8_MAX;
+}
 // }}} Reference Counting
 
 

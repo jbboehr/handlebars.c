@@ -217,14 +217,20 @@ struct handlebars_program * handlebars_compiler_get_program(
     struct handlebars_compiler * compiler
 ) {
     return compiler->program;
-};
+}
+
+const char ** handlebars_compiler_get_known_helpers(
+    struct handlebars_compiler * compiler
+) {
+    return compiler->known_helpers;
+}
 
 void handlebars_compiler_set_known_helpers(
     struct handlebars_compiler * compiler,
     const char ** known_helpers
 ) {
     compiler->known_helpers = known_helpers;
-};
+}
 
 
 
@@ -822,7 +828,12 @@ static inline void _handlebars_compiler_accept_partial(
     count = (params ? handlebars_ast_list_count(params) : 0);
 
     if( count > 1 ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_UNSUPPORTED_PARTIAL_ARGS, "Unsupported number of partial arguments");
+        handlebars_throw_ex(
+            CONTEXT,
+            HANDLEBARS_UNSUPPORTED_PARTIAL_ARGS,
+            &node->loc,
+            "Unsupported number of partial arguments"
+        );
     } else if( !params || !handlebars_ast_list_count(params) ) {
     	if( compiler->flags & handlebars_compiler_flag_explicit_partial_context ) {
             struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_push_literal);
@@ -1101,9 +1112,10 @@ static inline void handlebars_compiler_accept_sexpr_helper(
         handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, name);
         __PUSH(opcode);
     } else if( compiler->flags & handlebars_compiler_flag_known_helpers_only ) {
-        handlebars_throw(
+        handlebars_throw_ex(
             CONTEXT,
             HANDLEBARS_UNKNOWN_HELPER,
+            &path->loc,
             "You specified knownHelpersOnly, but used the unknown helper %.*s",
             (int) hbs_str_len(name), hbs_str_val(name)
         );

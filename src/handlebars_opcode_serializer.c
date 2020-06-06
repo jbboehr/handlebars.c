@@ -60,8 +60,7 @@ static void * append(struct handlebars_module * module, void * source, size_t si
 }
 
 static inline void patch_string(struct handlebars_string * str) {
-    // str->rc.refcount = 0;
-    // str->rc.dtor = NULL;
+    handlebars_string_immortalize(str);
 }
 
 static void calculate_size_operand(struct handlebars_module * module, struct handlebars_operand * operand)
