@@ -35,21 +35,6 @@ env:
 #    - MYCC="gcc-9"
 #      VALGRIND="true"
 
-matrix:
-  include:
-    - language: nix
-      before_install:
-      install:
-      before_script: export NIX_PATH=nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-${NIX_CHANNEL}.tar.gz
-      script: nix-build --argstr handlebarscVersion $TRAVIS_BRANCH
-      after_success:
-      after_failure:
-      env:
-        - MYCC=
-        - NIX_CHANNEL=20.03
-
-cache: false
-
 branches:
   only:
     - master
