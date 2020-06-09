@@ -26,21 +26,6 @@ env:
       COVERAGE="false"
       HARDENING="true"
 
-matrix:
-  include:
-    - language: nix
-      before_install:
-      install:
-      before_script: export NIX_PATH=nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-${NIX_CHANNEL}.tar.gz
-      script: nix-build --argstr handlebarscVersion $TRAVIS_BRANCH
-      after_success:
-      after_failure:
-      env:
-        - MYCC=
-        - NIX_CHANNEL=20.03
-
-cache: false
-
 branches:
   only:
     - master
@@ -52,4 +37,3 @@ before_script: sudo ./.travis.sh before_script
 script: sudo ./.travis.sh script
 after_success: travis_retry sudo ./.travis.sh after_success
 after_failure: travis_retry sudo ./.travis.sh after_failure
-
