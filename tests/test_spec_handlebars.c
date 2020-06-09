@@ -140,6 +140,7 @@ char ** json_load_known_helpers(void * ctx, struct json_object * object, struct 
 
     if (object) {
         json_object_object_foreach(object, key, value) {
+            (void) value;
             *ptr = handlebars_talloc_strdup(ctx, key);
             ptr++;
             assert(ptr - known_helpers < 32);
@@ -149,6 +150,7 @@ char ** json_load_known_helpers(void * ctx, struct json_object * object, struct 
     // Merge in from helpers
     if (helpers) {
         json_object_object_foreach(helpers, key, value) {
+            (void) value;
             *ptr = handlebars_talloc_strdup(ctx, key);
             ptr++;
             assert(ptr - known_helpers < 32);

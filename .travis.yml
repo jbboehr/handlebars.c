@@ -1,39 +1,72 @@
 language: c
 
-sudo: required
+dist: focal
 
-dist: xenial
-
-env:
-  matrix:
-    - MYCC="gcc-4.9"
-      COVERAGE="true"
-    - MYCC="gcc-5"
-      COVERAGE="true"
-    - MYCC="gcc-6"
-      COVERAGE="true"
-    - MYCC="gcc-7"
-      COVERAGE="true"
-    - MYCC="gcc-8"
-    - MYCC="gcc-9"
-# 32bit
-    - MYCC="gcc-5"
-      ARCH="i386"
-# clang
-    - MYCC="clang-3.8"
-# no hardening
-    - MYCC="gcc-9"
-      HARDENING="false"
-# lto
-    - MYCC="gcc-9"
-      LTO="true"
-# minimal
-    - MYCC="gcc-9"
-      MINIMAL="true"
-# valgrind
-# not sure why but this isn't working, running it on HerculesCI instead
-#    - MYCC="gcc-9"
-#      VALGRIND="true"
+matrix:
+    include:
+# gcc-5, xenial
+    - dist: xenial
+      env:
+      - MYCC="gcc-5"
+      - GCOV="gcov-5"
+# gcc-5, xenial, i386
+    - dist: xenial
+      env:
+      - MYCC="gcc-5"
+      - ARCH="i386"
+# gcc-6, bionic
+    - dist: bionic
+      env:
+      - MYCC="gcc-6"
+      - GCOV="gcov-6"
+# gcc-7, bionic
+    - dist: bionic
+      env:
+      - MYCC="gcc-7"
+      - GCOV="gcov-7"
+# gcc-8, focal
+    - dist: focal
+      env:
+      - MYCC="gcc-8"
+      - GCOV="gcov-8"
+# gcc-9, focal
+    - dist: focal
+      env:
+      - MYCC="gcc-9"
+      - GCOV="gcov-9"
+# gcc-9, focal, lto
+    - dist: focal
+      env:
+      - MYCC="gcc-9"
+      - LTO=true
+# gcc-9, focal, no hardening
+    - dist: focal
+      env:
+      - MYCC="gcc-9"
+      - HARDENING=false
+# gcc-9, focal, minimal
+    - dist: focal
+      env:
+      - MYCC="gcc-9"
+      - MINIMAL=true
+# gcc-9, focal, valgrind
+# still not working, fails with "missing test plan"
+#     - dist: focal
+#       env:
+#       - MYCC="gcc-9"
+#       - VALGRIND=true
+# gcc-10, focal, toolchain test
+    - dist: focal
+      env: MYCC="gcc-10"
+# clang-3.8, xenial
+    - dist: xenial
+      env: MYCC="clang-3.8"
+# clang-6.0, bionic
+    - dist: bionic
+      env: MYCC="clang-6.0"
+# clang-10, focal
+    - dist: focal
+      env: MYCC="clang-10"
 
 branches:
   only:

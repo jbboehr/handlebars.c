@@ -402,6 +402,7 @@ static int loadSpecTestKnownHelpers(struct compiler_test * test, json_object * o
 
     json_object_object_foreach(object, key, value) {
         *ptr = handlebars_talloc_strdup(tests, key);
+        (void) value;
         ptr++;
     }
 
