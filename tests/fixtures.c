@@ -25,8 +25,6 @@
 #include <ctype.h>
 #include <string.h>
 
-#define HANDLEBARS_HELPERS_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_memory.h"
 

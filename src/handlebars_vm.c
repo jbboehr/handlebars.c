@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define HANDLEBARS_HELPERS_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 #define HANDLEBARS_OPCODES_PRIVATE
 
@@ -93,6 +92,9 @@ struct handlebars_vm {
     struct handlebars_stack * contextStack;
     struct handlebars_stack * hashStack;
     struct handlebars_stack * blockParamStack;
+
+    handlebars_log_func log_func;
+    void * log_ctx;
 };
 
 const size_t HANDLEBARS_VM_SIZE = sizeof(struct handlebars_vm);
@@ -182,6 +184,22 @@ void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value *
 void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache)
 {
     vm->cache = cache;
+}
+
+void handlebars_vm_set_logger(struct handlebars_vm * vm, handlebars_log_func log_func, void * log_ctx)
+{
+    vm->log_func = log_func;
+    vm->log_ctx = log_ctx;
+}
+
+handlebars_log_func handlebars_vm_get_log_func(struct handlebars_vm * vm)
+{
+    return vm->log_func;
+}
+
+void * handlebars_vm_get_log_ctx(struct handlebars_vm * vm)
+{
+    return vm->log_ctx;
 }
 
 // }}} Getters & Setters
@@ -688,11 +706,13 @@ ACCEPT_FUNCTION(invoke_known_helper)
     struct handlebars_value * result = call_helper(options.name, argc, argv, &options, rv);
 
     if( result == NULL ) {
-        handlebars_throw(
+        handlebars_throw_ex(
             CONTEXT,
             HANDLEBARS_ERROR,
+            &opcode->loc,
             "Invalid known helper: %.*s",
-            (int) hbs_str_len(options.name), hbs_str_val(options.name)
+            (int) hbs_str_len(options.name),
+            hbs_str_val(options.name)
         );
     }
 

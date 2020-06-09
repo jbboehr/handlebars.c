@@ -29,8 +29,6 @@
 #include <valgrind/memcheck.h>
 #endif
 
-#define HANDLEBARS_HELPERS_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"

@@ -24,8 +24,6 @@
 #include <assert.h>
 #include <string.h>
 
-#define HANDLEBARS_HELPERS_PRIVATE
-
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -61,8 +59,6 @@ void handlebars_options_deinit(struct handlebars_options * options)
     if (options->scope) {
         handlebars_value_dtor(options->scope);
     }
-    //handlebars_stack_dtor(options->params);
-    //handlebars_talloc_free(options->name);
 }
 
 struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
@@ -182,7 +178,6 @@ whoopsie:
     if( use_data ) {
         handlebars_map_delref(data_map);
     }
-    //handlebars_value_try_delref(context);  // @todo double-check
 
     HANDLEBARS_VALUE_UNDECL(rv2);
     HANDLEBARS_VALUE_UNDECL(block_params);
@@ -223,8 +218,6 @@ inverse:
 
     handlebars_value_str(rv, result_str);
 
-    //handlebars_value_try_delref(context); // @todo double-check
-
 done:
     return rv;
 }
@@ -246,15 +239,21 @@ struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_AR
 
 struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
 {
-    int i;
-    fprintf(stderr, "[INFO] ");
-    for (i = 0; i < argc; i++) {
-        char *tmp = handlebars_value_dump(argv[i], HBSCTX(options->vm), 0);
-        fprintf(stderr, "%s ", tmp);
-        handlebars_talloc_free(tmp);
+    handlebars_log_func log_func = handlebars_vm_get_log_func(options->vm);
+
+    if (log_func) {
+        log_func(argc, argv, options);
+    } else {
+        int i;
+        fprintf(stderr, "[INFO] ");
+        for (i = 0; i < argc; i++) {
+            char *tmp = handlebars_value_dump(argv[i], HBSCTX(options->vm), 0);
+            fprintf(stderr, "%s ", tmp);
+            handlebars_talloc_free(tmp);
+        }
+        fprintf(stderr, "\n");
+        //fflush(stderr);
     }
-    fprintf(stderr, "\n");
-    //fflush(stderr);
 
     return rv;
 }

@@ -58,8 +58,6 @@ typedef struct handlebars_value * (*handlebars_helper_func)(
     struct handlebars_value * rv
 );
 
-#ifdef HANDLEBARS_HELPERS_PRIVATE
-
 struct handlebars_options {
     struct handlebars_vm * vm;
     long inverse;
@@ -70,7 +68,11 @@ struct handlebars_options {
     struct handlebars_value * hash;
 };
 
-#endif
+typedef void (*handlebars_log_func)(
+    int argc,
+    struct handlebars_value * argv[],
+    struct handlebars_options * options
+);
 
 HBS_EXTERN_C_END
 
