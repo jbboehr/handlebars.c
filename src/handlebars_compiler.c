@@ -403,7 +403,7 @@ static inline long handlebars_compiler_compile_program(
     // Append child
     program->children[program->children_length++] = talloc_steal(program, subcompiler->program);
 
-    handlebars_talloc_free(subcompiler); // @todo this will probably break stuff
+    handlebars_talloc_free(subcompiler);
     return guid;
 }
 

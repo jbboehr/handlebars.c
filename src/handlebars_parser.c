@@ -55,7 +55,6 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     handlebars_parser_init_current = parser;
 
     // Initialize lexer
-    // @todo set a destructor on the context object to deinit the lexer?
     lexerr = handlebars_yy_lex_init(&parser->scanner);
     if( unlikely(lexerr != 0) ) {
         handlebars_parser_init_current = NULL;

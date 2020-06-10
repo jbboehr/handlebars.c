@@ -140,7 +140,7 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         }
 
         if( use_data ) {
-            if( it_index ) { // @todo zero?
+            if( it_index ) {
                 handlebars_value_integer(index, it_index);
             } else {
                 handlebars_value_integer(index, i);
@@ -276,7 +276,6 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
         // @todo sscanf?
         if( handlebars_value_get_type(field) == HANDLEBARS_VALUE_TYPE_INTEGER ) {
             rv = handlebars_value_array_find(context, handlebars_value_get_intval(field), rv);
-            // handlebars_value_value(rv, result);
         }
     }
 

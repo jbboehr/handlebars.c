@@ -336,11 +336,14 @@ bool handlebars_value_eq(
             return value->v.map == value2->v.map;
         case HANDLEBARS_VALUE_TYPE_USER:
             return value->v.user == value2->v.user;
+        case HANDLEBARS_VALUE_TYPE_HELPER:
+            return value->v.helper == value2->v.helper;
+        case HANDLEBARS_VALUE_TYPE_PTR:
+            return value->v.ptr == value2->v.ptr;
 
-        // @TODO proably should throw for this
         default:
+            fprintf(stderr, "Unsupported value comparison of type %s (%d)", handlebars_value_type_readable(value->type), value->type);
             abort();
-            return false;
     }
 }
 
@@ -675,15 +678,19 @@ struct handlebars_value * handlebars_value_call(struct handlebars_value * value,
 char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_context * context, size_t depth)
 {
     char * buf = handlebars_talloc_strdup(context, "");
-    char indent[64];
-    char indent2[64];
+    char indent[0x80];
+    char indent2[0x80];
     HANDLEBARS_MEMCHECK(buf, context);
 
-    memset(indent, 0, sizeof(indent));
-    memset(indent, ' ', depth * 4); // @todo fix
+    assert((depth + 1) * 4 < 0x80);
 
-    memset(indent2, 0, sizeof(indent2));
-    memset(indent2, ' ', (depth + 1) * 4); // @todo fix
+    size_t indent_len = (depth * 4) & 0x7F;
+    memset(indent, ' ', indent_len);
+    indent[indent_len] = 0;
+
+    size_t indent2_len = ((depth + 1) * 4) & 0x7F;
+    memset(indent2, ' ', indent2_len);
+    indent2[indent2_len] = 0;
 
     switch( handlebars_value_get_type(value) ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
@@ -735,6 +742,24 @@ char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_
     return buf;
 }
 
+const char * handlebars_value_type_readable(enum handlebars_value_type type)
+{
+    switch (type) {
+        case HANDLEBARS_VALUE_TYPE_NULL: return "null";
+        case HANDLEBARS_VALUE_TYPE_TRUE: return "true";
+        case HANDLEBARS_VALUE_TYPE_FALSE: return "false";
+        case HANDLEBARS_VALUE_TYPE_INTEGER: return "integer";
+        case HANDLEBARS_VALUE_TYPE_FLOAT: return "float";
+        case HANDLEBARS_VALUE_TYPE_STRING: return "string";
+        case HANDLEBARS_VALUE_TYPE_ARRAY: return "array";
+        case HANDLEBARS_VALUE_TYPE_MAP: return "map";
+        case HANDLEBARS_VALUE_TYPE_USER: return "user";
+        case HANDLEBARS_VALUE_TYPE_PTR: return "ptr";
+        case HANDLEBARS_VALUE_TYPE_HELPER: return "helper";
+        default: assert(0); return "unknown";
+    }
+}
+
 // }}} Misc
 
 // {{{ Iteration
@@ -771,7 +796,7 @@ static bool handlebars_value_iterator_next_map(struct handlebars_value_iterator 
 
     if( it->index >= handlebars_map_count(it->value->v.map) - 1 ) {
         handlebars_value_dtor(it->cur);
-        handlebars_map_set_is_in_iteration(it->value->v.map, false); // @todo we should restore the previous flag?
+        handlebars_map_set_is_in_iteration(it->value->v.map, false);
         return false;
     }
 
@@ -811,7 +836,10 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
             handlebars_map_get_kv_at_index(value->v.map, it->index, &it->key, &tmp);
             handlebars_value_value(it->cur, tmp);
             it->next = &handlebars_value_iterator_next_map;
-            handlebars_map_set_is_in_iteration(value->v.map, true); // @todo we should store the result
+            if (handlebars_map_set_is_in_iteration(value->v.map, true)) {
+                fprintf(stderr, "Nested map iteration is not currently supported [%s:%d]", __FILE__, __LINE__);
+                abort();
+            }
             return true;
 
         case HANDLEBARS_VALUE_TYPE_USER:

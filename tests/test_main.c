@@ -180,6 +180,8 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
 #ifdef HANDLEBARS_MEMORY
     struct handlebars_locinfo loc;
     char * actual;
+    loc.first_line = 1;
+    loc.first_column = 2;
     loc.last_line = 1;
     loc.last_column = 2;
 

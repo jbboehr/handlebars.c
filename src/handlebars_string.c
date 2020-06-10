@@ -685,7 +685,7 @@ struct handlebars_string * handlebars_string_htmlspecialchars_append(
     for( p = str + len - 1; p >= str; p-- ) {
         pair = &htmlspecialchars[(unsigned char) *p];
         if( pair->len ) {
-            new_len += pair->len - 1; // @todo check if sizeof works
+            new_len += pair->len - 1;
         }
     }
 

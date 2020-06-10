@@ -222,19 +222,21 @@ START_TEST(test_ast_to_string_on_mustache_spec)
     struct handlebars_string * origtmpl;
     struct handlebars_string * tmpl;
     struct handlebars_string *ast_str;
+    struct handlebars_ast_node * ast;
     const char *actual;
     const char *expected;
 
     origtmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
+    handlebars_string_addref(origtmpl); handlebars_string_addref(origtmpl); // ugh
     tmpl = handlebars_preprocess_delimiters(context, origtmpl, NULL, NULL);
 
     // Won't work with custom delimters or with '{{&'
     if (!handlebars_string_eq(origtmpl, tmpl) || NULL != strstr(hbs_str_val(origtmpl), "{{&")) {
         fprintf(stderr, "SKIPPED #%d\n", _i);
-        return;
+        goto done;
     }
 
-    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, test->flags);
+    ast = handlebars_parse_ex(parser, tmpl, test->flags);
 
     // Check error
     if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
@@ -253,6 +255,8 @@ START_TEST(test_ast_to_string_on_mustache_spec)
                                                test->tmpl, expected, actual);
         ck_abort_msg(tmp);
     }
+done:
+    handlebars_string_delref(origtmpl);
 }
 END_TEST
 

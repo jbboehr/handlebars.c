@@ -116,7 +116,6 @@ static void hbs_json_convert(struct handlebars_value * value, bool recurse)
             for( i = 0; i < l; i++ ) {
                 HANDLEBARS_VALUE_DECL(new_value);
                 handlebars_value_init_json_object(intern->user.ctx, new_value, json_object_array_get_idx(intern->object, i));
-                // @TODO check index?
                 if( recurse && handlebars_value_get_real_type(new_value) == HANDLEBARS_VALUE_TYPE_USER ) {
                     hbs_json_convert(new_value, recurse);
                 }
@@ -293,7 +292,6 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
             handlebars_value_float(value, json_object_get_double(json));
             break;
         case json_type_int:
-            // @todo make sure sizing is correct
             handlebars_value_integer(value, json_object_get_int64(json));
             break;
         case json_type_string:
@@ -321,7 +319,6 @@ void handlebars_value_init_json_string(struct handlebars_context *ctx, struct ha
 {
     enum json_tokener_error parse_err = json_tokener_success;
     struct json_object * result = json_tokener_parse_verbose(json, &parse_err);
-    // @todo test parse error
     if( parse_err == json_tokener_success ) {
         handlebars_value_init_json_object(ctx, value, result);
         json_object_put(result);

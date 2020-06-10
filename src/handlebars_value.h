@@ -457,6 +457,9 @@ struct handlebars_value * handlebars_value_call(
     struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
+const char * handlebars_value_type_readable(enum handlebars_value_type type)
+    HBS_ATTR_NONNULL_ALL;
+
 // }}} Misc
 
 // {{{ Iteration

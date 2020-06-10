@@ -255,6 +255,22 @@ START_TEST(test_map_find)
 }
 END_TEST
 
+START_TEST(test_readable_type)
+{
+    ck_assert_str_eq("null", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_NULL));
+    ck_assert_str_eq("true", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_TRUE));
+    ck_assert_str_eq("false", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_FALSE));
+    ck_assert_str_eq("integer", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_INTEGER));
+    ck_assert_str_eq("float", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_FLOAT));
+    ck_assert_str_eq("string", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_STRING));
+    ck_assert_str_eq("array", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_ARRAY));
+    ck_assert_str_eq("map", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_MAP));
+    ck_assert_str_eq("user", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_USER));
+    ck_assert_str_eq("ptr", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_PTR));
+    ck_assert_str_eq("helper", handlebars_value_type_readable(HANDLEBARS_VALUE_TYPE_HELPER));
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -269,6 +285,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");
     REGISTER_TEST_FIXTURE(s, test_array_find, "Array Find");
     REGISTER_TEST_FIXTURE(s, test_map_find, "Map Find");
+    REGISTER_TEST_FIXTURE(s, test_readable_type, "Readable Type");
 
     return s;
 }

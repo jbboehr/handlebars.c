@@ -54,10 +54,6 @@ HBS_EXTERN_C_START
 
 #else /* HANDLEBARS_MEMORY */
 
-// Note: a little concerned this naughty stuff may cause problems with
-// different talloc versions, but let's see how it works for now
-// @todo maybe just alias them all with macros when disabled or use LD_PRELOAD
-
 // Memory macros
 #define handlebars_talloc(ctx, type) \
     (type *) handlebars_talloc_named_const(ctx, sizeof(type), #type)

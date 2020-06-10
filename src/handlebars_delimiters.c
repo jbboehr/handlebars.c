@@ -234,6 +234,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     // Free open/close
     handlebars_talloc_free(open);
     handlebars_talloc_free(close);
+    handlebars_string_delref(tmpl);
 
     HANDLEBARS_MEMCHECK(new_tmpl, ctx);
     return new_tmpl;

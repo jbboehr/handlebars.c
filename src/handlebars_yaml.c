@@ -119,7 +119,6 @@ void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct h
     yaml_parser_set_input_string(&yctx->parser, (unsigned char *) yaml, strlen(yaml));
     yaml_parser_load(&yctx->parser, &yctx->document);
     yaml_node_t * node = yaml_document_get_root_node(&yctx->document);
-    // @todo test parse error
     if( node ) {
         handlebars_value_init_yaml_node(ctx, value, &yctx->document, node);
     } else {

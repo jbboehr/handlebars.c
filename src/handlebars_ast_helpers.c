@@ -82,7 +82,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     	is_decorator = true;
     }
 
-    // @todo this isn't supposed to be null I think...
+    // this isn't supposed to be null I think...
     if( !program ) {
         program = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     }
@@ -112,11 +112,11 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     }
 
     if( program && program->type == 0 ) {
-        // @todo this probably shouldn't happen
+        // this probably shouldn't happen
         program = NULL;
     }
     if( inverse && inverse->type == 0 ) {
-        // @todo this probably shouldn't happen
+        // this probably shouldn't happen
         inverse = NULL;
     }
     assert(!program || program->type == HANDLEBARS_AST_NODE_PROGRAM);

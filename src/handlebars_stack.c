@@ -217,10 +217,10 @@ struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack, 
         return NULL;
     }
 
-    // @TODO we need to change the API of pop to support separation
+    // we need to change the API of pop to support separation, but we're not really using it anywhere
 #ifndef HANDLEBARS_NO_REFCOUNT
     if (handlebars_rc_refcount(&stack->rc) > 1) {
-        handlebars_throw(stack->ctx, HANDLEBARS_ERROR, "Attempting to pop protected stack with refcout > 1");
+        handlebars_throw(stack->ctx, HANDLEBARS_ERROR, "Attempting to pop protected stack with refcount > 1");
     }
 #endif
 

@@ -61,6 +61,16 @@
 #define USE_SPINLOCK 1
 #endif
 
+#ifdef HAVE_ATOMIC_BUILTINS
+#define INCR(var) __atomic_add_fetch(&var, 1, __ATOMIC_SEQ_CST)
+#define DECR(var) __atomic_sub_fetch(&var, 1, __ATOMIC_SEQ_CST)
+#else
+#define INCR(var) lock(cache); var++; unlock(cache)
+#define DECR(var) lock(cache); var--; unlock(cache)
+#endif
+
+
+
 static const char head[] = "handlebars shared opcode cache";
 static const size_t PADDING = 1;
 static size_t page_size;
@@ -136,6 +146,12 @@ static inline size_t align_size(size_t size)
 static inline void * append(struct handlebars_cache_mmap * intern, void * source, size_t size)
 {
     void * addr = (char *) intern->data + intern->data_length;
+    uintptr_t align = (uintptr_t) (void *) addr % 8;
+    if (align > 0) {
+        memset(addr, 0, align);
+        addr = (char *) addr + (8 - align);
+        intern->data_length += (8 - align);
+    }
     if( intern->data_length + size + PADDING >= intern->data_size ) {
         return NULL;
     }
@@ -209,22 +225,15 @@ static inline void table_unset(struct handlebars_cache_mmap * intern, struct han
     intern->table[offset] = NULL;
 }
 
-#if HAVE_ATOMIC_BUILTINS
-#define INCR(var) __atomic_add_fetch(&var, 1, __ATOMIC_SEQ_CST)
-#define DECR(var) __atomic_sub_fetch(&var, 1, __ATOMIC_SEQ_CST)
-#else
-#define INCR(var) lock(cache); var++; unlock(cache)
-#define DECR(var) lock(cache); var--; unlock(cache)
-#endif
-
 static int cache_dtor(struct handlebars_cache * cache)
 {
-    // This may be unnecessary with MAP_ANONYMOUS
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+
     if( intern ) {
+        // @TODO exactly what do we actually need to free?
         munmap(intern, intern->size);
     }
-    // @todo do we need to release the mutexes?
+
     return 0;
 }
 
@@ -236,17 +245,23 @@ static void cache_reset(struct handlebars_cache * cache)
     intern->in_reset = true;
 
     // Try to wait for refcount to empty
+#ifdef HAVE_ATOMIC_BUILTINS
     int counter = 0;
-    while( intern->refcount > 0 && ++counter <= 100 ) {
+    while( __atomic_load_n(&intern->refcount, __ATOMIC_SEQ_CST) > 0 && ++counter <= 100 ) {
         usleep(5000);
     }
-    if( intern->refcount > 0 ) {
+    if( __atomic_load_n(&intern->refcount, __ATOMIC_SEQ_CST) > 0 ) {
         goto error;
     }
+#else
+    if (intern->refcount > 0) {
+        goto error;
+    }
+#endif
 
     // Unprotect/Lock
-    protect(cache, false);
     lock(cache);
+    protect(cache, false);
 
     // Initialize header
     intern->table_entries = 0;
@@ -256,8 +271,8 @@ static void cache_reset(struct handlebars_cache * cache)
     memset(intern->table, 0, intern->table_size);
 
     // Protect/Unlock
-    unlock(cache);
     protect(cache, true);
+    unlock(cache);
 
 error:
     // Unlock
@@ -266,7 +281,6 @@ error:
 
 static int cache_gc(struct handlebars_cache * cache)
 {
-    // @todo
     return 0;
 }
 
@@ -304,13 +318,13 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Check if it's too old or wrong version
     time(&now);
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
-        protect(cache, false);
         lock(cache);
+        protect(cache, false);
         table_unset(intern, key);
         intern->misses++;
         intern->table_entries--;
-        unlock(cache);
         protect(cache, true);
+        unlock(cache);
         goto error;
     }
 
@@ -340,8 +354,8 @@ static void cache_add(
     }
 
     // Lock
-    protect(cache, false);
     lock(cache);
+    protect(cache, false);
 
     assert(module == module->addr);
 
@@ -362,8 +376,8 @@ static void cache_add(
 
     // Check for failure
     if( unlikely(!entry.key || !entry.data) ) {
-        unlock(cache);
         protect(cache, true);
+        unlock(cache);
         cache_reset(cache);
         return;
     }
@@ -377,8 +391,8 @@ static void cache_add(
 
 error:
     // Unlock
-    unlock(cache);
     protect(cache, true);
+    unlock(cache);
 }
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
@@ -482,6 +496,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     }
 
     cache_reset(cache);
+    protect(cache, true);
 
     return cache;
 }

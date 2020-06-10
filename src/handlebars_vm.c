@@ -150,7 +150,6 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
 
 void handlebars_vm_dtor(struct handlebars_vm * vm)
 {
-    // @TODO FIXME
     handlebars_value_dtor(&vm->helpers);
     handlebars_value_dtor(&vm->partials);
     handlebars_value_dtor(&vm->data);
@@ -351,7 +350,7 @@ static inline struct handlebars_value * merge_hash(struct handlebars_context * c
 
 static struct handlebars_string * execute_template(
     struct handlebars_vm * vm,
-    struct handlebars_string * tmpl,
+    struct handlebars_string * volatile tmpl,
     struct handlebars_value * data,
     struct handlebars_string * indent,
     int escape
@@ -363,6 +362,8 @@ static struct handlebars_string * execute_template(
     long prev_depth = vm->depth;
     jmp_buf * prev_jmp = HBSCTX(vm)->e->jmp;
     jmp_buf buf;
+
+    handlebars_string_addref(tmpl);
 
     // Get template
     if( !tmpl || !hbs_str_len(tmpl) ) {
@@ -379,10 +380,9 @@ static struct handlebars_string * execute_template(
         // Parse
         struct handlebars_parser * parser = handlebars_parser_ctor(context);
         if( vm->flags & handlebars_compiler_flag_compat ) {
-            // @TODO free old template
-            tmpl = handlebars_preprocess_delimiters(HBSCTX(parser), tmpl, NULL, NULL);
+            tmpl = handlebars_preprocess_delimiters(HBSCTX(context), tmpl, NULL, NULL);
         }
-        struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, vm->flags); // @todo fix setjmp
+        struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, vm->flags);
 
         // Compile
         struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
@@ -416,6 +416,7 @@ done:
     if( from_cache ) {
         handlebars_cache_release(vm->cache, tmpl, module);
     }
+    handlebars_string_delref(tmpl);
     handlebars_context_dtor(context);
     if (retval) {
         return retval;
@@ -548,7 +549,6 @@ ACCEPT_FUNCTION(get_context)
     size_t length = LEN(vm->contextStack);
 
     if( depth >= length ) {
-        // @todo should we throw?
         handlebars_value_null(vm->last_context);
     } else if( depth == 0 ) {
         handlebars_value_value(vm->last_context, TOP(vm->contextStack));
@@ -659,10 +659,7 @@ ACCEPT_FUNCTION(invoke_helper)
 done:
     PUSH(vm->stack, result);
 
-    // @TODO this one isn't working
-    // VM_TEARDOWN_OPTIONS(argc, &options);
-    handlebars_options_deinit(&options);
-
+    VM_TEARDOWN_OPTIONS(argc);
     HANDLEBARS_VALUE_UNDECL(rv);
     HANDLEBARS_VALUE_UNDECL(value);
 }
@@ -1009,10 +1006,12 @@ ACCEPT_FUNCTION(push_context)
 
 ACCEPT_FUNCTION(push_hash)
 {
-    // @TODO not sure why decl/undecl is not working here
-    struct handlebars_value hash = {0};
-    handlebars_value_map(&hash, handlebars_map_ctor(CONTEXT, 4)); // number of items might be available somewhere
-    PUSH(vm->hashStack, &hash);
+    HANDLEBARS_VALUE_DECL(hash);
+
+    handlebars_value_map(hash, handlebars_map_ctor(CONTEXT, 4)); // number of items might be available somewhere
+    PUSH(vm->hashStack, hash);
+
+    HANDLEBARS_VALUE_UNDECL(hash);
 }
 
 ACCEPT_FUNCTION(push_program)
@@ -1036,7 +1035,6 @@ ACCEPT_FUNCTION(push_literal)
 
     switch( opcode->op1.type ) {
         case handlebars_operand_type_string:
-            // @todo should we move this to the parser?
             if (hbs_str_eq_strl(opcode->op1.data.string.string, HBS_STRL("undefined"))) {
                 break;
             } else if (hbs_str_eq_strl(opcode->op1.data.string.string, HBS_STRL("null"))) {
@@ -1066,13 +1064,14 @@ ACCEPT_FUNCTION(push_literal)
 
 ACCEPT_FUNCTION(push_string)
 {
-    // @TODO not sure why decl/undecl is not working here
-    struct handlebars_value value = {0};
+    HANDLEBARS_VALUE_DECL(value);
 
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    handlebars_value_str(&value, opcode->op1.data.string.string);
-    PUSH(vm->stack, &value);
+    handlebars_value_str(value, opcode->op1.data.string.string);
+    PUSH(vm->stack, value);
+
+    HANDLEBARS_VALUE_UNDECL(value);
 }
 
 ACCEPT_FUNCTION(resolve_possible_lambda)

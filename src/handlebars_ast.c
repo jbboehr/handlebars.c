@@ -231,9 +231,9 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
         ast_node->node.block.hash = talloc_steal(ast_node, intermediate->node.intermediate.hash);
 
         // We can free the intermediate
-        // @todo it seems to not be safe to free it... used in prepare_block
-        //handlebars_talloc_free(intermediate);
         talloc_steal(ast_node, intermediate);
+        // Not sure why this isn't working
+        // handlebars_talloc_free(intermediate);
     }
 
     ast_node->node.block.program = talloc_steal(ast_node, program);
@@ -294,7 +294,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_hash_pair(
     struct handlebars_ast_node * ast_node;
     ast_node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_HASH_PAIR);
     ast_node->loc = *locinfo;
-    ast_node->node.hash_pair.key = talloc_steal(ast_node, key); // @todo was copy before
+    ast_node->node.hash_pair.key = talloc_steal(ast_node, key);
     ast_node->node.hash_pair.value = talloc_steal(ast_node, value);
     return ast_node;
 }
@@ -379,16 +379,16 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_partial_block(
         ast_node->node.block.path = talloc_steal(ast_node, open->node.intermediate.path);
         ast_node->node.block.params = talloc_steal(ast_node, open->node.intermediate.params);
         ast_node->node.block.hash = talloc_steal(ast_node, open->node.intermediate.hash);
+        ast_node->node.block.open_strip = open->strip;
+        handlebars_talloc_free(open);
+    }
 
-        // We can free the intermediate
-        // @todo it seems to not be safe to free it... used in prepare_block
-        //handlebars_talloc_free(intermediate);
-        talloc_steal(ast_node, open);
+    if (close) {
+        ast_node->node.block.close_strip = close->strip;
+        handlebars_talloc_free(close);
     }
 
     ast_node->node.block.program = talloc_steal(ast_node, program);
-    ast_node->node.block.open_strip = open ? open->strip : 0;
-    ast_node->node.block.close_strip = close ? close->strip : 0;
 
     return ast_node;
 }
