@@ -349,36 +349,33 @@ static inline struct handlebars_value * merge_hash(struct handlebars_context * c
     return rv;
 }
 
-static inline struct handlebars_string * execute_template(
-    struct handlebars_context * context,
+static struct handlebars_string * execute_template(
     struct handlebars_vm * vm,
     struct handlebars_string * tmpl,
     struct handlebars_value * data,
     struct handlebars_string * indent,
     int escape
 ) {
-    // jmp_buf buf;
-
-    // @TODO FIXME
-    // setjmp/long handling here is messed up
-
-    // Save jump buffer
-    // if( setjmp(buf) ) {
-    //     handlebars_rethrow(CONTEXT, context);
-    // }
+    struct handlebars_context * context = handlebars_context_ctor_ex(vm);
+    struct handlebars_string * volatile retval = NULL;
+    struct handlebars_module * volatile module = vm->cache ? handlebars_cache_find(vm->cache, tmpl) : NULL;
+    bool const from_cache = module != NULL;
+    long prev_depth = vm->depth;
+    jmp_buf * prev_jmp = HBSCTX(vm)->e->jmp;
+    jmp_buf buf;
 
     // Get template
     if( !tmpl || !hbs_str_len(tmpl) ) {
-        return handlebars_string_ctor(HBSCTX(context), HBS_STRL(""));
+        goto done;
+    }
+
+    // Save jmp buf
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        goto done;
     }
 
     // Check for cached template, if available
-    struct handlebars_compiler * compiler;
-    struct handlebars_module * module = vm->cache ? handlebars_cache_find(vm->cache, tmpl) : NULL;
-    volatile bool from_cache = module != NULL;
     if( !from_cache ) {
-        // Recompile
-
         // Parse
         struct handlebars_parser * parser = handlebars_parser_ctor(context);
         if( vm->flags & handlebars_compiler_flag_compat ) {
@@ -388,7 +385,7 @@ static inline struct handlebars_string * execute_template(
         struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, vm->flags); // @todo fix setjmp
 
         // Compile
-        compiler = handlebars_compiler_ctor(context);
+        struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
         handlebars_compiler_set_flags(compiler, vm->flags);
         struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
 
@@ -404,47 +401,27 @@ static inline struct handlebars_string * execute_template(
         handlebars_parser_dtor(parser);
     }
 
-    // Construct child VM
-    struct handlebars_vm * vm2 = handlebars_vm_ctor(context);
+    vm->depth++;
 
-    // Save jump buffer
-    // if( setjmp(buf) ) {
-    //     if( from_cache ) {
-    //         handlebars_cache_release(vm->cache, tmpl, module);
-    //     }
-    //     handlebars_rethrow(CONTEXT, HBSCTX(vm2));
-    // }
-
-    // Setup new VM
-    vm2->depth = vm->depth + 1;
-    vm2->flags = vm->flags;
-    handlebars_value_value(&vm2->helpers, &vm->helpers);
-    handlebars_value_value(&vm2->partials, &vm->partials);
-    handlebars_value_value(&vm2->data, &vm->data);
-
-    // Copy stack pointers
-    vm2->stack = vm->stack;
-    vm2->hashStack = vm->hashStack;
-    vm2->contextStack = vm->contextStack;
-    vm2->blockParamStack = vm->blockParamStack;
-
-    struct handlebars_string * retval = handlebars_vm_execute(vm2, module, data);
+    retval = handlebars_vm_execute(vm, module, data);
     assert(retval != NULL);
 
     if (indent) {
-        retval = handlebars_string_indent(HBSCTX(vm), retval, indent);
+        retval = handlebars_string_indent(CONTEXT, retval, indent);
     }
 
-    talloc_steal(vm, retval);
-
+done:
+    HBSCTX(vm)->e->jmp = prev_jmp;
+    vm->depth = prev_depth;
     if( from_cache ) {
         handlebars_cache_release(vm->cache, tmpl, module);
     }
-
-    handlebars_vm_dtor(vm2);
-
-// done:
-    return retval;
+    handlebars_context_dtor(context);
+    if (retval) {
+        return retval;
+    } else {
+        return handlebars_string_ctor(CONTEXT, HBS_STRL(""));
+    }
 }
 
 
@@ -598,10 +575,8 @@ static inline struct handlebars_value * invoke_mustache_style_lambda(
 
     if (NULL != handlebars_value_call(value, 1, argv, options, lambda_result) && !handlebars_value_is_empty(lambda_result)) {
         struct handlebars_string * tmpl = handlebars_value_to_string(lambda_result, CONTEXT);
-        struct handlebars_context * context = handlebars_context_ctor_ex(vm);
-        struct handlebars_string * rv_str = execute_template(context, vm, tmpl, value, NULL, 0);
+        struct handlebars_string * rv_str = execute_template(vm, tmpl, value, NULL, 0);
         handlebars_value_str(rv, rv_str);
-        handlebars_context_dtor(context);
     }
 
     HANDLEBARS_VALUE_UNDECL(lambda_result);
@@ -773,10 +748,6 @@ ACCEPT_FUNCTION(invoke_partial)
 
     HANDLEBARS_VALUE_UNDECL(tmp);
 
-    // Construct new context
-    struct handlebars_context * context = handlebars_context_ctor_ex(vm);
-    context->e = vm->ctx.e;
-
     // Merge hashes
     HANDLEBARS_VALUE_DECL(input_rv);
     struct handlebars_value * input = merge_hash(HBSCTX(vm), options.hash, argv[0], input_rv);
@@ -805,7 +776,7 @@ ACCEPT_FUNCTION(invoke_partial)
             );
         }
 
-        struct handlebars_string *rv_str = execute_template(context, vm, handlebars_value_get_string(partial), input, opcode->op3.data.string.string, 0);
+        struct handlebars_string *rv_str = execute_template(vm, handlebars_value_get_string(partial), input, opcode->op3.data.string.string, 0);
         assert(rv_str != NULL);
         vm->buffer = handlebars_string_append_str(CONTEXT, vm->buffer, rv_str);
         handlebars_string_delref(rv_str);
@@ -813,7 +784,6 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     HANDLEBARS_VALUE_UNDECL(input_rv);
-    handlebars_context_dtor(context);
     VM_TEARDOWN_OPTIONS(argc);
     HANDLEBARS_VALUE_UNDECL(partial_rv);
 }
@@ -1227,7 +1197,7 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
 	struct handlebars_module_table_entry * entry = &vm->module->programs[program_num];
 
     // Save and set buffer
-    struct handlebars_string * prevBuffer = vm->buffer;
+    struct handlebars_string * prev_buffer = vm->buffer;
     vm->buffer = handlebars_string_init(CONTEXT, HANDLEBARS_VM_BUFFER_INIT_SIZE);
 
     // Check stacks
@@ -1281,7 +1251,7 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
 
     // Restore buffer
     struct handlebars_string * buffer = vm->buffer;
-    vm->buffer = prevBuffer;
+    vm->buffer = prev_buffer;
 
     return buffer;
 }
@@ -1296,8 +1266,13 @@ struct handlebars_string * handlebars_vm_execute(
     struct handlebars_module * module,
     struct handlebars_value * context
 ) {
-    struct handlebars_error * e = HBSCTX(vm)->e;
-    jmp_buf * prev = e->jmp;
+    jmp_buf * prev = HBSCTX(vm)->e->jmp;
+    struct handlebars_module * prev_module = vm->module;
+    unsigned long prev_flags = vm->flags;
+    struct handlebars_value * prev_last_context = vm->last_context;
+
+    struct handlebars_string * buffer = NULL;
+    bool volatile setup_stacks = false;
     jmp_buf buf;
 
     // Save jump buffer
@@ -1310,16 +1285,12 @@ struct handlebars_string * handlebars_vm_execute(
     // Setup stacks
     if (vm->stack == NULL) {
         vm->stack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
-    }
-    if (vm->contextStack == NULL) {
         vm->contextStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
-    }
-    if (vm->hashStack == NULL) {
         vm->hashStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
-    }
-    if (vm->blockParamStack == NULL) {
         vm->blockParamStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+        setup_stacks = true;
     }
+
     if (vm->last_context == NULL) {
         vm->last_context = alloca(HANDLEBARS_VALUE_SIZE);
         handlebars_value_init(vm->last_context);
@@ -1329,19 +1300,23 @@ struct handlebars_string * handlebars_vm_execute(
     vm->flags |= module->flags;
 
     // Execute
-    vm->buffer = handlebars_vm_execute_program_ex(vm, 0, context, NULL, NULL);
-
-    // Reset stacks
-    vm->stack = NULL;
-    vm->contextStack = NULL;
-    vm->hashStack = NULL;
-    vm->blockParamStack = NULL;
-    vm->last_context = NULL;
+    buffer = handlebars_vm_execute_program_ex(vm, 0, context, NULL, NULL);
 
 done:
-    // Reset
-    vm->module = NULL;
-    e->jmp = prev;
+    HBSCTX(vm)->e->jmp = prev;
 
-    return vm->buffer;
+    // Reset stacks
+    if (setup_stacks) {
+        vm->stack = NULL;
+        vm->contextStack = NULL;
+        vm->hashStack = NULL;
+        vm->blockParamStack = NULL;
+    }
+
+    // Reset
+    vm->last_context = prev_last_context;
+    vm->module = prev_module;
+    vm->flags = prev_flags;
+
+    return buffer;
 }
