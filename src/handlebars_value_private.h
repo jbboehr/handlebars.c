@@ -32,6 +32,7 @@
 
 HBS_EXTERN_C_START
 
+struct handlebars_closure;
 struct handlebars_map;
 struct handlebars_options;
 struct handlebars_ptr;
@@ -50,6 +51,7 @@ union handlebars_value_internals
     struct handlebars_ptr * ptr;
     handlebars_helper_func helper;
     struct handlebars_options * options;
+    struct handlebars_closure * closure;
 };
 
 //! Main value struct

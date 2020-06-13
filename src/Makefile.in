@@ -183,7 +183,8 @@ am__libhandlebars_la_SOURCES_DIST = handlebars.tab.h handlebars.tab.c \
 	handlebars_ast_list.c handlebars_ast_printer.h \
 	handlebars_ast_printer.c handlebars_cache.h handlebars_cache.c \
 	handlebars_cache_lmdb.c handlebars_cache_mmap.c \
-	handlebars_cache_simple.c handlebars_compiler.h \
+	handlebars_cache_simple.c handlebars_closure.c \
+	handlebars_closure.h handlebars_compiler.h \
 	handlebars_compiler.c handlebars_delimiters.c \
 	handlebars_delimiters.h handlebars_helpers.h \
 	handlebars_helpers.c handlebars_json.c handlebars_map.h \
@@ -210,9 +211,9 @@ am_libhandlebars_la_OBJECTS = handlebars.tab.lo handlebars.lex.lo \
 	handlebars.lo handlebars_ast.lo handlebars_ast_helpers.lo \
 	handlebars_ast_list.lo handlebars_ast_printer.lo \
 	handlebars_cache.lo $(am__objects_1) $(am__objects_2) \
-	handlebars_cache_simple.lo handlebars_compiler.lo \
-	handlebars_delimiters.lo handlebars_helpers.lo \
-	$(am__objects_3) handlebars_map.lo \
+	handlebars_cache_simple.lo handlebars_closure.lo \
+	handlebars_compiler.lo handlebars_delimiters.lo \
+	handlebars_helpers.lo $(am__objects_3) handlebars_map.lo \
 	handlebars_opcode_printer.lo handlebars_opcode_serializer.lo \
 	handlebars_opcodes.lo handlebars_parser.lo \
 	handlebars_parser_private.lo handlebars_partial_loader.lo \
@@ -254,6 +255,7 @@ am__depfiles_remade = ./$(DEPDIR)/handlebars.Plo \
 	./$(DEPDIR)/handlebars_cache_lmdb.Plo \
 	./$(DEPDIR)/handlebars_cache_mmap.Plo \
 	./$(DEPDIR)/handlebars_cache_simple.Plo \
+	./$(DEPDIR)/handlebars_closure.Plo \
 	./$(DEPDIR)/handlebars_compiler.Plo \
 	./$(DEPDIR)/handlebars_delimiters.Plo \
 	./$(DEPDIR)/handlebars_helpers.Plo \
@@ -304,7 +306,7 @@ am__can_run_installinfo = \
 am__pkginclude_HEADERS_DIST = handlebars.h handlebars.lex.h \
 	handlebars.tab.h handlebars_ast.h handlebars_ast_list.h \
 	handlebars_ast_printer.h handlebars_cache.h \
-	handlebars_compiler.h handlebars_config.h \
+	handlebars_closure.h handlebars_compiler.h handlebars_config.h \
 	handlebars_delimiters.h handlebars_helpers.h handlebars_json.h \
 	handlebars_map.h handlebars_memory.h \
 	handlebars_opcode_printer.h handlebars_opcode_serializer.h \
@@ -553,6 +555,7 @@ pkginclude_HEADERS = \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
 	handlebars_cache.h \
+    handlebars_closure.h \
 	handlebars_compiler.h \
 	handlebars_config.h \
 	handlebars_delimiters.h \
@@ -595,6 +598,7 @@ libhandlebars_la_SOURCES = handlebars.tab.h handlebars.tab.c \
 	handlebars_ast_list.c handlebars_ast_printer.h \
 	handlebars_ast_printer.c handlebars_cache.h handlebars_cache.c \
 	$(LMDBSOURCES) $(PTHREADSOURCES) handlebars_cache_simple.c \
+	handlebars_closure.c handlebars_closure.h \
 	handlebars_compiler.h handlebars_compiler.c \
 	handlebars_delimiters.c handlebars_delimiters.h \
 	handlebars_helpers.h handlebars_helpers.c $(JSONSOURCES) \
@@ -720,6 +724,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_cache_lmdb.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_cache_mmap.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_cache_simple.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_closure.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_compiler.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_delimiters.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_helpers.Plo@am__quote@ # am--include-marker
@@ -968,6 +973,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/handlebars_cache_lmdb.Plo
 	-rm -f ./$(DEPDIR)/handlebars_cache_mmap.Plo
 	-rm -f ./$(DEPDIR)/handlebars_cache_simple.Plo
+	-rm -f ./$(DEPDIR)/handlebars_closure.Plo
 	-rm -f ./$(DEPDIR)/handlebars_compiler.Plo
 	-rm -f ./$(DEPDIR)/handlebars_delimiters.Plo
 	-rm -f ./$(DEPDIR)/handlebars_helpers.Plo
@@ -1046,6 +1052,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/handlebars_cache_lmdb.Plo
 	-rm -f ./$(DEPDIR)/handlebars_cache_mmap.Plo
 	-rm -f ./$(DEPDIR)/handlebars_cache_simple.Plo
+	-rm -f ./$(DEPDIR)/handlebars_closure.Plo
 	-rm -f ./$(DEPDIR)/handlebars_compiler.Plo
 	-rm -f ./$(DEPDIR)/handlebars_delimiters.Plo
 	-rm -f ./$(DEPDIR)/handlebars_helpers.Plo

@@ -66,6 +66,15 @@ struct handlebars_string * handlebars_vm_execute(
     struct handlebars_value * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_NOINLINE;
 
+struct handlebars_string * handlebars_vm_execute_ex(
+    struct handlebars_vm * vm,
+    struct handlebars_module * module,
+    struct handlebars_value * context,
+    long program,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params
+) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_NOINLINE;
+
 struct handlebars_string * handlebars_vm_execute_program(
     struct handlebars_vm * vm,
     long program,

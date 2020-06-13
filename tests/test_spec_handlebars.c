@@ -386,7 +386,6 @@ static bool should_skip(struct generic_test * test)
     MYCHECK("regressions", "Regressions", "should support multiple levels of inline partials")
     MYCHECK("regressions", "Regressions", "GH-1089: should support failover content in multiple levels of inline partials")
     MYCHECK("regressions", "Regressions", "GH-1099: should support greater than 3 nested levels of inline partials");
-    MYCHECK("regressions", "Regressions", "GH-1341: 4.0.7 release breaks {{#if @partial-block}} usage");
     MYCHECK("regressions", "Regressions", "GH-1186: Support block params for existing programs");
 
     // Subexpressions
@@ -398,7 +397,7 @@ static bool should_skip(struct generic_test * test)
 
     // Partials
     MYCHECK("partials", "partials", "registering undefined partial throws an exception");
-    MYCHECKALL("partials", "partials - partial blocks");
+    // MYCHECKALL("partials", "partials - partial blocks");
     MYCHECKALL("partials", "partials - inline partials");
 
     return false;
@@ -497,7 +496,7 @@ static inline void run_test(struct generic_test * test, int _i)
     fprintf(stderr, "TMPL %s\n", test->tmpl);
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
-        fprintf(stderr, "ACTUAL: %s\n", hbs_str_val(buffer));
+        fprintf(stderr, "ACTUAL: %s\n", buffer ? hbs_str_val(buffer) : "(nil)");
         fprintf(stderr, "%s\n", buffer && hbs_str_eq_strl(buffer, test->expected, strlen(test->expected)) ? "PASS" : "FAIL");
     } else if( context->e->msg ) {
         fprintf(stderr, "ERROR: %s\n", context->e->msg);

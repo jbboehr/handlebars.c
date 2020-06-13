@@ -31,6 +31,7 @@ set(SOURCE_FILES
     handlebars_cache_lmdb.c
     handlebars_cache_mmap.c
     handlebars_cache_simple.c
+    handlebars_closure.c
     handlebars_compiler.c
     handlebars_delimiters.c
     handlebars_helpers.c
@@ -63,6 +64,7 @@ set(HEADERS
     handlebars_ast_list.h
     handlebars_ast_printer.h
     handlebars_cache.h
+    handlebars_closure.h
     handlebars_compiler.h
     handlebars_delimiters.h
     handlebars_helpers.h

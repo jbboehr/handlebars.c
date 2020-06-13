@@ -199,7 +199,12 @@ void handlebars_throw(struct handlebars_context * context, enum handlebars_error
     va_start(ap, msg);
     _set_err(context, num, NULL, msg, ap);
     va_end(ap);
-    if( e->jmp ) {
+#ifdef HANDLEBARS_ENABLE_DEBUG
+    bool do_throw = NULL == getenv("HANDLEBARS_NOTHROW");
+#else
+    const bool do_throw = true;
+#endif
+    if( e->jmp && do_throw ) {
         longjmp(*e->jmp, num);
     } else {
         fprintf(stderr, "Throw with invalid jmp_buf: %s\n", e->msg);
@@ -214,7 +219,12 @@ void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_er
     va_start(ap, msg);
     _set_err(context, num, loc, msg, ap);
     va_end(ap);
-    if( e->jmp ) {
+#ifdef HANDLEBARS_ENABLE_DEBUG
+    bool do_throw = NULL == getenv("HANDLEBARS_NOTHROW");
+#else
+    const bool do_throw = true;
+#endif
+    if( e->jmp && do_throw ) {
         longjmp(*e->jmp, num);
     } else {
         fprintf(stderr, "Throw with invalid jmp_buf: %s\n", e->msg);

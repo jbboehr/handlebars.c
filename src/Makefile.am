@@ -71,6 +71,7 @@ pkginclude_HEADERS = \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
 	handlebars_cache.h \
+    handlebars_closure.h \
 	handlebars_compiler.h \
 	handlebars_config.h \
 	handlebars_delimiters.h \
@@ -129,6 +130,8 @@ libhandlebars_la_SOURCES = \
 	$(LMDBSOURCES) \
 	$(PTHREADSOURCES) \
 	handlebars_cache_simple.c \
+    handlebars_closure.c \
+    handlebars_closure.h \
 	handlebars_compiler.h \
 	handlebars_compiler.c \
 	handlebars_delimiters.c \

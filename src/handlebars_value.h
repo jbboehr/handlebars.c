@@ -30,6 +30,7 @@ HBS_EXTERN_C_START
 
 // {{{ Prototypes & Variables
 
+struct handlebars_closure;
 struct handlebars_context;
 struct handlebars_map;
 struct handlebars_options;
@@ -183,6 +184,9 @@ struct handlebars_string * handlebars_value_get_string(struct handlebars_value *
     HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_user * handlebars_value_get_user(struct handlebars_value * value)
+    HBS_ATTR_NONNULL_ALL;
+
+struct handlebars_closure * handlebars_value_get_closure(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
 /**
@@ -343,6 +347,8 @@ void handlebars_value_map(struct handlebars_value * value, struct handlebars_map
 void handlebars_value_array(struct handlebars_value * value, struct handlebars_stack * stack) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_value_helper(struct handlebars_value * value, handlebars_helper_func helper) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_value_closure(struct handlebars_value * value, struct handlebars_closure * closure) HBS_ATTR_NONNULL_ALL;
 
 void handlebars_value_value(struct handlebars_value * dest, struct handlebars_value * src) HBS_ATTR_NONNULL_ALL;
 

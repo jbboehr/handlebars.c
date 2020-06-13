@@ -34,6 +34,7 @@
 #include "handlebars_private.h"
 #include "handlebars_value_private.h"
 
+#include "handlebars_closure.h"
 #include "handlebars_helpers.h"
 #include "handlebars_map.h"
 #include "handlebars_stack.h"
@@ -88,6 +89,9 @@ void handlebars_value_dtor(struct handlebars_value * value)
             break;
         case HANDLEBARS_VALUE_TYPE_PTR:
             handlebars_user_delref((struct handlebars_user *) value->v.ptr);
+            break;
+        case HANDLEBARS_VALUE_TYPE_CLOSURE:
+            handlebars_closure_delref(value->v.closure);
             break;
         default:
             // do nothing
@@ -196,6 +200,15 @@ struct handlebars_user * handlebars_value_get_user(struct handlebars_value * val
 {
     if (value->type == HANDLEBARS_VALUE_TYPE_USER) {
         return value->v.user;
+    } else {
+        return NULL;
+    }
+}
+
+struct handlebars_closure * handlebars_value_get_closure(struct handlebars_value * value)
+{
+    if (value->type == HANDLEBARS_VALUE_TYPE_CLOSURE) {
+        return value->v.closure;
     } else {
         return NULL;
     }
@@ -340,6 +353,8 @@ bool handlebars_value_eq(
             return value->v.helper == value2->v.helper;
         case HANDLEBARS_VALUE_TYPE_PTR:
             return value->v.ptr == value2->v.ptr;
+        case HANDLEBARS_VALUE_TYPE_CLOSURE:
+            return value->v.closure == value2->v.closure;
 
         default:
             fprintf(stderr, "Unsupported value comparison of type %s (%d)", handlebars_value_type_readable(value->type), value->type);
@@ -490,6 +505,14 @@ void handlebars_value_helper(struct handlebars_value * value, handlebars_helper_
     value->v.helper = helper;
 }
 
+void handlebars_value_closure(struct handlebars_value * value, struct handlebars_closure * closure)
+{
+    handlebars_closure_addref(closure);
+    handlebars_value_null(value);
+    value->type = HANDLEBARS_VALUE_TYPE_CLOSURE;
+    value->v.closure = closure;
+}
+
 void handlebars_value_value(struct handlebars_value * dest, struct handlebars_value * src)
 {
     handlebars_value_null(dest);
@@ -510,6 +533,9 @@ void handlebars_value_value(struct handlebars_value * dest, struct handlebars_va
         case HANDLEBARS_VALUE_TYPE_PTR:
             handlebars_user_addref((struct handlebars_user *) dest->v.ptr);
             break;
+        case HANDLEBARS_VALUE_TYPE_CLOSURE:
+            handlebars_closure_addref(dest->v.closure);
+            break;
         default:
             // do nothing
             break;
@@ -529,7 +555,7 @@ void handlebars_value_set_flag(
 
 bool handlebars_value_is_callable(struct handlebars_value * value)
 {
-    return handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_HELPER;
+    return handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_HELPER || value->type == HANDLEBARS_VALUE_TYPE_CLOSURE;
 }
 
 bool handlebars_value_is_empty(struct handlebars_value * value)
@@ -666,13 +692,26 @@ void handlebars_value_map_update(struct handlebars_value * value, struct handleb
 
 struct handlebars_value * handlebars_value_call(struct handlebars_value * value, HANDLEBARS_HELPER_ARGS)
 {
-    if( value->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-        return value->v.helper(argc, argv, options, rv);
-    } else if( value->type == HANDLEBARS_VALUE_TYPE_USER && handlebars_value_get_handlers(value)->call ) {
-        return handlebars_value_get_handlers(value)->call(value, argc, argv, options, rv);
+    switch (value->type) {
+        case HANDLEBARS_VALUE_TYPE_HELPER:
+            return value->v.helper(argc, argv, options, rv);
+
+        case HANDLEBARS_VALUE_TYPE_CLOSURE:
+            if (argc == 1) {
+                return handlebars_closure_call(value->v.closure, argv[0], NULL, NULL, rv);
+            }
+            break;
+
+        case HANDLEBARS_VALUE_TYPE_USER:
+            if (handlebars_value_get_handlers(value)->call) {
+                return handlebars_value_get_handlers(value)->call(value, argc, argv, options, rv);
+            }
+            break;
+
+        default: /* do nothing */ break;
     }
 
-    handlebars_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "Unable to call value of type %d", value->type);
+    handlebars_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "Unable to call value of type: %s", handlebars_value_type_readable(value->type));
 }
 
 char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_context * context, size_t depth)
@@ -756,6 +795,7 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
         case HANDLEBARS_VALUE_TYPE_USER: return "user";
         case HANDLEBARS_VALUE_TYPE_PTR: return "ptr";
         case HANDLEBARS_VALUE_TYPE_HELPER: return "helper";
+        case HANDLEBARS_VALUE_TYPE_CLOSURE: return "closure";
         default: assert(0); return "unknown";
     }
 }

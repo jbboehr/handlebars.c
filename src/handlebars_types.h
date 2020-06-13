@@ -41,7 +41,8 @@ enum handlebars_value_type
     HANDLEBARS_VALUE_TYPE_USER = 8,
     //! An opaque pointer type
     HANDLEBARS_VALUE_TYPE_PTR = 9,
-    HANDLEBARS_VALUE_TYPE_HELPER = 10
+    HANDLEBARS_VALUE_TYPE_HELPER = 10,
+    HANDLEBARS_VALUE_TYPE_CLOSURE = 11
 };
 
 enum handlebars_value_flags
