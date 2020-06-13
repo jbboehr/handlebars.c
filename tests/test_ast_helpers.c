@@ -24,11 +24,12 @@
 #include <check.h>
 #include <talloc.h>
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
+#define HANDLEBARS_AST_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
+#include "handlebars_memory.h"
 #include "handlebars_string.h"
 #include "handlebars.tab.h"
 #include "utils.h"
@@ -62,55 +63,56 @@ START_TEST(test_ast_helper_strip_comment)
 
     tmp = handlebars_string_ctor(context, HBS_STRL(""));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("blah1"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "blah1");
+    ck_assert_str_eq(hbs_str_val(tmp), "blah1");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "{");
+    ck_assert_str_eq(hbs_str_val(tmp), "{");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{!"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{~!--"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{!-- blah"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, " blah");
+    ck_assert_str_eq(hbs_str_val(tmp), " blah");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("--}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{!}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, "");
+    ck_assert_str_eq(hbs_str_val(tmp), "");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{! foo }}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, " foo ");
+    ck_assert_str_eq(hbs_str_val(tmp), " foo ");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{!-- bar --}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, " bar ");
+    ck_assert_str_eq(hbs_str_val(tmp), " bar ");
 
     tmp = handlebars_string_ctor(context, HBS_STRL("{{~!-- baz --~}}"));
     handlebars_ast_helper_strip_comment(tmp);
-    ck_assert_str_eq(tmp->val, " baz ");
+    ck_assert_str_eq(hbs_str_val(tmp), " baz ");
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("AST Helpers");
 
@@ -122,34 +124,5 @@ Suite * parser_suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

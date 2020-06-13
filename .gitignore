@@ -4,15 +4,11 @@
 #!*.*
 
 # specific
-coverage.info
 doc/Doxyfile
 doc/html
 doc/man
-handlebars_c_test.info
 src/handlebars_config.h
-src/handlebars.lex.*
-src/handlebars.tab.*
-test_coverage
+handlebars-lmdb-cache-test.mdb*
 
 # hackey rules
 bin/handlebarsc
@@ -45,18 +41,18 @@ tests/test_*
 .deps
 .dirstamp
 Makefile
-Makefile.in
-aclocal.m4
 autom4te.cache
 confdefs.h
 config.h
-config.h.in
 config.log
 config.status
-configure
 libtool
 stamp-h1
 stamp-h2
+
+# coverage
+*.info
+*-coverage
 
 # distros
 *.tar.gz

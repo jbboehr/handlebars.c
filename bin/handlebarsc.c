@@ -21,8 +21,6 @@
 #include "config.h"
 #endif
 
-#include "handlebars.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,38 +29,54 @@
 #include <assert.h>
 #include <getopt.h>
 
-#include "handlebars_memory.h"
+#ifdef HANDLEBARS_HAVE_VALGRIND
+#include <valgrind/valgrind.h>
+#include <valgrind/memcheck.h>
+#endif
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
+#include "handlebars_cache.h"
 #include "handlebars_compiler.h"
+#include "handlebars_delimiters.h"
+#include "handlebars_json.h"
+#include "handlebars_helpers.h"
+#include "handlebars_map.h"
+#include "handlebars_memory.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_parser.h"
 #include "handlebars_partial_loader.h"
+#include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
-#include "handlebars_utils.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
+#include "handlebars_yaml.h"
 
 #ifdef _MSC_VER
 #define BOOLEAN HBS_BOOLEAN
 #endif
-#include "handlebars.tab.h"
-#include "handlebars.lex.h"
 
 #define __BUFF_SIZE 1024
 
-TALLOC_CTX * root;
-char * input_name = NULL;
-char * input_data_name = NULL;
-char * input_buf = NULL;
-size_t input_buf_length = 0;
-char * partial_path = ".";
-char * partial_extension = ".hbs";
-unsigned long compiler_flags = 0;
-short enable_partial_loader = 0;
+
+
+static TALLOC_CTX * root;
+static char * input_name = NULL;
+static char * input_data_name = NULL;
+static char * input_buf = NULL;
+static size_t input_buf_length = 0;
+static const char * partial_path = ".";
+static const char * partial_extension = ".hbs";
+static unsigned long compiler_flags = 0;
+static short enable_partial_loader = 0;
+static long run_count = 1;
+static bool convert_input = true;
+static bool newline_at_eof = true;
+static size_t pool_size = 2 * 1024 * 1024;
 
 enum handlebarsc_mode {
     handlebarsc_mode_usage = 0,
@@ -74,7 +88,35 @@ enum handlebarsc_mode {
     handlebarsc_mode_debug
 };
 
+enum handlebarsc_flag {
+    // short flags
+    handlebarsc_flag_help = 'h',
+    handlebarsc_flag_version = 'V',
+    handlebarsc_flag_template = 't',
+    handlebarsc_flag_data = 'D',
+    handlebarsc_flag_no_newline = 'n',
+
+    // misc flags
+    handlebarsc_flag_pool_size = 500,
+    handlebarsc_flag_no_convert_input = 501,
+    handlebarsc_flag_run_count = 502,
+    handlebarsc_flag_partial_ext = 503,
+    handlebarsc_flag_partial_path = 504,
+    handlebarsc_flag_partial_loader = 505,
+    handlebarsc_flag_flags = 506,
+
+    // modes
+    handlebarsc_flag_lex = 600,
+    handlebarsc_flag_parse = 601,
+    handlebarsc_flag_compile = 602,
+    handlebarsc_flag_execute = 603,
+    handlebarsc_flag_debug = 604
+};
+
 static enum handlebarsc_mode mode = handlebarsc_mode_execute;
+
+#define HBSC_OPT(a, b, c) {HBS_S1(a), b, 0, c},
+#define HBSC_OPT_END {0, 0, 0, 0}
 
 /**
  * http://linux.die.net/man/3/getopt_long
@@ -88,58 +130,69 @@ static void readOpts(int argc, char * argv[])
 
     static struct option long_options[] = {
         // modes
-        {"help",      no_argument,              0,  'h' },
-        {"lex",       no_argument,              0,  'l' },
-        {"parse",     no_argument,              0,  'p' },
-        {"compile",   no_argument,              0,  'c' },
-        {"execute",   no_argument,              0,  'e' },
-        {"version",   no_argument,              0,  'V' },
-        {"debug",     no_argument,              0,  'd' },
+        HBSC_OPT(help, no_argument, handlebarsc_flag_help)
+        HBSC_OPT(lex, no_argument, handlebarsc_flag_lex)
+        HBSC_OPT(parse, no_argument, handlebarsc_flag_parse)
+        HBSC_OPT(compile, no_argument, handlebarsc_flag_compile)
+        HBSC_OPT(execute, no_argument, handlebarsc_flag_execute)
+        HBSC_OPT(version, no_argument, handlebarsc_flag_version)
+        HBSC_OPT(debug, no_argument, handlebarsc_flag_debug)
         // input
-        {"template",  required_argument,        0,  't' },
-        {"data",      required_argument,        0,  'D' },
+        HBSC_OPT(template, required_argument, handlebarsc_flag_template)
+        HBSC_OPT(data, required_argument, handlebarsc_flag_data)
         // compiler flags
-        {"flags",     required_argument,        0,  'F' },
+        HBSC_OPT(flags, required_argument, handlebarsc_flag_flags)
         // loaders
-        {"partial-loader", no_argument,         0,  'P' },
-        {"partial-path",   required_argument,   0,  'A' },
-        {"partial-ext",    required_argument,   0,  'X' },
+        HBSC_OPT(partial-loader, no_argument, handlebarsc_flag_partial_loader)
+        HBSC_OPT(partial-path, required_argument, handlebarsc_flag_partial_path)
+        HBSC_OPT(partial-ext, required_argument, handlebarsc_flag_partial_ext)
+        // misc
+        HBSC_OPT(run-count, required_argument, handlebarsc_flag_run_count)
+        HBSC_OPT(no-convert-input, no_argument, handlebarsc_flag_no_convert_input)
+        HBSC_OPT(no-newline, no_argument, handlebarsc_flag_no_newline)
+        HBSC_OPT(pool-size, required_argument, handlebarsc_flag_pool_size)
         // end
-        {0,           0,                        0,  0   }
+        HBSC_OPT_END
     };
 
 start:
-    c = getopt_long(argc, argv, "hlpcVt:D:", long_options, &option_index);
+    c = getopt_long(argc, argv, "hnVt:D:", long_options, &option_index);
     if( c == -1 ) {
         return;
     }
 
     switch( c ) {
         // modes
-        case 'h':
+        case handlebarsc_flag_help:
             mode = handlebarsc_mode_usage;
             break;
-        case 'l':
+
+        case handlebarsc_flag_lex:
             mode = handlebarsc_mode_lex;
             break;
-        case 'p':
+
+        case handlebarsc_flag_parse:
             mode = handlebarsc_mode_parse;
             break;
-        case 'c':
+
+        case handlebarsc_flag_compile:
             mode = handlebarsc_mode_compile;
             break;
-        case 'e':
+
+        case handlebarsc_flag_execute:
             mode = handlebarsc_mode_execute;
             break;
-        case 'V':
+
+        case handlebarsc_flag_version:
             mode = handlebarsc_mode_version;
             break;
-        case 'd':
+
+        case handlebarsc_flag_debug:
             mode = handlebarsc_mode_debug;
             break;
 
         // compiler flags
-        case 'F':
+        case handlebarsc_flag_flags:
             // we could do this more efficiently
             if (NULL != strstr(optarg, "compat")) {
                 compiler_flags |= handlebars_compiler_flag_compat;
@@ -173,28 +226,51 @@ start:
             }
             break;
 
-        case 'P':
+        // partials
+        case handlebarsc_flag_partial_loader:
             enable_partial_loader = 1;
             break;
-        case 'A':
+
+        case handlebarsc_flag_partial_path:
             partial_path = optarg;
             break;
-        case 'X':
+
+        case handlebarsc_flag_partial_ext:
             partial_extension = optarg;
             break;
 
         // input
-        case 't':
+        case handlebarsc_flag_template:
             input_name = optarg;
             break;
-        case 'D':
+        case handlebarsc_flag_data:
             input_data_name = optarg;
+            break;
+
+        // misc
+        case handlebarsc_flag_run_count:
+            sscanf(optarg, "%ld", &run_count);
+            break;
+
+        case handlebarsc_flag_no_convert_input:
+            convert_input = false;
+            break;
+
+        case handlebarsc_flag_no_newline:
+            newline_at_eof = false;
+            break;
+
+        case handlebarsc_flag_pool_size:
+            sscanf(optarg, "%zu", &pool_size);
+            break;
+
+        default: break;
     }
 
     goto start;
 }
 
-static char * read_stdin()
+static char * read_stdin(void)
 {
     char buffer[__BUFF_SIZE];
     FILE * in = stdin;
@@ -260,24 +336,28 @@ static int do_usage(void)
         "\n"
         "Mode options:\n"
         "  -h, --help            Show this message\n"
-        "  -e, --execute         Execute the specified template (default)\n"
-        "  -l, --lex             Lex the specified template into tokens\n"
-        "  -p, --parse           Parse the specified template into an AST\n"
-        "  -c, --compile         Compile the specified template into opcodes\n"
         "  -V, --version         Print the version\n"
+        "  --execute             Execute the specified template (default)\n"
+        "  --lex                 Lex the specified template into tokens\n"
+        "  --parse               Parse the specified template into an AST\n"
+        "  --compile             Compile the specified template into opcodes\n"
         "\n"
         "Input options:\n"
         "  -t, --template=FILE   The template to operate on\n"
         "  -D, --data=FILE       The input data file. Supports JSON and YAML.\n"
         "\n"
         "Behavior options:\n"
+        "  -n, --no-newline      Do not print a newline after execution\n"
         "  --flags=FLAGS         The flags to pass to the compiler separated by commas. One or more of:\n"
-        "                        compat, known_helpers_only, string_params, track_ids ,no_escape,\n"
+        "                        compat, known_helpers_only, string_params, track_ids, no_escape,\n"
         "                        ignore_standalone, alternate_decorators, strict, assume_objects,\n"
         "                        mustache_style_lambdas\n"
+        "  --no-convert-input    Do not convert data to native types (use JSON wrapper)\n"
         "  --partial-loader      Specify to enable loading partials dynamically\n"
         "  --partial-path=DIR    The directory in which to look for partials\n"
         "  --partial-ext=EXT     The file extension of partials, including the '.'\n"
+        "  --pool-size=SIZE      The size of the memory pool to use, 0 to disable (default 2 MB)\n"
+        "  --run-count=NUM       The number of times to execute (for benchmarking)\n"
         "\n"
         "The partial loader will concat the partial-path, given partial name in the template,\n"
         "and the partial-extension to resolve the file from which to load the partial.\n"
@@ -303,16 +383,37 @@ static int do_version(void)
 
 static int do_debug(void)
 {
+#ifdef HANDLEBARS_HAVE_JSON
+    fprintf(stderr, "JSON support: enabled\n");
+#else
+    fprintf(stderr, "JSON support: disabled\n");
+#endif
+
+#ifdef HANDLEBARS_HAVE_YAML
+    fprintf(stderr, "YAML support: enabled\n");
+#else
+    fprintf(stderr, "YAML support: disabled\n");
+#endif
+
+    fprintf(stderr, "XXHash version: %s (%u)\n", HANDLEBARS_XXHASH_VERSION, HANDLEBARS_XXHASH_VERSION_ID);
+
     fprintf(stderr, "sizeof(void *): %lu\n", (long unsigned) sizeof(void *));
+    fprintf(stderr, "sizeof(struct handlebars_cache): %lu\n", (long unsigned) HANDLEBARS_CACHE_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_cache_stat): %lu\n", (long unsigned) sizeof(struct handlebars_cache_stat));
     fprintf(stderr, "sizeof(struct handlebars_context): %lu\n", (long unsigned) sizeof(struct handlebars_context));
-    fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) sizeof(struct handlebars_compiler));
-    fprintf(stderr, "sizeof(struct handlebars_opcode): %lu\n", (long unsigned) sizeof(struct handlebars_opcode));
-    fprintf(stderr, "sizeof(struct handlebars_operand): %lu\n", (long unsigned) sizeof(struct handlebars_operand));
-    fprintf(stderr, "sizeof(struct handlebars_parser): %lu\n", (long unsigned) sizeof(struct handlebars_parser));
-    fprintf(stderr, "sizeof(struct handlebars_program): %lu\n", (long unsigned) sizeof(struct handlebars_program));
-    fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) sizeof(struct handlebars_value));
-    fprintf(stderr, "sizeof(union handlebars_value_internals): %lu\n", (long unsigned) sizeof(union handlebars_value_internals));
-    fprintf(stderr, "sizeof(struct handlebars_vm): %lu\n", (long unsigned) sizeof(struct handlebars_vm));
+    fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) HANDLEBARS_COMPILER_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_map): %lu\n", (long unsigned) HANDLEBARS_MAP_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_opcode): %lu\n", (long unsigned) HANDLEBARS_OPCODE_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_operand): %lu\n", (long unsigned) HANDLEBARS_OPERAND_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_options): %lu\n", (long unsigned) HANDLEBARS_OPTIONS_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_parser): %lu\n", (long unsigned) HANDLEBARS_PARSER_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_program): %lu\n", (long unsigned) HANDLEBARS_PROGRAM_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_stack): %lu\n", (long unsigned) handlebars_stack_size(0));
+    fprintf(stderr, "sizeof(struct handlebars_string): %lu\n", (long unsigned) HANDLEBARS_STRING_SIZE);
+    fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) HANDLEBARS_VALUE_SIZE);
+    fprintf(stderr, "sizeof(union handlebars_value_internals): %lu\n", (long unsigned) HANDLEBARS_VALUE_INTERNALS_SIZE);
+    fprintf(stderr, "sizeof(enum handlebars_value_type): %lu\n", (long unsigned) sizeof(enum handlebars_value_type));
+    fprintf(stderr, "sizeof(struct handlebars_vm): %lu\n", (long unsigned) HANDLEBARS_VM_SIZE);
     return 0;
 }
 
@@ -320,19 +421,17 @@ static int do_lex(void)
 {
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
-    struct handlebars_token * token = NULL;
     struct handlebars_string * tmpl;
-    int token_int = 0;
-    struct handlebars_string * output;
+    struct handlebars_token ** tokens;
     jmp_buf jmp;
 
-
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(root);
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
-        goto error;
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        handlebars_context_dtor(ctx);
+        return 1;
     }
 
     // Read
@@ -345,32 +444,18 @@ static int do_lex(void)
     }
 
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = tmpl;
 
-    // Run
-    do {
-        YYSTYPE yylval_param;
-        YYLTYPE yylloc_param;
-        YYSTYPE * lval;
+    // Lex
+    tokens = handlebars_lex_ex(parser, tmpl);
 
-        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
-        if( token_int == END || token_int == INVALID ) {
-            break;
-        }
-        lval = handlebars_yy_get_lval(parser->scanner);
-
-        // Make token object
-        token = handlebars_token_ctor(ctx, token_int, lval->string);
-
-        // Print token
-        output = handlebars_token_print(ctx, token, 0);
-        fprintf(stdout, "%s\n", output->val);
+    for ( ; *tokens; tokens++ ) {
+        struct handlebars_string * tmp = handlebars_token_print(ctx, *tokens, 1);
+        fwrite(hbs_str_val(tmp), sizeof(char), hbs_str_len(tmp), stdout);
         fflush(stdout);
-        handlebars_talloc_free(output);
-    } while( token && token_int != END && token_int != INVALID );
+        handlebars_talloc_free(tmp);
+    }
 
-error:
-handlebars_context_dtor(ctx);
+    handlebars_context_dtor(ctx);
     return 0;
 }
 
@@ -379,16 +464,17 @@ static int do_parse(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_string * tmpl;
-    int error = 0;
-    jmp_buf jmp;
     struct handlebars_string * output;
+    struct handlebars_ast_node * ast;
+    jmp_buf jmp;
 
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(root);
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
-        goto error;
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        handlebars_context_dtor(ctx);
+        return 1;
     }
 
     // Read
@@ -402,20 +488,14 @@ static int do_parse(void)
 
     // Parse
     parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = tmpl;
 
-    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
-        parser->ignore_standalone = 1;
-    }
+    ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
-    handlebars_parse(parser);
+    output = handlebars_ast_print(HBSCTX(parser), ast);
+    fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
 
-    output = handlebars_ast_print(HBSCTX(parser), parser->program);
-    fprintf(stdout, "%s\n", output->val);
-
-error:
     handlebars_context_dtor(ctx);
-    return error;
+    return 0;
 }
 
 static int do_compile(void)
@@ -425,23 +505,21 @@ static int do_compile(void)
     struct handlebars_compiler * compiler;
     struct handlebars_string * output;
     struct handlebars_string * tmpl;
-    int error = 0;
+    struct handlebars_ast_node * ast;
+    struct handlebars_program * program;
     jmp_buf jmp;
 
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(root);
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
-        goto error;
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        handlebars_context_dtor(ctx);
+        return 1;
     }
 
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
-
-    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
-        parser->ignore_standalone = 1;
-    }
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
 
@@ -455,19 +533,17 @@ static int do_compile(void)
     }
 
     // Parse
-    parser->tmpl = tmpl;
-    handlebars_parse(parser);
+    ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     // Compile
-    handlebars_compiler_compile(compiler, parser->program);
+    program = handlebars_compiler_compile_ex(compiler, ast);
 
     // Print
-    output = handlebars_program_print(ctx, compiler->program, 0);
-    fprintf(stdout, "%.*s\n", (int) output->len, output->val);
+    output = handlebars_program_print(ctx, program, 0);
+    fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
 
-error:
     handlebars_context_dtor(ctx);
-    return error;
+    return 0;
 }
 
 static int do_execute(void)
@@ -475,38 +551,30 @@ static int do_execute(void)
     struct handlebars_context * ctx;
     struct handlebars_parser * parser;
     struct handlebars_compiler * compiler;
-    struct handlebars_vm * vm;
     struct handlebars_string * tmpl;
-    int error = 0;
+    struct handlebars_ast_node * ast;
+    struct handlebars_program * program;
+    HANDLEBARS_VALUE_DECL(partials);
     jmp_buf jmp;
-    struct handlebars_value * context = NULL;
-    struct handlebars_module * module = NULL;
 
-    ctx = handlebars_context_ctor();
+    ctx = handlebars_context_ctor_ex(root);
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
-        goto error;
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        handlebars_context_dtor(ctx);
+        return 1;
     }
 
     parser = handlebars_parser_ctor(ctx);
     compiler = handlebars_compiler_ctor(ctx);
-    vm = handlebars_vm_ctor(ctx);
-    vm->helpers = handlebars_value_ctor(ctx);
 
     if (enable_partial_loader) {
         struct handlebars_string *partial_path_str = NULL;
         struct handlebars_string *partial_extension_str = NULL;
         partial_path_str = handlebars_string_ctor(ctx, partial_path, strlen(partial_path));
         partial_extension_str = handlebars_string_ctor(ctx, partial_extension, strlen(partial_extension));
-        vm->partials = handlebars_value_partial_loader_ctor(ctx, partial_path_str, partial_extension_str);
-    } else {
-        vm->partials = handlebars_value_ctor(ctx);
-    }
-
-    if( compiler_flags & handlebars_compiler_flag_ignore_standalone ) {
-        parser->ignore_standalone = 1;
+        (void) handlebars_value_partial_loader_init(ctx, partial_path_str, partial_extension_str, partials);
     }
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
@@ -521,46 +589,85 @@ static int do_execute(void)
     }
 
     // Read context
+    HANDLEBARS_VALUE_DECL(input);
     if( input_data_name ) {
         size_t input_data_name_len = strlen(input_data_name);
-        char * context_str = file_get_contents(input_data_name);
-        if (context_str && strlen(context_str)) {
-            if (input_data_name_len > 5 && (0 == strcmp(input_data_name + input_data_name_len - 5, ".yaml") ||
+        char * input_str = file_get_contents(input_data_name);
+        if (input_str && strlen(input_str)) {
+            if (handlebars_value_is_empty(input) && input_data_name_len > 5 && (0 == strcmp(input_data_name + input_data_name_len - 5, ".yaml") ||
                     0 == strcmp(input_data_name + input_data_name_len - 4, ".yml"))) {
-                context = handlebars_value_from_yaml_string(ctx, context_str);
-            } else {
+#ifdef HANDLEBARS_HAVE_YAML
+                handlebars_value_init_yaml_string(ctx, input, input_str);
+#else
+                fprintf(stderr, "Failed to process input data: YAML support is disabled");
+                exit(1);
+#endif
+            }
+            if (handlebars_value_is_empty(input)) {
+#ifdef HANDLEBARS_HAVE_JSON
                 // assume json
-                context = handlebars_value_from_json_string(ctx, context_str);
+                handlebars_value_init_json_string(ctx, input, input_str);
+                if (convert_input) {
+                    handlebars_value_convert(input);
+                }
+#else
+                fprintf(stderr, "Failed to process input data: JSON support is disabled");
+                exit(1);
+#endif
             }
         }
     }
-    if( !context ) {
-        context = handlebars_value_ctor(ctx);
-    }
 
     // Parse
-    parser->tmpl = tmpl;
-    handlebars_parse(parser);
+    ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     // Compile
-    handlebars_compiler_compile(compiler, parser->program);
+    program = handlebars_compiler_compile_ex(compiler, ast);
 
     // Serialize
-    module = handlebars_program_serialize(ctx, compiler->program);
+    struct handlebars_module * module = handlebars_program_serialize(ctx, program);
 
     // Execute
-    vm->flags = compiler_flags;
-    handlebars_vm_execute(vm, module, context);
+    struct handlebars_string * buffer = NULL;
+    do {
+        if (buffer) {
+            handlebars_talloc_free(buffer);
+            buffer = NULL;
+        }
 
-    fprintf(stdout, "%.*s", (int) vm->buffer->len, vm->buffer->val);
+        struct handlebars_vm * vm;
+        vm = handlebars_vm_ctor(ctx);
+        handlebars_vm_set_flags(vm, compiler_flags);
+        handlebars_vm_set_partials(vm, partials);
 
-error:
+        buffer = handlebars_vm_execute(vm, module, input);
+        buffer = talloc_steal(ctx, buffer);
+
+        handlebars_vm_dtor(vm);
+    } while(--run_count > 0);
+
+    if (buffer) {
+        fwrite(hbs_str_val(buffer), sizeof(char), hbs_str_len(buffer), stdout);
+    }
+
+    if (newline_at_eof) {
+        fwrite("\n", sizeof(char), 1, stdout);
+    }
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(partials);
     handlebars_context_dtor(ctx);
-    return error;
+    return 0;
 }
 
 int main(int argc, char * argv[])
 {
+#ifdef HANDLEBARS_HAVE_VALGRIND
+    if (RUNNING_ON_VALGRIND) {
+        pool_size = 0;
+    }
+#endif
+
     root = talloc_new(NULL);
 
     if( argc <= 1 ) {
@@ -568,6 +675,12 @@ int main(int argc, char * argv[])
     }
 
     readOpts(argc, argv);
+
+    if (pool_size > 0) {
+        void * old_root = root;
+        root = talloc_pool(NULL, pool_size);
+        talloc_steal(root, old_root);
+    }
 
     if( optind < argc ) {
         while( optind < argc ) {

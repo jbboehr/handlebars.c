@@ -28,9 +28,7 @@
 #include <talloc.h>
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 #ifndef HANDLEBARS_MEMORY
 
@@ -54,15 +52,7 @@ extern "C" {
 
 #define handlebars_exit exit
 
-#define _handlebars_yy_alloc talloc_size
-#define _handlebars_yy_realloc talloc_realloc_size
-#define _handlebars_yy_free talloc_free
-
 #else /* HANDLEBARS_MEMORY */
-
-// Note: a little concerned this naughty stuff may cause problems with
-// different talloc versions, but let's see how it works for now
-// @todo maybe just alias them all with macros when disabled or use LD_PRELOAD
 
 // Memory macros
 #define handlebars_talloc(ctx, type) \
@@ -117,7 +107,7 @@ typedef char * (*handlebars_talloc_strndup_append_buffer_func)(char *s, const ch
 typedef void * (*handlebars_talloc_zero_func)(const void * ctx, size_t size, const char * name);
 
 // Typedefs for other function pointers
-typedef void (*handlebars_exit_func)(int exit_code);
+typedef void (*handlebars_exit_func)(int exit_code) HBS_ATTR_NORETURN;
 
 // Memory function pointers
 extern handlebars_talloc_array_func _handlebars_talloc_array;
@@ -133,11 +123,6 @@ extern handlebars_talloc_strdup_append_buffer_func _handlebars_talloc_strdup_app
 extern handlebars_talloc_strndup_func _handlebars_talloc_strndup;
 extern handlebars_talloc_strndup_append_buffer_func _handlebars_talloc_strndup_append_buffer;
 extern handlebars_talloc_zero_func _handlebars_talloc_zero;
-
-// Memory function pointers for scanner
-#define _handlebars_yy_alloc handlebars_talloc_size
-#define _handlebars_yy_realloc handlebars_talloc_realloc_size
-#define _handlebars_yy_free handlebars_talloc_free
 
 // Other function pointers
 extern handlebars_exit_func handlebars_exit;
@@ -210,8 +195,6 @@ int handlebars_memory_get_call_counter(void);
 
 #endif /* HANDLEBARS_MEMORY */
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
 #endif

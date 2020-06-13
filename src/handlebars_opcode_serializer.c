@@ -17,6 +17,18 @@
  * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <assert.h>
+#include <string.h>
+#include <time.h>
+
+#define HANDLEBARS_COMPILER_PRIVATE
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
@@ -25,6 +37,8 @@
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
+
+
 
 #define PTR_DIFF(a, b) ((size_t) (((char *) a) - ((char *) b)))
 #define PTR_ADD(a, b) ((void *) (((char *) a) + (b)))
@@ -45,19 +59,23 @@ static void * append(struct handlebars_module * module, void * source, size_t si
     return addr;
 }
 
+static inline void patch_string(struct handlebars_string * str) {
+    handlebars_string_immortalize(str);
+}
+
 static void calculate_size_operand(struct handlebars_module * module, struct handlebars_operand * operand)
 {
-    int i;
+    size_t i;
 
     // Increment for children
     switch( operand->type ) {
         case handlebars_operand_type_string:
-            module->data_size += HBS_STR_SIZE(operand->data.string.string->len);
+            module->data_size += HBS_STR_SIZE(hbs_str_len(operand->data.string.string));
             break;
         case handlebars_operand_type_array:
             for( i = 0; i < operand->data.array.count; i++ ) {
                 module->data_size += sizeof(struct handlebars_operand_string);
-                module->data_size += HBS_STR_SIZE(operand->data.array.array[i].string->len);
+                module->data_size += HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string));
             }
             break;
         default:
@@ -79,7 +97,7 @@ static void calculate_size_opcode(struct handlebars_module * module, struct hand
 
 static void calculate_size_program(struct handlebars_module * module, struct handlebars_program * program)
 {
-    int i;
+    size_t i;
 
     // Increment for self
     module->size += sizeof(struct handlebars_module_table_entry);
@@ -103,26 +121,28 @@ static void calculate_size_program(struct handlebars_module * module, struct han
 
 static void serialize_operand(struct handlebars_module * module, struct handlebars_operand * operand)
 {
-    int i;
+    size_t i;
     size_t size;
 
     // Increment for children
     switch( operand->type ) {
         case handlebars_operand_type_string:
             // Make sure hash is computed
-            HBS_STR_HASH(operand->data.string.string);
+            hbs_str_hash(operand->data.string.string);
 
-            size = HBS_STR_SIZE(operand->data.string.string->len);
+            size = HBS_STR_SIZE(hbs_str_len(operand->data.string.string));
             operand->data.string.string = append(module, operand->data.string.string, size);
+            patch_string(operand->data.string.string);
             break;
         case handlebars_operand_type_array:
             operand->data.array.array = append(module, operand->data.array.array, sizeof(struct handlebars_operand_string) * operand->data.array.count);
             for( i = 0; i < operand->data.array.count; i++ ) {
                 // Make sure hash is computed
-                HBS_STR_HASH(operand->data.array.array[i].string);
+                hbs_str_hash(operand->data.array.array[i].string);
 
-                size = HBS_STR_SIZE(operand->data.array.array[i].string->len);
+                size = HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string));
                 operand->data.array.array[i].string = append(module, operand->data.array.array[i].string, size);
+                patch_string(operand->data.array.array[i].string);
             }
             break;
         default:
@@ -223,14 +243,16 @@ struct handlebars_module * handlebars_program_serialize(
     talloc_set_type(module, struct handlebars_module);
 
     // Setup pointers
-    module->programs =  PTR_ADD(module, sizeof(struct handlebars_module));
-    module->opcodes =  PTR_ADD(module->programs, (sizeof(struct handlebars_module_table_entry) * module->program_count));
+    module->programs = PTR_ADD(module, sizeof(struct handlebars_module));
+    module->opcodes = PTR_ADD(module->programs, (sizeof(struct handlebars_module_table_entry) * module->program_count));
     module->data = PTR_ADD(module->opcodes, (sizeof(struct handlebars_opcode) * module->opcode_count));
 
     // Reset counts - use as index
+#ifndef NDEBUG
     size_t program_count = module->program_count;
     size_t opcode_count = module->opcode_count;
     size_t data_size = module->data_size;
+#endif
     module->program_count = module->opcode_count = module->data_size = 0;
 
     // Copy data
@@ -248,7 +270,7 @@ struct handlebars_module * handlebars_program_serialize(
 
 static inline void normalize_operand(struct handlebars_module * module, struct handlebars_operand * operand, void * baseaddr)
 {
-    int i;
+    size_t i;
 
     switch( operand->type ) {
         case handlebars_operand_type_string:
@@ -268,7 +290,7 @@ static inline void normalize_operand(struct handlebars_module * module, struct h
 
 void handlebars_module_normalize_pointers(struct handlebars_module * module, void *baseaddr)
 {
-    int i;
+    size_t i;
 
     if( module->addr == baseaddr ) {
         return;
@@ -295,7 +317,7 @@ void handlebars_module_normalize_pointers(struct handlebars_module * module, voi
 
 static inline void patch_operand(struct handlebars_module * module, struct handlebars_operand * operand, void * baseaddr)
 {
-    int i;
+    size_t i;
 
     switch( operand->type ) {
         case handlebars_operand_type_string:
@@ -315,7 +337,7 @@ static inline void patch_operand(struct handlebars_module * module, struct handl
 
 void handlebars_module_patch_pointers(struct handlebars_module * module)
 {
-    int i;
+    size_t i;
     void *baseaddr = (void *) module;
 
     if( module->addr == baseaddr ) {
@@ -339,4 +361,24 @@ void handlebars_module_patch_pointers(struct handlebars_module * module)
     }
 
     module->addr = baseaddr;
+}
+
+size_t handlebars_module_get_size(struct handlebars_module * module)
+{
+    return module->size;
+}
+
+int handlebars_module_get_version(struct handlebars_module * module)
+{
+    return module->version;
+}
+
+time_t handlebars_module_get_ts(struct handlebars_module * module)
+{
+    return module->ts;
+}
+
+long handlebars_module_get_flags(struct handlebars_module * module)
+{
+    return module->flags;
 }

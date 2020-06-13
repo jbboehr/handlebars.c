@@ -27,9 +27,7 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 #define HANDLEBARS_COMPILER_STACK_SIZE 64
 
@@ -38,6 +36,7 @@ struct handlebars_compiler;
 struct handlebars_context;
 struct handlebars_opcode;
 struct handlebars_parser;
+struct handlebars_program;
 
 /**
  * @brief Flags to control compiler behaviour
@@ -89,13 +88,10 @@ enum handlebars_compiler_flag {
     handlebars_compiler_flag_alternate_decorators = (1 << 9),
 
     handlebars_compiler_flag_strict = (1 << 10),
-#define handlebars_compiler_flag_strict handlebars_compiler_flag_strict
 
     handlebars_compiler_flag_assume_objects = (1 << 11),
-#define handlebars_compiler_flag_assume_objects handlebars_compiler_flag_assume_objects
 
     handlebars_compiler_flag_mustache_style_lambdas = (1 << 12),
-#define handlebars_compiler_flag_mustache_style_lambdas handlebars_compiler_flag_mustache_style_lambdas
 
     // Composite option flags
 
@@ -121,34 +117,119 @@ enum handlebars_compiler_result_flag {
     handlebars_compiler_result_flag_all = ((1 << 4) - 1)
 };
 
-struct handlebars_block_param_pair {
-    struct handlebars_string * block_param1;
-    struct handlebars_string * block_param2;
-};
+extern const size_t HANDLEBARS_COMPILER_SIZE;
+extern const size_t HANDLEBARS_PROGRAM_SIZE;
 
-struct handlebars_block_param_stack {
-    /**
-     * @brief Block param stack
-     */
-    struct handlebars_block_param_pair s[HANDLEBARS_COMPILER_STACK_SIZE];
+struct handlebars_program * handlebars_compiler_compile_ex(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
-    /**
-     * @brief Block param stack index
-     */
-    int i;
-};
+/**
+ * @brief Main compile function. Compiles an AST
+ *
+ * @param[in] compiler The compiler context
+ * @param[in] node The AST node to compile
+ */
+void handlebars_compiler_compile(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * node
+) HBS_ATTR_NONNULL_ALL;
 
-struct handlebars_source_node_stack {
-    /**
-     * @brief Source node stack
-     */
-    struct handlebars_ast_node * s[HANDLEBARS_COMPILER_STACK_SIZE];
+// {{{ Constructors and Destructors
 
-    /**
-     * @brief Source node stack index
-     */
-    int i;
-};
+/**
+ * @brief Construct a compiler context object.
+ *
+ * @param[in] context The handlebars context
+ * @return the compiler context pointer
+ */
+struct handlebars_compiler * handlebars_compiler_ctor(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Free a compiler context and it's resources.
+ *
+ * @param[in] compiler
+ * @return void
+ */
+void handlebars_compiler_dtor(
+    struct handlebars_compiler * compiler
+) HBS_ATTR_NONNULL_ALL;
+
+// }}} Constructors and Destructors
+
+// {{{ Getters
+
+/**
+ * @brief Get the compiler flags.
+ *
+ * @param[in] compiler
+ * @return the compiler flags
+ */
+unsigned long handlebars_compiler_get_flags(
+    struct handlebars_compiler * compiler
+) HBS_ATTR_NONNULL_ALL;
+
+const char ** handlebars_compiler_get_known_helpers(
+    struct handlebars_compiler * compiler
+);
+
+struct handlebars_program * handlebars_compiler_get_program(
+    struct handlebars_compiler * compiler
+) HBS_ATTR_NONNULL_ALL;
+
+// }}} Getters
+
+// {{{ Mutators
+
+/**
+ * @brief Set the compiler flags, with handlebars_compiler_flag_all as a mask.
+ *
+ * @param[in] compiler
+ * @param[in] flags
+ * @return void
+ */
+void handlebars_compiler_set_flags(
+    struct handlebars_compiler * compiler,
+    unsigned long flags
+) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_compiler_set_known_helpers(
+    struct handlebars_compiler * compiler,
+    const char ** known_helpers
+) HBS_ATTR_NONNULL_ALL;
+
+// }}} Mutators
+
+// {{{ Extern for test suite only
+
+/**
+ * @brief Get an array of parts of an ID AST node.
+ *
+ * @param[in] compiler The handlebars compiler
+ * @param[in] ast_node The AST node
+ * @return The string array
+ */
+struct handlebars_string ** handlebars_ast_node_get_id_parts(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * ast_node
+) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL;
+
+bool handlebars_compiler_is_known_helper(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * path
+) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL;
+
+void handlebars_compiler_opcode(
+    struct handlebars_compiler * compiler,
+    struct handlebars_opcode * opcode
+) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL;
+
+// }}} Extern for test suite only
+
+#ifdef HANDLEBARS_COMPILER_PRIVATE
 
 struct handlebars_program {
     struct handlebars_program * main;
@@ -186,106 +267,8 @@ struct handlebars_program {
     size_t programs_index;
 };
 
-/**
- * @brief Main compiler state struct
- */
-struct handlebars_compiler {
-    struct handlebars_context ctx;
-    struct handlebars_parser * parser;
-    struct handlebars_program * program;
-    struct handlebars_block_param_stack * bps;
-    struct handlebars_source_node_stack sns;
+#endif /* HANDLEBARS_COMPILER_PRIVATE */
 
-    /**
-     * @brief Array of known helpers
-     */
-    const char ** known_helpers;
+HBS_EXTERN_C_END
 
-    /**
-     * @brief Symbol index counter
-     */
-    long guid;
-
-    /**
-     * @brief Compiler flags
-     */
-    unsigned long flags;
-
-    // Option flags
-    bool string_params;
-    bool track_ids;
-    bool use_depths;
-    bool no_escape;
-    bool known_helpers_only;
-    bool prevent_indent;
-    bool use_data;
-    bool explicit_partial_context;
-    bool ignore_standalone;
-    bool alternate_decorators;
-    bool strict;
-    bool assume_objects;
-};
-
-/**
- * @brief Main compile function. Compiles an AST
- *
- * @param[in] compiler The compiler context
- * @param[in] node The AST node to compile
- */
-void handlebars_compiler_compile(
-    struct handlebars_compiler * compiler,
-    struct handlebars_ast_node * node
-) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Construct a compiler context object.
- *
- * @param[in] context The handlebars context
- * @return the compiler context pointer
- */
-struct handlebars_compiler * handlebars_compiler_ctor(
-    struct handlebars_context * context
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Free a compiler context and it's resources.
- *
- * @param[in] compiler
- * @return void
- */
-void handlebars_compiler_dtor(struct handlebars_compiler * compiler) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Get the compiler flags.
- *
- * @param[in] compiler
- * @return the compiler flags
- */
-unsigned long handlebars_compiler_get_flags(struct handlebars_compiler * compiler) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Set the compiler flags, with handlebars_compiler_flag_all as a mask.
- *
- * @param[in] compiler
- * @param[in] flags
- * @return void
- */
-void handlebars_compiler_set_flags(struct handlebars_compiler * compiler, unsigned long flags) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Get an array of parts of an ID AST node.
- *
- * @param[in] compiler The handlebars compiler
- * @param[in] ast_node The AST node
- * @return The string array
- */
-struct handlebars_string ** handlebars_ast_node_get_id_parts(
-    struct handlebars_compiler * compiler,
-    struct handlebars_ast_node * ast_node
-) HBS_ATTR_NONNULL_ALL;
-
-#ifdef	__cplusplus
-}
-#endif
-
-#endif
+#endif /* HANDLEBARS_COMPILER_H */

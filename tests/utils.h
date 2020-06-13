@@ -22,6 +22,12 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <check.h>
+
+#ifdef HANDLEBARS_HAVE_VALGRIND
+#include <valgrind/valgrind.h>
+#include <valgrind/memcheck.h>
+#endif
 
 #if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
 #define IS_WIN 1
@@ -66,7 +72,24 @@
 #define ck_assert_uint_ne(a, b) ck_assert_int_ne(a, b)
 #endif
 
+#define ck_assert_hbs_str_eq(a, b) ck_assert_str_eq(hbs_str_val(a), hbs_str_val(b))
+#define ck_assert_hbs_str_eq_cstr(a, b) ck_assert_str_eq(hbs_str_val(a), b)
+#define ck_assert_cstr_eq_hbs_str(a, b) ck_assert_str_eq(a, hbs_str_val(b))
+
+#if !defined(HANDLEBARS_NO_REFCOUNT)
+#define ASSERT_INIT_BLOCKS() \
+    do { \
+        if (init_blocks != talloc_total_blocks(context)) { \
+            talloc_report_full(context, stderr); \
+        } \
+        ck_assert_int_eq(init_blocks, talloc_total_blocks(context)); \
+    } while(0)
+#else
+#define ASSERT_INIT_BLOCKS() do { ; } while (0)
+#endif
+
 struct handlebars_value;
+struct handlebars_string;
 
 typedef void (*scan_directory_cb)(char * filename);
 
@@ -77,8 +100,26 @@ uint32_t adler32(unsigned char *data, size_t len);
 
 void load_fixtures(struct handlebars_value * value);
 
-char * normalize_template_whitespace(TALLOC_CTX *ctx, char *str, size_t len);
+char * normalize_template_whitespace(TALLOC_CTX *ctx, struct handlebars_string * str);
 
+#ifdef HANDLEBARS_HAVE_JSON
+struct json_object;
+
+struct hbs_test_json_holder {
+    struct json_object * obj;
+};
+
+int hbs_test_json_dtor(struct hbs_test_json_holder * holder);
+
+#define HBS_TEST_JSON_DTOR(ctx, o) \
+    do { \
+        if( o ) { \
+            struct hbs_test_json_holder * holder = talloc(ctx, struct hbs_test_json_holder); \
+            holder->obj = (void *) o; \
+            talloc_set_destructor(holder, hbs_test_json_dtor); \
+        } \
+    } while (0)
+#endif
 
 // Common
 extern TALLOC_CTX * root;
@@ -86,8 +127,10 @@ extern struct handlebars_context * context;
 extern struct handlebars_parser * parser;
 extern struct handlebars_compiler * compiler;
 extern struct handlebars_vm * vm;
-extern int init_blocks;
+extern size_t init_blocks;
 void default_setup(void);
 void default_teardown(void);
+typedef Suite * (*suite_ctor_func)(void);
+int default_main(suite_ctor_func suite_ctor);
 
 #endif

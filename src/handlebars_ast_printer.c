@@ -24,15 +24,16 @@
 #include <assert.h>
 #include <string.h>
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_AST_LIST_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_ast_printer.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 
 
 
@@ -63,7 +64,7 @@
     } while(0)
 
 #define __PAD(str) \
-    _handlebars_ast_print_pad(str, ctx)
+    hbs_ast_print_pad(str, ctx)
 
 #define __PAD_HEAD() \
     do { \
@@ -97,14 +98,14 @@ struct handlebars_ast_printer_context {
 
 
 static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx);
-void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx);
+static void hbs_ast_print_pad(const char * str, struct handlebars_ast_printer_context * ctx);
 
 
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(ctx->ctx)
 
-void _handlebars_ast_print_pad(char * str, struct handlebars_ast_printer_context * ctx)
+static void hbs_ast_print_pad(const char * str, struct handlebars_ast_printer_context * ctx)
 {
     __PAD_HEAD();
     __APPEND(str);
@@ -353,12 +354,12 @@ static void _handlebars_ast_print_boolean(struct handlebars_ast_node * ast_node,
     __APPENDS("}");
 }
 
-static void _handlebars_ast_print_undefined(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_print_undefined(HBS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPENDS("UNDEFINED");
 }
 
-static void _handlebars_ast_print_null(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_print_null(HBS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPENDS("NULL");
 }
@@ -423,37 +424,53 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
 
     switch( ast_node->type ) {
         case HANDLEBARS_AST_NODE_BOOLEAN:
-            return _handlebars_ast_print_boolean(ast_node, ctx);
+            _handlebars_ast_print_boolean(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_BLOCK:
-            return _handlebars_ast_print_block(ast_node, ctx);
+            _handlebars_ast_print_block(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_COMMENT:
-            return _handlebars_ast_print_comment(ast_node, ctx);
+            _handlebars_ast_print_comment(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_CONTENT:
-            return _handlebars_ast_print_content(ast_node, ctx);
+            _handlebars_ast_print_content(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_HASH:
-            return _handlebars_ast_print_hash(ast_node, ctx);
+            _handlebars_ast_print_hash(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_MUSTACHE:
-            return _handlebars_ast_print_mustache(ast_node, ctx);
+            _handlebars_ast_print_mustache(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_NUL:
-            return _handlebars_ast_print_null(ast_node, ctx);
+            _handlebars_ast_print_null(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_NUMBER:
-            return _handlebars_ast_print_number(ast_node, ctx);
+            _handlebars_ast_print_number(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_PARTIAL:
-            return _handlebars_ast_print_partial(ast_node, ctx);
+            _handlebars_ast_print_partial(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
-            return _handlebars_ast_print_partial_block(ast_node, ctx);
+            _handlebars_ast_print_partial_block(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_PATH:
-            return _handlebars_ast_print_path(ast_node, ctx);
+            _handlebars_ast_print_path(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_PROGRAM:
-            return _handlebars_ast_print_program(ast_node, ctx);
+            _handlebars_ast_print_program(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
-            return _handlebars_ast_print_block(ast_node, ctx);
+            _handlebars_ast_print_block(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_SEXPR:
-            return _handlebars_ast_print_sexpr(ast_node, ctx);
+            _handlebars_ast_print_sexpr(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_STRING:
-            return _handlebars_ast_print_string(ast_node, ctx);
+            _handlebars_ast_print_string(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_UNDEFINED:
-            return _handlebars_ast_print_undefined(ast_node, ctx);
+            _handlebars_ast_print_undefined(ast_node, ctx);
+            break;
         // LCOV_EXCL_START
         // Note: these should never be printed, intermediate nodes
         case HANDLEBARS_AST_NODE_INTERMEDIATE:
@@ -462,6 +479,7 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
         case HANDLEBARS_AST_NODE_HASH_PAIR:
         case HANDLEBARS_AST_NODE_PATH_SEGMENT:
         case HANDLEBARS_AST_NODE_NIL:
+        default:
             assert(0);
             break;
         // LCOV_EXCL_STOP
@@ -729,7 +747,7 @@ static void _handlebars_ast_to_string_content(struct handlebars_ast_node * ast_n
     } else {
         struct handlebars_string *escaped = handlebars_str_replace(CONTEXT, ast_node->node.content.original, HBS_STRL("{{"), HBS_STRL("\\{{"));
         __APPEND_STR(escaped);
-        handlebars_talloc_free(escaped);
+        handlebars_string_delref(escaped);
     }
 }
 
@@ -766,12 +784,12 @@ static void _handlebars_ast_to_string_boolean(struct handlebars_ast_node * ast_n
     __APPEND_STR(ast_node->node.boolean.value);
 }
 
-static void _handlebars_ast_to_string_undefined(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_to_string_undefined(HBS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPENDS("undefined");
 }
 
-static void _handlebars_ast_to_string_null(HANDLEBARS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
+static void _handlebars_ast_to_string_null(HBS_ATTR_UNUSED struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
     __APPENDS("null");
 }
@@ -839,37 +857,53 @@ static void _handlebars_ast_to_string(struct handlebars_ast_node * ast_node, str
 
     switch( ast_node->type ) {
         case HANDLEBARS_AST_NODE_BOOLEAN:
-            return _handlebars_ast_to_string_boolean(ast_node, ctx);
+            _handlebars_ast_to_string_boolean(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_BLOCK:
-            return _handlebars_ast_to_string_block(ast_node, ctx);
+            _handlebars_ast_to_string_block(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_COMMENT:
-            return _handlebars_ast_to_string_comment(ast_node, ctx);
+            _handlebars_ast_to_string_comment(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_CONTENT:
-            return _handlebars_ast_to_string_content(ast_node, ctx);
+            _handlebars_ast_to_string_content(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_HASH:
-            return _handlebars_ast_to_string_hash(ast_node, ctx);
+            _handlebars_ast_to_string_hash(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_MUSTACHE:
-            return _handlebars_ast_to_string_mustache(ast_node, ctx);
+            _handlebars_ast_to_string_mustache(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_NUL:
-            return _handlebars_ast_to_string_null(ast_node, ctx);
+            _handlebars_ast_to_string_null(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_NUMBER:
-            return _handlebars_ast_to_string_number(ast_node, ctx);
+            _handlebars_ast_to_string_number(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_PARTIAL:
-            return _handlebars_ast_to_string_partial(ast_node, ctx);
+            _handlebars_ast_to_string_partial(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
-            return _handlebars_ast_to_string_partial_block(ast_node, ctx);
+            _handlebars_ast_to_string_partial_block(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_PATH:
-            return _handlebars_ast_to_string_path(ast_node, ctx, 0);
+            _handlebars_ast_to_string_path(ast_node, ctx, 0);
+            break;
         case HANDLEBARS_AST_NODE_PROGRAM:
-            return _handlebars_ast_to_string_program(ast_node, ctx);
+            _handlebars_ast_to_string_program(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
-            return _handlebars_ast_to_string_block(ast_node, ctx);
+            _handlebars_ast_to_string_block(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_SEXPR:
-            return _handlebars_ast_to_string_sexpr(ast_node, ctx);
+            _handlebars_ast_to_string_sexpr(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_STRING:
-            return _handlebars_ast_to_string_string(ast_node, ctx);
+            _handlebars_ast_to_string_string(ast_node, ctx);
+            break;
         case HANDLEBARS_AST_NODE_UNDEFINED:
-            return _handlebars_ast_to_string_undefined(ast_node, ctx);
+            _handlebars_ast_to_string_undefined(ast_node, ctx);
+            break;
         // LCOV_EXCL_START
         // Note: these should never be printed, intermediate nodes
         case HANDLEBARS_AST_NODE_INTERMEDIATE:
@@ -878,6 +912,7 @@ static void _handlebars_ast_to_string(struct handlebars_ast_node * ast_node, str
         case HANDLEBARS_AST_NODE_HASH_PAIR:
         case HANDLEBARS_AST_NODE_PATH_SEGMENT:
         case HANDLEBARS_AST_NODE_NIL:
+        default:
             assert(0);
             break;
         // LCOV_EXCL_STOP

@@ -25,26 +25,23 @@
 #include <stdio.h>
 #include <talloc.h>
 
-#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
-#include <json-c/json.h>
-#include <json-c/json_object.h>
-#include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
-#include <json/json.h>
-#include <json/json_object.h>
-#include <json/json_tokener.h>
-#endif
+// json-c undeprecated json_object_object_get, but the version in xenial
+// is too old, so let's silence deprecated warnings for json-c
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <json.h>
+#include <json_object.h>
+#include <json_tokener.h>
+#pragma GCC diagnostic pop
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
-
 #include "handlebars_ast.h"
+#include "handlebars_memory.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
-#include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
 
 
@@ -57,7 +54,6 @@ struct tokenizer_test {
     struct handlebars_context * ctx;
 };
 
-static TALLOC_CTX * rootctx;
 static struct tokenizer_test * tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
@@ -65,7 +61,7 @@ static const char * spec_filename = NULL;
 
 static void loadSpecTestExpected(struct tokenizer_test * test, json_object * object)
 {
-    int array_len = 0;
+    size_t array_len = 0;
     json_object * cur = NULL;
     int token_int = -1;
     const char * name = NULL;
@@ -80,7 +76,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
     test->expected = handlebars_string_init(test->ctx, 256);
 
     // Iterate over array
-    for( int i = 0; i < array_len; i++ ) {
+    for( size_t i = 0; i < array_len; i++ ) {
         struct json_object * array_item = json_object_array_get_idx(object, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: expected token was not an object\n");
@@ -122,7 +118,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
 
         // Append
         struct handlebars_string * tmp = handlebars_token_print(test->ctx, token, 1);
-        test->expected = handlebars_string_append(context, test->expected, tmp->val, tmp->len);
+        test->expected = handlebars_string_append_str(context, test->expected, tmp);
         handlebars_talloc_free(tmp);
     }
 
@@ -135,24 +131,24 @@ static void loadSpecTest(json_object * object)
 
     // Get test
     struct tokenizer_test * test = &(tests[tests_len++]);
-    test->ctx = handlebars_context_ctor_ex(rootctx);
+    test->ctx = handlebars_context_ctor_ex(root);
 
     // Get description
     cur = json_object_object_get(object, "description");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->description = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->description = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get it
     cur = json_object_object_get(object, "it");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->it = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->it = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get template
     cur = json_object_object_get(object, "template");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->tmpl = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->tmpl = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get expected
@@ -170,7 +166,7 @@ static int loadSpec(const char * filename) {
     size_t data_len = 0;
     struct json_object * result = NULL;
     struct json_object * array_item = NULL;
-    int array_len = 0;
+    size_t array_len = 0;
 
     // Read JSON file
     error = file_get_contents(filename, &data, &data_len);
@@ -200,10 +196,10 @@ static int loadSpec(const char * filename) {
 
     // Allocate tests array
     tests_size = array_len + 1;
-    tests = talloc_zero_array(rootctx, struct tokenizer_test, tests_size);
+    tests = talloc_zero_array(root, struct tokenizer_test, tests_size);
 
     // Iterate over array
-    for( int i = 0; i < array_len; i++ ) {
+    for( size_t i = 0; i < array_len; i++ ) {
         array_item = json_object_array_get_idx(result, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: test case was not an object\n");
@@ -215,58 +211,44 @@ error:
     if( data ) {
         free(data);
     }
-    if( result ) {
-        json_object_put(result);
-    }
+    HBS_TEST_JSON_DTOR(tests, result);
     return error;
 }
 
 START_TEST(handlebars_spec_tokenizer)
 {
     struct tokenizer_test * test = &tests[_i];
-    struct handlebars_context * ctx = handlebars_context_ctor();
-    struct handlebars_parser * parser;
 
-    parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
+    struct handlebars_token ** tokens = handlebars_lex_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)));
 
-    // Prepare token list
-    struct handlebars_token * token = NULL;
-
-    // Run
-    YYSTYPE yylval_param;
-    YYLTYPE yylloc_param;
-    int token_int = 0;
-    struct handlebars_string * actual = handlebars_string_init(ctx, 256);
-    do {
-        token_int = handlebars_yy_lex(&yylval_param, &yylloc_param, parser->scanner);
-        if( token_int == END || token_int == INVALID ) break;
-        YYSTYPE * lval = handlebars_yy_get_lval(parser->scanner);
-
-        // Make token object
-        token = handlebars_token_ctor(test->ctx, token_int, lval->string);
-
-        // Append
-        struct handlebars_string * tmp = handlebars_token_print(ctx, token, 1);
-        actual = handlebars_string_append(ctx, actual, tmp->val, tmp->len);
+    struct handlebars_string * actual = handlebars_string_init(context, 256);
+    for ( ; *tokens; tokens++ ) {
+        struct handlebars_string * tmp = handlebars_token_print(context, *tokens, 1);
+        actual = handlebars_string_append_str(context, actual, tmp);
         handlebars_talloc_free(tmp);
-    } while( token );
+    }
 
     actual = handlebars_string_rtrim(actual, HBS_STRL(" \t\r\n"));
 
-    ck_assert_str_eq_msg(test->expected->val, actual->val, test->tmpl);
-
-    handlebars_context_dtor(ctx);
+    ck_assert_str_eq_msg(hbs_str_val(test->expected), hbs_str_val(actual), test->tmpl);
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
+    // Load the spec
+    if( 0 != loadSpec(spec_filename) ) {
+        abort();
+    }
+    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
+
+    // Setup the suite
     const char * title = "Handlebars Tokenizer Spec";
     Suite * s = suite_create(title);
 
     TCase * tc_handlebars_spec_tokenizer = tcase_create(title);
-    // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
+    tcase_add_checked_fixture(tc_handlebars_spec_tokenizer, default_setup, default_teardown);
     tcase_add_loop_test(tc_handlebars_spec_tokenizer, handlebars_spec_tokenizer, 0, tests_len - 1);
     suite_add_tcase(s, tc_handlebars_spec_tokenizer);
 
@@ -275,25 +257,6 @@ Suite * parser_suite(void)
 
 int main(int argc, char *argv[])
 {
-    int number_failed;
-    Suite * s;
-    SRunner * sr;
-    int memdebug = 0;
-    int iswin = 0;
-    int error = 0;
-
-    talloc_set_log_stderr();
-
-#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
-    iswin = 1;
-#endif
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-    rootctx = talloc_new(NULL);
-
     // Load the spec
     spec_filename = getenv("handlebars_tokenizer_spec");
     if( spec_filename == NULL && argc >= 2 ) {
@@ -302,26 +265,7 @@ int main(int argc, char *argv[])
     if( spec_filename == NULL ) {
         spec_filename = "./spec/handlebars/spec/tokenizer.json";
     }
-    error = loadSpec(spec_filename);
-    if( error != 0 ) {
-        goto error;
-    }
-    fprintf(stderr, "Loaded %lu test cases\n", tests_len);
 
-    s = parser_suite();
-    sr = srunner_create(s);
-    if( iswin || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-error:
-    talloc_free(rootctx);
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-    return error;
+    // Run the suite
+    return default_main(&suite);
 }

@@ -11,4 +11,4 @@ else
     echo "Okay: build/tap-driver.sh"
 fi
 
-exec autoreconf -fvi
+exec autoreconf -vi

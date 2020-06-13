@@ -26,7 +26,6 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
-
 #include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
@@ -40,10 +39,10 @@ START_TEST(test_token_ctor)
     struct handlebars_token * token = handlebars_token_ctor(HBSCTX(parser), OPEN, string);
 
     ck_assert_ptr_ne(NULL, token);
-    ck_assert_ptr_ne(NULL, token->string);
-    ck_assert_int_eq(OPEN, token->token);
-    ck_assert_str_eq(token->string->val, "{{");
-    ck_assert_uint_eq(sizeof("{{") - 1, token->string->len);
+    ck_assert_ptr_ne(NULL, handlebars_token_get_text(token));
+    ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
+    ck_assert_hbs_str_eq_cstr(handlebars_token_get_text(token), "{{");
+    ck_assert_uint_eq(sizeof("{{") - 1, hbs_str_len(handlebars_token_get_text(token)));
 
     handlebars_token_dtor(token);
 }
@@ -51,9 +50,10 @@ END_TEST
 
 START_TEST(test_token_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
 	struct handlebars_string * string;
 	jmp_buf buf;
+    struct handlebars_token * token;
 
     if( handlebars_setjmp_ex(context, &buf) ) {
 		ck_assert(1);
@@ -63,7 +63,8 @@ START_TEST(test_token_ctor_failed_alloc)
 	string = handlebars_string_ctor(context, HBS_STRL("{{"));
 
     handlebars_memory_fail_enable();
-    handlebars_token_ctor(context, OPEN, string);
+    token = handlebars_token_ctor(context, OPEN, string);
+    (void) token;
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -97,8 +98,8 @@ START_TEST(test_token_get_text)
 	struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
     struct handlebars_token * token = handlebars_token_ctor(context, OPEN, string);
 
-    ck_assert_str_eq("{{", handlebars_token_get_text(token)->val);
-    ck_assert_uint_eq(sizeof("{{") - 1, handlebars_token_get_text(token)->len);
+    ck_assert_cstr_eq_hbs_str("{{", handlebars_token_get_text(token));
+    ck_assert_uint_eq(sizeof("{{") - 1, hbs_str_len(handlebars_token_get_text(token)));
 
     handlebars_token_dtor(token);
 }
@@ -208,7 +209,7 @@ START_TEST(test_token_print)
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("{{"));
     struct handlebars_token * tok = handlebars_token_ctor(context, OPEN, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, 0);
-    ck_assert_str_eq("OPEN [{{] ", actual->val);
+    ck_assert_cstr_eq_hbs_str("OPEN [{{] ", actual);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
 }
@@ -219,7 +220,7 @@ START_TEST(test_token_print2)
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, 0);
-    ck_assert_str_eq("CONTENT [this\\nis\\ra\\ttest] ", actual->val);
+    ck_assert_cstr_eq_hbs_str("CONTENT [this\\nis\\ra\\ttest] ", actual);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
 }
@@ -230,7 +231,7 @@ START_TEST(test_token_print3)
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("this\nis\ra\ttest"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
     struct handlebars_string * actual = handlebars_token_print(context, tok, handlebars_token_print_flag_newlines);
-    ck_assert_str_eq("CONTENT [this\\nis\\ra\\ttest]\n", actual->val);
+    ck_assert_cstr_eq_hbs_str("CONTENT [this\\nis\\ra\\ttest]\n", actual);
     handlebars_talloc_free(tok);
     handlebars_talloc_free(actual);
 }
@@ -238,10 +239,10 @@ END_TEST
 
 START_TEST(test_token_print_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("tok1"));
     struct handlebars_token * tok = handlebars_token_ctor(context, CONTENT, string);
-	struct handlebars_string * expected = NULL;
+	struct handlebars_string * actual;
     jmp_buf buf;
 
     if( !handlebars_setjmp_ex(context, &buf) ) {
@@ -250,7 +251,8 @@ START_TEST(test_token_print_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_token_print(context, tok, 0);
+    actual = handlebars_token_print(context, tok, 0);
+    (void) actual;
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -261,7 +263,8 @@ START_TEST(test_token_print_failed_alloc)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
 	Suite * s = suite_create("Token");
 
@@ -282,34 +285,5 @@ Suite * parser_suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-	talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

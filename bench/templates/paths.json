@@ -1,0 +1,10 @@
+{
+  "person": {
+    "name": {
+      "bar": {
+        "baz": "Larry"
+      }
+    },
+    "age": 45
+  }
+}

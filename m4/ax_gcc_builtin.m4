@@ -1,5 +1,5 @@
 # ===========================================================================
-#      http://www.gnu.org/software/autoconf-archive/ax_gcc_builtin.html
+#      https://www.gnu.org/software/autoconf-archive/ax_gcc_builtin.html
 # ===========================================================================
 #
 # SYNOPSIS
@@ -24,6 +24,7 @@
 #   The macro currently supports the following built-in functions:
 #
 #    __builtin_assume_aligned
+#    __builtin_bswap16
 #    __builtin_bswap32
 #    __builtin_bswap64
 #    __builtin_choose_expr
@@ -78,7 +79,7 @@
 #    __builtin_types_compatible_p
 #    __builtin_unreachable
 #
-#   Unsuppored built-ins will be tested with an empty parameter set and the
+#   Unsupported built-ins will be tested with an empty parameter set and the
 #   result of the check might be wrong or meaningless so use with care.
 #
 # LICENSE
@@ -90,7 +91,7 @@
 #   and this notice are preserved.  This file is offered as-is, without any
 #   warranty.
 
-#serial 2
+#serial 6
 
 AC_DEFUN([AX_GCC_BUILTIN], [
     AS_VAR_PUSHDEF([ac_var], [ax_cv_have_$1])
@@ -99,6 +100,7 @@ AC_DEFUN([AX_GCC_BUILTIN], [
         AC_LINK_IFELSE([AC_LANG_PROGRAM([], [
             m4_case([$1],
                 [__builtin_assume_aligned], [$1("", 0)],
+                [__builtin_bswap16], [$1(0)],
                 [__builtin_bswap32], [$1(0)],
                 [__builtin_bswap64], [$1(0)],
                 [__builtin_choose_expr], [$1(0, 0, 0)],

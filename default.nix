@@ -1,12 +1,10 @@
 {
-  pkgs ? import <nixpkgs> {},
+  pkgs ? (import <nixpkgs> {}),
+  stdenv ? pkgs.stdenv,
 
-  handlebarscWithCmake ? false,
   handlebarscVersion ? "v0.7.2",
   handlebarscSrc ? ./.,
   handlebarscSha256 ? null,
-
-  stdenv ? pkgs.stdenv,
 
   mustache_spec ? pkgs.callPackage (import ((fetchTarball {
     url = https://github.com/jbboehr/mustache-spec/archive/5b85c1b58309e241a6f7c09fa57bd1c7b16fa9be.tar.gz;
@@ -14,12 +12,31 @@
   }))) {},
 
   handlebars_spec ? pkgs.callPackage (import ((fetchTarball {
-    url = https://github.com/jbboehr/handlebars-spec/archive/v104.7.6.tar.gz;
-    sha256 = "0i2czm6yhiv5xbq93yj249xjxqrfv70mk1qgl0abkbm0qmmkc4vk";
-  }))) {}
+    url = https://github.com/jbboehr/handlebars-spec/archive/2dedb7ab0bb0088f2a8ea588759b1016ed37c82d.tar.gz;
+    sha256 = "0c4f0aydy5ni3skbyvsrg6yskvljmsrqhhpx54lk0jlwblqziah4";
+  }))) {},
+
+  checkSupport ? true,
+  cmakeSupport ? false,
+  debugSupport ? false,
+  devSupport ? false,
+  doxygenSupport ? false,
+  hardeningSupport ? true,
+  jsonSupport ? true,
+  lmdbSupport ? true,
+  ltoSupport ? false,
+  noRefcountingSupport ? false,
+  pthreadSupport ? true,
+  sharedSupport ? true,
+  staticSupport ? true,
+  WerrorSupport ? false,
+  valgrindSupport ? false,
+  yamlSupport ? true
 }:
 
 pkgs.callPackage ./derivation.nix {
-  inherit mustache_spec handlebars_spec handlebarscVersion handlebarscSrc handlebarscSha256 handlebarscWithCmake;
+  inherit stdenv;
+  inherit handlebarscVersion handlebarscSrc handlebarscSha256;
+  inherit mustache_spec handlebars_spec;
+  inherit checkSupport cmakeSupport debugSupport devSupport doxygenSupport hardeningSupport jsonSupport lmdbSupport ltoSupport noRefcountingSupport pthreadSupport sharedSupport staticSupport WerrorSupport valgrindSupport yamlSupport;
 }
-

@@ -26,11 +26,20 @@
 #include <stdint.h>
 
 #include "handlebars.h"
+#include "handlebars_ast.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
-#include "handlebars_ast.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
+
+#pragma GCC diagnostic ignored "-Wswitch-default"
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic warning "-Wredundant-decls"
+#if (__GNUC__ >= 6)
+#pragma GCC diagnostic warning "-Wnull-dereference"
+#endif
+
+#include "handlebars_parser_private.h"
 #include "handlebars.tab.h"
 
 #undef CONTEXT
@@ -49,10 +58,10 @@
 #if defined(YYDEBUG) && YYDEBUG
   #define YY_USER_DEBUG_INIT handlebars_yy_set_debug(1, yyg);
   #define YY_USER_DEBUG_ACTION fprintf(stderr, "Action: Line %d, yytext: %s\n", __LINE__, yytext)
-  #define YY_BREAK fprintf(stderr, "Action: Line %d (end)\n", __LINE__); break; 
+  #define YY_BREAK fprintf(stderr, "Action: Line %d (end)\n", __LINE__); break;
 #else
   #define YY_USER_DEBUG_INIT
-  #define YY_USER_DEBUG_ACTION 
+  #define YY_USER_DEBUG_ACTION
 #endif
 
 #define YY_USER_INIT \
@@ -64,7 +73,7 @@
 
 #define handlebars_yy_unput_all \
 	handlebars_yy_unput_n(yyleng)
- 		
+
 #define handlebars_yy_unput_n(n) \
 	do { \
 		int i; \
@@ -148,13 +157,14 @@ BLOCKPARAM [\x7C]
 {EEMU} 								{
 										// v2.0.0 handlebars.l line 32
 										handlebars_yy_unput_n(2);
-										yytext = "\\";
-										yyleng = 1;
-										handlebars_yy_copy_lval();
+										//yytext = "\\";
+										//yyleng = 1;
+										//handlebars_yy_copy_lval();
+                                        yylval->string = handlebars_string_ctor(HBSCTX(yyextra), HBS_STRL("\\"));
 										yy_push_state(mu, yyscanner);
 										return CONTENT;
 									}
-									
+
 {EMU}{CONTENT} 					    {
 										// v2.0.0 handlebars.l line 35
 										yy_push_state(emu, yyscanner);
@@ -188,7 +198,7 @@ BLOCKPARAM [\x7C]
 
 <raw>"{{{{/"{IDC}+"}}}}" 			{
 										// v4.0.2 handlebars.l line 54
-										
+
 										yy_pop_state(yyg);
 										if( yyg->yy_start_stack_ptr > 0 && YY_START == raw ) {
 											handlebars_yy_copy_lval();
@@ -205,7 +215,7 @@ BLOCKPARAM [\x7C]
 										handlebars_yy_copy_lval();
 										return CONTENT;
 									}
-									
+
 <raw>"{"         	                {
 										handlebars_yy_copy_lval();
 										return CONTENT;
@@ -252,7 +262,7 @@ BLOCKPARAM [\x7C]
 										handlebars_yy_copy_lval();
                                   		return CLOSE_RAW_BLOCK;
                              		}
-                             		
+
 <mu>"{{"{LEFT_STRIP}?">"         	{
 										// v2.0.0 handlebars.l line 70
 										handlebars_yy_copy_lval();
@@ -314,7 +324,7 @@ BLOCKPARAM [\x7C]
 										handlebars_yy_copy_lval();
 										return OPEN;
                              		}
-                             		
+
 <mu>"{{"{LEFT_STRIP}?"!--" 			{
 										// v2.0.0 handlebars.l line 79
 										handlebars_yy_unput_all;
@@ -395,7 +405,7 @@ BLOCKPARAM [\x7C]
 										yylval->string = handlebars_string_stripcslashes(yylval->string);
 										return STRING;
                                 	}
-                                 
+
 <mu>"@"                          	{
 										// v2.0.0 handlebars.l line 92
 										handlebars_yy_copy_lval();

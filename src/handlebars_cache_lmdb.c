@@ -22,24 +22,25 @@
 #endif
 
 #include <assert.h>
+#include <time.h>
 
-#if HAVE_LIBLMDB
+#ifdef HANDLEBARS_HAVE_LMDB
 #include <lmdb.h>
 #endif
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_cache.h"
+#include "handlebars_cache_private.h"
 #include "handlebars_map.h"
+#include "handlebars_memory.h"
+#include "handlebars_opcode_serializer.h"
+#include "handlebars_private.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
-#include "handlebars_opcode_serializer.h"
 
 
-
-#if HAVE_LIBLMDB
 
 #define HANDLE_RC(err) if( err != 0 && err != MDB_NOTFOUND ) handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "%s", mdb_strerror(err));
 
@@ -124,14 +125,13 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     if( err != 0 ) goto error;
 
     // Make key
-    if( tmpl->len > mdb_env_get_maxkeysize(intern->env) ) {
-        unsigned long hash = HBS_STR_HASH(tmpl);
-        snprintf(tmp, 256, "hash:%lu", hash);
+    if( hbs_str_len(tmpl) > (size_t) mdb_env_get_maxkeysize(intern->env) ) {
+        snprintf(tmp, 256, "hash:%lu", (unsigned long) hbs_str_hash(tmpl));
         key.mv_size = strlen(tmp);
         key.mv_data = tmp;
     } else {
-        key.mv_size = tmpl->len + 1;
-        key.mv_data = tmpl->val;
+        key.mv_size = hbs_str_len(tmpl) + 1;
+        key.mv_data = hbs_str_val(tmpl);
     }
 
     // Fetch data
@@ -192,14 +192,13 @@ static void cache_add(
     if( err != 0 ) goto error;
 
     // Make key
-    if( tmpl->len > mdb_env_get_maxkeysize(intern->env) ) {
-        unsigned long hash = HBS_STR_HASH(tmpl);
-        snprintf(tmp, 256, "hash:%lu", hash);
+    if( hbs_str_len(tmpl) > (size_t) mdb_env_get_maxkeysize(intern->env) ) {
+        snprintf(tmp, 256, "hash:%lu", (unsigned long) hbs_str_hash(tmpl));
         key.mv_size = strlen(tmp);
         key.mv_data = tmp;
     } else {
-        key.mv_size = tmpl->len + 1;
-        key.mv_data = tmpl->val;
+        key.mv_size = hbs_str_len(tmpl) + 1;
+        key.mv_data = hbs_str_val(tmpl);
     }
 
     // Make data
@@ -276,6 +275,15 @@ static void cache_reset(struct handlebars_cache * cache)
 #undef CONTEXT
 #define CONTEXT context
 
+static const struct handlebars_cache_handlers hbs_cache_handlers_lmdb = {
+    &cache_add,
+    &cache_find,
+    &cache_gc,
+    &cache_release,
+    &cache_stat,
+    &cache_reset
+};
+
 struct handlebars_cache * handlebars_cache_lmdb_ctor(
     struct handlebars_context * context,
     const char * path
@@ -284,12 +292,7 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     handlebars_context_bind(context, HBSCTX(cache));
 
     cache->max_age = -1;
-    cache->add = &cache_add;
-    cache->find = &cache_find;
-    cache->gc = &cache_gc;
-    cache->release = &cache_release;
-    cache->stat = &cache_stat;
-    cache->reset = &cache_reset;
+    cache->hnd = &hbs_cache_handlers_lmdb;
 
     struct handlebars_cache_lmdb * intern = MC(handlebars_talloc_zero(context, struct handlebars_cache_lmdb));
     cache->internal = intern;
@@ -302,14 +305,3 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
 
     return cache;
 }
-
-#else
-
-struct handlebars_cache * handlebars_cache_lmdb_ctor(
-    struct handlebars_context * context,
-    const char * path
-) {
-    handlebars_throw(context, HANDLEBARS_ERROR, "lmdb not available");
-}
-
-#endif

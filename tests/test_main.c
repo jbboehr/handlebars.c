@@ -26,12 +26,11 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
-
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
 
 
@@ -72,21 +71,19 @@ START_TEST(test_lex)
 {
     struct handlebars_token ** tokens;
 
-    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{foo}}"));
-
-    tokens = handlebars_lex(parser);
+    tokens = handlebars_lex_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{foo}}")));
 
     ck_assert_ptr_ne(NULL, tokens[0]);
-    ck_assert_int_eq(OPEN, tokens[0]->token);
-    ck_assert_str_eq("{{", tokens[0]->string->val);
+    ck_assert_int_eq(OPEN, handlebars_token_get_type(tokens[0]));
+    ck_assert_str_eq("{{", hbs_str_val(handlebars_token_get_text(tokens[0])));
 
     ck_assert_ptr_ne(NULL, tokens[1]);
-    ck_assert_int_eq(ID, tokens[1]->token);
-    ck_assert_str_eq("foo", tokens[1]->string->val);
+    ck_assert_int_eq(ID, handlebars_token_get_type(tokens[1]));
+    ck_assert_str_eq("foo", hbs_str_val(handlebars_token_get_text(tokens[1])));
 
     ck_assert_ptr_ne(NULL, tokens[2]);
-    ck_assert_int_eq(CLOSE, tokens[2]->token);
-    ck_assert_str_eq("}}", tokens[2]->string->val);
+    ck_assert_int_eq(CLOSE, handlebars_token_get_type(tokens[2]));
+    ck_assert_str_eq("}}", hbs_str_val(handlebars_token_get_text(tokens[2])));
 
     ck_assert_ptr_eq(NULL, tokens[3]);
 }
@@ -94,22 +91,22 @@ END_TEST
 
 START_TEST(test_context_ctor_dtor)
 {
-    struct handlebars_context * context = handlebars_context_ctor();
-    ck_assert_ptr_ne(NULL, context);
-    handlebars_context_dtor(context);
+    struct handlebars_context * mycontext = handlebars_context_ctor();
+    ck_assert_ptr_ne(NULL, mycontext);
+    handlebars_context_dtor(mycontext);
 }
 END_TEST
 
 START_TEST(test_context_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
-    struct handlebars_context * context;
+#ifdef HANDLEBARS_MEMORY
+    struct handlebars_context * mycontext;
 
     handlebars_memory_fail_enable();
-    context = handlebars_context_ctor();
+    mycontext = handlebars_context_ctor();
     handlebars_memory_fail_disable();
 
-    ck_assert_ptr_eq(NULL, context);
+    ck_assert_ptr_eq(NULL, mycontext);
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
@@ -136,7 +133,7 @@ END_TEST
 
 START_TEST(test_context_get_errmsg_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     struct handlebars_locinfo loc;
     char * actual;
     loc.last_line = 1;
@@ -152,7 +149,7 @@ START_TEST(test_context_get_errmsg_failed_alloc)
     //ck_assert_ptr_eq(NULL, actual);
     ck_assert_ptr_eq(handlebars_error_msg(context), actual);
 #else
-        fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
 }
 END_TEST
@@ -180,9 +177,11 @@ END_TEST
 
 START_TEST(test_context_get_errmsg_js_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     struct handlebars_locinfo loc;
     char * actual;
+    loc.first_line = 1;
+    loc.first_column = 2;
     loc.last_line = 1;
     loc.last_column = 2;
 
@@ -201,7 +200,8 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Handlebars");
 
@@ -222,34 +222,5 @@ Suite * parser_suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

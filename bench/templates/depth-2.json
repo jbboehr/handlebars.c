@@ -1,0 +1,29 @@
+{
+    "names": [
+        {
+            "bat": "foo",
+            "name": [
+                "Moe"
+            ]
+        },
+        {
+            "bat": "foo",
+            "name": [
+                "Larry"
+            ]
+        },
+        {
+            "bat": "foo",
+            "name": [
+                "Curly"
+            ]
+        },
+        {
+            "bat": "foo",
+            "name": [
+                "Shemp"
+            ]
+        }
+    ],
+    "foo": "bar"
+}

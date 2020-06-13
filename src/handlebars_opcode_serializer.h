@@ -20,15 +20,50 @@
 #ifndef HANDLEBARS_OPCODE_SERIALIZER_H
 #define HANDLEBARS_OPCODE_SERIALIZER_H
 
-#include <time.h>
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 struct handlebars_program;
 struct handlebars_opcode;
+struct handlebars_module;
+
+/**
+ * @brief Serialize a program into a single buffer. Adds return opcodes and globalizes program IDs.
+ * @param[in] context
+ * @param[in] program
+ * @return The serialized program
+ */
+struct handlebars_module * handlebars_program_serialize(
+    struct handlebars_context * context,
+    struct handlebars_program * program
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Adjust pointers by the offset between the specified base address and handlebars_module#addr
+ * @param[in] module
+ * @return void
+ */
+void handlebars_module_normalize_pointers(
+    struct handlebars_module * module,
+    void * baseaddr
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Fix any pointers by adjusting by the offset between the address of `module` and handlebars_module#addr
+ * @param[in] module
+ * @return void
+ */
+void handlebars_module_patch_pointers(
+    struct handlebars_module * module
+) HBS_ATTR_NONNULL_ALL;
+
+size_t handlebars_module_get_size(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+int handlebars_module_get_version(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+time_t handlebars_module_get_ts(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+long handlebars_module_get_flags(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+
+#ifdef HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
 /**
  * @brief Program table entry
@@ -86,33 +121,8 @@ struct handlebars_module
     void * data;
 };
 
-/**
- * @brief Serialize a program into a single buffer. Adds return opcodes and globalizes program IDs.
- * @param[in] context
- * @param[in] program
- * @return The serialized program
- */
-struct handlebars_module * handlebars_program_serialize(
-    struct handlebars_context * context,
-    struct handlebars_program * program
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+#endif /* HANDLEBARS_OPCODE_SERIALIZER_PRIVATE */
 
-/**
- * @brief Adjust pointers by the offset between the specified base address and handlebars_module#addr
- * @param[in] module
- * @return void
- */
-void handlebars_module_normalize_pointers(struct handlebars_module * module, void * baseaddr) HBS_ATTR_NONNULL_ALL;
+HBS_EXTERN_C_END
 
-/**
- * @brief Fix any pointers by adjusting by the offset between the address of `module` and handlebars_module#addr
- * @param[in] module
- * @return void
- */
-void handlebars_module_patch_pointers(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
-
-#ifdef	__cplusplus
-}
-#endif
-
-#endif
+#endif /* HANDLEBARS_OPCODE_SERIALIZER_H */

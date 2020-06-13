@@ -25,12 +25,17 @@
 #include <talloc.h>
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
-
 #include "handlebars_ast.h"
+#include "handlebars_memory.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic warning "-Wredundant-decls"
+#include "handlebars_parser_private.h"
 #include "handlebars.tab.h"
+#include "handlebars.lex.h"
+#pragma GCC diagnostic pop
+
 #include "utils.h"
 
 
@@ -78,7 +83,7 @@ END_TEST
 
 START_TEST(test_yy_free)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     char * tmp = handlebars_talloc_strdup(root, "");
     int count;
 
@@ -104,8 +109,49 @@ START_TEST(test_yy_print)
 }
 END_TEST
 
+START_TEST(test_yy_alloc)
+{
+    handlebars_parser_init_current = parser;
+    char * tmp = handlebars_yy_alloc(10, NULL);
+
+    // This should segfault on failure
+    tmp[8] = '0';
+
+    ck_assert_int_eq(10, talloc_get_size(tmp));
+
+    handlebars_talloc_free(tmp);
+}
+END_TEST
+
+START_TEST(test_yy_alloc_failed_alloc)
+{
+#ifdef HANDLEBARS_MEMORY
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(parser, &buf) ) {
+        handlebars_parser_init_current = NULL;
+        handlebars_memory_fail_disable();
+        ck_assert(1);
+        return;
+    }
+
+    handlebars_memory_fail_enable();
+    handlebars_parser_init_current = parser;
+    char * tmp = handlebars_yy_alloc(10, NULL);
+    (void) tmp;
+    handlebars_parser_init_current = NULL;
+    handlebars_memory_fail_disable();
+
+    ck_assert(0);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
+}
+END_TEST
+
 START_TEST(test_yy_realloc)
 {
+    handlebars_parser_init_current = parser;
     char * tmp = handlebars_talloc_strdup(root, "");
 
     tmp = handlebars_yy_realloc(tmp, 10, NULL);
@@ -121,26 +167,36 @@ END_TEST
 
 START_TEST(test_yy_realloc_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
+    jmp_buf buf;
     char * tmp = handlebars_talloc_strdup(root, "");
+
+    if( handlebars_setjmp_ex(parser, &buf) ) {
+        handlebars_parser_init_current = NULL;
+        handlebars_memory_fail_disable();
+        talloc_free(tmp);
+        ck_assert(1);
+        return;
+    }
+
     char * tmp2;
 
     handlebars_memory_fail_enable();
+    handlebars_parser_init_current = parser;
     tmp2 = handlebars_yy_realloc(tmp, 10, NULL);
+    (void) tmp2;
+    handlebars_parser_init_current = NULL;
     handlebars_memory_fail_disable();
 
-    ck_assert_ptr_eq(NULL, tmp2);
-
-    // (it's not actually getting freed in the realloc)
-    handlebars_talloc_free(tmp);
+    ck_assert(0);
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
 }
 END_TEST
 
-
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Utils");
 
@@ -148,7 +204,9 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
     REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");
     REGISTER_TEST_FIXTURE(s, test_yy_print, "yy_print");
+    REGISTER_TEST_FIXTURE(s, test_yy_alloc, "yy_alloc");
     REGISTER_TEST_FIXTURE(s, test_yy_realloc, "yy_realloc");
+    REGISTER_TEST_FIXTURE(s, test_yy_alloc_failed_alloc, "yy_alloc (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_yy_realloc_failed_alloc, "yy_realloc (failed alloc)");
 
     return s;
@@ -156,34 +214,5 @@ Suite * parser_suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

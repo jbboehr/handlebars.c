@@ -24,6 +24,8 @@
 #include <check.h>
 #include <talloc.h>
 
+#define HANDLEBARS_AST_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_memory.h"
@@ -45,7 +47,7 @@ END_TEST
 
 START_TEST(test_ast_node_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     jmp_buf buf;
 
     context->e->jmp = &buf;
@@ -56,7 +58,8 @@ START_TEST(test_ast_node_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
+    struct handlebars_ast_node * ast = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
+    (void) ast;
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -75,7 +78,7 @@ END_TEST
 
 START_TEST(test_ast_node_dtor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     struct handlebars_ast_node * node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     int call_count;
 
@@ -129,8 +132,8 @@ START_TEST(test_ast_node_readable_type)
 }
 END_TEST
 
-
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("AST Node");
 
@@ -145,34 +148,5 @@ Suite * parser_suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

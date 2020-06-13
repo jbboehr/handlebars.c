@@ -25,201 +25,206 @@
 #include <string.h>
 #include <talloc.h>
 
-#include "handlebars_private.h"
+#include "handlebars.h"
 #include "handlebars_memory.h"
+#include "handlebars_private.h"
+#include "handlebars_value_private.h"
+
 #include "handlebars_map.h"
+#include "handlebars_partial_loader.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
+
+#define GET_INTERN_V(value) GET_INTERN(handlebars_value_get_user(value))
+#define GET_INTERN(user) ((struct handlebars_partial_loader *) talloc_get_type_abort(user, struct handlebars_partial_loader))
+
+
+
 struct handlebars_partial_loader {
-    struct handlebars_user usr;
+    struct handlebars_user user;
     struct handlebars_string *base_path;
     struct handlebars_string *extension;
     struct handlebars_map * map;
 };
 
-
-static int partial_loader_dtor(struct handlebars_partial_loader * obj)
+static int partial_loader_dtor(struct handlebars_partial_loader * intern)
 {
-    if( obj ) {
-        handlebars_map_dtor(obj->map);
-    }
+    // When this gets run, the map has been already freed by talloc it appears
+    // if (intern->map) {
+    //     handlebars_map_delref(intern->map);
+    //     intern->map = NULL;
+    // }
 
     return 0;
 }
 
-
-#define GET_INTERN(value) ((struct handlebars_partial_loader *) talloc_get_type(value->v.usr, struct handlebars_partial_loader))
-
-#undef CONTEXT
-#define CONTEXT HBSCTX(value->ctx)
-
-static struct handlebars_value * std_partial_loader_copy(struct handlebars_value * value)
+static struct handlebars_value * hbs_partial_loader_copy(struct handlebars_value * value)
 {
     return NULL;
 }
 
-static void std_partial_loader_dtor(struct handlebars_value * value)
+static void hbs_partial_loader_dtor(struct handlebars_user * user)
 {
-    struct handlebars_partial_loader * intern = GET_INTERN(value);
-    handlebars_talloc_free(intern);
-    value->v.usr = NULL;
+    struct handlebars_partial_loader * intern = GET_INTERN(user);
+    if (intern->map) {
+        handlebars_map_delref(intern->map);
+        intern->map = NULL;
+    }
 }
 
-static void std_partial_loader_convert(struct handlebars_value * value, bool recurse)
+static void hbs_partial_loader_convert(struct handlebars_value * value, bool recurse)
 {
     ;
 }
 
-static enum handlebars_value_type std_partial_loader_type(struct handlebars_value * value)
+static enum handlebars_value_type hbs_partial_loader_type(struct handlebars_value * value)
 {
     return HANDLEBARS_VALUE_TYPE_MAP;
 }
 
-static struct handlebars_value * std_partial_loader_map_find(struct handlebars_value * value, struct handlebars_string * key)
+static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_value * value, struct handlebars_string * key, struct handlebars_value * rv)
 {
-    struct handlebars_partial_loader * intern = GET_INTERN(value);
+    struct handlebars_partial_loader * intern = GET_INTERN_V(value);
     struct handlebars_value *retval = handlebars_map_find(intern->map, key);
 
     if (retval) {
-        return retval;
+        handlebars_value_value(rv, retval);
+        return rv;
     }
 
-    struct handlebars_string *filename = handlebars_string_copy_ctor(value->ctx, intern->base_path);
-    filename = handlebars_string_append(CONTEXT, filename, HBS_STRL("/"));
-    filename = handlebars_string_append_str(CONTEXT, filename, key);
+    struct handlebars_string *filename = handlebars_string_copy_ctor(intern->user.ctx, intern->base_path);
+    filename = handlebars_string_append(intern->user.ctx, filename, HBS_STRL("/"));
+    filename = handlebars_string_append_str(intern->user.ctx, filename, key);
     if (intern->extension) {
-        filename = handlebars_string_append_str(CONTEXT, filename, intern->extension);
+        filename = handlebars_string_append_str(intern->user.ctx, filename, intern->extension);
     }
 
     FILE * f;
     long size;
 
-    f = fopen(filename->val, "rb");
+    f = fopen(hbs_str_val(filename), "rb");
     if( !f ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "File to open partial: %s", filename->val);
+        handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "File to open partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
     fseek(f, 0, SEEK_END);
     size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    struct handlebars_string *buf = handlebars_string_init(CONTEXT, size);
-    size_t read = fread(buf->val, size, 1, f);
+    char * buf = handlebars_talloc_array(intern->user.ctx, char, size + 1);
+    size_t read = fread(buf, size, 1, f);
     fclose(f);
 
     if (!read) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Failed to read partial: %s", filename->val);
+        handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Failed to read partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
-    buf->val[size] = 0;
-    buf->len = size - 1;
+    buf[size] = 0;
 
-    retval = handlebars_value_ctor(CONTEXT);
-    handlebars_value_str_steal(retval, buf);
+    // Need to duplicate the key because it may be owned by a child VM
+    key = handlebars_string_copy_ctor(intern->user.ctx, key);
 
-    handlebars_map_add(intern->map, key, retval);
+    handlebars_value_str(rv, handlebars_string_ctor(intern->user.ctx, buf, size));
+    handlebars_talloc_free(buf);
+
+    intern->map = handlebars_map_add(intern->map, key, rv);
 
     handlebars_talloc_free(filename);
-    return retval;
+    return rv;
 }
 
-static struct handlebars_value * std_partial_loader_array_find(struct handlebars_value * value, size_t index)
+static struct handlebars_value * hbs_partial_loader_array_find(struct handlebars_value * value, size_t index, struct handlebars_value * rv)
 {
     return NULL;
 }
 
-static bool std_partial_loader_iterator_next_void(struct handlebars_value_iterator * it)
+static bool hbs_partial_loader_iterator_next_void(struct handlebars_value_iterator * it)
 {
     return false;
 }
 
-static bool std_partial_loader_iterator_next_map(struct handlebars_value_iterator * it)
+static bool hbs_partial_loader_iterator_next_map(struct handlebars_value_iterator * it)
 {
+    struct handlebars_partial_loader * intern = GET_INTERN_V(it->value);
+    struct handlebars_map * map = intern->map;
+    struct handlebars_value * tmp;
+
     assert(it->value != NULL);
+    assert(handlebars_value_get_type(it->value) == HANDLEBARS_VALUE_TYPE_MAP);
 
-    struct handlebars_map_entry * entry = (struct handlebars_map_entry *) it->usr;
-
-    assert(it->value->type == HANDLEBARS_VALUE_TYPE_USER);
-    assert(it->current != NULL);
-    assert(entry != NULL);
-
-    handlebars_value_delref(it->current);
-    it->current = NULL;
-
-    if( !entry->next ) {
+    if( it->index >= handlebars_map_count(map) - 1 ) {
+        handlebars_value_dtor(it->cur);
+        handlebars_map_set_is_in_iteration(map, false);
         return false;
     }
 
-    it->usr = (void *) (entry = entry->next);
-    it->key = entry->key;
-    it->current = entry->value;
-    handlebars_value_addref(it->current);
+    it->index++;
+    handlebars_map_get_kv_at_index(map, it->index, &it->key, &tmp);
+    handlebars_value_value(it->cur, tmp);
     return true;
 }
 
-bool std_partial_loader_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
+static bool hbs_partial_loader_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
 {
-    struct handlebars_partial_loader * intern = GET_INTERN(value);
+    struct handlebars_partial_loader * intern = GET_INTERN_V(value);
     struct handlebars_map * map = intern->map;
-    struct handlebars_map_entry * entry = map->first;
+    struct handlebars_value * tmp;
 
-    if( entry ) {
-        it->value = value;
-        it->usr = (void *) entry;
-        it->key = entry->key;
-        it->current = entry->value;
-        it->length = map->i;
-        it->next = &std_partial_loader_iterator_next_map;
-        handlebars_value_addref(it->current);
-        return true;
-    } else {
-        it->next = &std_partial_loader_iterator_next_void;
+    if (handlebars_map_count(map) <= 0) {
+        it->next = &hbs_partial_loader_iterator_next_void;
+        return false;
+    }
+
+    handlebars_map_sparse_array_compact(map); // meh
+    it->value = value;
+    it->index = 0;
+    handlebars_map_get_kv_at_index(map, it->index, &it->key, &tmp);
+    handlebars_value_value(it->cur, tmp);
+    it->next = &hbs_partial_loader_iterator_next_map;
+    if (handlebars_map_set_is_in_iteration(map, true)) {
+        fprintf(stderr, "Nested map iteration is not currently supported [%s:%d]", __FILE__, __LINE__);
+        abort();
     }
 
     return true;
 }
 
-long std_partial_loader_count(struct handlebars_value * value)
+static long hbs_partial_loader_count(struct handlebars_value * value)
 {
-    struct handlebars_partial_loader * intern = GET_INTERN(value);
-    return intern->map->i;
+    struct handlebars_partial_loader * intern = GET_INTERN_V(value);
+    return handlebars_map_count(intern->map);
 }
 
-static struct handlebars_value_handlers handlebars_value_std_partial_loader_handlers = {
+static const struct handlebars_value_handlers handlebars_value_hbs_partial_loader_handlers = {
     "json",
-    &std_partial_loader_copy,
-    &std_partial_loader_dtor,
-    &std_partial_loader_convert,
-    &std_partial_loader_type,
-    &std_partial_loader_map_find,
-    &std_partial_loader_array_find,
-    &std_partial_loader_iterator_init,
+    &hbs_partial_loader_copy,
+    &hbs_partial_loader_dtor,
+    &hbs_partial_loader_convert,
+    &hbs_partial_loader_type,
+    &hbs_partial_loader_map_find,
+    &hbs_partial_loader_array_find,
+    &hbs_partial_loader_iterator_init,
     NULL, // call
-    &std_partial_loader_count
+    &hbs_partial_loader_count
 };
 
-struct handlebars_value_handlers * handlebars_value_get_std_partial_loader_handlers()
-{
-    return &handlebars_value_std_partial_loader_handlers;
-}
-
-struct handlebars_value * handlebars_value_partial_loader_ctor(
+struct handlebars_value * handlebars_value_partial_loader_init(
     struct handlebars_context * context,
-    struct handlebars_string *base_path,
-    struct handlebars_string *extension
+    struct handlebars_string * base_path,
+    struct handlebars_string * extension,
+    struct handlebars_value * rv
 ) {
-    struct handlebars_value *value = handlebars_value_ctor(context);
-
     struct handlebars_partial_loader *obj = MC(handlebars_talloc(context, struct handlebars_partial_loader));
-    obj->usr.handlers = handlebars_value_get_std_partial_loader_handlers();
+    handlebars_user_init((struct handlebars_user *) obj, context, &handlebars_value_hbs_partial_loader_handlers);
     obj->base_path = talloc_steal(obj, handlebars_string_copy_ctor(context, base_path));
     obj->extension = talloc_steal(obj, handlebars_string_copy_ctor(context, extension));
-    obj->map = talloc_steal(obj, handlebars_map_ctor(context));
+    obj->map = talloc_steal(obj, handlebars_map_ctor(context, 32));
     talloc_set_destructor(obj, partial_loader_dtor);
-
-    value->type = HANDLEBARS_VALUE_TYPE_USER;
-    value->v.usr = (struct handlebars_user *) obj;
-
-    return value;
+    handlebars_value_user(rv, (struct handlebars_user *) obj);
+    return rv;
 }

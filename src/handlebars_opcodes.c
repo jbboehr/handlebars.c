@@ -24,6 +24,8 @@
 #include <assert.h>
 #include <string.h>
 
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
@@ -33,6 +35,8 @@
 
 
 
+const size_t HANDLEBARS_OPCODE_SIZE = sizeof(struct handlebars_opcode);
+const size_t HANDLEBARS_OPERAND_SIZE = sizeof(struct handlebars_operand);
 
 struct handlebars_opcode * handlebars_opcode_ctor(
         struct handlebars_context * context, enum handlebars_opcode_type type)
@@ -128,7 +132,8 @@ void handlebars_operand_set_arrayval_string(
     ptr = arg;
     arrptr = operand->data.array.array;
     for( ; *ptr; ++ptr, ++arrptr ) {
-        arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_ctor(context, (*ptr)->val, (*ptr)->len));
+        // arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_ctor(context, (*ptr)->val, (*ptr)->len));
+        arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_copy_ctor(context, *ptr));
     }
 }
 
@@ -184,9 +189,9 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
 
         // Special
         _RTYPE_CASE(return, return);
-    }
 
-    return "invalid";
+        default: return "invalid";
+    }
 }
 
 enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char * type)
@@ -245,6 +250,8 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
             _RTYPE_REV_CMP(resolve_possible_lambda, resolvePossibleLambda);
             _RTYPE_REV_CMP(register_decorator, registerDecorator);
             break;
+
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
 
     // Unknown :(
@@ -303,3 +310,7 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
             return 4;
     }
 }
+
+void handlebars_opcode_set_loc(struct handlebars_opcode * opcode, struct handlebars_locinfo loc) {
+    opcode->loc = loc;
+};

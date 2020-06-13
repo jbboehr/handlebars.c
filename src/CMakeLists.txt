@@ -27,27 +27,32 @@ set(SOURCE_FILES
     handlebars_ast_helpers.c
     handlebars_ast_list.c
     handlebars_ast_printer.c
+    handlebars_cache.c
     handlebars_cache_lmdb.c
     handlebars_cache_mmap.c
     handlebars_cache_simple.c
     handlebars_compiler.c
     handlebars_delimiters.c
     handlebars_helpers.c
+    handlebars_json.c
     handlebars_map.c
 #    handlebars_memory.c
     handlebars_opcode_printer.c
     handlebars_opcode_serializer.c
     handlebars_opcodes.c
+    handlebars_parser.c
+    handlebars_parser_private.c
     handlebars_partial_loader.c
+    handlebars_rc.c
     handlebars_scanners.c
     handlebars_stack.c
     handlebars_string.c
     handlebars_token.c
-    handlebars_utils.c
     handlebars_value.c
     handlebars_value_handlers.c
     handlebars_vm.c
-    handlebars_whitespace.c)
+    handlebars_whitespace.c
+    handlebars_yaml.c)
 
 set(HEADERS
     ${CMAKE_CURRENT_BINARY_DIR}/handlebars_config.h
@@ -55,29 +60,38 @@ set(HEADERS
     handlebars.lex.h
     handlebars.tab.h
     handlebars_ast.h
-    handlebars_ast_helpers.h
     handlebars_ast_list.h
     handlebars_ast_printer.h
     handlebars_cache.h
     handlebars_compiler.h
+    handlebars_delimiters.h
     handlebars_helpers.h
-    handlebars_helpers_ht.h
+    handlebars_json.h
     handlebars_map.h
     handlebars_memory.h
     handlebars_opcode_printer.h
     handlebars_opcode_serializer.h
     handlebars_opcodes.h
+    handlebars_parser.h
     handlebars_partial_loader.h
-    handlebars_private.h
-    handlebars_scanners.h
+    handlebars_rc.h
     handlebars_stack.h
     handlebars_string.h
+	handlebars_types.h
     handlebars_token.h
-    handlebars_utils.h
     handlebars_value.h
     handlebars_value_handlers.h
     handlebars_vm.h
-    handlebars_whitespace.h)
+    handlebars_yaml.h)
+
+# these headers are not (currently) installed because they only contain private symbols:
+# handlebars_ast_helpers.h
+# handlebars_helpers_ht.h
+# handlebars_parser_private.h
+# handlebars_private.h
+# handlebars_scanners.h
+# handlebars_whitespace.h
+# handlebars_value_private.h
 
 link_libraries(${LIBS})
 
@@ -90,5 +104,5 @@ install(TARGETS handlebars handlebars_static
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/handlebars)
 install(EXPORT handlebars DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cmake)

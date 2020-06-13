@@ -24,6 +24,9 @@
 #include <assert.h>
 #include <string.h>
 
+#define HANDLEBARS_COMPILER_PRIVATE
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
@@ -31,7 +34,6 @@
 #include "handlebars_opcode_printer.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 
 
 
@@ -43,8 +45,6 @@ struct handlebars_opcode_printer {
     int flags;
     struct handlebars_string * output;
 };
-
-
 
 static struct handlebars_opcode_printer * handlebars_opcode_printer_ctor(struct handlebars_context * context)
 {
@@ -86,7 +86,7 @@ struct handlebars_string * handlebars_operand_print_append(
             break;
         case handlebars_operand_type_string:
             tmp = handlebars_string_addcslashes(context, operand->data.string.string, HBS_STRL("\r\n\t"));
-            string = handlebars_string_asprintf_append(context, string, "[STRING:%.*s]", (int) tmp->len, tmp->val);
+            string = handlebars_string_asprintf_append(context, string, "[STRING:%.*s]", (int) hbs_str_len(tmp), hbs_str_val(tmp));
             handlebars_talloc_free(tmp);
             break;
         case handlebars_operand_type_array: {
@@ -101,6 +101,7 @@ struct handlebars_string * handlebars_operand_print_append(
             string = handlebars_string_append(context, string, HBS_STRL("]"));
             break;
         }
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
     return string;
 }

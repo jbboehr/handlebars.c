@@ -22,30 +22,76 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
+struct handlebars_context;
+struct handlebars_options;
 struct handlebars_string;
+struct handlebars_user;
 struct handlebars_value_iterator;
-struct json_object;
-struct yaml_document_s;
-struct yaml_node_s;
+struct handlebars_value_handlers;
+struct handlebars_ptr;
 
 typedef struct handlebars_value * (*handlebars_copy_func)(struct handlebars_value * value);
-typedef void (*handlebars_value_dtor_func)(struct handlebars_value * value);
+typedef void (*handlebars_value_dtor_func)(struct handlebars_user * user);
 typedef void (*handlebars_value_convert_func)(struct handlebars_value * value, bool recurse);
 typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handlebars_value * value);
-typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, struct handlebars_string * key);
-typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index);
+typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, struct handlebars_string * key, struct handlebars_value * rv);
+typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index, struct handlebars_value * rv);
 typedef bool (*handlebars_iterator_init_func)(struct handlebars_value_iterator * it, struct handlebars_value * value);
 typedef struct handlebars_value * (*handlebars_call_func)(
     struct handlebars_value * value,
     int argc,
     struct handlebars_value * argv[],
-    struct handlebars_options * options
+    struct handlebars_options * options,
+    struct handlebars_value * rv
 );
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
+
+handlebars_count_func handlebars_value_handlers_get_count_fn(
+    const struct handlebars_value_handlers * handlers
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+void handlebars_user_init(struct handlebars_user * user, struct handlebars_context * ctx, const struct handlebars_value_handlers * handlers)
+    HBS_ATTR_NONNULL_ALL;
+
+// {{{ Reference Counting
+void handlebars_user_addref(struct handlebars_user * user)
+    HBS_ATTR_NONNULL_ALL;
+void handlebars_user_delref(struct handlebars_user * user)
+    HBS_ATTR_NONNULL_ALL;
+void handlebars_user_addref_ex(struct handlebars_user * user, const char * expr, const char * loc)
+    HBS_ATTR_NONNULL_ALL;
+void handlebars_user_delref_ex(struct handlebars_user * user, const char * expr, const char * loc)
+    HBS_ATTR_NONNULL_ALL;
+
+#ifndef NDEBUG
+#define handlebars_user_addref(user) handlebars_user_addref_ex(user, #user, HBS_LOC)
+#define handlebars_user_delref(user) handlebars_user_delref_ex(user, #user, HBS_LOC)
+#endif
+// }}} Reference Counting
+
+struct handlebars_ptr * handlebars_ptr_ctor(
+    struct handlebars_context * ctx,
+    void * ptr
+) HBS_ATTR_NONNULL_ALL;
+
+void * handlebars_ptr_get_ptr(struct handlebars_ptr * uptr)
+    HBS_ATTR_NONNULL_ALL;
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+#include "handlebars_rc.h"
+#endif
+
+//! Common header for user-defined types
+struct handlebars_user
+{
+    struct handlebars_context * ctx;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    struct handlebars_rc rc;
+#endif
+    const struct handlebars_value_handlers * handlers;
+};
 
 struct handlebars_value_handlers {
     const char * name;
@@ -60,79 +106,6 @@ struct handlebars_value_handlers {
     handlebars_count_func count;
 };
 
-struct handlebars_value_handlers * handlebars_value_get_std_json_handlers(void) HBS_ATTR_RETURNS_NONNULL;
+HBS_EXTERN_C_END
 
-/**
- * @brief Initialize a value from a JSON object
- * @param[in] ctx The handlebars context
- * @param[in] value The value to initialize
- * @param[in] json The JSON object
- * @return void
- */
-void handlebars_value_init_json_object(struct handlebars_context * ctx, struct handlebars_value * value, struct json_object *json);
-
-/**
- * @brief Initialize a value from a JSON string
- * @param[in] ctx The handlebars context
- * @param[in] value The value to initialize
- * @param[in] json The JSON string
- */
-void handlebars_value_init_json_string(struct handlebars_context *ctx, struct handlebars_value * value, const char * json);
-
-/**
- * @brief Construct a value from a JSON string
- * @param[in] ctx The handlebars context
- * @param[in] json The JSON string
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_json_string(struct handlebars_context *ctx, const char * json) HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Construct a value from a JSON object
- * @param[in] ctx The handlebars context
- * @param[in] json The JSON object
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_json_object(struct handlebars_context *ctx, struct json_object *json) HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Initialize a value from a YAML node
- * @param[in] ctx
- * @param[in] value
- * @param[in] document
- * @param[in] node
- * @return void
- */
-void handlebars_value_init_yaml_node(struct handlebars_context *ctx, struct handlebars_value * value, struct yaml_document_s * document, struct yaml_node_s * node);
-
-/**
- * @brief Initialize a value from a YAML string
- * @param[in] ctx
- * @param[in] value
- * @param[in] yaml
- * @return void
- */
-void handlebars_value_init_yaml_string(struct handlebars_context * ctx, struct handlebars_value * value, const char * yaml);
-
-/**
- * @brief Construct a value from a YAML node
- * @param[in] ctx The handlebars context
- * @param[in] document
- * @param[in] node
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_yaml_node(struct handlebars_context *ctx, struct yaml_document_s * document, struct yaml_node_s * node) HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Initialize a value from a YAML string
- * @param[in] ctx The handlebars context
- * @param[in] yaml The YAML string
- * @return The constructed value
- */
-struct handlebars_value * handlebars_value_from_yaml_string(struct handlebars_context * ctx, const char * yaml) HBS_ATTR_RETURNS_NONNULL;
-
-#ifdef	__cplusplus
-}
-#endif
-
-#endif
+#endif /* HANDLEBARS_VALUE_HANDLERS_H */

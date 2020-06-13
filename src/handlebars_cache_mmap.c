@@ -21,10 +21,6 @@
 #include "config.h"
 #endif
 
-#include "handlebars.h"
-
-#ifdef HAVE_PTHREAD
-
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
@@ -32,17 +28,23 @@
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
 
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
+
+#include "handlebars.h"
+#include "handlebars_cache.h"
+#include "handlebars_cache_private.h"
+#include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
-
-#include "handlebars_cache.h"
-#include "handlebars_map.h"
+#include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
-#include "handlebars_opcode_serializer.h"
+
+
 
 #undef CONTEXT
 #define CONTEXT HBSCTX(cache)
@@ -58,6 +60,16 @@
 #ifndef __APPLE__
 #define USE_SPINLOCK 1
 #endif
+
+#ifdef HAVE_ATOMIC_BUILTINS
+#define INCR(var) __atomic_add_fetch(&var, 1, __ATOMIC_SEQ_CST)
+#define DECR(var) __atomic_sub_fetch(&var, 1, __ATOMIC_SEQ_CST)
+#else
+#define INCR(var) lock(cache); var++; unlock(cache)
+#define DECR(var) lock(cache); var--; unlock(cache)
+#endif
+
+
 
 static const char head[] = "handlebars shared opcode cache";
 static const size_t PADDING = 1;
@@ -83,10 +95,10 @@ struct handlebars_cache_mmap {
     size_t table_size;
 
     //! The number of slots in the hash table
-    size_t table_count;
+    uint32_t table_count;
 
     //! The number of used slots in the hash table
-    size_t table_entries;
+    uint32_t table_entries;
 
     //! The pointer to the data segment
     void * data;
@@ -133,13 +145,19 @@ static inline size_t align_size(size_t size)
 
 static inline void * append(struct handlebars_cache_mmap * intern, void * source, size_t size)
 {
-    void * addr = intern->data + intern->data_length;
+    void * addr = (char *) intern->data + intern->data_length;
+    uintptr_t align = (uintptr_t) (void *) addr % 8;
+    if (align > 0) {
+        memset(addr, 0, align);
+        addr = (char *) addr + (8 - align);
+        intern->data_length += (8 - align);
+    }
     if( intern->data_length + size + PADDING >= intern->data_size ) {
         return NULL;
     }
     intern->data_length += size + PADDING;
     memcpy(addr, source, size);
-    memset(addr + size, 0, PADDING);
+    memset((char *) addr + size, 0, PADDING);
     return addr;
 }
 
@@ -185,21 +203,15 @@ static inline void unlock(struct handlebars_cache * cache)
     }
 }
 
-static inline bool table_exists(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
-{
-    size_t offset = HBS_STR_HASH(string) % intern->table_count;
-    return NULL != intern->table[offset];
-}
-
 static inline struct table_entry * table_find(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
 {
-    size_t offset = HBS_STR_HASH(string) % intern->table_count;
+    uint32_t offset = hbs_str_hash(string) % intern->table_count;
     return intern->table[offset];
 }
 
 static inline void table_set(struct handlebars_cache_mmap * intern, struct table_entry * entry)
 {
-    size_t offset = HBS_STR_HASH(entry->key) % intern->table_count;
+    uint32_t offset = hbs_str_hash(entry->key) % intern->table_count;
     if( entry == NULL ) {
         intern->table[offset] = NULL;
     } else {
@@ -209,26 +221,19 @@ static inline void table_set(struct handlebars_cache_mmap * intern, struct table
 
 static inline void table_unset(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
 {
-    size_t offset = HBS_STR_HASH(string) % intern->table_count;
+    uint32_t offset = hbs_str_hash(string) % intern->table_count;
     intern->table[offset] = NULL;
 }
 
-#if HAVE_ATOMIC_BUILTINS
-#define INCR(var) __atomic_add_fetch(&var, 1, __ATOMIC_SEQ_CST)
-#define DECR(var) __atomic_sub_fetch(&var, 1, __ATOMIC_SEQ_CST)
-#else
-#define INCR(var) lock(cache); var++; unlock(cache)
-#define DECR(var) lock(cache); var--; unlock(cache)
-#endif
-
 static int cache_dtor(struct handlebars_cache * cache)
 {
-    // This may be unnecessary with MAP_ANONYMOUS
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+
     if( intern ) {
+        // @TODO exactly what do we actually need to free?
         munmap(intern, intern->size);
     }
-    // @todo do we need to release the mutexes?
+
     return 0;
 }
 
@@ -240,17 +245,23 @@ static void cache_reset(struct handlebars_cache * cache)
     intern->in_reset = true;
 
     // Try to wait for refcount to empty
+#ifdef HAVE_ATOMIC_BUILTINS
     int counter = 0;
-    while( intern->refcount > 0 && ++counter <= 100 ) {
+    while( __atomic_load_n(&intern->refcount, __ATOMIC_SEQ_CST) > 0 && ++counter <= 100 ) {
         usleep(5000);
     }
-    if( intern->refcount > 0 ) {
+    if( __atomic_load_n(&intern->refcount, __ATOMIC_SEQ_CST) > 0 ) {
         goto error;
     }
+#else
+    if (intern->refcount > 0) {
+        goto error;
+    }
+#endif
 
     // Unprotect/Lock
-    protect(cache, false);
     lock(cache);
+    protect(cache, false);
 
     // Initialize header
     intern->table_entries = 0;
@@ -260,8 +271,8 @@ static void cache_reset(struct handlebars_cache * cache)
     memset(intern->table, 0, intern->table_size);
 
     // Protect/Unlock
-    unlock(cache);
     protect(cache, true);
+    unlock(cache);
 
 error:
     // Unlock
@@ -270,7 +281,6 @@ error:
 
 static int cache_gc(struct handlebars_cache * cache)
 {
-    // @todo
     return 0;
 }
 
@@ -308,13 +318,13 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Check if it's too old or wrong version
     time(&now);
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
-        protect(cache, false);
         lock(cache);
+        protect(cache, false);
         table_unset(intern, key);
         intern->misses++;
         intern->table_entries--;
-        unlock(cache);
         protect(cache, true);
+        unlock(cache);
         goto error;
     }
 
@@ -344,8 +354,8 @@ static void cache_add(
     }
 
     // Lock
-    protect(cache, false);
     lock(cache);
+    protect(cache, false);
 
     assert(module == module->addr);
 
@@ -359,15 +369,15 @@ static void cache_add(
     }
 
     // Copy key
-    entry.key = append(intern, (void *) key, HBS_STR_SIZE(key->len));
+    entry.key = append(intern, (void *) key, HBS_STR_SIZE(hbs_str_len(key)));
 
     // Copy data
     entry.data = append(intern, (void *) module, module->size);
 
     // Check for failure
     if( unlikely(!entry.key || !entry.data) ) {
-        unlock(cache);
         protect(cache, true);
+        unlock(cache);
         cache_reset(cache);
         return;
     }
@@ -381,8 +391,8 @@ static void cache_add(
 
 error:
     // Unlock
-    unlock(cache);
     protect(cache, true);
+    unlock(cache);
 }
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
@@ -414,6 +424,15 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
 #undef CONTEXT
 #define CONTEXT context
 
+static const struct handlebars_cache_handlers hbs_cache_handlers_mmap = {
+    &cache_add,
+    &cache_find,
+    &cache_gc,
+    &cache_release,
+    &cache_stat,
+    &cache_reset
+};
+
 struct handlebars_cache * handlebars_cache_mmap_ctor(
     struct handlebars_context * context,
     size_t size,
@@ -423,17 +442,12 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     handlebars_context_bind(context, HBSCTX(cache));
 
     cache->max_age = -1;
-    cache->add = &cache_add;
-    cache->find = &cache_find;
-    cache->gc = &cache_gc;
-    cache->release = &cache_release;
-    cache->stat = &cache_stat;
-    cache->reset = &cache_reset;
+    cache->hnd = &hbs_cache_handlers_mmap;
 
     talloc_set_destructor(cache, cache_dtor);
 
     // Get page size
-#if defined(_SC_PAGESIZE) && _SC_PAGESIZE != -1
+#if defined(_SC_PAGESIZE)
     page_size = (size_t) sysconf(_SC_PAGESIZE);
 #elif defined(PAGE_SIZE)
     page_size = PAGE_SIZE;
@@ -466,8 +480,8 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     intern->data_size = data_size;
     intern->table_count = entries; //table_size / sizeof(struct table_entry *);
 
-    intern->table = ((void *) intern) + intern_size;
-    intern->data = ((void *) intern) + intern_size + table_size;
+    intern->table = (struct table_entry **) (void *) ((char *) intern + intern_size);
+    intern->data = ((char *) intern) + intern_size + table_size;
 
 #if USE_SPINLOCK
     int rc = pthread_spin_init(&intern->write_lock, PTHREAD_PROCESS_SHARED);
@@ -482,17 +496,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     }
 
     cache_reset(cache);
+    protect(cache, true);
 
     return cache;
 }
-
-#else
-
-struct handlebars_cache * handlebars_cache_mmap_ctor(
-        struct handlebars_context * context,
-        const char * path
-) {
-    handlebars_throw(context, HANDLEBARS_ERROR, "pthread not available");
-}
-
-#endif

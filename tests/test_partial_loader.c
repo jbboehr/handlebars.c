@@ -28,7 +28,10 @@
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
+#include "handlebars_json.h"
+#include "handlebars_map.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_parser.h"
 #include "handlebars_partial_loader.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -37,83 +40,63 @@
 #include "handlebars.lex.h"
 #include "utils.h"
 
-static TALLOC_CTX * rootctx;
-TALLOC_CTX * memctx;
-static int memdebug;
+
 
 static struct handlebars_string * execute_template(const char *template)
 {
-    struct handlebars_context * ctx;
-    struct handlebars_compiler * compiler;
-    struct handlebars_parser * parser;
-    struct handlebars_vm * vm;
     struct handlebars_string *retval = NULL;
     struct handlebars_module * module;
-    struct handlebars_value *context;
-    TALLOC_CTX * memctx = talloc_new(rootctx);
-
-    // Initialize
-    ctx = handlebars_context_ctor_ex(memctx);
-    parser = handlebars_parser_ctor(ctx);
-    compiler = handlebars_compiler_ctor(ctx);
 
     // Parse
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), template, strlen(template));
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), template, strlen(template)), 0);
 
     // Check error
-    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
+    if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
         // @todo maybe check message
-        ck_abort_msg(handlebars_error_msg(ctx));
-        goto done;
+        ck_abort_msg(handlebars_error_msg(context));
+        return NULL;
     }
 
     // Compile
-    handlebars_compiler_compile(compiler, parser->program);
-    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
-        ck_abort_msg(handlebars_error_msg(ctx));
-        goto done;
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
+    if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
+        ck_abort_msg(handlebars_error_msg(context));
+        return NULL;
     }
 
     // Serialize
-    module = handlebars_program_serialize(ctx, compiler->program);
-    handlebars_compiler_dtor(compiler);
-
-    // Setup VM
-    vm = handlebars_vm_ctor(ctx);
+    module = handlebars_program_serialize(context, program);
 
     // Setup helpers
-    vm->helpers = handlebars_value_ctor(HBSCTX(vm));
-    handlebars_value_map_init(vm->helpers);
+    HANDLEBARS_VALUE_DECL(helpers);
+    handlebars_value_map(helpers, handlebars_map_ctor(HBSCTX(vm), 0));
+    handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partial loader
-    vm->partials = handlebars_value_partial_loader_ctor(HBSCTX(vm),
-        handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".")),
-        handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".hbs")));
+    HANDLEBARS_VALUE_DECL(partials);
+    handlebars_vm_set_partials(
+        vm,
+        handlebars_value_partial_loader_init(HBSCTX(vm),
+            handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".")),
+            handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".hbs")),
+            partials)
+    );
 
     // setup context
-    context = handlebars_value_from_json_string(ctx, "{\"foo\":\"bar\"}");
+    HANDLEBARS_VALUE_DECL(input);
+    handlebars_value_init_json_string(context, input, "{\"foo\":\"bar\"}");
+    handlebars_value_convert(input); // @TODO shouldn't have to do this
 
     // Execute
-    handlebars_vm_execute(vm, module, context);
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, input);
 
     ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
 
-    retval = talloc_steal(NULL, vm->buffer);
+    retval = talloc_steal(NULL, buffer);
 
-    // Memdebug
-    handlebars_value_delref(context);
-    handlebars_value_delref(vm->helpers);
-    handlebars_value_delref(vm->partials);
-    handlebars_value_try_delref(vm->data);
-    handlebars_vm_dtor(vm);
-    if( memdebug ) {
-        talloc_report_full(ctx, stderr);
-    }
-
-done:
-    handlebars_context_dtor(ctx);
-    ck_assert_int_eq(1, talloc_total_blocks(memctx));
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(helpers);
 
     return retval;
 }
@@ -121,29 +104,21 @@ done:
 START_TEST(test_partial_loader_1)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}");
-    ck_assert_str_eq(rv->val, "|bar|");
+    ck_assert_hbs_str_eq_cstr(rv, "|bar|\n");
+    talloc_free(rv);
 }
 END_TEST
 
 START_TEST(test_partial_loader_2)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}{{> fixture1 .}}");
-    ck_assert_str_eq(rv->val, "|bar||bar|");
+    ck_assert_hbs_str_eq_cstr(rv, "|bar|\n|bar|\n");
+    talloc_free(rv);
 }
 END_TEST
 
-static void setup(void)
-{
-    memctx = talloc_new(rootctx);
-}
-
-static void teardown(void)
-{
-    talloc_free(memctx);
-    memctx = NULL;
-}
-
-Suite * partial_loader_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Partial loader");
 
@@ -155,34 +130,5 @@ Suite * partial_loader_suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = partial_loader_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

@@ -50,4 +50,34 @@
 #undef HANDLEBARS_MEMORY
 #endif
 
+/* Enable JSON support */
+#ifndef HANDLEBARS_HAVE_JSON
+#undef HANDLEBARS_HAVE_JSON
+#endif
+
+/* Enable LMDB support */
+#ifndef HANDLEBARS_HAVE_LMDB
+#undef HANDLEBARS_HAVE_LMDB
+#endif
+
+/* Enable PCRE support */
+#ifndef HANDLEBARS_HAVE_PCRE
+#undef HANDLEBARS_HAVE_PCRE
+#endif
+
+/* Enable pthread support */
+#ifndef HANDLEBARS_HAVE_PTHREAD
+#undef HANDLEBARS_HAVE_PTHREAD
+#endif
+
+/* Enable YAML support */
+#ifndef HANDLEBARS_HAVE_YAML
+#undef HANDLEBARS_HAVE_YAML
+#endif
+
+/* Enable handlebars debugging */
+#ifndef HANDLEBARS_ENABLE_DEBUG
+#undef HANDLEBARS_ENABLE_DEBUG
+#endif
+
 #endif

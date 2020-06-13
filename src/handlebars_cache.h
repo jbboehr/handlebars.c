@@ -25,47 +25,120 @@
 #ifndef HANDLEBARS_CACHE_H
 #define HANDLEBARS_CACHE_H
 
-#include <time.h>
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 struct handlebars_cache;
 struct handlebars_compiler;
 struct handlebars_map;
 struct handlebars_module;
-struct MDB_env;
+struct handlebars_string;
 
-typedef void (*handlebars_cache_add_func)(
+extern const size_t HANDLEBARS_CACHE_SIZE;
+
+/**
+ * @brief Construct a new simple cache
+ * @param[in] context The handlebars context
+ * @return The cache
+ */
+struct handlebars_cache * handlebars_cache_simple_ctor(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+#ifdef HANDLEBARS_HAVE_LMDB
+
+/**
+ * @brief Construct a new LMDB cache. The file specified by path does not have
+ *        to exist, but must be writeable.
+ * @param[in] context The handlebars context
+ * @param[in] path The database file
+ * @return The cache
+ */
+struct handlebars_cache * handlebars_cache_lmdb_ctor(
+    struct handlebars_context * context,
+    const char * path
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+#endif
+
+#ifdef HANDLEBARS_HAVE_PTHREAD
+
+/**
+ * @brief Construct a new mmap cache
+ * @param[in] context The handlebars context
+ * @param[in] size The size of the mmap block, in bytes
+ * @param[in] entries The fixed number of entries in the hash table
+ * @return The cache
+ */
+struct handlebars_cache * handlebars_cache_mmap_ctor(
+    struct handlebars_context * context,
+    size_t size,
+    size_t entries
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+#endif
+
+/**
+ * @brief Destruct a cache
+ * @param[in] cache The cache
+ * @return void
+ */
+void handlebars_cache_dtor(
+    struct handlebars_cache * cache
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Lookup a program from the cache.
+ * @param[in] cache The cache
+ * @param[in] key The cache key, Can be a filename, actual template, or arbitrary string
+ * @return The cache entry, or NULL
+ */
+struct handlebars_module * handlebars_cache_find(
     struct handlebars_cache * cache,
-    struct handlebars_string * tmpl,
+    struct handlebars_string * key
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Add a program to the cache. Adding the same key twice is an error.
+ * @param[in] cache The cache
+ * @param[in] key The cache key. Can be a filename, actual template, or arbitrary string
+ * @param[in] program The program
+ * @return The cache entry
+ */
+void handlebars_cache_add(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
     struct handlebars_module * module
-);
+) HBS_ATTR_NONNULL_ALL;
 
-typedef struct handlebars_module * (*handlebars_cache_find_func)(
+/**
+ * @brief Garbage collect the cache
+ * @param[in] cache The cache
+ * @return The number of entries removed
+ */
+int handlebars_cache_gc(
+    struct handlebars_cache * cache
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Reset the cache
+ * @param[in] cache The cache
+ * @return void
+ */
+void handlebars_cache_reset(
+    struct handlebars_cache * cache
+) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_cache_release(
     struct handlebars_cache * cache,
-    struct handlebars_string * tmpl
-);
+    struct handlebars_string * key,
+    struct handlebars_module * module
+) HBS_ATTR_NONNULL_ALL;
 
-typedef int (*handlebars_cache_gc_func)(
+struct handlebars_cache_stat handlebars_cache_stat(
     struct handlebars_cache * cache
-);
-
-typedef void (*handlebars_cache_release_func)(
-        struct handlebars_cache * cache,
-        struct handlebars_string * tmpl,
-        struct handlebars_module * module
-);
-
-typedef struct handlebars_cache_stat (*handlebars_cache_stat_func)(
-    struct handlebars_cache * cache
-);
-
-typedef void (*handlebars_cache_reset_func)(
-    struct handlebars_cache * cache
-);
+) HBS_ATTR_NONNULL_ALL;
 
 struct handlebars_cache_stat {
     const char * name;
@@ -107,126 +180,6 @@ struct handlebars_cache_stat {
     size_t collisions;
 };
 
-/**
- * @brief In-memory opcode cache.
- */
-struct handlebars_cache {
-    //! Common header
-    struct handlebars_context ctx;
+HBS_EXTERN_C_END
 
-    //! Opaque pointer for implementation use
-    void * internal;
-
-    handlebars_cache_add_func add;
-
-    handlebars_cache_find_func find;
-
-    handlebars_cache_gc_func gc;
-
-    handlebars_cache_release_func release;
-
-    handlebars_cache_stat_func stat;
-
-    handlebars_cache_reset_func reset;
-
-    //! The max amount of time to keep an entry, in seconds, or zero to disable
-    double max_age;
-
-    //! The max number of entries to keep, or zero to disable
-    size_t max_entries;
-
-    //! The max size of all entries, or zero to disable
-    size_t max_size;
-};
-
-/**
- * @brief Construct a new simple cache
- * @param[in] context The handlebars context
- * @return The cache
- */
-struct handlebars_cache * handlebars_cache_simple_ctor(
-    struct handlebars_context * context
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Construct a new LMDB cache. The file specified by path does not have
- *        to exist, but must be writeable.
- * @param[in] context The handlebars context
- * @param[in] path The database file
- * @return The cache
- */
-struct handlebars_cache * handlebars_cache_lmdb_ctor(
-    struct handlebars_context * context,
-    const char * path
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Construct a new mmap cache
- * @param[in] context The handlebars context
- * @param[in] size The size of the mmap block, in bytes
- * @param[in] entries The fixed number of entries in the hash table
- * @return The cache
- */
-struct handlebars_cache * handlebars_cache_mmap_ctor(
-    struct handlebars_context * context,
-    size_t size,
-    size_t entries
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-
-/**
- * @brief Construct a new cache
- * @param[in] context The handlebars context
- * @return The cache
- */
-#define handlebars_cache_ctor handlebars_cache_simple_ctor
-
-/**
- * @brief Lookup a program from the cache.
- * @param[in] cache The cache
- * @param[in] key The cache key, Can be a filename, actual template, or arbitrary string
- * @return The cache entry, or NULL
- */
-#define handlebars_cache_find(cache, key) (cache->find(cache, key))
-
-/**
- * @brief Add a program to the cache. Adding the same key twice is an error.
- * @param[in] cache The cache
- * @param[in] key The cache key. Can be a filename, actual template, or arbitrary string
- * @param[in] program The program
- * @return The cache entry
- */
-#define handlebars_cache_add(cache, key, module) (cache->add(cache, key, module))
-
-/**
- * @brief Garbage collect the cache
- * @param[in] cache The cache
- * @return The number of entries removed
- */
-#define handlebars_cache_gc(cache) (cache->gc(cache))
-
-/**
- * @brief Reset the cache
- * @param[in] cache The cache
- * @return void
- */
-#define handlebars_cache_reset(cache) (cache->reset(cache))
-
-/**
- * @brief Fetch cache statistics
- * @param[in] cache The cache
- * @return The cache statistics
- */
-#define handlebars_cache_stat(cache) (cache->stat(cache))
-
-/**
- * @brief Destruct a cache
- * @param[in] cache The cache
- * @return void
- */
-#define handlebars_cache_dtor(cache) handlebars_talloc_free(cache)
-
-#ifdef	__cplusplus
-}
-#endif
-
-#endif
+#endif /* HANDLEBARS_CACHE_H */

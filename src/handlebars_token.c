@@ -33,8 +33,17 @@
 #include "handlebars.tab.h"
 
 
+
 #undef CONTEXT
 #define CONTEXT context
+
+/**
+ * @brief Token structure
+ */
+struct handlebars_token {
+    int token;
+    struct handlebars_string * string;
+};
 
 struct handlebars_token * handlebars_token_ctor(struct handlebars_context * context, int token_int, struct handlebars_string * string)
 {
@@ -100,9 +109,8 @@ const char * handlebars_token_readable_type(int type)
     // Added in v4
     _RTYPE_CASE(OPEN_PARTIAL_BLOCK);
     case NUL: return "NULL";
+    default: return "UNKNOWN";
   }
-  
-  return "UNKNOWN";
 }
 
 int handlebars_token_reverse_readable_type(const char * type)
@@ -168,8 +176,10 @@ int handlebars_token_reverse_readable_type(const char * type)
         	// Added in v3
             _RTYPE_REV_CMP(UNDEFINED);
             break;
+
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
-    
+
     // Unknown :(
     return -1;
 }
@@ -186,7 +196,7 @@ struct handlebars_string * handlebars_token_print_append(
     struct handlebars_string * text = handlebars_string_addcslashes(context, token->string, HBS_STRL("\r\n\t\v"));
     string = handlebars_string_append(context, string, name, name_len);
     string = handlebars_string_append(context, string, HBS_STRL(" ["));
-    string = handlebars_string_append(context, string, text->val, text->len);
+    string = handlebars_string_append_str(context, string, text);
     string = handlebars_string_append(context, string, HBS_STRL("]"));
     string = handlebars_string_append(context, string, sep, 1);
     handlebars_talloc_free(text);

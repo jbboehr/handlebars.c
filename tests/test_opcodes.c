@@ -25,6 +25,8 @@
 #include <string.h>
 #include <talloc.h>
 
+#define HANDLEBARS_OPCODES_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
@@ -47,8 +49,9 @@ END_TEST
 
 START_TEST(test_opcode_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     jmp_buf buf;
+    struct handlebars_opcode * opcode;
 
     if( handlebars_setjmp_ex(compiler, &buf) ) {
         ck_assert(1);
@@ -56,7 +59,8 @@ START_TEST(test_opcode_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_opcode_ctor(compiler, handlebars_opcode_type_append);
+    opcode = handlebars_opcode_ctor(HBSCTX(compiler), handlebars_opcode_type_append);
+    (void) opcode;
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -163,7 +167,7 @@ START_TEST(test_operand_set_stringval)
 
     ck_assert_int_eq(handlebars_operand_type_string, op.type);
     ck_assert_ptr_ne(NULL, op.data.string.string);
-    ck_assert_str_eq(string->val, op.data.string.string->val);
+    ck_assert_hbs_str_eq(string, op.data.string.string);
     //ck_assert_ptr_ne(str, op.data.stringval);
 }
 END_TEST
@@ -196,7 +200,6 @@ START_TEST(test_operand_set_arrayval)
     const char * strs[] = {
             "foo", "bar", "baz", "helicopter", NULL
     };
-    int ret;
     const char ** ptr1;
     struct handlebars_operand_string * ptr2;
 
@@ -207,7 +210,7 @@ START_TEST(test_operand_set_arrayval)
 
     // Compare arrays
     for( ptr1 = strs, ptr2 = op.data.array.array; *ptr1 /*|| *ptr2*/; ptr1++, ptr2++ ) {
-        ck_assert_str_eq(*ptr1, ptr2->string->val);
+        ck_assert_hbs_str_eq_cstr(ptr2->string, *ptr1);
     }
 }
 END_TEST
@@ -233,12 +236,13 @@ START_TEST(test_operand_set_arrayval_string)
 
     // Compare arrays
     for( ptr1 = strings, ptr2 = opcode->op1.data.array.array; *ptr1 /* || *ptr2*/; ptr1++, ptr2++ ) {
-        ck_assert_str_eq((*ptr1)->val, ptr2->string->val);
+        ck_assert_hbs_str_eq(*ptr1, ptr2->string);
     }
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Opcodes");
 
@@ -260,34 +264,5 @@ Suite * parser_suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

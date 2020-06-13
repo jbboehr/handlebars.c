@@ -22,9 +22,7 @@
 
 #include "handlebars.h"
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+HBS_EXTERN_C_START
 
 struct handlebars_context;
 
@@ -38,11 +36,20 @@ struct handlebars_context;
 #define MEMCHKF(ptr) (HBS_TYPEOF(ptr)) handlebars_check(CONTEXT, (void *) (ptr), MEMCHK_MSG)
 #define MC(ptr) MEMCHKF(ptr)
 
+// Assert wrapper with side effects
+#if !defined(NDEBUG) && (__GNUC__ >= 3)
+#define HBS_ASSERT(act) assert(act)
+#define HBS_ASSERT_EQ(exp, act) assert((exp) == (act))
+#define HBS_ASSERT_NE(exp, act) assert((exp) != (act))
+#else
+#define HBS_ASSERT(act) (void) (act)
+#define HBS_ASSERT_EQ(exp, act) (void) (act)
+#define HBS_ASSERT_NE(exp, act) (void) (act)
+#endif
+
 #define YY_NO_UNISTD_H 1
 #define YYLTYPE handlebars_locinfo
 
-#ifdef	__cplusplus
-}
-#endif
+HBS_EXTERN_C_END
 
 #endif

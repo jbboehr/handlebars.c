@@ -5,15 +5,28 @@
 .gitmodules			export-ignore
 .travis.yml			export-ignore
 spec				export-ignore
+
+# bison/flex/gperf
 src/handlebars.lex.c		linguist-generated=true
 src/handlebars.lex.h		linguist-generated=true
 src/handlebars.tab.c		linguist-generated=true
 src/handlebars.tab.h		linguist-generated=true
 src/handlebars_helpers_ht.h	linguist-generated=true
 src/handlebars_scanners.c	linguist-generated=true
+
+# doc
 doc/*				linguist-documentation=true
 doc/Doxyfile.in			linguist-documentation=false
 doc/Makefile.am			linguist-documentation=false
-build/*				linguist-vendored=true
+
+# autoconf
+Makefile.in			linguist-generated=true linguist-vendored=true
+config.h.in			linguist-generated=true linguist-vendored=true
+aclocal.m4			linguist-generated=true linguist-vendored=true
+configure			linguist-generated=true linguist-vendored=true
+build/*				linguist-generated=true linguist-vendored=true
 cmake/*				linguist-vendored=true
+cmake/config.h.in		linguist-vendored=false
+cmake/handlebars_config.h.in	linguist-vendored=false
 m4/*				linguist-vendored=true
+vendor/*			linguist-vendored=true

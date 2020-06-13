@@ -1,4 +1,9 @@
 
+AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_srcdir)/vendor/sort_r -I$(top_srcdir)/vendor/xxhash
+AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(VALGRIND_CFLAGS) $(YAML_CFLAGS)
+AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_LDFLAGS) $(CODE_COVERAGE_LIBS)
+LIBADD = $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(VALGRIND_LIBS) $(YAML_LIBS)
+
 EXTRA_DIST = handlebars.l handlebars.y handlebars_scanners.re handlebars_helpers_ht.gperf
 GENSOURCE = handlebars_config.h
 GENSOURCE2 =
@@ -29,35 +34,73 @@ handlebars_scanners.c: handlebars_scanners.re
 GENSOURCE2 += handlebars_scanners.c
 endif
 
+if LMDB
+LMDBSOURCES = handlebars_cache_lmdb.c
+else
+LMDBSOURCES =
+endif
+
+if PTHREAD
+PTHREADSOURCES = handlebars_cache_mmap.c
+else
+PTHREADSOURCES =
+endif
+
+if JSON
+JSONHEADERS = handlebars_json.h
+JSONSOURCES = $(JSON_HEADERS) handlebars_json.c
+else
+JSONHEADERS =
+JSONSOURCES =
+endif
+
+if YAML
+YAMLHEADERS = handlebars_yaml.h
+YAMLSOURCES = $(YAML_HEADERS) handlebars_yaml.c
+else
+YAMLHEADERS =
+YAMLSOURCES =
+endif
+
 # Main
-include_HEADERS = \
+pkginclude_HEADERS = \
 	handlebars.h \
 	handlebars.lex.h \
 	handlebars.tab.h \
 	handlebars_ast.h \
-	handlebars_ast_helpers.h \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
 	handlebars_cache.h \
 	handlebars_compiler.h \
 	handlebars_config.h \
+	handlebars_delimiters.h \
 	handlebars_helpers.h \
+	$(JSONHEADERS) \
 	handlebars_map.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_serializer.h \
 	handlebars_opcodes.h \
+	handlebars_parser.h \
     handlebars_partial_loader.h \
-	handlebars_private.h \
-	handlebars_scanners.h \
+    handlebars_rc.h \
 	handlebars_stack.h \
 	handlebars_string.h \
 	handlebars_token.h \
-	handlebars_utils.h \
+	handlebars_types.h \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
 	handlebars_vm.h \
-	handlebars_whitespace.h
+	$(YAMLHEADERS)
+
+# these headers are not (currently) installed because they only contain private symbols:
+# handlebars_ast_helpers.h
+# handlebars_helpers_ht.h
+# handlebars_parser_private.h
+# handlebars_private.h
+# handlebars_scanners.h
+# handlebars_whitespace.h
+# handlebars_value_private.h
 
 CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
 BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)
@@ -82,14 +125,17 @@ libhandlebars_la_SOURCES = \
 	handlebars_ast_printer.h \
 	handlebars_ast_printer.c \
 	handlebars_cache.h \
-	handlebars_cache_lmdb.c \
-	handlebars_cache_mmap.c \
+	handlebars_cache.c \
+	$(LMDBSOURCES) \
+	$(PTHREADSOURCES) \
 	handlebars_cache_simple.c \
 	handlebars_compiler.h \
 	handlebars_compiler.c \
 	handlebars_delimiters.c \
+	handlebars_delimiters.h \
 	handlebars_helpers.h \
 	handlebars_helpers.c \
+	$(JSONSOURCES) \
 	handlebars_map.h \
 	handlebars_map.c \
 	handlebars_opcode_printer.h \
@@ -98,9 +144,15 @@ libhandlebars_la_SOURCES = \
 	handlebars_opcode_serializer.c \
 	handlebars_opcodes.h \
 	handlebars_opcodes.c \
+	handlebars_parser.h \
+	handlebars_parser.c \
+	handlebars_parser_private.h \
+	handlebars_parser_private.c \
     handlebars_partial_loader.h \
     handlebars_partial_loader.c \
 	handlebars_private.h \
+    handlebars_rc.c \
+    handlebars_rc.h \
 	handlebars_scanners.c \
 	handlebars_scanners.h \
 	handlebars_stack.h \
@@ -109,8 +161,6 @@ libhandlebars_la_SOURCES = \
 	handlebars_string.c \
 	handlebars_token.h \
 	handlebars_token.c \
-	handlebars_utils.h \
-	handlebars_utils.c \
 	handlebars_value.h \
 	handlebars_value.c \
 	handlebars_value_handlers.h \
@@ -118,11 +168,14 @@ libhandlebars_la_SOURCES = \
 	handlebars_vm.h \
 	handlebars_vm.c \
 	handlebars_whitespace.h \
-	handlebars_whitespace.c
+	handlebars_whitespace.c \
+	$(YAMLSOURCES)
 
 if HANDLEBARS_MEMORY
 libhandlebars_la_SOURCES += handlebars_memory.c
 endif
+
+libhandlebars_la_LIBADD = $(LIBADD)
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libhandlebars_la_LDFLAGS = \

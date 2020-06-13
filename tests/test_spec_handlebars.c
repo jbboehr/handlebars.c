@@ -25,30 +25,32 @@
 #include <stdio.h>
 #include <talloc.h>
 
-#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
-#include <json-c/json.h>
-#include <json-c/json_object.h>
-#include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
-#include <json/json.h>
-#include <json/json_object.h>
-#include <json/json_tokener.h>
-#endif
+// json-c undeprecated json_object_object_get, but the version in xenial
+// is too old, so let's silence deprecated warnings for json-c
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <json.h>
+#include <json_object.h>
+#include <json_tokener.h>
+#pragma GCC diagnostic pop
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
-
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
+#include "handlebars_json.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_map.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
+
+
 
 struct generic_test {
     const char * suiteName;
@@ -65,22 +67,19 @@ struct generic_test {
     char * message;
     short exception;
     char * exceptionMatcher;
-    //struct handlebars_context * ctx;
 
     char ** known_helpers;
     long flags;
-    char * raw;
+    const char * raw;
 };
 
-static int memdebug;
-static TALLOC_CTX * rootctx;
-TALLOC_CTX * memctx;
 static struct generic_test ** tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
-static char * spec_dir;
+static const char * spec_dir;
 static int runs = 1;
 
+long json_load_compile_flags(struct json_object * object);
 long json_load_compile_flags(struct json_object * object)
 {
     long flags = 0;
@@ -120,15 +119,14 @@ long json_load_compile_flags(struct json_object * object)
     return flags;
 }
 
+char ** json_load_known_helpers(void * ctx, struct json_object * object, struct json_object * helpers);
 char ** json_load_known_helpers(void * ctx, struct json_object * object, struct json_object * helpers)
 {
-    struct json_object * array_item = NULL;
-    int array_len = 0;
     const char ** ptr2 = handlebars_builtins_names();
 
-    if (!object && !helpers) {
-        return ptr2;
-    }
+    // if (!object && !helpers) {
+    //     return ptr2;
+    // }
 
     // Let's just allocate a nice fat array >.>
     // @TODO FIXME
@@ -142,6 +140,7 @@ char ** json_load_known_helpers(void * ctx, struct json_object * object, struct 
 
     if (object) {
         json_object_object_foreach(object, key, value) {
+            (void) value;
             *ptr = handlebars_talloc_strdup(ctx, key);
             ptr++;
             assert(ptr - known_helpers < 32);
@@ -151,6 +150,7 @@ char ** json_load_known_helpers(void * ctx, struct json_object * object, struct 
     // Merge in from helpers
     if (helpers) {
         json_object_object_foreach(helpers, key, value) {
+            (void) value;
             *ptr = handlebars_talloc_strdup(ctx, key);
             ptr++;
             assert(ptr - known_helpers < 32);
@@ -256,7 +256,7 @@ static void loadSpecTest(json_object * object, const char *suiteName)
     struct json_object * kh = NULL;
     if( cur && json_object_get_type(cur) == json_type_object ) {
         test->flags = json_load_compile_flags(cur);
-        struct json_object * cur2 = json_object_object_get(cur, "knownHelpers");
+        // struct json_object * cur2 = json_object_object_get(cur, "knownHelpers");
     }
     test->known_helpers = json_load_known_helpers(test, kh, test->helpers);
 
@@ -273,7 +273,7 @@ static int loadSpec(const char * spec)
     size_t data_len = 0;
     struct json_object * result = NULL;
     struct json_object * array_item = NULL;
-    int array_len = 0;
+    size_t array_len = 0;
     char filename[1024];
 
     snprintf(filename, 1023, "%s/%s.json", spec_dir, spec);
@@ -306,10 +306,10 @@ static int loadSpec(const char * spec)
 
     // (Re)Allocate tests array
     tests_size += array_len;
-    tests = talloc_realloc(rootctx, tests, struct generic_test *, tests_size);
+    tests = talloc_realloc(root, tests, struct generic_test *, tests_size);
 
     // Iterate over array
-    for( int i = 0; i < array_len; i++ ) {
+    for( size_t i = 0; i < array_len; i++ ) {
         array_item = json_object_array_get_idx(result, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: test case was not an object\n");
@@ -321,65 +321,53 @@ error:
     if( data ) {
         free(data);
     }
-    if( result ) {
-        // @todo free?
-        //json_object_put(result);
-    }
+    HBS_TEST_JSON_DTOR(tests, result);
     return error;
 }
 
 START_TEST(test_ast_to_string_on_handlebars_spec)
 {
     struct generic_test * test = tests[_i];
-    struct handlebars_context * ctx;
-    struct handlebars_parser * parser;
     struct handlebars_string * tmpl;
     struct handlebars_string *ast_str;
     const char *actual;
-    TALLOC_CTX * memctx = talloc_new(rootctx);
-
-    ctx = handlebars_context_ctor_ex(memctx);
-    parser = handlebars_parser_ctor(ctx);
 
     tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
-    const char *expected = normalize_template_whitespace(memctx, tmpl->val, tmpl->len);
+    const char *expected = normalize_template_whitespace(parser, tmpl);
 
     // Won't work with a bunch of shit from handlebars - ast is lossy
     // We're mostly doing this to make sure it won't segfault on handlebars sytax since
     // it's mainly meant to be used with mustache templates
     if (test->exception || NULL != strstr(expected, "{{&") || NULL != strstr(expected, "{{else") ||
             NULL != strstr(expected, "{{!--") || NULL != strstr(expected, "[") || NULL != strstr(expected, "{{>(") ||
-            NULL != strstr(expected, "\\{{") || NULL != strstr(tmpl->val, "{{'") ) {
+            NULL != strstr(expected, "\\{{") || NULL != strstr(hbs_str_val(tmpl), "{{'") ) {
         fprintf(stderr, "SKIPPED #%d\n", _i);
-        goto done;
+        return;
     }
 
-    parser->tmpl = tmpl;
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
 
     // Check error
-    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(ctx));
+    if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
+        ck_assert_msg(0, handlebars_error_msg(context));
     }
 
-    ast_str = handlebars_ast_to_string(ctx, parser->program);
+    ast_str = handlebars_ast_to_string(context, ast);
 
-    actual = normalize_template_whitespace(memctx, ast_str->val, ast_str->len);
+    actual = normalize_template_whitespace(parser, ast_str);
     if (strcmp(actual, expected) != 0) {
-            char *tmp = handlebars_talloc_asprintf(rootctx,
+            char *tmp = handlebars_talloc_asprintf(root,
                                                    "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                                                    "" /*test->suite_name*/,
                                                    test->description, test->it, test->flags,
                                                    test->tmpl, expected, actual);
         ck_abort_msg(tmp);
     }
-
-done:
-    talloc_free(memctx);
 }
 END_TEST
 
-bool should_skip(struct generic_test * test)
+static bool should_skip(struct generic_test * test);
+static bool should_skip(struct generic_test * test)
 {
 #define MYCHECKALL(s, d) \
     if (0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description)) return true;
@@ -420,13 +408,6 @@ bool should_skip(struct generic_test * test)
 
 static inline void run_test(struct generic_test * test, int _i)
 {
-    struct handlebars_context * ctx;
-    struct handlebars_compiler * compiler;
-    struct handlebars_parser * parser;
-    struct handlebars_vm * vm;
-    struct handlebars_value * context;
-    struct handlebars_value * helpers;
-    struct handlebars_value_iterator it;
     struct handlebars_module * module;
 
 #ifndef NDEBUG
@@ -445,93 +426,81 @@ static inline void run_test(struct generic_test * test, int _i)
         return;
     }
 
-    // Initialize
-    ctx = handlebars_context_ctor_ex(memctx);
-    parser = handlebars_parser_ctor(ctx);
-    //ctx->ignore_standalone = test->opt_ignore_standalone;
-    compiler = handlebars_compiler_ctor(ctx);
-
     // Parse
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), test->flags);
 
     // Check error
-    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
+    if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
         // @todo maybe check message
-        ck_assert_msg(test->exception, handlebars_error_msg(ctx));
-        goto done;
+        ck_assert_msg(test->exception, handlebars_error_msg(context));
+        return;
     }
 
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);
     if( test->known_helpers ) {
-        compiler->known_helpers = (const char **) test->known_helpers;
+        handlebars_compiler_set_known_helpers(compiler, (const char **) test->known_helpers);
     }
 
-    handlebars_compiler_compile(compiler, parser->program);
-    if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
+    if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
         // @todo check message
         ck_assert_int_eq(1, test->exception);
-        goto done;
+        return;
     }
 
     // Serialize
-    module = handlebars_program_serialize(ctx, compiler->program);
-    handlebars_compiler_dtor(compiler);
+    module = handlebars_program_serialize(context, program);
 
     // Setup VM
-    vm = handlebars_vm_ctor(ctx);
-    vm->flags = test->flags;
+    handlebars_vm_set_flags(vm, test->flags);
 
     // Setup helpers
-    vm->helpers = handlebars_value_ctor(HBSCTX(vm));
-    handlebars_value_map_init(vm->helpers);
+    HANDLEBARS_VALUE_DECL(helpers);
     if( test->helpers ) {
-        helpers = handlebars_value_from_json_object(ctx, test->helpers);
+        handlebars_value_init_json_object(context, helpers, test->helpers);
         load_fixtures(helpers);
-        handlebars_value_iterator_init(&it, helpers);
-        for (; it.current != NULL; it.next(&it)) {
-            //if( it->current->type == HANDLEBARS_VALUE_TYPE_HELPER ) {
-            handlebars_map_update(vm->helpers->v.map, it.key, it.current);
-            //}
-        }
-        handlebars_value_delref(helpers);
+    } else {
+        handlebars_value_map(helpers, handlebars_map_ctor(HBSCTX(vm), 0));
     }
+    handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partials
-    vm->partials = handlebars_value_ctor(ctx);
-    handlebars_value_map_init(vm->partials);
+    HANDLEBARS_VALUE_DECL(partials);
     if( test->partials ) {
-        struct handlebars_value * partials = handlebars_value_from_json_object(ctx, test->partials);
+        handlebars_value_init_json_object(context, partials, test->partials);
         load_fixtures(partials);
-        handlebars_value_iterator_init(&it, partials);
-        for (; it.current != NULL; it.next(&it)) {
-            handlebars_map_update(vm->partials->v.map, it.key, it.current);
-        }
-        handlebars_value_delref(partials);
+    } else {
+        handlebars_value_map(partials, handlebars_map_ctor(HBSCTX(vm), 0));
     }
+    handlebars_vm_set_partials(vm, partials);
 
     // Load context
-    context = test->context ? handlebars_value_from_json_object(ctx, test->context) : handlebars_value_ctor(ctx);
-    load_fixtures(context);
+    HANDLEBARS_VALUE_DECL(input);
+    if (test->context) {
+        handlebars_value_init_json_object(context, input, test->context);
+        load_fixtures(input);
+    }
 
     // Load data
+    HANDLEBARS_VALUE_DECL(data);
     if( test->data ) {
-        vm->data = handlebars_value_from_json_object(ctx, test->data);
-        load_fixtures(vm->data);
+        handlebars_value_init_json_object(context, data, test->data);
+        load_fixtures(data);
+        handlebars_vm_set_data(vm, data);
     }
 
     // Execute
-    handlebars_vm_execute(vm, module, context);
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, input);
 
 #ifndef NDEBUG
     fprintf(stderr, "TMPL %s\n", test->tmpl);
     if( test->expected ) {
         fprintf(stderr, "EXPECTED: %s\n", test->expected);
-        fprintf(stderr, "ACTUAL: %s\n", vm->buffer->val);
-        fprintf(stderr, "%s\n", vm->buffer && 0 == strcmp(vm->buffer->val, test->expected) ? "PASS" : "FAIL");
-    } else if( ctx->e->msg ) {
-        fprintf(stderr, "ERROR: %s\n", ctx->e->msg);
+        fprintf(stderr, "ACTUAL: %s\n", hbs_str_val(buffer));
+        fprintf(stderr, "%s\n", buffer && hbs_str_eq_strl(buffer, test->expected, strlen(test->expected)) ? "PASS" : "FAIL");
+    } else if( context->e->msg ) {
+        fprintf(stderr, "ERROR: %s\n", context->e->msg);
     }
     fflush(stderr);
 #endif
@@ -561,31 +530,30 @@ static inline void run_test(struct generic_test * test, int _i)
     } else {
         ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
         ck_assert_ptr_ne(test->expected, NULL);
-        ck_assert_ptr_ne(vm->buffer, NULL);
+        ck_assert_ptr_ne(buffer, NULL);
 
-        if (strcmp(vm->buffer->val, test->expected) != 0) {
-            char *tmp = handlebars_talloc_asprintf(rootctx,
+        if (!hbs_str_eq_strl(buffer, test->expected, strlen(test->expected))) {
+            char *tmp = handlebars_talloc_asprintf(root,
                                                    "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
                                                    "" /*test->suite_name*/,
                                                    test->description, test->it, test->flags,
-                                                   test->tmpl, test->expected, vm->buffer->val);
+                                                   test->tmpl, test->expected, hbs_str_val(buffer));
             ck_abort_msg(tmp);
         }
     }
 
-    // Memdebug
-    handlebars_value_delref(context);
-    handlebars_value_delref(vm->helpers);
-    handlebars_value_delref(vm->partials);
-    handlebars_value_try_delref(vm->data);
-    handlebars_vm_dtor(vm);
-    if( memdebug ) {
-        talloc_report_full(ctx, stderr);
-    }
+    HANDLEBARS_VALUE_UNDECL(data);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(helpers);
 
-done:
-    handlebars_context_dtor(ctx);
-    ck_assert_int_eq(1, talloc_total_blocks(memctx));
+    // Memdebug
+    // handlebars_vm_dtor(vm);
+    // if( memdebug ) {
+    //     talloc_report_full(context, stderr);
+    // }
+
+    // ck_assert_int_eq(1, talloc_total_blocks(memctx));
 }
 
 START_TEST(test_handlebars_spec)
@@ -599,19 +567,25 @@ START_TEST(test_handlebars_spec)
 }
 END_TEST
 
-static void setup(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
-    memctx = talloc_new(rootctx);
-}
+    // Load the spec
+    loadSpec("basic");
+    loadSpec("blocks");
+    loadSpec("builtins");
+    loadSpec("data");
+    loadSpec("helpers");
+    loadSpec("partials");
+    loadSpec("regressions");
+    loadSpec("strict");
+    //loadSpec("string-params");
+    loadSpec("subexpressions");
+    //loadSpec("track-ids");
+    loadSpec("whitespace-control");
+    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
 
-static void teardown(void)
-{
-    talloc_free(memctx);
-    memctx = NULL;
-}
-
-Suite * parser_suite(void)
-{
+    // Setup the suite
     const char * title = "Handlebars Spec";
     TCase * tc_handlebars_spec = tcase_create(title);
     Suite * s = suite_create(title);
@@ -628,12 +602,12 @@ Suite * parser_suite(void)
     }
 
     TCase * tc_ast_to_string_on_handlebars_spec = tcase_create("AST to string on handlebars spec");
+    tcase_add_checked_fixture(tc_ast_to_string_on_handlebars_spec, default_setup, default_teardown);
     tcase_add_loop_test(tc_ast_to_string_on_handlebars_spec, test_ast_to_string_on_handlebars_spec, start, end);
     suite_add_tcase(s, tc_ast_to_string_on_handlebars_spec);
 
-    // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
+    tcase_add_checked_fixture(tc_handlebars_spec, default_setup, default_teardown);
     tcase_add_loop_test(tc_handlebars_spec, test_handlebars_spec, start, end);
-    tcase_add_checked_fixture(tc_handlebars_spec, setup, teardown);
     suite_add_tcase(s, tc_handlebars_spec);
 
     return s;
@@ -641,24 +615,11 @@ Suite * parser_suite(void)
 
 int main(int argc, char *argv[])
 {
-    int number_failed;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-    rootctx = talloc_new(NULL);
-
     // Get runs
     if( getenv("TEST_RUNS") ) {
         runs = atoi(getenv("TEST_RUNS"));
     }
 
-    // Load specs
     // Load the spec
     spec_dir = getenv("handlebars_spec_dir");
     if( spec_dir == NULL && argc >= 2 ) {
@@ -667,40 +628,7 @@ int main(int argc, char *argv[])
     if( spec_dir == NULL ) {
         spec_dir = "./spec/handlebars/spec";
     }
-    loadSpec("basic");
-    loadSpec("blocks");
-    loadSpec("builtins");
-    loadSpec("data");
-    loadSpec("helpers");
-    loadSpec("partials");
-    loadSpec("regressions");
-    loadSpec("strict");
-    //loadSpec("string-params");
-    loadSpec("subexpressions");
-    //loadSpec("track-ids");
-    loadSpec("whitespace-control");
-    fprintf(stderr, "Loaded %lu test cases\n", tests_len);
 
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        // What should we free here?
-        handlebars_talloc_free(rootctx);
-        //handlebars_talloc_free(tests);
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    // Run the suite
+    return default_main(&suite);
 }

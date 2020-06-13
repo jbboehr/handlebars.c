@@ -26,6 +26,7 @@
 
 const int MOD_ADLER = 65521;
 
+uint32_t adler32(unsigned char *data, size_t len);
 uint32_t adler32(unsigned char *data, size_t len)
 {
     uint32_t a = 1, b = 0;

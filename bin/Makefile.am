@@ -1,8 +1,9 @@
 
+AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
+AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS)
+AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS)
+LDADD = $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS) $(top_builddir)/src/libhandlebars.la
+
 bin_PROGRAMS = handlebarsc
 
 handlebarsc_SOURCES = handlebarsc.c
-
-AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
-AM_LDFLAGS = 
-LDADD = $(top_builddir)/src/libhandlebars.la

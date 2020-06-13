@@ -1,4 +1,6 @@
 struct handlebars_builtin_pair { const char * name; int pos; };
+%define hash-function-name hbs_builtin_lut_hash
+%define lookup-function-name hbs_builtin_lut_lookup
 %%
 blockHelperMissing,0
 helperMissing,1

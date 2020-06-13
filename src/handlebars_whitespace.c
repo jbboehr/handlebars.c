@@ -26,15 +26,19 @@
 #include <string.h>
 #include <talloc.h>
 
+#define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_AST_LIST_PRIVATE
+
 #include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
 
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_memory.h"
+#include "handlebars_parser.h"
+#include "handlebars_parser_private.h"
+#include "handlebars_private.h"
 #include "handlebars_scanners.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 #include "handlebars_whitespace.h"
 
 
@@ -48,7 +52,7 @@ bool handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * state
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * next;
     struct handlebars_ast_node * sibling;
-    
+
     if( !statements ) {
         return is_root;
     }
@@ -59,17 +63,17 @@ bool handlebars_whitespace_is_next_whitespace(struct handlebars_ast_list * state
         item = handlebars_ast_list_find(statements, statement);
         next = (item ? item->next : NULL);
     }
-    
+
     if( !next || !next->data ) {
         return is_root;
     }
-    
+
     sibling = (next->next ? next->next->data : NULL);
-    
+
     if( next->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        return handlebars_scanner_next_whitespace(next->data->node.content.original->val, !sibling && is_root);
+        return handlebars_scanner_next_whitespace(hbs_str_val(next->data->node.content.original), !sibling && is_root);
     }
-    
+
     return false;
 }
 
@@ -90,17 +94,17 @@ bool handlebars_whitespace_is_prev_whitespace(struct handlebars_ast_list * state
         item = handlebars_ast_list_find(statements, statement);
         prev = (item ? item->prev : NULL);
     }
-    
+
     if( !prev || !prev->data ) {
         return is_root;
     }
-    
+
     sibling = (prev->prev ? prev->prev->data : NULL);
-    
+
     if( prev->data->type == HANDLEBARS_AST_NODE_CONTENT ) {
-        return handlebars_scanner_prev_whitespace(prev->data->node.content.original->val, !sibling && is_root);
+        return handlebars_scanner_prev_whitespace(hbs_str_val(prev->data->node.content.original), !sibling && is_root);
     }
-    
+
     return false;
 }
 
@@ -110,7 +114,7 @@ bool handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
     size_t original_length;
-    
+
     if( statement == NULL ) {
         current = statements->last ? statements->last->data : NULL;
     } else {
@@ -122,22 +126,22 @@ bool handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
             (!multiple && (current->strip & handlebars_ast_strip_flag_left_stripped)) ) {
         return 0;
     }
-    
-    original_length = current->node.content.value->len;
+
+    original_length = hbs_str_len(current->node.content.value);
 
     if( multiple ) {
         current->node.content.value = handlebars_string_rtrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));
     } else {
         current->node.content.value = handlebars_string_rtrim(current->node.content.value, HBS_STRL(" \t"));
     }
-    
-    if( original_length == current->node.content.value->len ) {
+
+    if( original_length == hbs_str_len(current->node.content.value) ) {
         current->strip &= ~handlebars_ast_strip_flag_left_stripped;
     } else {
         current->strip |= handlebars_ast_strip_flag_left_stripped;
     }
     current->strip |= handlebars_ast_strip_flag_set;
-    
+
     return (current->strip & handlebars_ast_strip_flag_left_stripped) != 0;
 }
 
@@ -147,7 +151,7 @@ bool handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
     size_t original_length;
-    
+
     if( statement == NULL ) {
         current = statements->first ? statements->first->data : NULL;
     } else {
@@ -160,25 +164,21 @@ bool handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
         return 0;
     }
 
-    original_length = current->node.content.value->len;
-    
+    original_length = hbs_str_len(current->node.content.value);
+
     if( multiple ) {
         current->node.content.value = handlebars_string_ltrim(current->node.content.value, HBS_STRL(" \v\t\r\n"));
     } else {
         current->node.content.value = handlebars_string_ltrim(current->node.content.value, HBS_STRL(" \t"));
-        if( current->node.content.value->val[0] == '\r' ) {
-            memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
-            current->node.content.value->len--;
-            current->node.content.value->hash = 0;
+        if( hbs_str_val(current->node.content.value)[0] == '\r' ) {
+            current->node.content.value = handlebars_string_truncate(current->node.content.value, 1, hbs_str_len(current->node.content.value));
         }
-        if( current->node.content.value->val[0] == '\n' ) {
-            memmove(current->node.content.value->val, current->node.content.value->val + 1, current->node.content.value->len);
-            current->node.content.value->len--;
-            current->node.content.value->hash = 0;
+        if( hbs_str_val(current->node.content.value)[0] == '\n' ) {
+            current->node.content.value = handlebars_string_truncate(current->node.content.value, 1, hbs_str_len(current->node.content.value));
         }
     }
-    
-    if( original_length == current->node.content.value->len ) {
+
+    if( original_length == hbs_str_len(current->node.content.value) ) {
         current->strip &= ~handlebars_ast_strip_flag_right_stripped;
     } else {
         current->strip |= handlebars_ast_strip_flag_right_stripped;
@@ -197,14 +197,14 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
     struct handlebars_ast_list * statements = program->node.program.statements;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
-    bool do_standalone = true; //!parser->ignore_standalone;
+    bool do_standalone = true; //!(parser->flags & handlebars_compiler_flag_ignore_standalone);
 
     parser->whitespace_root_seen = 1;
-    
+
     if( !statements ) {
         return;
     }
-    
+
     handlebars_ast_list_foreach(statements, item, tmp) {
         struct handlebars_ast_node * current = item->data;
         bool is_prev_whitespace;
@@ -212,7 +212,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
         bool open_standalone;
         bool close_standalone;
         bool inline_standalone;
-          
+
         handlebars_whitespace_accept(parser, current);
         if( !current || !(current->strip & handlebars_ast_strip_flag_set) ) {
             continue;
@@ -222,7 +222,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
         open_standalone = (current->strip & handlebars_ast_strip_flag_open_standalone) && is_prev_whitespace;
         close_standalone = (current->strip & handlebars_ast_strip_flag_close_standalone) && is_next_whitespace;
         inline_standalone = (current->strip & handlebars_ast_strip_flag_inline_standalone) && is_prev_whitespace && is_next_whitespace;
-        
+
         if( current->strip & handlebars_ast_strip_flag_right ) {
             handlebars_whitespace_omit_right(statements, current, 1);
         }
@@ -238,7 +238,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
                     struct handlebars_string * start = prev->node.content.original;
                     char * ptr;
                     char * match = NULL;
-                    for( ptr = start->val; *ptr; ++ptr ) {
+                    for( ptr = hbs_str_val(start); *ptr; ++ptr ) {
                         if( *ptr == ' ' || *ptr == '\t' ) {
                             if( !match ) {
                                 match = ptr;
@@ -284,7 +284,7 @@ static inline struct handlebars_ast_node * _handlebars_whitespace_get_program(st
 {
     struct handlebars_ast_list * statements;
     struct handlebars_ast_node * node = NULL;
-    
+
     if( inverse && (statements = inverse->node.program.statements) ) {
         if( first ) {
             node = statements->first ? statements->first->data : NULL;
@@ -301,7 +301,7 @@ static inline struct handlebars_ast_node * _handlebars_whitespace_get_program(st
             return node->node.raw_block.program;
         }
     }
-    
+
     return NULL;
 }
 
@@ -313,31 +313,31 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_parser *
     struct handlebars_ast_node * firstInverse;
     struct handlebars_ast_node * lastInverse;
     unsigned strip = 0;
-    bool do_standalone = true; //!parser->ignore_standalone;
-    
+    bool do_standalone = true; //!(parser->flags & handlebars_compiler_flag_ignore_standalone);
+
     if( block->node.block.program ) {
         handlebars_whitespace_accept(parser, block->node.block.program);
     }
     if( block->node.block.inverse ) {
         handlebars_whitespace_accept(parser, block->node.block.inverse);
     }
-    
+
     program = (block->node.block.program ? block->node.block.program : block->node.block.inverse);
     inverse = (block->node.block.program ? block->node.block.inverse : NULL);
     firstInverse = lastInverse = inverse;
-    
+
     if( inverse && inverse->node.program.chained ) {
         firstInverse = _handlebars_whitespace_get_program(inverse, 1);
-        
+
         // Should this also allow inverse node?
-        while( lastInverse && 
-                lastInverse->type == HANDLEBARS_AST_NODE_PROGRAM && 
+        while( lastInverse &&
+                lastInverse->type == HANDLEBARS_AST_NODE_PROGRAM &&
                 lastInverse->node.program.chained ) {
             lastInverse = _handlebars_whitespace_get_program(lastInverse, 0);
             assert(lastInverse == NULL || lastInverse->type != HANDLEBARS_AST_NODE_INVERSE);
         }
     }
-    
+
     strip |= (block->node.block.open_strip & handlebars_ast_strip_flag_left);
     strip |= (block->node.block.close_strip & handlebars_ast_strip_flag_right);
     if( program && handlebars_whitespace_is_next_whitespace(program->node.program.statements, NULL, 0) ) {
@@ -347,15 +347,15 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_parser *
         strip |= handlebars_ast_strip_flag_close_standalone;
     }
     strip |= handlebars_ast_strip_flag_set;
-    
-    
+
+
     if( block->node.block.open_strip & handlebars_ast_strip_flag_right ) {
        handlebars_whitespace_omit_right(program->node.program.statements, NULL, 1);
     }
-    
+
     if( inverse ) {
         unsigned inverse_strip = block->node.block.inverse_strip;
-        
+
         if( inverse_strip & handlebars_ast_strip_flag_left ) {
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 1);
         }
@@ -378,7 +378,7 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_parser *
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 1);
         }
     }
-    
+
     block->strip = strip;
 }
 
@@ -405,36 +405,35 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_pars
 {
     struct handlebars_ast_node * program;
     struct handlebars_ast_node * inverse;
-    struct handlebars_ast_node * firstInverse;
+    struct handlebars_ast_node * firstInverse = NULL;
     struct handlebars_ast_node * lastInverse;
     unsigned strip = 0;
-    
+
     assert(raw_block != NULL);
     assert(raw_block->type == HANDLEBARS_AST_NODE_RAW_BLOCK);
-    
+
     handlebars_whitespace_accept(parser, raw_block->node.raw_block.program);
     handlebars_whitespace_accept(parser, raw_block->node.raw_block.inverse);
-    
+
     program = (raw_block->node.raw_block.program ? raw_block->node.raw_block.program : raw_block->node.raw_block.inverse);
     inverse = (raw_block->node.raw_block.program ? raw_block->node.raw_block.inverse : NULL);
-    
+
     assert(program == NULL || program->type == HANDLEBARS_AST_NODE_PROGRAM);
     assert(inverse == NULL || inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
-    
+
     if( inverse && inverse->node.program.chained ) {
         firstInverse = _handlebars_whitespace_get_program(inverse, 1);
-        // @todo lastInverse was previously unassigned, make sure this works
         lastInverse = inverse;
-        
+
         // Should this also allow inverse node?
-        while( lastInverse && 
-                lastInverse->type == HANDLEBARS_AST_NODE_PROGRAM && 
+        while( lastInverse &&
+                lastInverse->type == HANDLEBARS_AST_NODE_PROGRAM &&
                 lastInverse->node.program.chained ) {
             lastInverse = _handlebars_whitespace_get_program(lastInverse, 0);
             assert(lastInverse == NULL || lastInverse->type != HANDLEBARS_AST_NODE_INVERSE);
         }
     }
-    
+
     strip |= (raw_block->node.raw_block.open_strip & handlebars_ast_strip_flag_left);
     strip |= (raw_block->node.raw_block.close_strip & handlebars_ast_strip_flag_right);
     if( program && handlebars_whitespace_is_next_whitespace(program->node.program.statements, NULL, 0) ) {
@@ -444,15 +443,15 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_pars
         strip |= handlebars_ast_strip_flag_close_standalone;
     }
     strip |= handlebars_ast_strip_flag_set;
-    
-    
+
+
     if( raw_block->node.raw_block.open_strip & handlebars_ast_strip_flag_right ) {
        handlebars_whitespace_omit_right(program->node.program.statements, NULL, 1);
     }
-    
+
     if( inverse ) {
         unsigned inverse_strip = raw_block->node.raw_block.inverse_strip;
-        
+
         if( inverse_strip & handlebars_ast_strip_flag_left ) {
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 1);
         }
@@ -475,7 +474,7 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_pars
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 1);
         }
     }
-    
+
     raw_block->strip = strip;
 }
 
@@ -485,21 +484,21 @@ void handlebars_whitespace_accept(struct handlebars_parser * parser,
     if( unlikely(node == NULL) ) {
         return;
     }
-    
+
     switch( node->type ) {
-        case HANDLEBARS_AST_NODE_BLOCK: 
+        case HANDLEBARS_AST_NODE_BLOCK:
             return handlebars_whitespace_accept_block(parser, node);
-        case HANDLEBARS_AST_NODE_COMMENT: 
+        case HANDLEBARS_AST_NODE_COMMENT:
             return handlebars_whitespace_accept_comment(parser, node);
-        case HANDLEBARS_AST_NODE_MUSTACHE: 
+        case HANDLEBARS_AST_NODE_MUSTACHE:
             return handlebars_whitespace_accept_mustache(parser, node);
-        case HANDLEBARS_AST_NODE_PARTIAL: 
+        case HANDLEBARS_AST_NODE_PARTIAL:
             return handlebars_whitespace_accept_partial(parser, node);
-        case HANDLEBARS_AST_NODE_PROGRAM: 
+        case HANDLEBARS_AST_NODE_PROGRAM:
             return handlebars_whitespace_accept_program(parser, node);
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
             return handlebars_whitespace_accept_raw_block(parser, node);
-        
+
         // LCOV_EXCL_START
         // These don't do anything
         case HANDLEBARS_AST_NODE_BOOLEAN:
@@ -519,6 +518,7 @@ void handlebars_whitespace_accept(struct handlebars_parser * parser,
         case HANDLEBARS_AST_NODE_INVERSE:
         case HANDLEBARS_AST_NODE_PATH_SEGMENT:
         case HANDLEBARS_AST_NODE_NIL:
+        default:
             assert(0);
             break;
         // LCOV_EXCL_STOP

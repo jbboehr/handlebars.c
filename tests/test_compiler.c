@@ -25,34 +25,37 @@
 #include <string.h>
 #include <talloc.h>
 
+#define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_COMPILER_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
+#include "handlebars_opcodes.h"
+#include "handlebars_string.h"
 #include "handlebars_memory.h"
 #include "utils.h"
-
-// Include compiler source file so we can test the inline functions
-#include "handlebars_compiler.c"
 
 
 
 START_TEST(test_compiler_ctor)
 {
-    struct handlebars_compiler * compiler;
+    struct handlebars_compiler * mycompiler;
 
-    compiler = handlebars_compiler_ctor(context);
+    mycompiler = handlebars_compiler_ctor(context);
 
-    ck_assert_ptr_ne(NULL, compiler);
+    ck_assert_ptr_ne(NULL, mycompiler);
 
-    handlebars_compiler_dtor(compiler);
+    handlebars_compiler_dtor(mycompiler);
 }
 END_TEST
 
 START_TEST(test_compiler_ctor_failed_alloc)
 {
-#if HANDLEBARS_MEMORY
+#ifdef HANDLEBARS_MEMORY
     jmp_buf buf;
+    struct handlebars_compiler * mycompiler;
 
     context->e->jmp = &buf;
     if( setjmp(buf) ) {
@@ -61,7 +64,8 @@ START_TEST(test_compiler_ctor_failed_alloc)
     }
 
     handlebars_memory_fail_enable();
-    handlebars_compiler_ctor(context);
+    mycompiler = handlebars_compiler_ctor(context);
+    (void) mycompiler;
     handlebars_memory_fail_disable();
 
     ck_assert(0);
@@ -73,10 +77,10 @@ END_TEST
 
 START_TEST(test_compiler_dtor)
 {
-    struct handlebars_compiler * compiler;
+    struct handlebars_compiler * mycompiler;
 
-    compiler = handlebars_compiler_ctor(context);
-    handlebars_compiler_dtor(compiler);
+    mycompiler = handlebars_compiler_ctor(context);
+    handlebars_compiler_dtor(mycompiler);
 }
 END_TEST
 
@@ -84,7 +88,7 @@ START_TEST(test_compiler_get_flags)
 {
     ck_assert_int_eq(0, handlebars_compiler_get_flags(compiler));
 
-    compiler->flags = handlebars_compiler_flag_all;
+    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_all);
 
     ck_assert_int_eq(handlebars_compiler_flag_all, handlebars_compiler_get_flags(compiler));
 }
@@ -94,17 +98,14 @@ START_TEST(test_compiler_set_flags)
 {
     // Make sure it changes option flags
     handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_string_params);
-    ck_assert_int_eq(handlebars_compiler_flag_string_params, compiler->flags);
-    ck_assert_int_eq(1, compiler->string_params);
-    ck_assert_int_eq(0, compiler->track_ids);
+    ck_assert_int_eq(handlebars_compiler_flag_string_params, handlebars_compiler_get_flags(compiler));
 
     handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_track_ids);
-    ck_assert_int_eq(handlebars_compiler_flag_track_ids, compiler->flags);
-    ck_assert_int_eq(0, compiler->string_params);
-    ck_assert_int_eq(1, compiler->track_ids);
+    ck_assert_int_eq(handlebars_compiler_flag_track_ids, handlebars_compiler_get_flags(compiler));
 }
 END_TEST
 
+#ifdef HANDLEBARS_TESTING_EXPORTS
 START_TEST(test_compiler_is_known_helper)
 {
     struct handlebars_ast_node * id;
@@ -141,25 +142,32 @@ START_TEST(test_compiler_opcode)
 {
     struct handlebars_opcode * op1;
     struct handlebars_opcode * op2;
+    struct handlebars_program *program;
 
     op1 = handlebars_opcode_ctor(HBSCTX(compiler), handlebars_opcode_type_append);
     op2 = handlebars_opcode_ctor(HBSCTX(compiler), handlebars_opcode_type_append_escaped);
 
     handlebars_compiler_opcode(compiler, op1);
-    ck_assert_ptr_ne(NULL, compiler->program->opcodes);
-    ck_assert_int_ne(0, compiler->program->opcodes_size);
-    ck_assert_int_eq(1, compiler->program->opcodes_length);
-    ck_assert_ptr_eq(op1, *compiler->program->opcodes);
+    program = handlebars_compiler_get_program(compiler);
+
+    ck_assert_ptr_ne(NULL, program->opcodes);
+    ck_assert_int_ne(0, program->opcodes_size);
+    ck_assert_int_eq(1, program->opcodes_length);
+    ck_assert_ptr_eq(op1, *program->opcodes);
 
     handlebars_compiler_opcode(compiler, op2);
-    ck_assert_ptr_ne(NULL, compiler->program->opcodes);
-    ck_assert_int_ne(0, compiler->program->opcodes_size);
-    ck_assert_int_eq(2, compiler->program->opcodes_length);
-    ck_assert_ptr_eq(op2, *(compiler->program->opcodes + 1));
+    program = handlebars_compiler_get_program(compiler);
+
+    ck_assert_ptr_ne(NULL, program->opcodes);
+    ck_assert_int_ne(0, program->opcodes_size);
+    ck_assert_int_eq(2, program->opcodes_length);
+    ck_assert_ptr_eq(op2, *(program->opcodes + 1));
 }
 END_TEST
+#endif
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     Suite * s = suite_create("Compiler");
 
@@ -168,42 +176,15 @@ Suite * parser_suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");
+#ifdef HANDLEBARS_TESTING_EXPORTS
 	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");
 	REGISTER_TEST_FIXTURE(s, test_compiler_opcode, "Push opcode");
+#endif
 
     return s;
 }
 
 int main(void)
 {
-    int number_failed;
-    int memdebug;
-    int error;
-
-    talloc_set_log_stderr();
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    return default_main(&suite);
 }

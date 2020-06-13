@@ -27,9 +27,12 @@
 #include <string.h>
 
 #include "handlebars.h"
+#include "handlebars_delimiters.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_string.h"
+
+
 
 #if defined(YYDEBUG)
 #define append(str, len) fprintf(stderr, "Delimiter preprocessor: appending: \"%.*s\"\n", len, str); \
@@ -44,7 +47,7 @@
 #else
 #define append(str, len) new_tmpl = handlebars_string_append(ctx, new_tmpl, str, len)
 #define move_forward(x) \
-    if( x > i ) { \
+    if( x > (size_t) i ) { \
         handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %lu", (unsigned long) x); \
     } \
     p += x; \
@@ -59,12 +62,12 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     struct handlebars_string * open,
     struct handlebars_string * close
 ) {
-    register long i = tmpl->len;
-    register const char *p = tmpl->val;
+    register ssize_t i = hbs_str_len(tmpl);
+    register const char *p = hbs_str_val(tmpl);
 
     struct handlebars_string * new_open = NULL;
     struct handlebars_string * new_close = NULL;
-    struct handlebars_string * new_tmpl = handlebars_string_init(ctx, tmpl->len);
+    struct handlebars_string * new_tmpl = handlebars_string_init(ctx, hbs_str_len(tmpl));
     int state = 0;
     const char *po = NULL;
     const char *pc = NULL;
@@ -76,7 +79,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
         open = handlebars_string_ctor(ctx, HBS_STRL("{{"));
     } else {
         open = handlebars_string_copy_ctor(ctx, open);
-        starts_with_bracket = open->val[0] == '{';
+        starts_with_bracket = hbs_str_val(open)[0] == '{';
     }
     if( close == NULL ) {
         close = handlebars_string_ctor(ctx, HBS_STRL("}}"));
@@ -97,18 +100,18 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 }
 
                 // Remaining size needs to be at least:
-                // open->len + close->len + 2 (for equals) + 1 (minimum delimiter size) + 1 (space in the middle)
-                if( i >= open->len + close->len + 4 && strncmp(p, open->val, open->len) == 0 && *(p + open->len) == '=' ) {
+                // hbs_str_len(open) + hbs_str_len(close) + 2 (for equals) + 1 (minimum delimiter size) + 1 (space in the middle)
+                if( (size_t) i >= hbs_str_len(open) + hbs_str_len(close) + 4 && strncmp(p, hbs_str_val(open), hbs_str_len(open)) == 0 && *(p + hbs_str_len(open)) == '=' ) {
                     // We are going into a delimiter switch
                     state = 1; goto state1;
                 }
 
                 // Remaining size needs to be at least:
-                // open->len + close->len + 1
-                if( i >= open->len + close->len + 1 && strncmp(p, open->val, open->len) == 0 ) {
+                // hbs_str_len(open) + hbs_str_len(close) + 1
+                if( (size_t) i >= hbs_str_len(open) + hbs_str_len(close) + 1 && strncmp(p, hbs_str_val(open), hbs_str_len(open)) == 0 ) {
                     // We are going into a regular tag
                     append("{{", 2);
-                    move_forward(open->len);
+                    move_forward(hbs_str_len(open));
                     state = 2; goto state2;
                 }
 
@@ -122,7 +125,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 break;
             case 1: state1: // In delimiter switch
                 // Scan past open tag and equals
-                move_forward(open->len + 1);
+                move_forward(hbs_str_len(open) + 1);
 
                 // Scan past any whitespace
                 for( ; i > 0; i--, p++ ) {
@@ -142,7 +145,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 }
 
                 // Not found
-                if( i == 0 ) {
+                if( i <= 0 ) {
                     handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must contain a space");
                 }
 
@@ -165,7 +168,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 }
 
                 // Not found
-                if( i == 0 ) {
+                if( i <= 0 ) {
                     handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must contain two equals");
                 }
 
@@ -182,22 +185,24 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 move_forward(1);
 
                 // The next sequence must be the closing delimiter, or error
-                if( i < close->len || strncmp(p, close->val, close->len) ) {
+                assert(i >= 0);
+                if( (size_t) i < hbs_str_len(close) || strncmp(p, hbs_str_val(close), hbs_str_len(close)) ) {
                     handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must end with an equals");
                 }
 
                 // Skip over close tag
-                move_forward(close->len);
+                move_forward(hbs_str_len(close));
 
                 // Swap
                 handlebars_talloc_free(open);
                 handlebars_talloc_free(close);
                 open = new_open;
                 close = new_close;
-                starts_with_bracket = open->val[0] == '{';
+                new_open = new_close = NULL;
+                starts_with_bracket = hbs_str_val(open)[0] == '{';
 
 #if defined(YYDEBUG)
-                fprintf(stderr, "Delimiter preprocessor: New delimiters: \"%.*s\", \"%.*s\"\n", (int) open->len, open->val, (int) close->len, close->val);
+                fprintf(stderr, "Delimiter preprocessor: New delimiters: \"%.*s\", \"%.*s\"\n", (int) hbs_str_len(open), hbs_str_val(open), (int) hbs_str_len(close), hbs_str_val(close));
 #endif
 
                 // Append a comment - tricks whitespace rules into working
@@ -208,11 +213,13 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                     state = 0;
                     goto state0;
                 }
+                break; // FEAR
             case 2: state2: // In regular tag
-                if( i >= close->len && strncmp(p, close->val, close->len) == 0 ) {
+                assert(i >= 0);
+                if( (size_t) i >= hbs_str_len(close) && strncmp(p, hbs_str_val(close), hbs_str_len(close)) == 0 ) {
                     // Ending
                     append("}}", 2);
-                    move_forward(close->len);
+                    move_forward(hbs_str_len(close));
                     if( i > 0 ) {
                         state = 0;
                         goto state0;
@@ -227,6 +234,7 @@ struct handlebars_string * handlebars_preprocess_delimiters(
     // Free open/close
     handlebars_talloc_free(open);
     handlebars_talloc_free(close);
+    handlebars_string_delref(tmpl);
 
     HANDLEBARS_MEMCHECK(new_tmpl, ctx);
     return new_tmpl;

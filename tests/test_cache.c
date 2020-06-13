@@ -29,36 +29,40 @@
 #include <unistd.h>
 #endif
 
+#define HANDLEBARS_COMPILER_PRIVATE
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
-
 #include "handlebars_cache.h"
 #include "handlebars_compiler.h"
+#include "handlebars_json.h"
+#include "handlebars_map.h"
 #include "handlebars_opcode_serializer.h"
+#include "handlebars_parser.h"
 #include "handlebars_helpers.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
 
-static int memdebug;
-static const char * tmpl1 = "{{foo}}";
-static const char * tmpl2 = "{{bar}}";
-static const char * tmpl3 = "{{baz}}";
+#include "handlebars_cache_private.h"
+
 
 
 struct cache_test_ctx {
     struct handlebars_string * tmpl;
     struct handlebars_compiler * compiler;
-    struct handlebars_map_entry * map_entry;
     struct handlebars_module * module;
 };
 
+char lmdb_db_file[] = "./handlebars-lmdb-cache-test.mdb";
+char lmdb_db_lock_file[] = "./handlebars-lmdb-cache-test.mdb-lock";
+
 static const char * tmpls[] = {
-        "{{foo}}", "{{bar}}", "{{baz}}"
+    "{{foo}}", "{{bar}}", "{{baz}}"
 };
 
 static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cache * cache)
@@ -77,8 +81,7 @@ static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cach
 
 START_TEST(test_cache_gc_entries)
 {
-    struct handlebars_cache * cache = handlebars_cache_ctor(context);
-    struct handlebars_compiler * compiler = handlebars_compiler_ctor(context);
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
     size_t expected_size = sizeof(struct handlebars_module);
 
     struct cache_test_ctx * ctx0 = make_cache_test_ctx(0, cache);
@@ -107,36 +110,40 @@ END_TEST
 
 static void execute_gc_test(struct handlebars_cache * cache)
 {
-    //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
-    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(helpers);
+
+    handlebars_value_init_json_string(context, value, "{\"bar\": \"baz\"}");
     handlebars_value_convert(value);
 
-    struct handlebars_value * partial = handlebars_value_ctor(context);
-    handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
+    handlebars_value_str(partial, handlebars_string_ctor(context, HBS_STRL("{{bar}}")));
 
-    struct handlebars_value * partials = handlebars_value_ctor(context);
-    handlebars_value_map_init(partials);
-    handlebars_map_str_add(partials->v.map, HBS_STRL("foo"), partial);
+    do {
+        struct handlebars_map * tmp_map = handlebars_map_ctor(context, 0);
+        tmp_map = handlebars_map_str_add(tmp_map, HBS_STRL("foo"), partial);
+        handlebars_value_map(partials, tmp_map);
+    } while (0);
 
-    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{>foo}}"));
-    handlebars_parse(parser);
-    handlebars_compiler_compile(compiler, parser->program);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
 
-    struct handlebars_module * module = handlebars_program_serialize(context, compiler->program);
+    struct handlebars_module * module = handlebars_program_serialize(context, program);
 
-    vm->helpers = handlebars_value_ctor(context);
-    handlebars_value_map_init(vm->helpers);
-    vm->partials = partials;
+    handlebars_value_map(helpers, handlebars_map_ctor(context, 0));
+    handlebars_vm_set_helpers(vm, helpers);
 
-    vm->cache = cache;
+    handlebars_vm_set_partials(vm, partials);
+    handlebars_vm_set_cache(vm, cache);
 
-    handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(vm->buffer->val, "baz");
+    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     int i;
     for( i = 0; i < 10; i++ ) {
-        handlebars_vm_execute(vm, module, value);
-        ck_assert_str_eq(vm->buffer->val, "baz");
+        buffer = handlebars_vm_execute(vm, module, value);
+        ck_assert_str_eq(hbs_str_val(buffer), "baz");
     }
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 10);
@@ -144,7 +151,12 @@ static void execute_gc_test(struct handlebars_cache * cache)
 
     // Test GC
     cache->max_age = 0;
-    cache->gc(cache);
+    handlebars_cache_gc(cache);
+
+    HANDLEBARS_VALUE_UNDECL(helpers);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(value);
 
     // @todo fixme
     //ck_assert_int_eq(0, handlebars_cache_stat(cache).current_entries);
@@ -152,39 +164,44 @@ static void execute_gc_test(struct handlebars_cache * cache)
 
 static void execute_reset_test(struct handlebars_cache * cache)
 {
-    //struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"foo\": {\"bar\": \"baz\"}}");
-    struct handlebars_value * value = handlebars_value_from_json_string(context, "{\"bar\": \"baz\"}");
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(helpers);
+    struct handlebars_string * buffer;
+
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_init_json_string(context, value, "{\"bar\": \"baz\"}");
     handlebars_value_convert(value);
 
-    struct handlebars_value * partial = handlebars_value_ctor(context);
-    handlebars_value_stringl(partial, HBS_STRL("{{bar}}"));
+    handlebars_value_str(partial, handlebars_string_ctor(context, HBS_STRL("{{bar}}")));
 
-    struct handlebars_value * partials = handlebars_value_ctor(context);
-    handlebars_value_map_init(partials);
-    handlebars_map_str_add(partials->v.map, HBS_STRL("foo"), partial);
+    do {
+        struct handlebars_map * tmp_map = handlebars_map_ctor(context, 0);
+        tmp_map = handlebars_map_str_add(tmp_map, HBS_STRL("foo"), partial);
+        handlebars_value_map(partials, tmp_map);
+    } while (0);
 
-    parser->tmpl = handlebars_string_ctor(context, HBS_STRL("{{>foo}}"));
-    handlebars_parse(parser);
-    handlebars_compiler_compile(compiler, parser->program);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{>foo}}")), 0);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
 
-    struct handlebars_module * module = handlebars_program_serialize(context, compiler->program);
+    struct handlebars_module * module = handlebars_program_serialize(context, program);
 
-    vm->helpers = handlebars_value_ctor(context);
-    handlebars_value_map_init(vm->helpers);
-    vm->partials = partials;
+    handlebars_value_map(helpers, handlebars_map_ctor(context, 0));
+    handlebars_vm_set_helpers(vm, helpers);
 
-    vm->cache = cache;
+    handlebars_vm_set_partials(vm, partials);
+    handlebars_vm_set_cache(vm, cache);
 
     // This shouldn't use the cache
-    handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(vm->buffer->val, "baz");
+    buffer = handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
 
     // This should use the cache
-    handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(vm->buffer->val, "baz");
+    buffer = handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 1);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
@@ -193,8 +210,13 @@ static void execute_reset_test(struct handlebars_cache * cache)
     handlebars_cache_reset(cache);
 
     // This shouldn't use the cache
-    handlebars_vm_execute(vm, module, value);
-    ck_assert_str_eq(vm->buffer->val, "baz");
+    buffer = handlebars_vm_execute(vm, module, value);
+    ck_assert_str_eq(hbs_str_val(buffer), "baz");
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(helpers);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
     ck_assert_int_le(handlebars_cache_stat(cache).misses, 1);
@@ -216,12 +238,10 @@ START_TEST(test_simple_cache_reset)
 }
 END_TEST
 
-#ifdef HAVE_LIBLMDB
+#ifdef HANDLEBARS_HAVE_LMDB
 START_TEST(test_lmdb_cache_gc)
 {
-    char tmp[256];
-    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
-    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
     execute_gc_test(cache);
     handlebars_cache_dtor(cache);
 }
@@ -229,33 +249,14 @@ END_TEST
 
 START_TEST(test_lmdb_cache_reset)
 {
-    char tmp[256];
-    snprintf(tmp, 256, "%s/%s", getenv("TMPDIR") ?: "/tmp", "handlebars-lmdb-cache-test.mdb");
-    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
+    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
     execute_reset_test(cache);
     handlebars_cache_dtor(cache);
 }
 END_TEST
-#else
-START_TEST(test_lmdb_cache_error)
-{
-    jmp_buf buf;
-    char tmp[256];
-    const char *tmpdir = getenv("TMPDIR");
-    snprintf(tmp, 256, "%s/%s", tmpdir ? tmpdir : "/tmp", "handlebars-lmdb-cache-test.mdb");
-
-    if( handlebars_setjmp_ex(context, &buf) ) {
-        ck_assert(1);
-        return;
-    }
-
-    struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, tmp);
-    ck_assert(0);
-}
-END_TEST
 #endif
 
-#if HAVE_PTHREAD
+#ifdef HANDLEBARS_HAVE_PTHREAD
 START_TEST(test_mmap_cache_gc)
 {
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
@@ -271,23 +272,10 @@ START_TEST(test_mmap_cache_reset)
     handlebars_cache_dtor(cache);
 }
 END_TEST
-#else
-START_TEST(test_mmap_cache_error)
-{
-    jmp_buf buf;
-
-    if( handlebars_setjmp_ex(context, &buf) ) {
-        ck_assert(1);
-        return;
-    }
-
-    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
-    ck_assert(0);
-}
-END_TEST
 #endif
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
     const char * title = "Handlebars Spec";
     Suite * s = suite_create(title);
@@ -295,17 +283,13 @@ Suite * parser_suite(void)
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_gc, "Simple Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset, "Simple Cache (Reset)");
-#ifdef HAVE_LIBLMDB
+#ifdef HANDLEBARS_HAVE_LMDB
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
-#else
-    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_error, "LMDB Cache (Error)");
 #endif
-#ifdef HAVE_PTHREAD
+#ifdef HANDLEBARS_HAVE_PTHREAD
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
-#else
-    REGISTER_TEST_FIXTURE(s, test_mmap_cache_error, "MMAP Cache (Error)");
 #endif
 
     return s;
@@ -313,32 +297,10 @@ Suite * parser_suite(void)
 
 int main(void)
 {
-    int number_failed;
-    int error;
-
-    // Check if memdebug enabled
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-    root = talloc_new(NULL);
-
-    // Set up test suite
-    Suite * s = parser_suite();
-    SRunner * sr = srunner_create(s);
-    if( IS_WIN || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    // Generate report for memdebug
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-
-    // Return
-    return error;
+    unlink(lmdb_db_file);
+    unlink(lmdb_db_lock_file);
+    int exit_code = default_main(&suite);
+    unlink(lmdb_db_file);
+    unlink(lmdb_db_lock_file);
+    return exit_code;
 }

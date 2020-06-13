@@ -62,20 +62,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "handlebars.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#define HANDLEBARS_AST_PRIVATE
 
+#include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_helpers.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_memory.h"
+#include "handlebars_parser.h"
+#include "handlebars_private.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 #include "handlebars_whitespace.h"
+
+#pragma GCC diagnostic ignored "-Wswitch-default"
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic warning "-Wredundant-decls"
+
+#include "handlebars_parser_private.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
 
-#ifdef YYDEBUG
+#if defined(YYDEBUG) && YYDEBUG
 #define YYPRINT handlebars_yy_print
 int handlebars_yy_debug = 1;
 #else
@@ -228,13 +235,13 @@ statement
       unsigned strip = handlebars_ast_helper_strip_flags($1, $1);
       $$ = handlebars_ast_node_ctor_comment(parser,
       			handlebars_ast_helper_strip_comment($1), &@$);
-      $$->strip = strip;
+      handlebars_ast_node_set_strip($$, strip);
     }
   ;
 
 content
   : CONTENT content {
-      $$ = handlebars_string_append(CONTEXT, $1, $2->val, $2->len);
+      $$ = handlebars_string_append_str(CONTEXT, $1, $2);
       $$ = talloc_steal(parser, $$);
     }
   | CONTENT {
@@ -290,7 +297,7 @@ block_intermediate
 open_block
   : OPEN_BLOCK intermediate4 CLOSE {
       $$ = $2;
-      $$->strip = handlebars_ast_helper_strip_flags($1, $3);
+      handlebars_ast_node_set_strip($$, handlebars_ast_helper_strip_flags($1, $3));
       $$->node.intermediate.open = talloc_steal($$, handlebars_string_copy_ctor(CONTEXT, $1));
     }
   ;
@@ -298,14 +305,14 @@ open_block
 open_inverse
   : OPEN_INVERSE intermediate4 CLOSE {
       $$ = $2;
-      $$->strip = handlebars_ast_helper_strip_flags($1, $3);
+      handlebars_ast_node_set_strip($$, handlebars_ast_helper_strip_flags($1, $3));
     }
   ;
 
 open_inverse_chain
   : OPEN_INVERSE_CHAIN intermediate4 CLOSE {
       $$ = $2;
-      $$->strip = handlebars_ast_helper_strip_flags($1, $3);
+      handlebars_ast_node_set_strip($$, handlebars_ast_helper_strip_flags($1, $3));
     }
   ;
 

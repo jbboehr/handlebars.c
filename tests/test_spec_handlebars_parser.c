@@ -27,26 +27,23 @@
 #include <pcre.h>
 #include <talloc.h>
 
-#if defined(HAVE_JSON_C_JSON_H) || defined(JSONC_INCLUDE_WITH_C)
-#include <json-c/json.h>
-#include <json-c/json_object.h>
-#include <json-c/json_tokener.h>
-#elif defined(HAVE_JSON_JSON_H) || defined(HAVE_LIBJSONC)
-#include <json/json.h>
-#include <json/json_object.h>
-#include <json/json_tokener.h>
-#endif
+// json-c undeprecated json_object_object_get, but the version in xenial
+// is too old, so let's silence deprecated warnings for json-c
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <json.h>
+#include <json_object.h>
+#include <json_tokener.h>
+#pragma GCC diagnostic pop
 
 #include "handlebars.h"
-#include "handlebars_memory.h"
-
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
+#include "handlebars_memory.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
-#include "handlebars_utils.h"
 #include "handlebars.tab.h"
 #include "handlebars.lex.h"
-
 #include "utils.h"
 
 
@@ -60,10 +57,9 @@ struct parser_test {
     int exception;
     char * exceptionMatcher;
     char * message;
-    char * raw;
+    const char * raw;
 };
 
-static TALLOC_CTX * rootctx;
 static struct parser_test * tests;
 static size_t tests_len = 0;
 static size_t tests_size = 0;
@@ -82,19 +78,19 @@ static void loadSpecTest(json_object * object)
     // Get description
     cur = json_object_object_get(object, "description");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->description = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->description = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get it
     cur = json_object_object_get(object, "it");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->it = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->it = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get template
     cur = json_object_object_get(object, "template");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->tmpl = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->tmpl = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Get expected
@@ -112,7 +108,7 @@ static void loadSpecTest(json_object * object)
         nreq++;
     } else if (cur && json_object_get_type(cur) == json_type_string) {
         test->exception = true;
-        test->exceptionMatcher = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->exceptionMatcher = handlebars_talloc_strdup(root, json_object_get_string(cur));
         nreq++;
     } else {
         test->exception = 0;
@@ -121,7 +117,7 @@ static void loadSpecTest(json_object * object)
     // Get message
     cur = json_object_object_get(object, "message");
     if( cur && json_object_get_type(cur) == json_type_string ) {
-        test->message = handlebars_talloc_strdup(rootctx, json_object_get_string(cur));
+        test->message = handlebars_talloc_strdup(root, json_object_get_string(cur));
     }
 
     // Check
@@ -136,7 +132,7 @@ static int loadSpec(const char * filename) {
     size_t data_len = 0;
     struct json_object * result = NULL;
     struct json_object * array_item = NULL;
-    int array_len = 0;
+    size_t array_len = 0;
 
     // Read JSON file
     error = file_get_contents(filename, &data, &data_len);
@@ -166,10 +162,10 @@ static int loadSpec(const char * filename) {
 
     // Allocate tests array
     tests_size = array_len + 1;
-    tests = talloc_zero_array(rootctx, struct parser_test, tests_size);
+    tests = talloc_zero_array(root, struct parser_test, tests_size);
 
     // Iterate over array
-    for( int i = 0; i < array_len; i++ ) {
+    for( size_t i = 0; i < array_len; i++ ) {
         array_item = json_object_array_get_idx(result, i);
         if( json_object_get_type(array_item) != json_type_object ) {
             fprintf(stderr, "Warning: test case was not an object\n");
@@ -181,10 +177,7 @@ error:
     if( data ) {
         free(data);
     }
-    if( result ) {
-        // @todo free?
-        // json_object_put(result);
-    }
+    HBS_TEST_JSON_DTOR(tests, result);
     return error;
 }
 
@@ -192,9 +185,6 @@ START_TEST(handlebars_spec_parser)
 {
     struct parser_test * test = &tests[_i];
     struct handlebars_context * ctx = handlebars_context_ctor();
-    struct handlebars_parser * parser;
-    char * errmsg;
-    char errlinestr[32];
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
@@ -204,9 +194,7 @@ START_TEST(handlebars_spec_parser)
     fflush(stderr);
 #endif
 
-    parser = handlebars_parser_ctor(ctx);
-    parser->tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
-    handlebars_parse(parser);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), 0);
 
     if( handlebars_error_num(HBSCTX(parser)) != HANDLEBARS_SUCCESS ) {
         char * errmsg = handlebars_error_message((struct handlebars_context *) parser);
@@ -238,7 +226,7 @@ START_TEST(handlebars_spec_parser)
             }
         } else {
             char * lesigh = handlebars_talloc_strdup(ctx, "\nExpected: \n");
-            lesigh = handlebars_talloc_strdup_append(lesigh, test->expected->val);
+            lesigh = handlebars_talloc_strdup_append(lesigh, hbs_str_val(test->expected));
             lesigh = handlebars_talloc_strdup_append(lesigh, "\nActual (error): \n");
             lesigh = handlebars_talloc_strdup_append(lesigh, errmsg);
             lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
@@ -246,22 +234,22 @@ START_TEST(handlebars_spec_parser)
             ck_assert_msg(0, lesigh);
         }
     } else {
-        struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), parser->program);
+        struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), ast);
 
 #ifndef NDEBUG
-        fprintf(stderr, "AST: %s\n", output->val);
+        fprintf(stderr, "AST: %s\n", hbs_str_val(output));
         fflush(stderr);
 #endif
 
         if( !test->exception ) {
             ck_assert_ptr_ne(NULL, output);
             if( handlebars_string_eq(test->expected, output) ) {
-                ck_assert_str_eq(test->expected->val, output->val);
+                ck_assert_str_eq(hbs_str_val(test->expected), hbs_str_val(output));
             } else {
                 char * lesigh = handlebars_talloc_strdup(ctx, "\nExpected: \n");
-                lesigh = handlebars_talloc_strdup_append(lesigh, test->expected->val);
+                lesigh = handlebars_talloc_strdup_append(lesigh, hbs_str_val(test->expected));
                 lesigh = handlebars_talloc_strdup_append(lesigh, "\nActual: \n");
-                lesigh = handlebars_talloc_strdup_append(lesigh, output->val);
+                lesigh = handlebars_talloc_strdup_append(lesigh, hbs_str_val(output));
                 lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
                 lesigh = handlebars_talloc_strdup_append(lesigh, test->tmpl);
                 ck_assert_msg(0, lesigh);
@@ -277,13 +265,21 @@ START_TEST(handlebars_spec_parser)
 }
 END_TEST
 
-Suite * parser_suite(void)
+static Suite * suite(void);
+static Suite * suite(void)
 {
+    // Load the spec
+    if( 0 != loadSpec(spec_filename) ) {
+        abort();
+    }
+    fprintf(stderr, "Loaded %zu test cases\n", tests_len);
+
+    // Setup the suite
     const char * title = "Handlebars Parser Spec";
     Suite * s = suite_create(title);
 
     TCase * tc_handlebars_spec_parser = tcase_create(title);
-    // tcase_add_checked_fixture(tc_ ## name, setup, teardown);
+    tcase_add_checked_fixture(tc_handlebars_spec_parser, default_setup, default_teardown);
     tcase_add_loop_test(tc_handlebars_spec_parser, handlebars_spec_parser, 0, tests_len - 1);
     suite_add_tcase(s, tc_handlebars_spec_parser);
 
@@ -292,25 +288,6 @@ Suite * parser_suite(void)
 
 int main(int argc, char *argv[])
 {
-    int number_failed;
-    Suite * s;
-    SRunner * sr;
-    int memdebug = 0;
-    int iswin = 0;
-    int error = 0;
-
-    talloc_set_log_stderr();
-
-#if defined(_WIN64) || defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN32__)
-    iswin = 1;
-#endif
-    memdebug = getenv("MEMDEBUG") ? atoi(getenv("MEMDEBUG")) : 0;
-
-    if( memdebug ) {
-        talloc_enable_leak_report_full();
-    }
-    rootctx = talloc_new(NULL);
-
     // Load the spec
     spec_filename = getenv("handlebars_parser_spec");
     if( spec_filename == NULL && argc >= 2 ) {
@@ -319,26 +296,7 @@ int main(int argc, char *argv[])
     if( spec_filename == NULL ) {
         spec_filename = "./spec/handlebars/spec/parser.json";
     }
-    error = loadSpec(spec_filename);
-    if( error != 0 ) {
-        goto error;
-    }
-    fprintf(stderr, "Loaded %lu test cases\n", tests_len);
 
-    s = parser_suite();
-    sr = srunner_create(s);
-    if( iswin || memdebug ) {
-        srunner_set_fork_status(sr, CK_NOFORK);
-    }
-    srunner_run_all(sr, CK_ENV);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    error = (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-error:
-    talloc_free(rootctx);
-    if( memdebug ) {
-        talloc_report_full(NULL, stderr);
-    }
-    return error;
+    // Run the suite
+    return default_main(&suite);
 }

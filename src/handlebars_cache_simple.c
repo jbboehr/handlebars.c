@@ -22,23 +22,27 @@
 #endif
 
 #include <assert.h>
+#include <time.h>
+
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
 #include "handlebars.h"
+#include "handlebars_cache.h"
+#include "handlebars_cache_private.h"
+#include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
-
-#include "handlebars_cache.h"
-#include "handlebars_map.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
+#include "handlebars_value_handlers.h"
 #include "handlebars_opcode_serializer.h"
+
 
 
 struct handlebars_cache_simple {
     struct handlebars_map * map;
     struct handlebars_cache_stat stat;
 };
-
 
 static inline bool should_gc(struct handlebars_cache * cache)
 {
@@ -58,16 +62,18 @@ static inline bool should_gc_entry(struct handlebars_cache * cache, struct handl
     return should_gc(cache);
 }
 
-static int cache_compare(const void * ptr1, const void * ptr2)
+static int cache_compare(const struct handlebars_map_kv_pair * pair1, const struct handlebars_map_kv_pair * pair2)
 {
     double delta;
-    struct handlebars_map_entry * map_entry1 = talloc_get_type(*(struct handlebars_map_entry **) ptr1, struct handlebars_map_entry);
-    struct handlebars_map_entry * map_entry2 = talloc_get_type(*(struct handlebars_map_entry **) ptr2, struct handlebars_map_entry);
-    assert(map_entry1 != NULL);
-    assert(map_entry2 != NULL);
 
-    struct handlebars_module * entry1 = talloc_get_type(map_entry1->value->v.ptr, struct handlebars_module);
-    struct handlebars_module * entry2 = talloc_get_type(map_entry2->value->v.ptr, struct handlebars_module);
+    assert(pair1 != NULL);
+    assert(pair2 != NULL);
+    assert(pair1->value != NULL);
+    assert(pair2->value != NULL);
+
+    struct handlebars_module * entry1 = talloc_get_type_abort(handlebars_value_get_ptr(pair1->value), struct handlebars_module);
+    struct handlebars_module * entry2 = talloc_get_type_abort(handlebars_value_get_ptr(pair2->value), struct handlebars_module);
+
     assert(entry1 != NULL);
     assert(entry2 != NULL);
 
@@ -75,45 +81,46 @@ static int cache_compare(const void * ptr1, const void * ptr2)
     return (delta > 0) - (delta < 0);
 }
 
-int cache_gc(struct handlebars_cache * cache)
+static int cache_gc(struct handlebars_cache * cache)
 {
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
     struct handlebars_map * map = intern->map;
     struct handlebars_cache_stat * stat = &intern->stat;
     int removed = 0;
-    // struct handlebars_map_entry * arr[map->i];
-    struct handlebars_map_entry ** arr = alloca(sizeof(struct handlebars_map_entry *) * map->i);
-    struct handlebars_map_entry * item;
-    struct handlebars_map_entry * tmp;
     size_t i = 0;
     time_t now;
     time(&now);
 
-    handlebars_map_foreach(map, item, tmp) {
-        arr[i++] = item;
-    }
-    assert(i == map->i);
+    size_t remove_keys_i = 0;
+    struct handlebars_string ** remove_keys = handlebars_talloc_array(HBSCTX(cache), struct handlebars_string *, handlebars_map_count(map) + 1);
+    HANDLEBARS_MEMCHECK(remove_keys, HBSCTX(cache));
 
-    qsort(arr, map->i, sizeof(struct handlebars_map_entry *), &cache_compare);
+    intern->map = map = handlebars_map_sort(map, cache_compare);
 
-    for( i = 0; i < map->i; i++ ) {
-        struct handlebars_map_entry * map_entry = arr[i];
-        struct handlebars_module * module = talloc_get_type(map_entry->value->v.ptr, struct handlebars_module);
+    handlebars_map_foreach(map, index, key, value) {
+        struct handlebars_module * module = talloc_get_type_abort(handlebars_value_get_ptr(value), struct handlebars_module);
         if( should_gc_entry(cache, module, now) ) {
-            size_t oldsize = module->size;
-            // Remove
-            handlebars_map_remove(map, map_entry->key);
-#ifdef HANDLEBARS_NO_REFCOUNT
-            // Delref should handle it if refcounting enabled - maybe?
-            //handlebars_value_dtor(map_entry->value);
-#endif
+            handlebars_string_addref(key);
+            remove_keys[remove_keys_i++] = key;
             stat->current_entries--;
-            stat->current_size -= oldsize;
+            stat->current_size -= module->size;
             removed++;
         } else {
             break;
         }
+    } handlebars_map_foreach_end(map);
+
+    for( i = 0; i < remove_keys_i; i++ ) {
+        struct handlebars_string * key = remove_keys[i];
+        map = handlebars_map_remove(map, key);
+        handlebars_string_delref(key);
     }
+
+    map = handlebars_map_rehash(map, false);
+
+    intern->map = map;
+
+    handlebars_talloc_free(remove_keys);
 
     return removed;
 }
@@ -125,9 +132,10 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     struct handlebars_value * value = handlebars_map_find(map, tmpl);
     struct handlebars_module * module = NULL;
     if( value ) {
-        module = (struct handlebars_module *) value->v.ptr;
-        assert(value->type == HANDLEBARS_VALUE_TYPE_PTR);
-        assert(talloc_get_type(module, struct handlebars_module) != NULL);
+        // module = (struct handlebars_module *) value->v.ptr;
+        module = talloc_get_type_abort(handlebars_value_get_ptr(value), struct handlebars_module);
+        assert(handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_PTR);
+        assert(talloc_get_type_abort(module, struct handlebars_module) != NULL);
         time(&module->ts);
         intern->stat.hits++;
     } else {
@@ -141,7 +149,7 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
     struct handlebars_map * map = intern->map;
     struct handlebars_cache_stat * stat = &intern->stat;
-    struct handlebars_value * value;
+    HANDLEBARS_VALUE_DECL(value);
 
     // Check if it would exceed the size
     if( should_gc(cache) ) {
@@ -150,15 +158,16 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
 
     time(&module->ts);
 
-    value = handlebars_value_ctor(HBSCTX(cache));
-    value->type = HANDLEBARS_VALUE_TYPE_PTR;
-    value->v.ptr = talloc_steal(cache, module);
+    struct handlebars_ptr * uptr = handlebars_ptr_ctor(HBSCTX(cache), talloc_steal(cache, module));
+    handlebars_value_ptr(value, uptr);
 
-    handlebars_map_add(map, tmpl, value);
+    intern->map = map = handlebars_map_add(map, tmpl, value);
 
     // Update master
     stat->current_entries++;
     stat->current_size += module->size;
+
+    HANDLEBARS_VALUE_UNDECL(value);
 }
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
@@ -179,9 +188,7 @@ static void cache_reset(struct handlebars_cache * cache)
 {
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
     handlebars_talloc_free(intern->map);
-    struct handlebars_map * map = talloc_steal(cache, handlebars_map_ctor(HBSCTX(cache)));
-    intern->map = map;
-    map->ctx = HBSCTX(cache);
+    intern->map = handlebars_map_ctor(HBSCTX(cache), 32);
 
     memset(&intern->stat, 0, sizeof(intern->stat));
 }
@@ -189,25 +196,27 @@ static void cache_reset(struct handlebars_cache * cache)
 #undef CONTEXT
 #define CONTEXT context
 
+static const struct handlebars_cache_handlers hbs_cache_handlers_simple = {
+    &cache_add,
+    &cache_find,
+    &cache_gc,
+    &cache_release,
+    &cache_stat,
+    &cache_reset
+};
+
 struct handlebars_cache * handlebars_cache_simple_ctor(
     struct handlebars_context * context
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
     handlebars_context_bind(context, HBSCTX(cache));
     cache->max_age = -1;
-    cache->add = &cache_add;
-    cache->find = &cache_find;
-    cache->gc = &cache_gc;
-    cache->release = &cache_release;
-    cache->stat = &cache_stat;
-    cache->reset = &cache_reset;
+    cache->hnd = &hbs_cache_handlers_simple;
 
     struct handlebars_cache_simple * intern = MC(handlebars_talloc_zero(cache, struct handlebars_cache_simple));
     cache->internal = intern;
 
-    struct handlebars_map * map = talloc_steal(cache, handlebars_map_ctor(context));
-    intern->map = map;
-    map->ctx = HBSCTX(cache);
+    intern->map = handlebars_map_ctor(HBSCTX(cache), 32);
 
     return cache;
 }

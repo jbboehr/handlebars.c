@@ -1,5 +1,5 @@
 /* ANSI-C code produced by gperf version 3.1 */
-/* Command-line: /nix/store/yb9mzsjbbsfpr3q22lllzn2fhqywr28w-gperf-3.1/bin/gperf --struct-type --readonly-tables --compare-strncmp --compare-lengths --global-table --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf  */
+/* Command-line: /nix/store/2xckhxm3643m6x4z0yah4f1pzaldv900-gperf-3.1/bin/gperf --struct-type --readonly-tables --compare-strncmp --compare-lengths --global-table --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf  */
 /* Computed positions: -k'1' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \
@@ -47,7 +47,7 @@ inline
 #endif
 #endif
 static unsigned int
-hash (register const char *str, register size_t len)
+hbs_builtin_lut_hash (register const char *str, register size_t len)
 {
   static const unsigned char asso_values[] =
     {
@@ -90,35 +90,35 @@ static const unsigned char lengthtable[] =
 static const struct handlebars_builtin_pair wordlist[] =
   {
     {""}, {""},
-#line 6 "handlebars_helpers_ht.gperf"
-    {"if",3},
-#line 9 "handlebars_helpers_ht.gperf"
-    {"log",6},
 #line 8 "handlebars_helpers_ht.gperf"
+    {"if",3},
+#line 11 "handlebars_helpers_ht.gperf"
+    {"log",6},
+#line 10 "handlebars_helpers_ht.gperf"
     {"with",5},
     {""},
-#line 10 "handlebars_helpers_ht.gperf"
+#line 12 "handlebars_helpers_ht.gperf"
     {"lookup",7},
     {""}, {""},
-#line 5 "handlebars_helpers_ht.gperf"
+#line 7 "handlebars_helpers_ht.gperf"
     {"each",2},
     {""},
-#line 7 "handlebars_helpers_ht.gperf"
+#line 9 "handlebars_helpers_ht.gperf"
     {"unless",4},
     {""},
-#line 4 "handlebars_helpers_ht.gperf"
+#line 6 "handlebars_helpers_ht.gperf"
     {"helperMissing",1},
     {""}, {""}, {""}, {""},
-#line 3 "handlebars_helpers_ht.gperf"
+#line 5 "handlebars_helpers_ht.gperf"
     {"blockHelperMissing",0}
   };
 
 const struct handlebars_builtin_pair *
-in_word_set (register const char *str, register size_t len)
+hbs_builtin_lut_lookup (register const char *str, register size_t len)
 {
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
     {
-      register unsigned int key = hash (str, len);
+      register unsigned int key = hbs_builtin_lut_hash (str, len);
 
       if (key <= MAX_HASH_VALUE)
         if (len == lengthtable[key])
