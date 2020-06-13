@@ -88,6 +88,12 @@ function configure_handlebars() {
 		extra_configure_flags="$extra_configure_flags --enable-code-coverage"
 	fi
 
+	if [ "$DEBUG" == "true" ]; then
+		extra_configure_flags="$extra_configure_flags --enable-debug"
+	else
+		extra_configure_flags="$extra_configure_flags --disable-debug"
+	fi
+
 	if [ "$HARDENING" != "false" ]; then
 		extra_configure_flags="$extra_configure_flags --enable-hardening"
 	else
@@ -168,11 +174,13 @@ function upload_coverage() (
 
 	if [ ! -z "$GCOV" ]; then
 		$LCOV --capture --output-file coverage.info
-		$LCOV --remove coverage.info "/usr*" \
-			--remove coverage.info "*/tests/*" \
-			--remove coverage.info "handlebars.tab.c" \
-			--remove coverage.info "handlebars.lex.c" \
-			--remove coverage.info "handlebars_scanners.c" \
+		$LCOV --remove coverage.info '/usr*' \
+			--remove coverage.info '/nix/store/*' \
+			--remove coverage.info '*/tests/*' \
+			--remove coverage.info '*/vendor/*' \
+			--remove coverage.info '*/handlebars.tab.c' \
+			--remove coverage.info '*/handlebars.lex.c' \
+			--remove coverage.info '*/handlebars_scanners.c' \
 			--output-file coverage.info
 		coveralls-lcov coverage.info
 	fi

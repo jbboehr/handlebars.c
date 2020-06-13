@@ -34,6 +34,12 @@ matrix:
       env:
       - MYCC="gcc-9"
       - GCOV="gcov-9"
+# gcc-9, focal, debug
+    - dist: focal
+      env:
+      - MYCC="gcc-9"
+      - GCOV="gcov-9"
+      - DEBUG=true
 # gcc-9, focal, lto
     - dist: focal
       env:
@@ -48,6 +54,7 @@ matrix:
     - dist: focal
       env:
       - MYCC="gcc-9"
+      - GCOV="gcov-9"
       - MINIMAL=true
 # gcc-9, focal, valgrind
 # still not working, fails with "missing test plan"
