@@ -86,11 +86,11 @@ TESTS = $(check_PROGRAMS)
 AM_TESTS_ENVIRONMENT = \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
-	handlebars_export_dir=@HANDLEBARS_SPEC_DIR@/export \
-	handlebars_spec_dir=@HANDLEBARS_SPEC_DIR@/spec \
-	handlebars_tokenizer_spec=@HANDLEBARS_SPEC_DIR@/spec/tokenizer.json \
-	handlebars_parser_spec=@HANDLEBARS_SPEC_DIR@/spec/parser.json \
-	mustache_spec_dir=@MUSTACHE_SPEC_DIR@/specs \
+	handlebars_export_dir=$(HANDLEBARS_SPEC_DIR)/export \
+	handlebars_spec_dir=$(HANDLEBARS_SPEC_DIR)/spec \
+	handlebars_tokenizer_spec=$(HANDLEBARS_SPEC_DIR)/spec/tokenizer.json \
+	handlebars_parser_spec=$(HANDLEBARS_SPEC_DIR)/spec/parser.json \
+	mustache_spec_dir=$(MUSTACHE_SPEC_DIR)/specs \
 	CK_VERBOSITY=normal
 
 #if CHECK_HAS_TAP

@@ -73,11 +73,18 @@ static struct handlebars_string * execute_template(const char *template)
     handlebars_vm_set_helpers(vm, helpers);
 
     // Setup partial loader
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    if (NULL != top_srcdir) {
+        path = handlebars_string_asprintf(HBSCTX(vm), "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(HBSCTX(vm), HBS_STRL("."));
+    }
     HANDLEBARS_VALUE_DECL(partials);
     handlebars_vm_set_partials(
         vm,
         handlebars_value_partial_loader_init(HBSCTX(vm),
-            handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".")),
+            path,
             handlebars_string_ctor(HBSCTX(vm), HBS_STRL(".hbs")),
             partials)
     );

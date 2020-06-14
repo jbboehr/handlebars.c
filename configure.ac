@@ -247,15 +247,18 @@ AM_CONDITIONAL([TESTING_EXPORTS], [test "x$enable_testing_exports" == "xyes"])
 
 # handlebars-spec
 AC_ARG_WITH([handlebars-spec],
-	[AS_HELP_STRING([--with-handlebars-spec=SPEC_LOCATION], [location to find handlebars specification @<:@default=./spec/handlebars@>:@])],
-	[], [with_handlebars_spec=`pwd`/spec/handlebars])
+	[AS_HELP_STRING([--with-handlebars-spec=SPEC_LOCATION], [location to find handlebars specification @<:@default=./spec/handlebars@>:@])])
 
 AS_IF([test "x$with_handlebars_spec" != "xno"], [
-  AC_CHECK_FILE([$with_handlebars_spec/spec/basic.json], [
-    AC_SUBST([HANDLEBARS_SPEC_DIR], [$with_handlebars_spec])
-  ], [
-    AC_MSG_FAILURE([handlebars spec missing (--without-handlebars-spec to disable)])
-  ])
+	AS_IF([test "x$with_handlebars_spec" != "x"], [
+		AC_CHECK_FILE([$with_handlebars_spec/spec/basic.json], [
+			AC_SUBST([HANDLEBARS_SPEC_DIR], [$with_handlebars_spec])
+		], [
+			AC_MSG_FAILURE([handlebars spec missing (--without-handlebars-spec to disable)])
+		])
+	], [
+		AC_SUBST([HANDLEBARS_SPEC_DIR], ['$(top_srcdir)/spec/handlebars'])
+	])
 ])
 
 # hardening
@@ -325,15 +328,18 @@ AM_CONDITIONAL([HANDLEBARS_MEMORY], [test x$enable_handlebars_memory = xyes])
 
 # mustache-spec
 AC_ARG_WITH([mustache-spec],
-	[AS_HELP_STRING([--with-mustache-spec=SPEC_LOCATION], [location to find mustache specification @<:@default=./spec/mustache@>:@])],
-	[], [with_mustache_spec=`pwd`/spec/mustache])
+	[AS_HELP_STRING([--with-mustache-spec=SPEC_LOCATION], [location to find mustache specification @<:@default=./spec/mustache@>:@])])
 
 AS_IF([test "x$with_mustache_spec" != "xno"], [
-  AC_CHECK_FILE([$with_mustache_spec/specs/comments.yml], [
-    AC_SUBST([MUSTACHE_SPEC_DIR], [$with_mustache_spec])
-  ], [
-    AC_MSG_FAILURE([mustache spec missing (--without-mustache-spec to disable)])
-  ])
+	AS_IF([test "x$with_mustache_spec" != "x"], [
+		AC_CHECK_FILE([$with_mustache_spec/specs/comments.yml], [
+			AC_SUBST([MUSTACHE_SPEC_DIR], [$with_mustache_spec])
+		], [
+			AC_MSG_FAILURE([mustache spec missing (--without-mustache-spec to disable)])
+		])
+	], [
+		AC_SUBST([MUSTACHE_SPEC_DIR], ['$(top_srcdir)/spec/mustache'])
+	])
 ])
 
 # pcre
@@ -399,12 +405,9 @@ AC_CONFIG_FILES([
   src/Makefile
   Makefile
   bin/Makefile
-])
-AS_IF([test "x$enable_doxygen" == "xyes"], [
-	AC_CONFIG_FILES([doc/Doxyfile doc/Makefile])
-])
-AS_IF([test "x$enable_check" == "xyes"], [
-	AC_CONFIG_FILES([tests/Makefile])
+  doc/Doxyfile
+  doc/Makefile
+  tests/Makefile
 ])
 
 # Generate the "configure" script.

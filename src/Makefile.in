@@ -135,8 +135,8 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_ac_append_to_file.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-DIST_COMMON = $(srcdir)/Makefile.am $(am__pkginclude_HEADERS_DIST) \
-	$(am__DIST_COMMON)
+DIST_COMMON = $(srcdir)/Makefile.am $(noinst_HEADERS) \
+	$(pkginclude_HEADERS) $(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h handlebars_config.h
 CONFIG_CLEAN_FILES =
@@ -303,19 +303,7 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-am__pkginclude_HEADERS_DIST = handlebars.h handlebars.lex.h \
-	handlebars.tab.h handlebars_ast.h handlebars_ast_list.h \
-	handlebars_ast_printer.h handlebars_cache.h \
-	handlebars_closure.h handlebars_compiler.h handlebars_config.h \
-	handlebars_delimiters.h handlebars_helpers.h handlebars_json.h \
-	handlebars_map.h handlebars_memory.h \
-	handlebars_opcode_printer.h handlebars_opcode_serializer.h \
-	handlebars_opcodes.h handlebars_parser.h \
-	handlebars_partial_loader.h handlebars_rc.h handlebars_stack.h \
-	handlebars_string.h handlebars_token.h handlebars_types.h \
-	handlebars_value.h handlebars_value_handlers.h handlebars_vm.h \
-	handlebars_yaml.h
-HEADERS = $(pkginclude_HEADERS)
+HEADERS = $(noinst_HEADERS) $(pkginclude_HEADERS)
 am__extra_recursive_targets = check-valgrind-recursive \
 	check-valgrind-memcheck-recursive \
 	check-valgrind-helgrind-recursive check-valgrind-drd-recursive \
@@ -537,12 +525,8 @@ GENSOURCE2 = $(am__append_3) $(am__append_4)
 @LMDB_TRUE@LMDBSOURCES = handlebars_cache_lmdb.c
 @PTHREAD_FALSE@PTHREADSOURCES = 
 @PTHREAD_TRUE@PTHREADSOURCES = handlebars_cache_mmap.c
-@JSON_FALSE@JSONHEADERS = 
-@JSON_TRUE@JSONHEADERS = handlebars_json.h
 @JSON_FALSE@JSONSOURCES = 
 @JSON_TRUE@JSONSOURCES = $(JSON_HEADERS) handlebars_json.c
-@YAML_FALSE@YAMLHEADERS = 
-@YAML_TRUE@YAMLHEADERS = handlebars_yaml.h
 @YAML_FALSE@YAMLSOURCES = 
 @YAML_TRUE@YAMLSOURCES = $(YAML_HEADERS) handlebars_yaml.c
 
@@ -560,7 +544,7 @@ pkginclude_HEADERS = \
 	handlebars_config.h \
 	handlebars_delimiters.h \
 	handlebars_helpers.h \
-	$(JSONHEADERS) \
+	handlebars_json.h \
 	handlebars_map.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
@@ -576,17 +560,20 @@ pkginclude_HEADERS = \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
 	handlebars_vm.h \
-	$(YAMLHEADERS)
+	handlebars_yaml.h
 
 
 # these headers are not (currently) installed because they only contain private symbols:
-# handlebars_ast_helpers.h
-# handlebars_helpers_ht.h
-# handlebars_parser_private.h
-# handlebars_private.h
-# handlebars_scanners.h
-# handlebars_whitespace.h
-# handlebars_value_private.h
+noinst_HEADERS = \
+	handlebars_ast_helpers.h \
+	handlebars_cache_private.h \
+	handlebars_helpers_ht.h \
+	handlebars_parser_private.h \
+	handlebars_private.h \
+	handlebars_scanners.h \
+	handlebars_whitespace.h \
+	handlebars_value_private.h
+
 CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
 BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)
 lib_LTLIBRARIES = libhandlebars.la
