@@ -47,18 +47,14 @@ PTHREADSOURCES =
 endif
 
 if JSON
-JSONHEADERS = handlebars_json.h
 JSONSOURCES = $(JSON_HEADERS) handlebars_json.c
 else
-JSONHEADERS =
 JSONSOURCES =
 endif
 
 if YAML
-YAMLHEADERS = handlebars_yaml.h
 YAMLSOURCES = $(YAML_HEADERS) handlebars_yaml.c
 else
-YAMLHEADERS =
 YAMLSOURCES =
 endif
 
@@ -76,7 +72,7 @@ pkginclude_HEADERS = \
 	handlebars_config.h \
 	handlebars_delimiters.h \
 	handlebars_helpers.h \
-	$(JSONHEADERS) \
+	handlebars_json.h \
 	handlebars_map.h \
 	handlebars_memory.h \
 	handlebars_opcode_printer.h \
@@ -92,16 +88,18 @@ pkginclude_HEADERS = \
 	handlebars_value.h \
 	handlebars_value_handlers.h \
 	handlebars_vm.h \
-	$(YAMLHEADERS)
+	handlebars_yaml.h
 
 # these headers are not (currently) installed because they only contain private symbols:
-# handlebars_ast_helpers.h
-# handlebars_helpers_ht.h
-# handlebars_parser_private.h
-# handlebars_private.h
-# handlebars_scanners.h
-# handlebars_whitespace.h
-# handlebars_value_private.h
+noinst_HEADERS = \
+	handlebars_ast_helpers.h \
+	handlebars_cache_private.h \
+	handlebars_helpers_ht.h \
+	handlebars_parser_private.h \
+	handlebars_private.h \
+	handlebars_scanners.h \
+	handlebars_whitespace.h \
+	handlebars_value_private.h
 
 CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
 BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)

@@ -8,7 +8,7 @@ if CHECK
 SUBDIRS += tests
 endif
 
-EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor build/redhat-hardened-cc1 build/redhat-hardened-ld
+EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor
 
 ACLOCAL_AMFLAGS = -I m4 --install
 

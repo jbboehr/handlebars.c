@@ -19199,14 +19199,14 @@ fi
 # Check whether --with-handlebars-spec was given.
 if test "${with_handlebars_spec+set}" = set; then :
   withval=$with_handlebars_spec;
-else
-  with_handlebars_spec=`pwd`/spec/handlebars
 fi
 
 
 if test "x$with_handlebars_spec" != "xno"; then :
 
-  as_ac_File=`$as_echo "ac_cv_file_$with_handlebars_spec/spec/basic.json" | $as_tr_sh`
+	if test "x$with_handlebars_spec" != "x"; then :
+
+		as_ac_File=`$as_echo "ac_cv_file_$with_handlebars_spec/spec/basic.json" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $with_handlebars_spec/spec/basic.json" >&5
 $as_echo_n "checking for $with_handlebars_spec/spec/basic.json... " >&6; }
 if eval \${$as_ac_File+:} false; then :
@@ -19225,18 +19225,25 @@ eval ac_res=\$$as_ac_File
 $as_echo "$ac_res" >&6; }
 if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
 
-    HANDLEBARS_SPEC_DIR=$with_handlebars_spec
+			HANDLEBARS_SPEC_DIR=$with_handlebars_spec
 
 
 else
 
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+			{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "handlebars spec missing (--without-handlebars-spec to disable)
 See \`config.log' for more details" "$LINENO" 5; }
 
 fi
 
+
+else
+
+		HANDLEBARS_SPEC_DIR='$(top_srcdir)/spec/handlebars'
+
+
+fi
 
 fi
 
@@ -20224,14 +20231,14 @@ fi
 # Check whether --with-mustache-spec was given.
 if test "${with_mustache_spec+set}" = set; then :
   withval=$with_mustache_spec;
-else
-  with_mustache_spec=`pwd`/spec/mustache
 fi
 
 
 if test "x$with_mustache_spec" != "xno"; then :
 
-  as_ac_File=`$as_echo "ac_cv_file_$with_mustache_spec/specs/comments.yml" | $as_tr_sh`
+	if test "x$with_mustache_spec" != "x"; then :
+
+		as_ac_File=`$as_echo "ac_cv_file_$with_mustache_spec/specs/comments.yml" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $with_mustache_spec/specs/comments.yml" >&5
 $as_echo_n "checking for $with_mustache_spec/specs/comments.yml... " >&6; }
 if eval \${$as_ac_File+:} false; then :
@@ -20250,18 +20257,25 @@ eval ac_res=\$$as_ac_File
 $as_echo "$ac_res" >&6; }
 if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
 
-    MUSTACHE_SPEC_DIR=$with_mustache_spec
+			MUSTACHE_SPEC_DIR=$with_mustache_spec
 
 
 else
 
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+			{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "mustache spec missing (--without-mustache-spec to disable)
 See \`config.log' for more details" "$LINENO" 5; }
 
 fi
 
+
+else
+
+		MUSTACHE_SPEC_DIR='$(top_srcdir)/spec/mustache'
+
+
+fi
 
 fi
 
@@ -21750,20 +21764,8 @@ fi
 
 
 # Define Makefiles.
-ac_config_files="$ac_config_files handlebars.pc src/Makefile Makefile bin/Makefile"
+ac_config_files="$ac_config_files handlebars.pc src/Makefile Makefile bin/Makefile doc/Doxyfile doc/Makefile tests/Makefile"
 
-if test "x$enable_doxygen" == "xyes"; then :
-
-	ac_config_files="$ac_config_files doc/Doxyfile doc/Makefile"
-
-
-fi
-if test "x$enable_check" == "xyes"; then :
-
-	ac_config_files="$ac_config_files tests/Makefile"
-
-
-fi
 
 # Generate the "configure" script.
 cat >confcache <<\_ACEOF
