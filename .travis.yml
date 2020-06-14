@@ -13,6 +13,7 @@ matrix:
     - dist: xenial
       env:
       - MYCC="gcc-5"
+      - GCOV="gcov-5"
       - ARCH="i386"
 # gcc-6, bionic
     - dist: bionic
@@ -31,6 +32,25 @@ matrix:
       - GCOV="gcov-8"
 # gcc-9, focal
     - dist: focal
+      env:
+      - MYCC="gcc-9"
+      - GCOV="gcov-9"
+# gcc-9, focal, arm64
+    - dist: focal
+      arch: arm64
+      env:
+      - MYCC="gcc-9"
+      - GCOV="gcov-9"
+# # gcc-9, focal, ppc64le
+# # this is just hanging forever in the queue
+#     - dist: focal
+#       arch: ppc64le
+#       env:
+#       - MYCC="gcc-9"
+#       - GCOV="gcov-9"
+# gcc-9, focal, s390x
+    - dist: focal
+      arch: s390x
       env:
       - MYCC="gcc-9"
       - GCOV="gcov-9"

@@ -23,10 +23,11 @@ unset LD
 mkdir -p "${PREFIX}/include" "${PREFIX}/include/json-c" "${PREFIX}/lib/pkgconfig"
 
 if [ -z "$ARCH" ]; then
-	export ARCH=amd64
+	export ARCH=${TRAVIS_CPU_ARCH}
 fi
 
 if [ "$ARCH" = "i386" ]; then
+	export BUILD_ARCH=$ARCH
 	export CFLAGS="$CFLAGS -m32"
 	#export LDFLAGS="$LDFLAGS -m32"
 fi
@@ -44,7 +45,10 @@ function install_apt_packages() (
 	# we commit the generated files for these now, purge them
 	$SUDO apt-get purge -y bison flex gperf re2c valgrind
 
-	local apt_packages_to_install="${MYCC} autotools-dev autoconf automake libtool m4 make pkg-config:${ARCH} gcc-multilib check:${ARCH} libpcre3-dev:${ARCH} libtalloc-dev:${ARCH} libsubunit-dev:${ARCH}"
+	local apt_packages_to_install="${MYCC} autotools-dev autoconf automake libtool m4 make pkg-config:${ARCH} check:${ARCH} libpcre3-dev:${ARCH} libtalloc-dev:${ARCH} libsubunit-dev:${ARCH}"
+	if [ "$ARCH" = "i386" ]; then
+		apt_packages_to_install="${apt_packages_to_install} gcc-multilib"
+	fi
 	if [ ! -z "$GCOV" ]; then
 		apt_packages_to_install="${apt_packages_to_install} lcov"
 	fi
@@ -80,8 +84,8 @@ function configure_handlebars() {
 	# configure flags
 	local extra_configure_flags="--prefix=${PREFIX}"
 
-	if [ -n "$ARCH" ]; then
-		extra_configure_flags="${extra_configure_flags} --build=${ARCH}"
+	if [ -n "$BUILD_ARCH" ]; then
+		extra_configure_flags="${extra_configure_flags} --build=${BUILD_ARCH}"
 	fi
 
 	if [ ! -z "$GCOV" ]; then
