@@ -44,19 +44,32 @@
 
 #define PATCH(ptr, baseaddr) ptr = (void *) (((char *) ptr) - ((char *) module->addr) + ((char *) baseaddr))
 
+static size_t align_size(size_t size)
+{
+    size_t rem = size % 8;
+    if (rem == 0) {
+        return size;
+    } else {
+        return size + (8 - rem);
+    }
+}
+
 static void * append(struct handlebars_module * module, void * source, size_t size)
 {
+    size_t aligned_size = align_size(size);
     void * addr = PTR_ADD(module->data, module->data_size);
 #ifdef HANDLEBARS_ENABLE_DEBUG
     assert((void *) module->data > (void *) module);
     size_t data_offset = PTR_DIFF(module->data, module);
     if (NULL != getenv("HANDLEBARS_OPCODE_SERIALIZE_DEBUG")) {
-        fprintf(stderr, "Data offset: %ld, Data size: %ld, Append size: %ld, Buffer size: %ld\n", data_offset, module->data_size, size, module->size);
+        fprintf(stderr, "Data offset: %ld, Data size: %ld, Append size: %ld, Buffer size: %ld, Aligned size: %zu\n", data_offset, module->data_size, size, module->size, aligned_size);
     }
     assert(data_offset + module->data_size + size <= module->size);
+    assert(((uintptr_t) addr) % 8 == 0);
 #endif
     memcpy(addr, source, size);
-    module->data_size += size;
+    memset((char *) addr + size, 0, aligned_size - size);
+    module->data_size += aligned_size;
     return addr;
 }
 
@@ -71,12 +84,12 @@ static void calculate_size_operand(struct handlebars_module * module, struct han
     // Increment for children
     switch( operand->type ) {
         case handlebars_operand_type_string:
-            module->data_size += HBS_STR_SIZE(hbs_str_len(operand->data.string.string));
+            module->data_size += align_size(HBS_STR_SIZE(hbs_str_len(operand->data.string.string)));
             break;
         case handlebars_operand_type_array:
+            module->data_size += align_size(sizeof(struct handlebars_operand_string) * operand->data.array.count);
             for( i = 0; i < operand->data.array.count; i++ ) {
-                module->data_size += sizeof(struct handlebars_operand_string);
-                module->data_size += HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string));
+                module->data_size += align_size(HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string)));
             }
             break;
         default:
