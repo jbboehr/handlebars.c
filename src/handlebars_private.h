@@ -20,6 +20,8 @@
 #ifndef HANDLEBARS_PRIVATE_H
 #define HANDLEBARS_PRIVATE_H
 
+#include <assert.h>
+
 #include "handlebars.h"
 
 HBS_EXTERN_C_START

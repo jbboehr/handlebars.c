@@ -364,14 +364,14 @@ static inline void * handlebars_check(struct handlebars_context * context, void 
 
 /**
  * @brief Check if the specified pointer is a valid handlebars context using `talloc_get_type`. This function
- *        is used internally when NDEBUG is undefined. If the check fails, the program will abort.
+ *        is used internally when HANDLEBARS_ENABLE_DEBUG is undefined. If the check fails, the program will abort.
  * @param[in] ctx
  * @param[in] loc
  * @return The context
  */
 struct handlebars_context * handlebars_get_context(void * ctx, const char * loc);
 
-#ifndef NDEBUG
+#ifdef HANDLEBARS_ENABLE_DEBUG
 #define HBSCTX(ctx) handlebars_get_context(ctx, HBS_S2(__FILE__) ":" HBS_S2(__LINE__))
 #else
 #define HBSCTX(ctx) ((struct handlebars_context *)ctx)

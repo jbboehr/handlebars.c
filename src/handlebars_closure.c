@@ -48,7 +48,7 @@ struct handlebars_closure {
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void closure_rc_dtor(struct handlebars_rc * rc)
 {
-#ifndef NDEBUG
+#ifdef HANDLEBARS_ENABLE_DEBUG
     if (getenv("HANDLEBARS_RC_DEBUG")) {
         fprintf(stderr, "CLO DTOR %p\n", hbs_container_of(rc, struct handlebars_closure, rc));
     }

@@ -65,7 +65,7 @@ void handlebars_user_addref_ex(struct handlebars_user * user, const char * expr,
 void handlebars_user_delref_ex(struct handlebars_user * user, const char * expr, const char * loc)
     HBS_ATTR_NONNULL_ALL;
 
-#ifndef NDEBUG
+#ifdef HANDLEBARS_ENABLE_DEBUG
 #define handlebars_user_addref(user) handlebars_user_addref_ex(user, #user, HBS_LOC)
 #define handlebars_user_delref(user) handlebars_user_delref_ex(user, #user, HBS_LOC)
 #endif

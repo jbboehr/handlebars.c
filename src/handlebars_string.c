@@ -141,7 +141,7 @@ uint32_t handlebars_string_hash(const char * str, size_t len)
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void string_rc_dtor(struct handlebars_rc * rc)
 {
-#ifndef NDEBUG
+#ifdef HANDLEBARS_ENABLE_DEBUG
     if (getenv("HANDLEBARS_RC_DEBUG")) {
         fprintf(stderr, "STR DTOR %p\n", hbs_container_of(rc, struct handlebars_string, rc));
     }
@@ -186,7 +186,7 @@ void handlebars_string_delref_ex(struct handlebars_string * string, const char *
     handlebars_string_delref(string);
 }
 
-#ifndef NDEBUG
+#ifdef HANDLEBARS_ENABLE_DEBUG
 #define handlebars_string_addref(string) handlebars_string_addref_ex(string, #string, HBS_LOC)
 #define handlebars_string_delref(string) handlebars_string_delref_ex(string, #string, HBS_LOC)
 #endif

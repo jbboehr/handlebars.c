@@ -47,10 +47,12 @@
 static void * append(struct handlebars_module * module, void * source, size_t size)
 {
     void * addr = PTR_ADD(module->data, module->data_size);
-#ifndef NDEBUG
+#ifdef HANDLEBARS_ENABLE_DEBUG
     assert((void *) module->data > (void *) module);
     size_t data_offset = PTR_DIFF(module->data, module);
-    //fprintf(stderr, "Data offset: %ld, Data size: %ld, Append size: %ld, Buffer size: %ld\n", data_offset, module->data_size, size, module->size);
+    if (NULL != getenv("HANDLEBARS_OPCODE_SERIALIZE_DEBUG")) {
+        fprintf(stderr, "Data offset: %ld, Data size: %ld, Append size: %ld, Buffer size: %ld\n", data_offset, module->data_size, size, module->size);
+    }
     assert(data_offset + module->data_size + size <= module->size);
 #endif
     memcpy(addr, source, size);
@@ -252,14 +254,17 @@ struct handlebars_module * handlebars_program_serialize(
     size_t opcode_count = module->opcode_count;
     size_t data_size = module->data_size;
 #endif
+
     module->program_count = module->opcode_count = module->data_size = 0;
 
     // Copy data
     serialize_program(module, program);
 
+#ifndef NDEBUG
     assert(module->program_count == program_count);
     assert(module->opcode_count == opcode_count);
     assert(module->data_size == data_size);
+#endif
 
     return module;
 }
