@@ -99,6 +99,7 @@ static int cache_gc(struct handlebars_cache * cache)
 
     mdb_cursor_close(cursor);
 error:
+    HANDLE_RC(err);
     mdb_txn_abort(txn);
     return 0;
 }

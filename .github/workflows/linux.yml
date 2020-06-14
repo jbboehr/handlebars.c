@@ -28,3 +28,25 @@ jobs:
       run: make check
     - name: make distcheck
       run: make distcheck
+
+  build_linux_scanbuild:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Checkout submodules
+      uses: textbook/git-checkout-submodule-action@master
+    - name: Install packages
+      run: sudo apt-get install -y autotools-dev autoconf automake libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev clang-tools
+    - name: create configure
+      run: autoreconf -i
+    - name: configure
+      run: scan-build ./configure
+    - name: make
+      run: scan-build -o scan-build make
+    - name: check for issues
+      run: |
+        if [ -n "$(find scan-build -type f)" ]; then
+          echo "scan-build found potential issues"
+          find scan-build -type f -print -exec cat \{} \;
+          exit 1
+        fi

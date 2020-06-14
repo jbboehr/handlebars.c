@@ -139,7 +139,7 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
             handlebars_value_integer(key, it_index);
         }
 
-        if( use_data ) {
+        if( use_data && data_map ) {
             if( it_index ) {
                 handlebars_value_integer(index, it_index);
             } else {
@@ -150,13 +150,13 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 
             handlebars_value_array_set(block_params, 0, it_child);
             handlebars_value_array_set(block_params, 1, key);
-        }
 
-        data_map = handlebars_map_str_update(data_map, HBS_STRL("index"), index);
-        data_map = handlebars_map_str_update(data_map, HBS_STRL("key"), key);
-        data_map = handlebars_map_str_update(data_map, HBS_STRL("first"), first);
-        data_map = handlebars_map_str_update(data_map, HBS_STRL("last"), last);
-        handlebars_value_map(data, data_map);
+            data_map = handlebars_map_str_update(data_map, HBS_STRL("index"), index);
+            data_map = handlebars_map_str_update(data_map, HBS_STRL("key"), key);
+            data_map = handlebars_map_str_update(data_map, HBS_STRL("first"), first);
+            data_map = handlebars_map_str_update(data_map, HBS_STRL("last"), last);
+            handlebars_value_map(data, data_map);
+        }
 
         tmp = handlebars_vm_execute_program_ex(options->vm, options->program, it_child, data, block_params);
         result_str = handlebars_string_append(HBSCTX(options->vm), result_str, HBS_STR_STRL(tmp));
@@ -175,7 +175,7 @@ whoopsie:
 
     handlebars_value_str(rv, result_str);
 
-    if( use_data ) {
+    if( use_data && data_map ) {
         handlebars_map_delref(data_map);
     }
 
@@ -286,7 +286,6 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_value * conditional = argv[0];
     long program;
-    struct handlebars_value * tmp = NULL;
     struct handlebars_string * result_str = NULL;
     HANDLEBARS_VALUE_DECL(rv2);
 
@@ -312,7 +311,7 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
         program = options->program;
     } else if( handlebars_value_get_type(conditional) == HANDLEBARS_VALUE_TYPE_INTEGER &&
             handlebars_value_get_intval(conditional) == 0 &&
-            NULL != (tmp = handlebars_value_map_str_find(options->hash, HBS_STRL("includeZero"), rv2)) ) {
+            NULL != handlebars_value_map_str_find(options->hash, HBS_STRL("includeZero"), rv2) ) {
         program = options->program;
     } else {
         program = options->inverse;
@@ -335,8 +334,9 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
     }
 
     conditional = argv[0];
+    assert(conditional != NULL);
 
-    handlebars_value_boolean(conditional, conditional ? handlebars_value_is_empty(conditional) : true);
+    handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
     return handlebars_vm_call_helper_str(HBS_STRL("if"), argc, argv, options, rv);
 }

@@ -349,14 +349,14 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_parser *
     strip |= handlebars_ast_strip_flag_set;
 
 
-    if( block->node.block.open_strip & handlebars_ast_strip_flag_right ) {
+    if( program && block->node.block.open_strip & handlebars_ast_strip_flag_right ) {
        handlebars_whitespace_omit_right(program->node.program.statements, NULL, 1);
     }
 
     if( inverse ) {
         unsigned inverse_strip = block->node.block.inverse_strip;
 
-        if( inverse_strip & handlebars_ast_strip_flag_left ) {
+        if( program && inverse_strip & handlebars_ast_strip_flag_left ) {
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 1);
         }
         if( inverse_strip & handlebars_ast_strip_flag_right ) {
@@ -374,7 +374,7 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_parser *
             handlebars_whitespace_omit_right(firstInverse->node.program.statements, NULL, 0);
         }
     } else {
-        if( block->node.block.close_strip & handlebars_ast_strip_flag_left ) {
+        if( program && block->node.block.close_strip & handlebars_ast_strip_flag_left ) {
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 1);
         }
     }
@@ -445,14 +445,14 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_pars
     strip |= handlebars_ast_strip_flag_set;
 
 
-    if( raw_block->node.raw_block.open_strip & handlebars_ast_strip_flag_right ) {
+    if( program && raw_block->node.raw_block.open_strip & handlebars_ast_strip_flag_right ) {
        handlebars_whitespace_omit_right(program->node.program.statements, NULL, 1);
     }
 
     if( inverse ) {
         unsigned inverse_strip = raw_block->node.raw_block.inverse_strip;
 
-        if( inverse_strip & handlebars_ast_strip_flag_left ) {
+        if( program && inverse_strip & handlebars_ast_strip_flag_left ) {
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 1);
         }
         if( inverse_strip & handlebars_ast_strip_flag_right ) {
@@ -470,7 +470,7 @@ static inline void handlebars_whitespace_accept_raw_block(struct handlebars_pars
             handlebars_whitespace_omit_right(firstInverse->node.program.statements, NULL, 0);
         }
     } else {
-        if( raw_block->node.raw_block.close_strip & handlebars_ast_strip_flag_left ) {
+        if( program && raw_block->node.raw_block.close_strip & handlebars_ast_strip_flag_left ) {
             handlebars_whitespace_omit_left(program->node.program.statements, NULL, 1);
         }
     }

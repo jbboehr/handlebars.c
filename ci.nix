@@ -30,7 +30,7 @@ builtins.mapAttrs (k: _v:
     };
     inherit (import gitignoreSrc { inherit (pkgs) lib; }) gitignoreSource;
     handlebarscSrc = pkgs.lib.cleanSourceWith {
-      filter = (path: type: (builtins.all (x: x != baseNameOf path) [".idea" ".git" "ci.nix" ".travis.sh" ".travis.yml"]));
+      filter = (path: type: (builtins.all (x: x != baseNameOf path) [".idea" ".git" "ci.nix" ".travis.sh" ".travis.yml" ".github"]));
       src = gitignoreSource ./.;
     };
     generateHandlebarsCTestsForPlatform3 = { ... }@args:

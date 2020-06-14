@@ -307,10 +307,10 @@ static inline void depthed_lookup(struct handlebars_vm * vm, struct handlebars_s
 {
     size_t i;
     size_t l;
-    struct handlebars_value * value = NULL;
-    struct handlebars_value * tmp;
     HANDLEBARS_VALUE_DECL(rv);
     HANDLEBARS_VALUE_DECL(empty_value);
+    struct handlebars_value * value = empty_value;
+    struct handlebars_value * tmp;
 
     for( i = 0, l = LEN(vm->contextStack); i < l; i++ ) {
         value = GET(vm->contextStack, i);
@@ -752,7 +752,9 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Merge hashes
     input = merge_hash(HBSCTX(vm), options.hash, argv[0], input_rv);
-    handlebars_value_dtor(argv[0]);
+    if (likely(argv[0] != NULL)) {
+        handlebars_value_dtor(argv[0]);
+    }
     argv[0] = input;
 
     if (!partial) {

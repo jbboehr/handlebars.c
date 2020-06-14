@@ -174,6 +174,7 @@ char * handlebars_error_message_js(struct handlebars_context * context)
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
 #endif
 
+HBS_ATTR_PRINTF(4, 0)
 static void _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
 {
     struct handlebars_error * e = context->e;
