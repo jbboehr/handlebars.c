@@ -117,7 +117,7 @@ struct handlebars_cache_mmap {
 
     bool in_reset;
 
-#if USE_SPINLOCK
+#ifdef USE_SPINLOCK
     pthread_spinlock_t write_lock;
 #else
     pthread_mutex_t write_lock;
@@ -177,7 +177,7 @@ static inline void lock(struct handlebars_cache * cache)
     int rc;
 
     // Lock
-#if USE_SPINLOCK
+#ifdef USE_SPINLOCK
     rc = pthread_spin_lock(&intern->write_lock);
 #else
     rc = pthread_mutex_lock(&intern->write_lock);
@@ -193,7 +193,7 @@ static inline void unlock(struct handlebars_cache * cache)
     int rc;
 
     // Unlock
-#if USE_SPINLOCK
+#ifdef USE_SPINLOCK
     rc = pthread_spin_unlock(&intern->write_lock);
 #else
     rc = pthread_mutex_unlock(&intern->write_lock);
@@ -483,7 +483,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     intern->table = (struct table_entry **) (void *) ((char *) intern + intern_size);
     intern->data = ((char *) intern) + intern_size + table_size;
 
-#if USE_SPINLOCK
+#ifdef USE_SPINLOCK
     int rc = pthread_spin_init(&intern->write_lock, PTHREAD_PROCESS_SHARED);
 #else
     pthread_mutexattr_t mattr;

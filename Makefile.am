@@ -19,7 +19,7 @@ pkgconfig_DATA = handlebars.pc
 test: check
 
 my-clean-local:
-	find -name 'vgcore.*' -delete
+	find . -name 'vgcore.*' -delete
 
 if CODE_COVERAGE_ENABLED
 CODE_COVERAGE_OUTPUT_FILE = $(PACKAGE_NAME)-coverage.info

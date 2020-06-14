@@ -240,8 +240,8 @@ am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(top_srcdir)/build/config.sub $(top_srcdir)/build/install-sh \
 	$(top_srcdir)/build/ltmain.sh $(top_srcdir)/build/missing \
 	$(top_srcdir)/build/tap-driver.sh build/ar-lib build/compile \
-	build/config.guess build/config.sub build/install-sh \
-	build/ltmain.sh build/missing
+	build/config.guess build/config.sub build/depcomp \
+	build/install-sh build/ltmain.sh build/missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -1049,7 +1049,7 @@ uninstall-am: uninstall-pkgconfigDATA
 test: check
 
 my-clean-local:
-	find -name 'vgcore.*' -delete
+	find . -name 'vgcore.*' -delete
 
 # Code coverage
 #

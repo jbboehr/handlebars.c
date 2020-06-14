@@ -23,7 +23,6 @@
 
 #include <assert.h>
 #include <string.h>
-#include <time.h>
 
 #define HANDLEBARS_COMPILER_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE

@@ -106,7 +106,7 @@ AS_IF([test "x$enable_lto" == "xyes"], [
 	AS_IF([test "x$enable_shared" != "xno"], [
 		AC_MSG_WARN([--enable-shared and --enable-lto do not currently work together])
 	])
-	AS_IF([test "x$GCC" = "xyes"], [
+	AS_IF([test "x$GCC" = "xyes" && "x$CLANG" != "xyes"], [ # clang pretends to be gcc
 		AC_CHECK_TOOL([LD], [gcc], [$LD])
 		AC_CHECK_TOOL([AR], [gcc-ar], [$AR])
 		AC_CHECK_TOOL([RANLIB], [gcc-ranlib], [$RANLIB])
@@ -277,7 +277,12 @@ AS_IF([test "x$enable_hardening" != "xno"], [
 	AX_APPEND_LINK_FLAGS([-fpic], [HARDENING_LDFLAGS])
 	# fpie
 	AX_CHECK_COMPILE_FLAG([-fpie], [HARDENING_BIN_CFLAGS="-fpie"])
-	AX_CHECK_LINK_FLAG([-pie], [HARDENING_BIN_LDFLAGS="-pie"])
+	AS_IF([test "x$CLANG" != "xyes"], [
+		AX_CHECK_LINK_FLAG([-pie], [HARDENING_BIN_LDFLAGS="-pie"])
+	], [
+		# clang requires -Wl,-pie instead of -pie
+		AX_CHECK_LINK_FLAG([-Wl,-pie], [HARDENING_BIN_LDFLAGS="-Wl,-pie"])
+	])
 	HARDENING_BIN_CFLAGS="$HARDENING_CFLAGS $HARDENING_BIN_CFLAGS"
 	HARDENING_BIN_LDFLAGS="$HARDENING_LDFLAGS $HARDENING_BIN_LDFLAGS"
 	AC_SUBST([HARDENING_CFLAGS])

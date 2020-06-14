@@ -20,6 +20,8 @@
 #ifndef HANDLEBARS_OPCODE_SERIALIZER_H
 #define HANDLEBARS_OPCODE_SERIALIZER_H
 
+#include <time.h>
+
 #include "handlebars.h"
 
 HBS_EXTERN_C_START

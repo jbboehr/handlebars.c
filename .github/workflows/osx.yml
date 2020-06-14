@@ -1,0 +1,31 @@
+name: osx
+
+on:
+  push:
+    branches:
+    - master
+    - github-actions
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  build_osx_autotools_default_args:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Checkout submodules
+      uses: snickerbockers/submodules-init@v4
+    - name: Install packages
+      run: brew install autoconf automake json-c libtool libyaml lmdb pkg-config talloc check lcov pcre
+    - name: create configure
+      run: autoreconf -i
+    - name: configure
+      # disabling compiler warnings as error because of some weird issue with libtool and '-Wl,-fatal_warnings'
+      run: ./configure --disable-bison --disable-flex --disable-gperf --enable-compile-warnings=yes
+    - name: make
+      run: make
+    - name: make check
+      run: make check
+    - name: make distcheck
+      run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--disable-bison --disable-flex --disable-gperf --enable-compile-warnings=yes"
