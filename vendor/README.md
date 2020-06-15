@@ -1,6 +1,16 @@
 
 # Vendored sources for handlebars.c
 
+## bats-assert
+
+* Repo: [https://github.com/ztombol/bats-assert](https://github.com/ztombol/bats-assert)
+* Ref: [9f88b4207da750093baabc4e3f41bf68f0dd3630](https://github.com/ztombol/bats-assert/commit/9f88b4207da750093baabc4e3f41bf68f0dd3630)
+
+## bats-support
+
+* Repo: [https://github.com/ztombol/bats-support](https://github.com/ztombol/bats-support)
+* Ref: [004e707638eedd62e0481e8cdc9223ad471f12ee](https://github.com/ztombol/bats-support/commit/004e707638eedd62e0481e8cdc9223ad471f12ee)
+
 ## sort_r
 
 * Repo: [https://github.com/noporpoise/sort_r](https://github.com/noporpoise/sort_r)

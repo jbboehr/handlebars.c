@@ -1,10 +1,10 @@
 {
-  lib, stdenv, fetchurl, pkgconfig,
+  lib, stdenv, fetchurl, pkgconfig, makeWrapper,
   autoconf, automake, autoreconfHook, libtool, m4, # autoconf
   cmake, # cmake
-  glib, json_c, lmdb, talloc, libyaml, pcre, # deps
+  glib, json_c, lmdb, talloc, libyaml, # deps
   doxygen, # doc deps
-  check, subunit, # testing deps
+  check, subunit, bats, pcre, # testing deps
   autoconf-archive, bison, flex, gperf, lcov, re2c, valgrind, kcachegrind, bc, # dev deps
   handlebars_spec, mustache_spec, # my special stuff
   # source options
@@ -59,8 +59,8 @@ stdenv.mkDerivation rec {
   propagatedBuildInputs = [ talloc ]
     ;
 
-  nativeBuildInputs = []
-    ++ lib.optionals checkSupport [ handlebars_spec mustache_spec check subunit ]
+  nativeBuildInputs = [ makeWrapper ]
+    ++ lib.optionals checkSupport [ handlebars_spec mustache_spec check subunit bats ]
     ++ lib.optional  cmakeSupport cmake
     ++ lib.optionals (!cmakeSupport) [ autoreconfHook autoconf automake libtool m4 ]
     ++ lib.optionals devSupport [ autoconf-archive bc bison gperf flex kcachegrind lcov re2c valgrind ]
@@ -119,6 +119,8 @@ stdenv.mkDerivation rec {
     ;
 
   preConfigure = lib.optionalString checkSupport ''
+      patchShebangs ./bench/run.sh
+      patchShebangs ./tests/test_executable.bats
       export handlebars_export_dir=${handlebars_spec}/share/handlebars-spec/export/
       export handlebars_spec_dir=${handlebars_spec}/share/handlebars-spec/spec/
       export handlebars_tokenizer_spec=${handlebars_spec}/share/handlebars-spec/spec/tokenizer.json

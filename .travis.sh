@@ -45,7 +45,7 @@ function install_apt_packages() (
 	# we commit the generated files for these now, purge them
 	$SUDO apt-get purge -y bison flex gperf re2c valgrind
 
-	local apt_packages_to_install="${MYCC} autotools-dev autoconf automake libtool m4 make pkg-config:${ARCH} check:${ARCH} libpcre3-dev:${ARCH} libtalloc-dev:${ARCH} libsubunit-dev:${ARCH}"
+	local apt_packages_to_install="${MYCC} autotools-dev autoconf automake libtool m4 make bats pkg-config:${ARCH} check:${ARCH} libpcre3-dev:${ARCH} libtalloc-dev:${ARCH} libsubunit-dev:${ARCH}"
 	if [ "$ARCH" = "i386" ]; then
 		apt_packages_to_install="${apt_packages_to_install} gcc-multilib"
 	fi

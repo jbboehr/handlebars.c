@@ -177,6 +177,17 @@ AX_TLS([with_tls=yes], [with_tls=no])
 AC_CHECK_LIB([m], [cos])
 AC_CHECK_LIB([rt], [timer_create])
 
+# bats
+AC_ARG_ENABLE([bats], [AS_HELP_STRING([--disable-bats], [disable support for bats])], [])
+AS_IF([test "x$enable_bats" != "xno"], [
+	AC_PATH_PROGS(BATS, [bats])
+])
+AM_CONDITIONAL([BATS], [test "x$BATS" != "x"])
+
+# benchmark
+AC_ARG_ENABLE([benchmark], [AS_HELP_STRING([--enable-benchmark], [enable benchmark])], [])
+AM_CONDITIONAL([BENCHMARK], [test "x$enable_benchmark" == "xyes"])
+
 # bison
 AC_ARG_VAR([BISONFLAGS], [bison flags])
 AS_IF([test "x$BISONFLAGS" == "x"], [BISONFLAGS="-Wall"])
@@ -414,6 +425,7 @@ AC_CONFIG_FILES([
   doc/Doxyfile
   doc/Makefile
   tests/Makefile
+  bench/Makefile
 ])
 
 # Generate the "configure" script.

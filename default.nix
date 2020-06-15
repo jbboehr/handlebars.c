@@ -2,9 +2,19 @@
   pkgs ? (import <nixpkgs> {}),
   stdenv ? pkgs.stdenv,
 
+  gitignoreSource ? (import (pkgs.fetchFromGitHub {
+      owner = "hercules-ci";
+      repo = "gitignore";
+      rev = "00b237fb1813c48e20ee2021deb6f3f03843e9e4";
+      sha256 = "sha256:186pvp1y5fid8mm8c7ycjzwzhv7i6s3hh33rbi05ggrs7r3as3yy";
+  }) { inherit (pkgs) lib; }).gitignoreSource,
+
   handlebarscVersion ? "v0.7.2",
-  handlebarscSrc ? ./.,
   handlebarscSha256 ? null,
+  handlebarscSrc ? pkgs.lib.cleanSourceWith {
+    filter = (path: type: (builtins.all (x: x != baseNameOf path) [".idea" ".git" "ci.nix" ".travis.sh" ".travis.yml" ".github"]));
+    src = gitignoreSource ./.;
+  },
 
   mustache_spec ? pkgs.callPackage (import ((fetchTarball {
     url = https://github.com/jbboehr/mustache-spec/archive/5b85c1b58309e241a6f7c09fa57bd1c7b16fa9be.tar.gz;

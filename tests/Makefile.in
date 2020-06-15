@@ -112,6 +112,7 @@ check_PROGRAMS = test_main$(EXEEXT) test_ast$(EXEEXT) \
 @YAML_TRUE@	test_yaml
 
 @HANDLEBARS_MEMORY_TRUE@am__append_4 = test_random_alloc_fail
+@BATS_TRUE@am__append_5 = test_executable.bats
 subdir = tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_ac_append_to_file.m4 \
@@ -747,6 +748,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BATS = @BATS@
 BISON = @BISON@
 BISONFLAGS = @BISONFLAGS@
 BISON_VERSION = @BISON_VERSION@
@@ -922,7 +924,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 valgrind_enabled_tools = @valgrind_enabled_tools@
 valgrind_tools = @valgrind_tools@
-EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml
+EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml fixture2.hbs fixture3.hbs test_executable.bats
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS) $(CHECK_CFLAGS) $(PCRE_CFLAGS) $(SUBUNIT_CFLAGS)
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) -static # for valgrind
@@ -957,7 +959,7 @@ test_value_SOURCES = $(COMMONFILES) test_value.c
 @YAML_TRUE@test_spec_mustache_SOURCES = $(COMMONFILES) test_spec_mustache.c
 @YAML_TRUE@test_yaml_SOURCES = $(COMMONFILES) test_yaml.c
 @HANDLEBARS_MEMORY_TRUE@test_random_alloc_fail_SOURCES = $(COMMONFILES) test_random_alloc_fail.c
-TESTS = $(check_PROGRAMS)
+TESTS = $(check_PROGRAMS) $(am__append_5)
 
 #if CHECK_HAS_TAP
 AM_TESTS_ENVIRONMENT = top_srcdir=$(top_srcdir) \
@@ -967,7 +969,10 @@ AM_TESTS_ENVIRONMENT = top_srcdir=$(top_srcdir) \
 	handlebars_tokenizer_spec=$(HANDLEBARS_SPEC_DIR)/spec/tokenizer.json \
 	handlebars_parser_spec=$(HANDLEBARS_SPEC_DIR)/spec/parser.json \
 	mustache_spec_dir=$(MUSTACHE_SPEC_DIR)/specs \
-	CK_VERBOSITY=normal CK_TAP_LOG_FILE_NAME=-
+	CK_VERBOSITY=normal \
+	HANDLEBARSC=$(top_builddir)/bin/handlebarsc \
+	TEST_DIR=$(top_srcdir)/tests BENCH_DIR=$(top_srcdir)/bench \
+	CK_TAP_LOG_FILE_NAME=-
 all: all-am
 
 .SUFFIXES:
@@ -1539,6 +1544,13 @@ test_yaml.log: test_yaml$(EXEEXT)
 test_random_alloc_fail.log: test_random_alloc_fail$(EXEEXT)
 	@p='test_random_alloc_fail$(EXEEXT)'; \
 	b='test_random_alloc_fail'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+test_executable.bats.log: test_executable.bats
+	@p='test_executable.bats'; \
+	b='test_executable.bats'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

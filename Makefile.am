@@ -7,6 +7,7 @@ endif
 if CHECK
 SUBDIRS += tests
 endif
+SUBDIRS += bench
 
 EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor
 
@@ -24,14 +25,14 @@ my-clean-local:
 if CODE_COVERAGE_ENABLED
 CODE_COVERAGE_OUTPUT_FILE = $(PACKAGE_NAME)-coverage.info
 CODE_COVERAGE_OUTPUT_DIRECTORY = $(PACKAGE_NAME)-coverage
-CODE_COVERAGE_LCOV_RMOPTS = \
-	--remove $(CODE_COVERAGE_OUTPUT_FILE) '/usr/*' \
-	--remove $(CODE_COVERAGE_OUTPUT_FILE) '/nix/store/*' \
-	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/tests/*' \
-	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/vendor/*' \
-	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/handlebars.tab.c' \
-	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/handlebars.lex.c' \
-	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/handlebars_scanners.c'
+CODE_COVERAGE_LCOV_RMOPTS = $(CODE_COVERAGE_LCOV_RMOPTS_DEFAULT) \
+	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '/usr/*' \
+	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '/nix/store/*' \
+	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/tests/*' \
+	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/vendor/*' \
+	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars.tab.c' \
+	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars.lex.c' \
+	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars_scanners.c'
 include $(top_srcdir)/build/aminclude_static.am
 clean-local: code-coverage-clean my-clean-local
 distclean-local: code-coverage-dist-clean

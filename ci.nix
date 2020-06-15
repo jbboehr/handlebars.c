@@ -22,19 +22,8 @@ builtins.mapAttrs (k: _v:
       name = "nixos-20.03";
     };
     pkgs = import (path) { system = k; };
-    gitignoreSrc = pkgs.fetchFromGitHub {
-      owner = "hercules-ci";
-      repo = "gitignore";
-      rev = "00b237fb1813c48e20ee2021deb6f3f03843e9e4";
-      sha256 = "sha256:186pvp1y5fid8mm8c7ycjzwzhv7i6s3hh33rbi05ggrs7r3as3yy";
-    };
-    inherit (import gitignoreSrc { inherit (pkgs) lib; }) gitignoreSource;
-    handlebarscSrc = pkgs.lib.cleanSourceWith {
-      filter = (path: type: (builtins.all (x: x != baseNameOf path) [".idea" ".git" "ci.nix" ".travis.sh" ".travis.yml" ".github"]));
-      src = gitignoreSource ./.;
-    };
     generateHandlebarsCTestsForPlatform3 = { ... }@args:
-      generateHandlebarsCTestsForPlatform2 { inherit pkgs handlebarscSrc; } // args;
+      generateHandlebarsCTestsForPlatform2 { inherit pkgs; } // args;
   in
   pkgs.recurseIntoAttrs {
     n1909 = let
@@ -57,7 +46,6 @@ builtins.mapAttrs (k: _v:
     # 32bit (gcc only)
     n2003-32bit = pkgs.recurseIntoAttrs {
       gcc = generateHandlebarsCTestsForPlatform {
-        inherit handlebarscSrc;
         pkgs = pkgs.pkgsi686Linux;
         stdenv = pkgs.pkgsi686Linux.stdenv;
       };

@@ -85,7 +85,7 @@ enum handlebarsc_mode {
     handlebarsc_mode_parse,
     handlebarsc_mode_compile,
     handlebarsc_mode_execute,
-    handlebarsc_mode_debug
+    handlebarsc_mode_debuginfo
 };
 
 enum handlebarsc_flag {
@@ -110,7 +110,7 @@ enum handlebarsc_flag {
     handlebarsc_flag_parse = 601,
     handlebarsc_flag_compile = 602,
     handlebarsc_flag_execute = 603,
-    handlebarsc_flag_debug = 604
+    handlebarsc_flag_debuginfo = 604
 };
 
 static enum handlebarsc_mode mode = handlebarsc_mode_execute;
@@ -136,7 +136,7 @@ static void readOpts(int argc, char * argv[])
         HBSC_OPT(compile, no_argument, handlebarsc_flag_compile)
         HBSC_OPT(execute, no_argument, handlebarsc_flag_execute)
         HBSC_OPT(version, no_argument, handlebarsc_flag_version)
-        HBSC_OPT(debug, no_argument, handlebarsc_flag_debug)
+        HBSC_OPT(debuginfo, no_argument, handlebarsc_flag_debuginfo)
         // input
         HBSC_OPT(template, required_argument, handlebarsc_flag_template)
         HBSC_OPT(data, required_argument, handlebarsc_flag_data)
@@ -187,8 +187,8 @@ start:
             mode = handlebarsc_mode_version;
             break;
 
-        case handlebarsc_flag_debug:
-            mode = handlebarsc_mode_debug;
+        case handlebarsc_flag_debuginfo:
+            mode = handlebarsc_mode_debuginfo;
             break;
 
         // compiler flags
@@ -264,7 +264,7 @@ start:
             sscanf(optarg, "%zu", &pool_size);
             break;
 
-        default: break;
+        default: assert(0); break; // LCOV_EXCL_LINE
     }
 
     goto start;
@@ -381,7 +381,7 @@ static int do_version(void)
     return 0;
 }
 
-static int do_debug(void)
+static int do_debuginfo(void)
 {
 #ifdef HANDLEBARS_HAVE_JSON
     fprintf(stderr, "JSON support: enabled\n");
@@ -671,7 +671,8 @@ int main(int argc, char * argv[])
     root = talloc_new(NULL);
 
     if( argc <= 1 ) {
-        return do_usage();
+        do_usage();
+        return 1;
     }
 
     readOpts(argc, argv);
@@ -695,7 +696,14 @@ int main(int argc, char * argv[])
         case handlebarsc_mode_parse: return do_parse();
         case handlebarsc_mode_compile: return do_compile();
         case handlebarsc_mode_execute: return do_execute();
-        case handlebarsc_mode_debug: return do_debug();
-        default: return do_usage();
+        case handlebarsc_mode_debuginfo: return do_debuginfo();
+        case handlebarsc_mode_usage: return do_usage();
+
+        // LCOV_EXCL_START
+        default:
+            assert(0);
+            do_usage();
+            return 1;
+        // LCOV_EXCL_STOP
     }
 }

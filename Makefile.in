@@ -231,7 +231,7 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 CSCOPE = cscope
-DIST_SUBDIRS = src . bin doc tests
+DIST_SUBDIRS = src . bin doc tests bench
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(srcdir)/handlebars.pc.in \
 	$(top_srcdir)/build/aminclude_static.am \
@@ -292,6 +292,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BATS = @BATS@
 BISON = @BISON@
 BISONFLAGS = @BISONFLAGS@
 BISON_VERSION = @BISON_VERSION@
@@ -467,23 +468,23 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 valgrind_enabled_tools = @valgrind_enabled_tools@
 valgrind_tools = @valgrind_tools@
-SUBDIRS = src . bin $(am__append_1) $(am__append_2)
+SUBDIRS = src . bin $(am__append_1) $(am__append_2) bench
 EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor
 ACLOCAL_AMFLAGS = -I m4 --install
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = handlebars.pc
 @CODE_COVERAGE_ENABLED_TRUE@CODE_COVERAGE_OUTPUT_FILE = $(PACKAGE_NAME)-coverage.info
 @CODE_COVERAGE_ENABLED_TRUE@CODE_COVERAGE_OUTPUT_DIRECTORY = $(PACKAGE_NAME)-coverage
-@CODE_COVERAGE_ENABLED_TRUE@CODE_COVERAGE_LCOV_RMOPTS = \
-@CODE_COVERAGE_ENABLED_TRUE@	--remove $(CODE_COVERAGE_OUTPUT_FILE) '/usr/*' \
-@CODE_COVERAGE_ENABLED_TRUE@	--remove $(CODE_COVERAGE_OUTPUT_FILE) '/nix/store/*' \
-@CODE_COVERAGE_ENABLED_TRUE@	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/tests/*' \
-@CODE_COVERAGE_ENABLED_TRUE@	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/vendor/*' \
-@CODE_COVERAGE_ENABLED_TRUE@	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/handlebars.tab.c' \
-@CODE_COVERAGE_ENABLED_TRUE@	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/handlebars.lex.c' \
-@CODE_COVERAGE_ENABLED_TRUE@	--remove $(CODE_COVERAGE_OUTPUT_FILE) '*/handlebars_scanners.c'
+@CODE_COVERAGE_ENABLED_TRUE@CODE_COVERAGE_LCOV_RMOPTS = $(CODE_COVERAGE_LCOV_RMOPTS_DEFAULT) \
+@CODE_COVERAGE_ENABLED_TRUE@	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '/usr/*' \
+@CODE_COVERAGE_ENABLED_TRUE@	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '/nix/store/*' \
+@CODE_COVERAGE_ENABLED_TRUE@	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/tests/*' \
+@CODE_COVERAGE_ENABLED_TRUE@	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/vendor/*' \
+@CODE_COVERAGE_ENABLED_TRUE@	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars.tab.c' \
+@CODE_COVERAGE_ENABLED_TRUE@	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars.lex.c' \
+@CODE_COVERAGE_ENABLED_TRUE@	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars_scanners.c'
 
-@CODE_COVERAGE_ENABLED_TRUE@GITIGNOREFILES = $(GITIGNOREFILES) $(CODE_COVERAGE_OUTPUT_FILE) $(CODE_COVERAGE_OUTPUT_DIRECTORY)
+@CODE_COVERAGE_ENABLED_TRUE@GITIGNOREFILES := $(GITIGNOREFILES) $(CODE_COVERAGE_OUTPUT_FILE) $(CODE_COVERAGE_OUTPUT_DIRECTORY)
 @CODE_COVERAGE_ENABLED_TRUE@code_coverage_v_lcov_cap = $(code_coverage_v_lcov_cap_$(V))
 @CODE_COVERAGE_ENABLED_TRUE@code_coverage_v_lcov_cap_ = $(code_coverage_v_lcov_cap_$(AM_DEFAULT_VERBOSITY))
 @CODE_COVERAGE_ENABLED_TRUE@code_coverage_v_lcov_cap_0 = @echo "  LCOV   --capture" $(CODE_COVERAGE_OUTPUT_FILE);
@@ -499,7 +500,7 @@ pkgconfig_DATA = handlebars.pc
 
 # sanitizes the test-name: replaces with underscores: dashes and dots
 @CODE_COVERAGE_ENABLED_TRUE@code_coverage_sanitize = $(subst -,_,$(subst .,_,$(1)))
-@CODE_COVERAGE_ENABLED_TRUE@AM_DISTCHECK_CONFIGURE_FLAGS = $(AM_DISTCHECK_CONFIGURE_FLAGS) --disable-code-coverage
+@CODE_COVERAGE_ENABLED_TRUE@AM_DISTCHECK_CONFIGURE_FLAGS := $(AM_DISTCHECK_CONFIGURE_FLAGS) --disable-code-coverage
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 

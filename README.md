@@ -45,7 +45,7 @@ sudo apt-get install autoconf automake bison flex gcc libjson-c-dev liblmdb-dev 
                      libtalloc-dev libyaml-dev libtool m4 make pkg-config
 
 # Install testing dependencies
-sudo apt-get install check gdb lcov libpcre3-dev
+sudo apt-get install check gdb lcov libpcre3-dev bats
 
 # Install doc dependencies
 sudo apt-get install doxygen
@@ -63,7 +63,7 @@ cd handlebars.c
 brew install autoconf automake bison flex gcc json-c libtool libyaml lmdb pkg-config talloc
 
 # Install testing dependencies
-brew install check lcov pcre
+brew install check lcov pcre bats
 
 # Install doc dependencies
 brew install doxygen

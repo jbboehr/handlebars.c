@@ -1,5 +1,5 @@
 
-EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml
+EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml fixture2.hbs fixture3.hbs test_executable.bats
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS) $(CHECK_CFLAGS) $(PCRE_CFLAGS) $(SUBUNIT_CFLAGS)
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) -static # for valgrind
@@ -91,7 +91,14 @@ AM_TESTS_ENVIRONMENT = \
 	handlebars_tokenizer_spec=$(HANDLEBARS_SPEC_DIR)/spec/tokenizer.json \
 	handlebars_parser_spec=$(HANDLEBARS_SPEC_DIR)/spec/parser.json \
 	mustache_spec_dir=$(MUSTACHE_SPEC_DIR)/specs \
-	CK_VERBOSITY=normal
+	CK_VERBOSITY=normal \
+	HANDLEBARSC=$(top_builddir)/bin/handlebarsc \
+	TEST_DIR=$(top_srcdir)/tests \
+	BENCH_DIR=$(top_srcdir)/bench
+
+if BATS
+TESTS += test_executable.bats
+endif
 
 #if CHECK_HAS_TAP
 AM_TESTS_ENVIRONMENT += CK_TAP_LOG_FILE_NAME=-
