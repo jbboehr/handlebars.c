@@ -12,7 +12,6 @@ export LDFLAGS="-L$PREFIX/lib $LDFLAGS"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:/usr/lib/$ARCH-linux-gnu/pkgconfig"
 export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
 export SUDO="sudo"
-export LCOV="lcov --directory . --gcov-tool ${GCOV} --compat-libtool --no-checksum"
 
 # these mess up our configuration for LTO, make sure they are unset
 unset RANLIB
@@ -82,14 +81,14 @@ function configure_handlebars() {
 	export CFLAGS="$CFLAGS -Wno-deprecated-declarations -Wno-error=deprecated-declarations"
 
 	# configure flags
-	local extra_configure_flags="--prefix=${PREFIX}"
+	local extra_configure_flags="--prefix=${PREFIX} --enable-benchmark"
 
 	if [ -n "$BUILD_ARCH" ]; then
 		extra_configure_flags="${extra_configure_flags} --build=${BUILD_ARCH}"
 	fi
 
 	if [ ! -z "$GCOV" ]; then
-		extra_configure_flags="$extra_configure_flags --enable-code-coverage"
+		extra_configure_flags="$extra_configure_flags --enable-code-coverage --with-gcov=$GCOV"
 	fi
 
 	if [ "$DEBUG" == "true" ]; then
@@ -144,15 +143,6 @@ function install_handlebars() (
 	make install
 )
 
-function initialize_coverage() (
-	set -e -o pipefail
-
-	if [ ! -z "$GCOV" ]; then
-		$LCOV --zerocounters
-		$LCOV --capture --initial --output-file coverage.info
-	fi
-)
-
 function test_handlebars() (
 	set -e -o pipefail
 
@@ -160,40 +150,28 @@ function test_handlebars() (
 
 	if [ "$VALGRIND" == "true" ]; then
 		make check-valgrind
+	elif [ ! -z "$GCOV" ]; then
+		make check-code-coverage
 	else
 		make check
 	fi
-)
 
-function run_handlebars_benchmark() (
-	set -e -o pipefail
-
-	if [ "$MINIMAL" != "true" ]; then
-		./bench/run.sh
-	fi
+	echo "Printing benchmark results"
+	cat ./bench/run.sh.log
 )
 
 function upload_coverage() (
 	set -e -o pipefail
 
 	if [ ! -z "$GCOV" ]; then
-		$LCOV --capture --output-file coverage.info
-		$LCOV --remove coverage.info '/usr*' \
-			--remove coverage.info '/nix/store/*' \
-			--remove coverage.info '*/tests/*' \
-			--remove coverage.info '*/vendor/*' \
-			--remove coverage.info '*/handlebars.tab.c' \
-			--remove coverage.info '*/handlebars.lex.c' \
-			--remove coverage.info '*/handlebars_scanners.c' \
-			--output-file coverage.info
-		coveralls-lcov coverage.info
+		coveralls-lcov handlebars-coverage.info
 	fi
 )
 
 function dump_logs() (
 	set -e -o pipefail
 
-	for i in `find tests -name "*.log" 2>/dev/null`; do
+	for i in `find bench tests -name "*.log" 2>/dev/null`; do
 		echo "-- START ${i}";
 		cat "${i}";
 		echo "-- END";

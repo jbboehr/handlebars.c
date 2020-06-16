@@ -111,11 +111,8 @@ install:
     - make_handlebars
     - install_handlebars
 
-before_script: initialize_coverage
-
 script:
     - test_handlebars
-    - run_handlebars_benchmark
 
 after_success: upload_coverage
 after_failure: dump_logs

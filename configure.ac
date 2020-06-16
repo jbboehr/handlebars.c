@@ -27,7 +27,7 @@ AC_CONFIG_HEADERS([config.h src/handlebars_config.h])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
+AM_INIT_AUTOMAKE([foreign subdir-objects -Wall -Werror])
 
 AX_IS_RELEASE([git-directory])
 AX_CHECK_ENABLE_DEBUG
@@ -213,7 +213,7 @@ AS_IF([test "x$enable_check" == "xyes"], [
 AM_CONDITIONAL([CHECK], [test "x$enable_check" == "xyes"])
 
 # code coverage
-AX_CODE_COVERAGE()
+HBS_CODE_COVERAGE()
 
 # doxygen
 AC_ARG_ENABLE([doxygen], [AS_HELP_STRING([--disable-doxygen], [disable support for doxygen])], [])
