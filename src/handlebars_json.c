@@ -137,10 +137,11 @@ static enum handlebars_value_type hbs_json_type(struct handlebars_value * value)
     switch( json_object_get_type(intern) ) {
         case json_type_object: return HANDLEBARS_VALUE_TYPE_MAP;
         case json_type_array: return HANDLEBARS_VALUE_TYPE_ARRAY;
-        default: assert(0); break; // LCOV_EXCL_LINE
+        default: // LCOV_EXCL_START
+            assert(0);
+            return HANDLEBARS_VALUE_TYPE_NULL;
+            // LCOV_EXCL_STOP
     }
-
-    return HANDLEBARS_VALUE_TYPE_NULL;
 }
 
 static struct handlebars_value * hbs_json_map_find(struct handlebars_value * value, struct handlebars_string * key, struct handlebars_value * rv)
@@ -223,31 +224,34 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
     it->value = value;
 
     switch( json_object_get_type(intern->object) ) {
-        case json_type_object:
+        case json_type_object: {
             entry = json_object_get_object(intern->object)->head;
-            if( entry ) {
-                char * tmp = (char *) entry->k;
-                it->usr = (void *) entry;
-                it->key = handlebars_string_ctor(intern->user.ctx, tmp, strlen(tmp));
-                handlebars_value_init_json_object(intern->user.ctx, it->cur, (json_object *) entry->v);
-                it->next = &hbs_json_iterator_next_object;
-                handlebars_string_addref(it->key);
-                return true;
-            } else {
+            if (unlikely(entry == NULL)) { // LCOV_EXCL_START
+                assert(entry != NULL);
                 it->next = &hbs_json_iterator_next_void;
-            }
-            break;
+                return false;
+            } // LCOV_EXCL_STOP
+            char * tmp = (char *) entry->k;
+            it->usr = (void *) entry;
+            it->key = handlebars_string_ctor(intern->user.ctx, tmp, strlen(tmp));
+            handlebars_value_init_json_object(intern->user.ctx, it->cur, (json_object *) entry->v);
+            it->next = &hbs_json_iterator_next_object;
+            handlebars_string_addref(it->key);
+            return true;
+        }
+
         case json_type_array:
             it->index = 0;
             handlebars_value_init_json_object(intern->user.ctx, it->cur, json_object_array_get_idx(intern->object, (int) it->index));
             it->next = &hbs_json_iterator_next_array;
             return true;
-        default:
-            it->next = &hbs_json_iterator_next_void;
-            break;
-    }
 
-    return false;
+        default: // LCOV_EXCL_START
+            assert(0);
+            it->next = &hbs_json_iterator_next_void;
+            return false;
+            // LCOV_EXCL_STOP
+    }
 }
 
 static long hbs_json_count(struct handlebars_value * value)

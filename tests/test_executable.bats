@@ -252,11 +252,11 @@ load "../vendor/bats-assert/assert"
     skip_if_no_json
     # wc on OSX outputs leading whitespace
     result1=$($HANDLEBARSC --execute --data $TEST_DIR/fixture1.yaml $TEMPLATE | wc -l | sed 's/ *//g')
-    assert_equal "$result1" "2"
+    assert_equal "$result1" "1"
     result2=$($HANDLEBARSC --execute -n --data $TEST_DIR/fixture1.yaml $TEMPLATE | wc -l | sed 's/ *//g')
-    assert_equal "$result2" "1"
+    assert_equal "$result2" "0"
     result3=$($HANDLEBARSC --execute --no-newline --data $TEST_DIR/fixture1.yaml $TEMPLATE | wc -l | sed 's/ *//g')
-    assert_equal "$result3" "1"
+    assert_equal "$result3" "0"
 }
 
 @test "--execute --pool-size 0" {

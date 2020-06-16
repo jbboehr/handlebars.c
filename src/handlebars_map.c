@@ -159,8 +159,10 @@ static inline size_t ht_choose_table_capacity(size_t elements) {
             return HANDLEBARS_MAP_CAPACITY_TABLE[i];
         }
     }
+    // LCOV_EXCL_START
     fprintf(stderr, "Failed to obtain hash table capacity for minimum elements %zu (target capacity %zu)\n", elements, target_capacity);
     abort();
+    // LCOV_EXCL_STOP
 }
 
 HBS_ATTR_PURE
@@ -264,10 +266,18 @@ static void map_rebuild_references(struct handlebars_map * map)
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void map_rc_dtor(struct handlebars_rc * rc)
 {
+#ifdef HANDLEBARS_ENABLE_DEBUG
+    if (getenv("HANDLEBARS_RC_DEBUG")) {
+        fprintf(stderr, "MAP DTOR %p\n", hbs_container_of(rc, struct handlebars_map, rc));
+    }
+#endif
     struct handlebars_map * map = talloc_get_type_abort(hbs_container_of(rc, struct handlebars_map, rc), struct handlebars_map);
     handlebars_map_dtor(map);
 }
 #endif
+
+#undef handlebars_map_addref
+#undef handlebars_map_delref
 
 void handlebars_map_addref(struct handlebars_map * map)
 {
@@ -282,6 +292,29 @@ void handlebars_map_delref(struct handlebars_map * map)
     handlebars_rc_delref(&map->rc, map_rc_dtor);
 #endif
 }
+
+void handlebars_map_addref_ex(struct handlebars_map * map, const char * expr, const char * loc)
+{
+    if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
+        size_t rc = handlebars_rc_refcount(&map->rc);
+        fprintf(stderr, "MAP ADDREF %p (%zu -> %zu) %s %s\n", map, rc, rc + 1, expr, loc);
+    } // LCOV_EXCL_STOP
+    handlebars_map_addref(map);
+}
+
+void handlebars_map_delref_ex(struct handlebars_map * map, const char * expr, const char * loc)
+{
+    if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
+        size_t rc = handlebars_rc_refcount(&map->rc);
+        fprintf(stderr, "MAP DELREF %p (%zu -> %zu) %s %s\n", map, rc, rc - 1, expr, loc);
+    } // LCOV_EXCL_STOP
+    handlebars_map_delref(map);
+}
+
+#ifdef HANDLEBARS_ENABLE_DEBUG
+#define handlebars_map_addref(map) handlebars_map_addref_ex(map, #map, HBS_LOC)
+#define handlebars_map_delref(map) handlebars_map_delref_ex(map, #map, HBS_LOC)
+#endif
 
 // }}} Reference Counting
 
@@ -395,6 +428,7 @@ struct handlebars_map * handlebars_map_remove(struct handlebars_map * map, struc
         return map;
     }
 
+    handlebars_string_delref(entry->key);
     handlebars_value_null(&entry->value);
 
     // Remove from hash table
@@ -509,8 +543,8 @@ void handlebars_map_sparse_array_compact(struct handlebars_map * map)
         return;
     }
 
-    size_t i = 0;
-    size_t vec_offset = 0;
+    uint32_t i = 0;
+    uint32_t vec_offset = 0;
     struct handlebars_map_entry * vec = map_vec(map);
     struct handlebars_map_entry ** table = map_table(map);
 
@@ -518,6 +552,7 @@ void handlebars_map_sparse_array_compact(struct handlebars_map * map)
     for (; i < map->vec_offset; i++) {
         if (0 == memcmp(&vec[i], &HANDLEBARS_MAP_TOMBSTONE_V, sizeof(HANDLEBARS_MAP_TOMBSTONE_V))) {
             i++;
+            vec_offset++;
             break;
         }
     }

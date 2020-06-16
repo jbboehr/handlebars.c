@@ -63,19 +63,19 @@ void handlebars_user_delref(struct handlebars_user * user)
 
 void handlebars_user_addref_ex(struct handlebars_user * user, const char * expr, const char * loc)
 {
-    if (getenv("HANDLEBARS_RC_DEBUG")) {
+    if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
         size_t rc = handlebars_rc_refcount(&user->rc);
         fprintf(stderr, "USR ADDREF %p (%zu -> %zu) %s %s\n", user, rc, rc + 1, expr, loc);
-    }
+    } // LCOV_EXCL_STOP
     handlebars_user_addref(user);
 }
 
 void handlebars_user_delref_ex(struct handlebars_user * user, const char * expr, const char * loc)
 {
-    if (getenv("HANDLEBARS_RC_DEBUG")) {
+    if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
         size_t rc = handlebars_rc_refcount(&user->rc);
         fprintf(stderr, "USR DELREF %p (%zu -> %zu) %s %s\n", user, rc, rc - 1, expr, loc);
-    }
+    } // LCOV_EXCL_STOP
     handlebars_user_delref(user);
 }
 
@@ -95,10 +95,6 @@ void handlebars_user_init(struct handlebars_user * user, struct handlebars_conte
 #ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_rc_init(&user->rc);
 #endif
-}
-
-handlebars_count_func handlebars_value_handlers_get_count_fn(const struct handlebars_value_handlers * handlers) {
-    return handlers->count;
 }
 
 

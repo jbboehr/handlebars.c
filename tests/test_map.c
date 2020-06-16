@@ -321,6 +321,28 @@ START_TEST(test_map_add_with_separation)
 END_TEST
 #endif
 
+START_TEST(test_map_sizeof)
+{
+    ck_assert_int_gt(handlebars_map_size_of(0), 0);
+    ck_assert_int_gt(handlebars_map_size_of(100), handlebars_map_size_of(50));
+}
+END_TEST
+
+START_TEST(test_map_remove_nonexist)
+{
+    struct handlebars_map * map;
+    struct handlebars_string * str1;
+
+    map = handlebars_map_ctor(context, 3);
+    str1 = handlebars_string_ctor(context, HBS_STRL("a"));
+    map = handlebars_map_remove(map, str1);
+    handlebars_string_delref(str1);
+    handlebars_map_delref(map);
+
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -332,6 +354,8 @@ static Suite * suite(void)
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_map_add_with_separation, "Map add with separation");
 #endif
+    REGISTER_TEST_FIXTURE(s, test_map_sizeof, "Map sizeof");
+    REGISTER_TEST_FIXTURE(s, test_map_remove_nonexist, "Map remove noexistent key");
 
     return s;
 }

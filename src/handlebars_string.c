@@ -170,19 +170,19 @@ void handlebars_string_delref(struct handlebars_string * string)
 
 void handlebars_string_addref_ex(struct handlebars_string * string, const char * expr, const char * loc)
 {
-    if (getenv("HANDLEBARS_RC_DEBUG")) {
+    if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
         size_t rc = handlebars_rc_refcount(&string->rc);
         fprintf(stderr, "STR ADDREF %p (%zu -> %zu) %s %s\n", string, rc, rc + 1, expr, loc);
-    }
+    } // LCOV_EXCL_STOP
     handlebars_string_addref(string);
 }
 
 void handlebars_string_delref_ex(struct handlebars_string * string, const char * expr, const char * loc)
 {
-    if (getenv("HANDLEBARS_RC_DEBUG")) {
+    if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
         size_t rc = handlebars_rc_refcount(&string->rc);
         fprintf(stderr, "STR DELREF %p (%zu -> %zu) %s %s\n", string, rc, rc - 1, expr, loc);
-    }
+    } // LCOV_EXCL_STOP
     handlebars_string_delref(string);
 }
 

@@ -99,6 +99,13 @@ static struct handlebars_string * execute_template(const char *template)
 
     ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
 
+    // Test iterator/count
+    ck_assert_int_eq(1, handlebars_value_count(partials));
+    HANDLEBARS_VALUE_FOREACH_KV(partials, key, child) {
+        ck_assert_str_eq("fixture1", hbs_str_val(key));
+        ck_assert_str_eq("|{{foo}}|", handlebars_value_get_strval(child));
+    } HANDLEBARS_VALUE_FOREACH_END();
+
     retval = talloc_steal(NULL, buffer);
 
     HANDLEBARS_VALUE_UNDECL(partials);
@@ -111,7 +118,7 @@ static struct handlebars_string * execute_template(const char *template)
 START_TEST(test_partial_loader_1)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}");
-    ck_assert_hbs_str_eq_cstr(rv, "|bar|\n");
+    ck_assert_hbs_str_eq_cstr(rv, "|bar|");
     talloc_free(rv);
 }
 END_TEST
@@ -119,8 +126,38 @@ END_TEST
 START_TEST(test_partial_loader_2)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}{{> fixture1 .}}");
-    ck_assert_hbs_str_eq_cstr(rv, "|bar|\n|bar|\n");
+    ck_assert_hbs_str_eq_cstr(rv, "|bar||bar|");
     talloc_free(rv);
+}
+END_TEST
+
+START_TEST(test_partial_loader_error)
+{
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        fprintf(stderr, "Got expected error: %s\n", handlebars_error_message(context));
+        ck_assert(1);
+        return;
+    }
+
+    (void) execute_template("{{> nonexist .}}");
+    ck_assert(0);
+}
+END_TEST
+
+START_TEST(test_partial_loader_empty_error)
+{
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        fprintf(stderr, "Got expected error: %s\n", handlebars_error_message(context));
+        ck_assert(1);
+        return;
+    }
+
+    (void) execute_template("{{> fixture4}}");
+    ck_assert(0);
 }
 END_TEST
 
@@ -131,6 +168,8 @@ static Suite * suite(void)
 
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_1, "Partial loader 1");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_2, "Partial loader 2");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_error, "Partial loader error");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_empty_error, "Partial loader empty error");
 
     return s;
 }

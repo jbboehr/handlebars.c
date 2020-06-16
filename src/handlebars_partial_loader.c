@@ -77,11 +77,6 @@ static void hbs_partial_loader_dtor(struct handlebars_user * user)
     }
 }
 
-static void hbs_partial_loader_convert(struct handlebars_value * value, bool recurse)
-{
-    ;
-}
-
 static enum handlebars_value_type hbs_partial_loader_type(struct handlebars_value * value)
 {
     return HANDLEBARS_VALUE_TYPE_MAP;
@@ -136,11 +131,6 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
 
     handlebars_talloc_free(filename);
     return rv;
-}
-
-static struct handlebars_value * hbs_partial_loader_array_find(struct handlebars_value * value, size_t index, struct handlebars_value * rv)
-{
-    return NULL;
 }
 
 static bool hbs_partial_loader_iterator_next_void(struct handlebars_value_iterator * it)
@@ -204,10 +194,10 @@ static const struct handlebars_value_handlers handlebars_value_hbs_partial_loade
     "json",
     &hbs_partial_loader_copy,
     &hbs_partial_loader_dtor,
-    &hbs_partial_loader_convert,
+    NULL, // convert
     &hbs_partial_loader_type,
     &hbs_partial_loader_map_find,
-    &hbs_partial_loader_array_find,
+    NULL, // array_find
     &hbs_partial_loader_iterator_init,
     NULL, // call
     &hbs_partial_loader_count

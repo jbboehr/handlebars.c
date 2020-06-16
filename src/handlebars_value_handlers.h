@@ -48,10 +48,6 @@ typedef struct handlebars_value * (*handlebars_call_func)(
 );
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
 
-handlebars_count_func handlebars_value_handlers_get_count_fn(
-    const struct handlebars_value_handlers * handlers
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
-
 void handlebars_user_init(struct handlebars_user * user, struct handlebars_context * ctx, const struct handlebars_value_handlers * handlers)
     HBS_ATTR_NONNULL_ALL;
 

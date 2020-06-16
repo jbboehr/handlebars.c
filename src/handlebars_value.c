@@ -305,7 +305,9 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
 {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_USER:
-            handlebars_value_get_handlers(value)->convert(value, recurse);
+            if (handlebars_value_get_handlers(value)->convert) {
+                handlebars_value_get_handlers(value)->convert(value, recurse);
+            }
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
         case HANDLEBARS_VALUE_TYPE_ARRAY:
@@ -742,7 +744,7 @@ char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_
             buf = handlebars_talloc_strndup_append_buffer(buf, HBS_STRL("boolean(false)"));
             break;
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "float(%f)", value->v.dval);
+            buf = handlebars_talloc_asprintf_append_buffer(buf, "float(%g)", value->v.dval);
             break;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             buf = handlebars_talloc_asprintf_append_buffer(buf, "integer(%ld)", value->v.lval);
@@ -796,7 +798,13 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
         case HANDLEBARS_VALUE_TYPE_PTR: return "ptr";
         case HANDLEBARS_VALUE_TYPE_HELPER: return "helper";
         case HANDLEBARS_VALUE_TYPE_CLOSURE: return "closure";
-        default: assert(0); return "unknown";
+        default:
+#ifdef HANDLEBARS_ENABLE_DEBUG
+            fprintf(stderr, "Unknown value type %d", type);
+            abort();
+#else
+            return "unknown";
+#endif
     }
 }
 

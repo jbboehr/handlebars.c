@@ -113,6 +113,23 @@ START_TEST(test_context_ctor_failed_alloc)
 }
 END_TEST
 
+START_TEST(test_context_ctor_ex_failed_alloc)
+{
+#ifdef HANDLEBARS_MEMORY
+    struct handlebars_context * mycontext;
+
+    handlebars_memory_fail_enable();
+    handlebars_memory_fail_counter(2);
+    mycontext = handlebars_context_ctor_ex(context);
+    handlebars_memory_fail_disable();
+
+    ck_assert_ptr_eq(NULL, mycontext);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
+}
+END_TEST
+
 START_TEST(test_context_get_errmsg)
 {
     struct handlebars_locinfo loc;
@@ -195,8 +212,27 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
     //ck_assert_ptr_eq(NULL, actual);
     ck_assert_ptr_eq(handlebars_error_msg(context), actual);
 #else
-        fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
+}
+END_TEST
+
+START_TEST(test_context_bind_failure)
+{
+    jmp_buf buf;
+    struct handlebars_context * mycontext = handlebars_context_ctor();
+    struct handlebars_context * mycontext2 = handlebars_context_ctor();
+
+    if( handlebars_setjmp_ex(mycontext, &buf) ) {
+        ck_assert(1);
+        handlebars_context_dtor(mycontext2);
+        handlebars_context_dtor(mycontext);
+        return;
+    }
+
+    handlebars_context_bind(mycontext, mycontext2);
+    handlebars_context_bind(mycontext, mycontext2);
+    ck_assert(0);
 }
 END_TEST
 
@@ -212,10 +248,12 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_lex, "Lex Convenience Function");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_dtor, "Constructor/Destructor");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_failed_alloc, "Constructor (failed alloc)");
+    REGISTER_TEST_FIXTURE(s, test_context_ctor_ex_failed_alloc, "Constructor ex (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg, "Get error message");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_failed_alloc, "Get error message (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_js, "Get error message (js compat)");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_js_failed_alloc, "Get error message (js compat) (failed alloc)");
+    REGISTER_TEST_FIXTURE(s, test_context_bind_failure, "Get context bind (failed)");
 
     return s;
 }
