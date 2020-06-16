@@ -399,3 +399,54 @@ long handlebars_module_get_flags(struct handlebars_module * module)
 {
     return module->flags;
 }
+
+uint64_t handlebars_module_get_hash(struct handlebars_module * module)
+{
+    return module->hash;
+}
+
+static uint64_t calculate_hash(struct handlebars_module * module)
+{
+    void * start = &module->version;
+    size_t size = module->size - offsetof(struct handlebars_module, version);
+    return handlebars_hash_xxh3((const char *) start, size);
+}
+
+uint64_t handlebars_module_generate_hash(
+    struct handlebars_module * module
+) {
+    return module->hash = calculate_hash(module);
+}
+
+bool handlebars_module_verify(
+    struct handlebars_module * module,
+    struct handlebars_context * ctx
+) {
+    uint64_t hash = calculate_hash(module);
+    bool matched = true;
+    if (hash != module->hash) {
+        if (ctx != NULL) {
+            handlebars_throw(
+                ctx,
+                HANDLEBARS_ERROR,
+                "Invalid module hash expected=%llu actual=%llu",
+                (unsigned long long) module->hash,
+                (unsigned long long) hash
+            );
+        }
+        matched = false;
+    }
+    if (handlebars_version() != module->version) {
+        if (ctx != NULL) {
+            handlebars_throw(
+                ctx,
+                HANDLEBARS_ERROR,
+                "Invalid module version expected=%llu actual=%llu",
+                (unsigned long long) module->version,
+                (unsigned long long) handlebars_version()
+            );
+        }
+        matched = false;
+    }
+    return matched;
+}

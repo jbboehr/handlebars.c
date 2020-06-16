@@ -26,6 +26,7 @@
 
 HBS_EXTERN_C_START
 
+struct handlebars_context;
 struct handlebars_program;
 struct handlebars_opcode;
 struct handlebars_module;
@@ -49,7 +50,7 @@ struct handlebars_module * handlebars_program_serialize(
 void handlebars_module_normalize_pointers(
     struct handlebars_module * module,
     void * baseaddr
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL(1);
 
 /**
  * @brief Fix any pointers by adjusting by the offset between the address of `module` and handlebars_module#addr
@@ -60,10 +61,31 @@ void handlebars_module_patch_pointers(
     struct handlebars_module * module
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Generates, returns, and sets in handlebars_module#hash a hash of the module
+ * @param[in] module
+ * @return The hash
+ */
+uint64_t handlebars_module_generate_hash(
+    struct handlebars_module * module
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Verify the module matches its hash and the current handlebars.c version
+ * @param[in] ctx
+ * @param[in] module
+ * @return Whether it matches, unless ctx is set in which it will throw if it does not match
+ */
+bool handlebars_module_verify(
+    struct handlebars_module * module,
+    struct handlebars_context * ctx
+) HBS_ATTR_NONNULL(1);
+
 size_t handlebars_module_get_size(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
 int handlebars_module_get_version(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
 time_t handlebars_module_get_ts(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
 long handlebars_module_get_flags(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
+uint64_t handlebars_module_get_hash(struct handlebars_module * module) HBS_ATTR_NONNULL_ALL;
 
 #ifdef HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
@@ -89,6 +111,9 @@ struct handlebars_module_table_entry
  */
 struct handlebars_module
 {
+    //! A hash of everything starting at the following field. May be zero. Set by calling #handlebars_module_generate_hash
+    uint64_t hash;
+
     //! The handlebars version this program was compiled with
     int version;
 

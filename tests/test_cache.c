@@ -143,6 +143,9 @@ static void execute_gc_test(struct handlebars_cache * cache)
     int i;
     for( i = 0; i < 10; i++ ) {
         buffer = handlebars_vm_execute(vm, module, value);
+        if (context->e->msg) {
+            ck_abort_msg("ERROR: %s\n", context->e->msg);
+        }
         ck_assert_str_eq(hbs_str_val(buffer), "baz");
     }
 
@@ -194,6 +197,9 @@ static void execute_reset_test(struct handlebars_cache * cache)
 
     // This shouldn't use the cache
     buffer = handlebars_vm_execute(vm, module, value);
+    if (context->e->msg) {
+        ck_abort_msg("ERROR: %s\n", context->e->msg);
+    }
     ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 0);
@@ -201,6 +207,9 @@ static void execute_reset_test(struct handlebars_cache * cache)
 
     // This should use the cache
     buffer = handlebars_vm_execute(vm, module, value);
+    if (context->e->msg) {
+        ck_abort_msg("ERROR: %s\n", context->e->msg);
+    }
     ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 1);
@@ -211,6 +220,9 @@ static void execute_reset_test(struct handlebars_cache * cache)
 
     // This shouldn't use the cache
     buffer = handlebars_vm_execute(vm, module, value);
+    if (context->e->msg) {
+        ck_abort_msg("ERROR: %s\n", context->e->msg);
+    }
     ck_assert_str_eq(hbs_str_val(buffer), "baz");
 
     HANDLEBARS_VALUE_UNDECL(value);

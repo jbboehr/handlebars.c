@@ -56,7 +56,10 @@ struct handlebars_cache_lmdb {
 static int cache_dtor(struct handlebars_cache * cache)
 {
     struct handlebars_cache_lmdb * intern = (struct handlebars_cache_lmdb *) cache->internal;
-    mdb_env_close(intern->env);
+    if (intern->env) {
+        mdb_env_close(intern->env);
+        intern->env = NULL;
+    }
     return 0;
 }
 
@@ -146,8 +149,19 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
     module = ((struct handlebars_module *) data.mv_data);
 
-    // Check if it's too old or wrong version
-    if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
+#if defined(HANDLEBARS_ENABLE_DEBUG)
+    // In debug mode, throw
+    handlebars_module_verify(module, CONTEXT);
+#else
+    // In release mode, consider a failed hash/version match a miss
+    if (!handlebars_module_verify(module, NULL)) {
+        intern->stat.misses++;
+        goto error;
+    }
+#endif
+
+    // Check if it's too old
+    if (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) {
         intern->stat.misses++;
         goto error;
     }
@@ -157,6 +171,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Duplicate data
     size = module->size;
     module = handlebars_talloc_size(cache, size);
+    talloc_set_type(module, struct handlebars_module);
     memcpy(module, data.mv_data, size);
 
     // Close
@@ -185,6 +200,7 @@ static void cache_add(
     MDB_val key;
     MDB_val data;
     char tmp[256];
+    struct handlebars_module * module_copy;
 
     err = mdb_txn_begin(intern->env, NULL, 0, &txn);
     HANDLE_RC(err);
@@ -202,12 +218,21 @@ static void cache_add(
         key.mv_data = hbs_str_val(tmpl);
     }
 
+    // Normalize pointers
+    module_copy = handlebars_talloc_size(CONTEXT, module->size);
+    talloc_set_type(module_copy, struct handlebars_module);
+    memcpy(module_copy, module, module->size);
+    handlebars_module_patch_pointers(module_copy);
+    handlebars_module_normalize_pointers(module_copy, (void *) 0);
+    handlebars_module_generate_hash(module_copy);
+
     // Make data
-    data.mv_size = module->size;
-    data.mv_data = module;
+    data.mv_size = module_copy->size;
+    data.mv_data = module_copy;
 
     // Store
     err = mdb_put(txn, dbi, &key, &data, 0);
+    handlebars_talloc_free(module_copy);
     if( err != 0 ) goto error;
 
     // Commit
@@ -289,13 +314,15 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     struct handlebars_context * context,
     const char * path
 ) {
-    struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
+    struct handlebars_cache * cache = handlebars_talloc_zero_size(context, sizeof(struct handlebars_cache) + sizeof(struct handlebars_cache_lmdb));
+    HANDLEBARS_MEMCHECK(cache, context);
+    talloc_set_type(cache, struct handlebars_cache);
     handlebars_context_bind(context, HBSCTX(cache));
 
     cache->max_age = -1;
     cache->hnd = &hbs_cache_handlers_lmdb;
 
-    struct handlebars_cache_lmdb * intern = MC(handlebars_talloc_zero(context, struct handlebars_cache_lmdb));
+    struct handlebars_cache_lmdb * intern = (void *) ((char *) cache + sizeof(struct handlebars_cache));
     cache->internal = intern;
 
     mdb_env_create(&intern->env);
