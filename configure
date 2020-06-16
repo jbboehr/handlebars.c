@@ -7429,7 +7429,7 @@ fi
 $as_echo "$as_me: WARNING: --enable-shared and --enable-lto do not currently work together" >&2;}
 
 fi
-	if test "x$GCC" = "xyes" && "x$CLANG" != "xyes"; then :
+	if test "x$GCC" = "xyes" && test "x$CLANG" != "xyes"; then :
    # clang pretends to be gcc
 		if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}gcc", so it can be a program name with args.
@@ -17148,7 +17148,7 @@ done
 test -n "$RE2C" || RE2C="no"
 
 
- if test x$LCOV != xno; then
+ if test "x$LCOV" != "xno"; then
   LCOV_TRUE=
   LCOV_FALSE='#'
 else
@@ -17156,7 +17156,7 @@ else
   LCOV_FALSE=
 fi
 
- if test x$RE2C != xno; then
+ if test "x$RE2C" != "xno"; then
   RE2C_TRUE=
   RE2C_FALSE='#'
 else

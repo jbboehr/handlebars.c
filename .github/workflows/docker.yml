@@ -1,0 +1,42 @@
+name: docker
+
+on:
+    push:
+        branches:
+        - master
+        - dev-1.x
+
+jobs:
+    publish_alpine_docker_hub:
+        runs-on: ubuntu-20.04
+        steps:
+        - uses: actions/checkout@v2
+        - name: Checkout submodules
+          uses: textbook/git-checkout-submodule-action@master
+        - name: Publish to Docker Hub
+          uses: docker/build-push-action@v1
+          with:
+            dockerfile: .github/alpine.Dockerfile
+            username: ${{ secrets.DOCKER_HUB_USERNAME }}
+            password: ${{ secrets.DOCKER_HUB_TOKEN }}
+            repository: jbboehr/handlebars.c
+            tag_with_ref: true
+            tag_with_sha: true
+            add_git_labels: true
+    publish_alpine_github_packages:
+        runs-on: ubuntu-20.04
+        steps:
+        - uses: actions/checkout@v2
+        - name: Checkout submodules
+          uses: textbook/git-checkout-submodule-action@master
+        - name: Publish to GitHub Packages
+          uses: docker/build-push-action@v1
+          with:
+            dockerfile: .github/alpine.Dockerfile
+            username: ${{ secrets.GH_PKG_USERNAME }}
+            password: ${{ secrets.GH_PKG_TOKEN }}
+            registry: docker.pkg.github.com
+            repository: jbboehr/handlebars.c/handlebarsc
+            tag_with_ref: true
+            tag_with_sha: true
+            add_git_labels: true

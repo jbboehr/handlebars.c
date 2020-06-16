@@ -106,7 +106,7 @@ AS_IF([test "x$enable_lto" == "xyes"], [
 	AS_IF([test "x$enable_shared" != "xno"], [
 		AC_MSG_WARN([--enable-shared and --enable-lto do not currently work together])
 	])
-	AS_IF([test "x$GCC" = "xyes" && "x$CLANG" != "xyes"], [ # clang pretends to be gcc
+	AS_IF([test "x$GCC" = "xyes" && test "x$CLANG" != "xyes"], [ # clang pretends to be gcc
 		AC_CHECK_TOOL([LD], [gcc], [$LD])
 		AC_CHECK_TOOL([AR], [gcc-ar], [$AR])
 		AC_CHECK_TOOL([RANLIB], [gcc-ranlib], [$RANLIB])
@@ -140,8 +140,8 @@ AC_PROG_YACC
 AC_PATH_PROGS(LCOV, [lcov], no)
 AC_PATH_PROGS(RE2C, [re2c], no)
 
-AM_CONDITIONAL([LCOV], [test x$LCOV != xno])
-AM_CONDITIONAL([RE2C], [test x$RE2C != xno])
+AM_CONDITIONAL([LCOV], [test "x$LCOV" != "xno"])
+AM_CONDITIONAL([RE2C], [test "x$RE2C" != "xno"])
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 AS_IF([test "x$enable_debug" = "xyes"], [
 	AC_DEFINE([HANDLEBARS_ENABLE_DEBUG], [1], [Enable handlebars debugging])
