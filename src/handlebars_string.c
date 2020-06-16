@@ -750,6 +750,9 @@ struct handlebars_string * handlebars_string_indent(
     const struct handlebars_string * indent_str
 ) {
     struct handlebars_string * new_string = handlebars_string_init(context, string->len);
+    if (handlebars_rc_refcount(&string->rc) > 0) {
+        handlebars_string_addref(new_string);
+    }
     return handlebars_string_indent_append(context, new_string, string, indent_str);
 }
 

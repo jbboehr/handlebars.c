@@ -397,7 +397,6 @@ static bool should_skip(struct generic_test * test)
 
     // Partials
     MYCHECK("partials", "partials", "registering undefined partial throws an exception");
-    // MYCHECKALL("partials", "partials - partial blocks");
     MYCHECKALL("partials", "partials - inline partials");
 
     return false;

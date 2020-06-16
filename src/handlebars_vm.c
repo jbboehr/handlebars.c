@@ -381,8 +381,11 @@ static struct handlebars_string * execute_template(
     if( !from_cache ) {
         // Parse
         struct handlebars_parser * parser = handlebars_parser_ctor(context);
-        if( vm->flags & handlebars_compiler_flag_compat ) {
+        if (vm->flags & handlebars_compiler_flag_compat) {
             tmpl = handlebars_preprocess_delimiters(HBSCTX(context), tmpl, NULL, NULL);
+            if (indent) {
+                tmpl = handlebars_string_indent(CONTEXT, tmpl, indent);
+            }
         }
         struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, vm->flags);
 
@@ -408,7 +411,7 @@ static struct handlebars_string * execute_template(
     retval = handlebars_vm_execute(vm, module, input);
     assert(retval != NULL);
 
-    if (indent) {
+    if (indent && !(vm->flags & handlebars_compiler_flag_compat)) {
         retval = handlebars_string_indent(CONTEXT, retval, indent);
     }
 
@@ -792,7 +795,13 @@ ACCEPT_FUNCTION(invoke_partial)
         buffer = handlebars_value_expression(CONTEXT, ret, 0);
     } else if (partial->type == HANDLEBARS_VALUE_TYPE_STRING) {
         // If partial is a string
-        buffer = execute_template(vm, handlebars_value_get_string(partial), argv[0], NULL /* done below now opcode->op3.data.string.string*/, 0);
+        buffer = execute_template(
+            vm,
+            handlebars_value_get_string(partial),
+            argv[0],
+            vm->flags & handlebars_compiler_flag_compat ? opcode->op3.data.string.string : NULL,
+            0
+        );
     } else {
         handlebars_throw(
             CONTEXT,
@@ -804,7 +813,11 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     if (buffer != NULL) {
-        vm->buffer = handlebars_string_indent_append(HBSCTX(vm), vm->buffer, buffer, opcode->op3.data.string.string);
+        if (vm->flags & handlebars_compiler_flag_compat) {
+            vm->buffer = handlebars_string_append_str(CONTEXT, vm->buffer, buffer);
+        } else {
+            vm->buffer = handlebars_string_indent_append(HBSCTX(vm), vm->buffer, buffer, opcode->op3.data.string.string);
+        }
     }
 
 done:

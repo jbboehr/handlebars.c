@@ -208,7 +208,6 @@ int should_skip(struct mustache_test * test)
 #define MYCHECK(d, i) \
     if( 0 == strcmp(d, test->name) && 0 == strcmp(i, test->desc) ) return 1;
 
-    MYCHECK("Standalone Indentation", "Each line of the partial should be indented before rendering.");
     MYCHECK("Section - Alternate Delimiters", "Lambdas used for sections should parse with the current delimiters.");
 
     return 0;
