@@ -38,6 +38,7 @@ set(SOURCE_FILES
     handlebars_json.c
     handlebars_map.c
 #    handlebars_memory.c
+    handlebars_module_printer.c
     handlebars_opcode_printer.c
     handlebars_opcode_serializer.c
     handlebars_opcodes.c
@@ -71,6 +72,7 @@ set(HEADERS
     handlebars_json.h
     handlebars_map.h
     handlebars_memory.h
+    handlebars_module_printer.h
     handlebars_opcode_printer.h
     handlebars_opcode_serializer.h
     handlebars_opcodes.h

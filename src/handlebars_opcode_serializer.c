@@ -37,12 +37,13 @@
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
 
-
-
 #define PTR_DIFF(a, b) ((size_t) (((char *) a) - ((char *) b)))
 #define PTR_ADD(a, b) ((void *) (((char *) a) + (b)))
 
 #define PATCH(ptr, baseaddr) ptr = (void *) (((char *) ptr) - ((char *) module->addr) + ((char *) baseaddr))
+
+const size_t HANDLEBARS_MODULE_SIZE = sizeof(struct handlebars_module);
+const size_t HANDLEBARS_MODULE_TABLE_ENTRY_SIZE = sizeof(struct handlebars_module_table_entry);
 
 static size_t align_size(size_t size)
 {
@@ -194,8 +195,6 @@ static struct handlebars_module_table_entry * serialize_program_shallow(struct h
     struct handlebars_module_table_entry * entry = &module->programs[guid];
 
     entry->guid = guid;
-    entry->child_count = program->children_length;
-    entry->children = module->programs + module->program_count;
 
     return entry;
 }
@@ -213,7 +212,7 @@ static void serialize_program2(struct handlebars_module * module, struct handleb
 
     // Serialize opcodes
     entry->opcode_count = program->opcodes_length;
-    entry->opcodes = module->opcodes + module->opcode_count;
+    entry->opcode_offset = module->opcode_count;
     for( i = 0 ; i < program->opcodes_length; i++ ) {
         serialize_opcode(module, program->opcodes[i], children);
     }
@@ -242,6 +241,7 @@ struct handlebars_module * handlebars_program_serialize(
 ) {
     // Allocate initial buffer
     struct handlebars_module * module = handlebars_talloc_zero(context, struct handlebars_module);
+    memcpy(&module->header, "HBSCM", sizeof("HBSCM"));
     module->version = handlebars_version();
     module->size = sizeof(struct handlebars_module);
     module->flags = program->flags;
@@ -320,11 +320,6 @@ void handlebars_module_normalize_pointers(struct handlebars_module * module, voi
         normalize_operand(module, &module->opcodes[i].op4, baseaddr);
     }
 
-    for( i = 0; i < module->program_count; i++ ) {
-        PATCH(module->programs[i].children, baseaddr);
-        PATCH(module->programs[i].opcodes, baseaddr);
-    }
-
     PATCH(module->programs, baseaddr);
     PATCH(module->opcodes, baseaddr);
     PATCH(module->data, baseaddr); // TBH we can probably zero this out
@@ -364,11 +359,6 @@ void handlebars_module_patch_pointers(struct handlebars_module * module)
     PATCH(module->data, baseaddr); // TBH we can probably zero this out
     PATCH(module->programs, baseaddr);
     PATCH(module->opcodes, baseaddr);
-
-    for( i = 0; i < module->program_count; i++ ) {
-        PATCH(module->programs[i].children, baseaddr);
-        PATCH(module->programs[i].opcodes, baseaddr);
-    }
 
     for( i = 0; i < module->opcode_count; i++ ) {
         patch_operand(module, &module->opcodes[i].op1, baseaddr);

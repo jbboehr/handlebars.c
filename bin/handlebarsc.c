@@ -44,6 +44,7 @@
 #include "handlebars_helpers.h"
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
+#include "handlebars_module_printer.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcode_serializer.h"
@@ -77,6 +78,7 @@ static long run_count = 1;
 static bool convert_input = true;
 static bool newline_at_eof = true;
 static size_t pool_size = 2 * 1024 * 1024;
+static bool pretty_print = true;
 
 enum handlebarsc_mode {
     handlebarsc_mode_usage = 0,
@@ -84,6 +86,7 @@ enum handlebarsc_mode {
     handlebarsc_mode_lex,
     handlebarsc_mode_parse,
     handlebarsc_mode_compile,
+    handlebarsc_mode_module,
     handlebarsc_mode_execute,
     handlebarsc_mode_debuginfo
 };
@@ -104,13 +107,15 @@ enum handlebarsc_flag {
     handlebarsc_flag_partial_path = 504,
     handlebarsc_flag_partial_loader = 505,
     handlebarsc_flag_flags = 506,
+    handlebarsc_flag_pretty_print = 507,
 
     // modes
     handlebarsc_flag_lex = 600,
     handlebarsc_flag_parse = 601,
     handlebarsc_flag_compile = 602,
     handlebarsc_flag_execute = 603,
-    handlebarsc_flag_debuginfo = 604
+    handlebarsc_flag_debuginfo = 604,
+    handlebarsc_flag_module = 605
 };
 
 static enum handlebarsc_mode mode = handlebarsc_mode_execute;
@@ -134,6 +139,7 @@ static void readOpts(int argc, char * argv[])
         HBSC_OPT(lex, no_argument, handlebarsc_flag_lex)
         HBSC_OPT(parse, no_argument, handlebarsc_flag_parse)
         HBSC_OPT(compile, no_argument, handlebarsc_flag_compile)
+        HBSC_OPT(module, no_argument, handlebarsc_flag_module)
         HBSC_OPT(execute, no_argument, handlebarsc_flag_execute)
         HBSC_OPT(version, no_argument, handlebarsc_flag_version)
         HBSC_OPT(debuginfo, no_argument, handlebarsc_flag_debuginfo)
@@ -151,6 +157,7 @@ static void readOpts(int argc, char * argv[])
         HBSC_OPT(no-convert-input, no_argument, handlebarsc_flag_no_convert_input)
         HBSC_OPT(no-newline, no_argument, handlebarsc_flag_no_newline)
         HBSC_OPT(pool-size, required_argument, handlebarsc_flag_pool_size)
+        HBSC_OPT(pretty-print, no_argument, handlebarsc_flag_pretty_print)
         // end
         HBSC_OPT_END
     };
@@ -177,6 +184,10 @@ start:
 
         case handlebarsc_flag_compile:
             mode = handlebarsc_mode_compile;
+            break;
+
+        case handlebarsc_flag_module:
+            mode = handlebarsc_mode_module;
             break;
 
         case handlebarsc_flag_execute:
@@ -264,6 +275,10 @@ start:
             sscanf(optarg, "%zu", &pool_size);
             break;
 
+        case handlebarsc_flag_pretty_print:
+            pretty_print = true;
+            break;
+
         default: assert(0); break; // LCOV_EXCL_LINE
     }
 
@@ -341,6 +356,7 @@ static int do_usage(void)
         "  --lex                 Lex the specified template into tokens\n"
         "  --parse               Parse the specified template into an AST\n"
         "  --compile             Compile the specified template into opcodes\n"
+        "  --module              Compile and serialize the specified template into a module\n"
         "\n"
         "Input options:\n"
         "  -t, --template=FILE   The template to operate on\n"
@@ -397,23 +413,30 @@ static int do_debuginfo(void)
 
     fprintf(stderr, "XXHash version: %s (%u)\n", HANDLEBARS_XXHASH_VERSION, HANDLEBARS_XXHASH_VERSION_ID);
 
-    fprintf(stderr, "sizeof(void *): %lu\n", (long unsigned) sizeof(void *));
-    fprintf(stderr, "sizeof(struct handlebars_cache): %lu\n", (long unsigned) HANDLEBARS_CACHE_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_cache_stat): %lu\n", (long unsigned) sizeof(struct handlebars_cache_stat));
-    fprintf(stderr, "sizeof(struct handlebars_context): %lu\n", (long unsigned) sizeof(struct handlebars_context));
-    fprintf(stderr, "sizeof(struct handlebars_compiler): %lu\n", (long unsigned) HANDLEBARS_COMPILER_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_map): %lu\n", (long unsigned) HANDLEBARS_MAP_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_opcode): %lu\n", (long unsigned) HANDLEBARS_OPCODE_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_operand): %lu\n", (long unsigned) HANDLEBARS_OPERAND_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_options): %lu\n", (long unsigned) HANDLEBARS_OPTIONS_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_parser): %lu\n", (long unsigned) HANDLEBARS_PARSER_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_program): %lu\n", (long unsigned) HANDLEBARS_PROGRAM_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_stack): %lu\n", (long unsigned) handlebars_stack_size(0));
-    fprintf(stderr, "sizeof(struct handlebars_string): %lu\n", (long unsigned) HANDLEBARS_STRING_SIZE);
-    fprintf(stderr, "sizeof(struct handlebars_value): %lu\n", (long unsigned) HANDLEBARS_VALUE_SIZE);
-    fprintf(stderr, "sizeof(union handlebars_value_internals): %lu\n", (long unsigned) HANDLEBARS_VALUE_INTERNALS_SIZE);
-    fprintf(stderr, "sizeof(enum handlebars_value_type): %lu\n", (long unsigned) sizeof(enum handlebars_value_type));
-    fprintf(stderr, "sizeof(struct handlebars_vm): %lu\n", (long unsigned) HANDLEBARS_VM_SIZE);
+    fprintf(stderr, "\n");
+#define HBS_DEBUGINFO_PRINTSIZE(typ, nam, siz) fprintf(stderr, "%-6s" " " "%-29s" " " "%zu" "\n", typ, nam, siz)
+    HBS_DEBUGINFO_PRINTSIZE("void *", "", sizeof(void *));
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_cache", HANDLEBARS_CACHE_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_cache_stat", sizeof(struct handlebars_cache_stat));
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_context", sizeof(struct handlebars_context));
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_compiler", HANDLEBARS_COMPILER_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_map", HANDLEBARS_MAP_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_module", HANDLEBARS_MODULE_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_module_table_entry", HANDLEBARS_MODULE_TABLE_ENTRY_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_opcode", HANDLEBARS_OPCODE_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("enum", "handlebars_opcode_type", sizeof(enum handlebars_opcode_type));
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_operand", HANDLEBARS_OPERAND_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("enum", "handlebars_operand_type", sizeof(enum handlebars_operand_type));
+    HBS_DEBUGINFO_PRINTSIZE("union", "handlebars_operand_internals", HANDLEBARS_OPERAND_INTERNALS_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_options", HANDLEBARS_OPTIONS_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_parser", HANDLEBARS_PARSER_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_program", HANDLEBARS_PROGRAM_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_stack", handlebars_stack_size(0));
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_string", HANDLEBARS_STRING_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_value", HANDLEBARS_VALUE_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("union", "handlebars_value_internals", HANDLEBARS_VALUE_INTERNALS_SIZE);
+    HBS_DEBUGINFO_PRINTSIZE("enum", "handlebars_value_type", sizeof(enum handlebars_value_type));
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_vm", HANDLEBARS_VM_SIZE);
     return 0;
 }
 
@@ -541,6 +564,64 @@ static int do_compile(void)
     // Print
     output = handlebars_program_print(ctx, program, 0);
     fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
+
+    handlebars_context_dtor(ctx);
+    return 0;
+}
+
+static int do_module(void)
+{
+    struct handlebars_context * ctx;
+    struct handlebars_parser * parser;
+    struct handlebars_compiler * compiler;
+    struct handlebars_string * output;
+    struct handlebars_string * tmpl;
+    struct handlebars_ast_node * ast;
+    struct handlebars_program * program;
+    struct handlebars_module * module;
+    jmp_buf jmp;
+
+    ctx = handlebars_context_ctor_ex(root);
+
+    // Save jump buffer
+    if( handlebars_setjmp_ex(ctx, &jmp) ) {
+        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        handlebars_context_dtor(ctx);
+        return 1;
+    }
+
+    parser = handlebars_parser_ctor(ctx);
+    compiler = handlebars_compiler_ctor(ctx);
+
+    handlebars_compiler_set_flags(compiler, compiler_flags);
+
+    // Read
+    readInput();
+    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, strlen(input_buf));
+
+    // Preprocess
+    if( compiler_flags & handlebars_compiler_flag_compat ) {
+        tmpl = handlebars_preprocess_delimiters(ctx, tmpl, NULL, NULL);
+    }
+
+    // Parse
+    ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
+
+    // Compile
+    program = handlebars_compiler_compile_ex(compiler, ast);
+
+    // Serialize
+    module = handlebars_program_serialize(ctx, program);
+    handlebars_module_generate_hash(module);
+
+    // Print
+    if (pretty_print) {
+        output = handlebars_module_print(ctx, module);
+        fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
+    } else {
+        handlebars_module_normalize_pointers(module, (void *) 0);
+        fwrite((char *) module, sizeof(char), handlebars_module_get_size(module), stdout);
+    }
 
     handlebars_context_dtor(ctx);
     return 0;
@@ -695,6 +776,7 @@ int main(int argc, char * argv[])
         case handlebarsc_mode_lex: return do_lex();
         case handlebarsc_mode_parse: return do_parse();
         case handlebarsc_mode_compile: return do_compile();
+        case handlebarsc_mode_module: return do_module();
         case handlebarsc_mode_execute: return do_execute();
         case handlebarsc_mode_debuginfo: return do_debuginfo();
         case handlebarsc_mode_usage: return do_usage();

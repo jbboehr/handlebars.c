@@ -194,6 +194,48 @@ load "../vendor/bats-assert/assert"
     refute_output --partial "appendEscaped"
 }
 
+@test "--module" {
+    run $HANDLEBARSC --module $TEMPLATE
+    assert_success
+    assert_output --partial "appendEscaped"
+}
+
+@test "--module (invalid file)" {
+    run $HANDLEBARSC --module nonexist
+    assert_failure
+    assert_output --partial "Failed to open file"
+}
+
+@test "--module (no file)" {
+    run $HANDLEBARSC --module
+    assert_failure
+    assert_output --partial "No input file"
+}
+
+@test "--module (compile error)" {
+    run $HANDLEBARSC --module $TEST_DIR/fixture3.hbs
+    assert_failure
+    assert_output --partial "Unsupported number of partial arguments"
+}
+
+@test "--module -" {
+    run bash -c "cat $TEMPLATE | $HANDLEBARSC --module -"
+    assert_success
+    assert_output --partial "appendEscaped"
+}
+
+@test "--module --template <TEMPLATE>" {
+    run $HANDLEBARSC --module $TEMPLATE
+    assert_success
+    assert_output --partial "appendEscaped"
+}
+
+@test "--module --flags no_escape" {
+    run $HANDLEBARSC --module --flags no_escape $TEMPLATE
+    assert_output --partial "append"
+    refute_output --partial "appendEscaped"
+}
+
 @test "--execute" {
     skip_if_no_json
     run $HANDLEBARSC --execute --data $TEST_DIR/fixture1.json $TEMPLATE

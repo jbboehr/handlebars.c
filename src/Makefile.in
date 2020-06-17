@@ -188,7 +188,8 @@ am__libhandlebars_la_SOURCES_DIST = handlebars.tab.h handlebars.tab.c \
 	handlebars_compiler.c handlebars_delimiters.c \
 	handlebars_delimiters.h handlebars_helpers.h \
 	handlebars_helpers.c handlebars_json.c handlebars_map.h \
-	handlebars_map.c handlebars_opcode_printer.h \
+	handlebars_map.c handlebars_module_printer.h \
+	handlebars_module_printer.c handlebars_opcode_printer.h \
 	handlebars_opcode_printer.c handlebars_opcode_serializer.h \
 	handlebars_opcode_serializer.c handlebars_opcodes.h \
 	handlebars_opcodes.c handlebars_parser.h handlebars_parser.c \
@@ -214,10 +215,11 @@ am_libhandlebars_la_OBJECTS = handlebars.tab.lo handlebars.lex.lo \
 	handlebars_cache_simple.lo handlebars_closure.lo \
 	handlebars_compiler.lo handlebars_delimiters.lo \
 	handlebars_helpers.lo $(am__objects_3) handlebars_map.lo \
-	handlebars_opcode_printer.lo handlebars_opcode_serializer.lo \
-	handlebars_opcodes.lo handlebars_parser.lo \
-	handlebars_parser_private.lo handlebars_partial_loader.lo \
-	handlebars_rc.lo handlebars_scanners.lo handlebars_stack.lo \
+	handlebars_module_printer.lo handlebars_opcode_printer.lo \
+	handlebars_opcode_serializer.lo handlebars_opcodes.lo \
+	handlebars_parser.lo handlebars_parser_private.lo \
+	handlebars_partial_loader.lo handlebars_rc.lo \
+	handlebars_scanners.lo handlebars_stack.lo \
 	handlebars_string.lo handlebars_token.lo handlebars_value.lo \
 	handlebars_value_handlers.lo handlebars_vm.lo \
 	handlebars_whitespace.lo $(am__objects_4) $(am__objects_5)
@@ -261,6 +263,7 @@ am__depfiles_remade = ./$(DEPDIR)/handlebars.Plo \
 	./$(DEPDIR)/handlebars_helpers.Plo \
 	./$(DEPDIR)/handlebars_json.Plo ./$(DEPDIR)/handlebars_map.Plo \
 	./$(DEPDIR)/handlebars_memory.Plo \
+	./$(DEPDIR)/handlebars_module_printer.Plo \
 	./$(DEPDIR)/handlebars_opcode_printer.Plo \
 	./$(DEPDIR)/handlebars_opcode_serializer.Plo \
 	./$(DEPDIR)/handlebars_opcodes.Plo \
@@ -548,6 +551,7 @@ pkginclude_HEADERS = \
 	handlebars_json.h \
 	handlebars_map.h \
 	handlebars_memory.h \
+    handlebars_module_printer.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_serializer.h \
 	handlebars_opcodes.h \
@@ -591,7 +595,8 @@ libhandlebars_la_SOURCES = handlebars.tab.h handlebars.tab.c \
 	handlebars_compiler.h handlebars_compiler.c \
 	handlebars_delimiters.c handlebars_delimiters.h \
 	handlebars_helpers.h handlebars_helpers.c $(JSONSOURCES) \
-	handlebars_map.h handlebars_map.c handlebars_opcode_printer.h \
+	handlebars_map.h handlebars_map.c handlebars_module_printer.h \
+	handlebars_module_printer.c handlebars_opcode_printer.h \
 	handlebars_opcode_printer.c handlebars_opcode_serializer.h \
 	handlebars_opcode_serializer.c handlebars_opcodes.h \
 	handlebars_opcodes.c handlebars_parser.h handlebars_parser.c \
@@ -720,6 +725,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_json.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_map.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_memory.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_module_printer.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_opcode_printer.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_opcode_serializer.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_opcodes.Plo@am__quote@ # am--include-marker
@@ -969,6 +975,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/handlebars_json.Plo
 	-rm -f ./$(DEPDIR)/handlebars_map.Plo
 	-rm -f ./$(DEPDIR)/handlebars_memory.Plo
+	-rm -f ./$(DEPDIR)/handlebars_module_printer.Plo
 	-rm -f ./$(DEPDIR)/handlebars_opcode_printer.Plo
 	-rm -f ./$(DEPDIR)/handlebars_opcode_serializer.Plo
 	-rm -f ./$(DEPDIR)/handlebars_opcodes.Plo
@@ -1048,6 +1055,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/handlebars_json.Plo
 	-rm -f ./$(DEPDIR)/handlebars_map.Plo
 	-rm -f ./$(DEPDIR)/handlebars_memory.Plo
+	-rm -f ./$(DEPDIR)/handlebars_module_printer.Plo
 	-rm -f ./$(DEPDIR)/handlebars_opcode_printer.Plo
 	-rm -f ./$(DEPDIR)/handlebars_opcode_serializer.Plo
 	-rm -f ./$(DEPDIR)/handlebars_opcodes.Plo

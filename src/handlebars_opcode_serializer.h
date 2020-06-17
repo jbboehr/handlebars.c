@@ -31,6 +31,9 @@ struct handlebars_program;
 struct handlebars_opcode;
 struct handlebars_module;
 
+extern const size_t HANDLEBARS_MODULE_SIZE;
+extern const size_t HANDLEBARS_MODULE_TABLE_ENTRY_SIZE;
+
 /**
  * @brief Serialize a program into a single buffer. Adds return opcodes and globalizes program IDs.
  * @param[in] context
@@ -98,12 +101,8 @@ struct handlebars_module_table_entry
     size_t guid;
     //! Number of opcodes
     size_t opcode_count;
-    //! Number of child programs
-    size_t child_count;
-    //! Pointer to opcodes
-    struct handlebars_opcode * opcodes;
-    //! Pointer to child programs
-    struct handlebars_module_table_entry * children;
+    //! Offset to start opcode for function
+    size_t opcode_offset;
 };
 
 /**
@@ -111,7 +110,9 @@ struct handlebars_module_table_entry
  */
 struct handlebars_module
 {
-    //! A hash of everything starting at the following field. May be zero. Set by calling #handlebars_module_generate_hash
+    unsigned char header[8];
+
+    //! A hash of everything starting at the field following this one. May be zero. Set by calling #handlebars_module_generate_hash
     uint64_t hash;
 
     //! The handlebars version this program was compiled with
@@ -127,7 +128,7 @@ struct handlebars_module
     time_t ts;
 
     //! Compiler flags from handlebars_compiler#flags
-    long flags;
+    unsigned long flags;
 
     //! Number of programs
     size_t program_count;

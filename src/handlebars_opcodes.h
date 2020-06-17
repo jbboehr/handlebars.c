@@ -106,6 +106,7 @@ enum handlebars_operand_type {
 
 extern const size_t HANDLEBARS_OPCODE_SIZE;
 extern const size_t HANDLEBARS_OPERAND_SIZE;
+extern const size_t HANDLEBARS_OPERAND_INTERNALS_SIZE;
 
 /**
  * @brief Construct an opcode

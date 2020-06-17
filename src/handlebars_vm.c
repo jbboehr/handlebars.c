@@ -1179,7 +1179,7 @@ static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_mo
 #define END_ACCEPT } goto start;
 #endif
 
-    struct handlebars_opcode * opcode = entry->opcodes;
+    struct handlebars_opcode * opcode = &vm->module->opcodes[entry->opcode_offset];
     START_ACCEPT
         ACCEPT(ambiguous_block_value)
         ACCEPT(append)

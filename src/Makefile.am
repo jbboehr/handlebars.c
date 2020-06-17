@@ -75,6 +75,7 @@ pkginclude_HEADERS = \
 	handlebars_json.h \
 	handlebars_map.h \
 	handlebars_memory.h \
+    handlebars_module_printer.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_serializer.h \
 	handlebars_opcodes.h \
@@ -140,6 +141,8 @@ libhandlebars_la_SOURCES = \
 	$(JSONSOURCES) \
 	handlebars_map.h \
 	handlebars_map.c \
+    handlebars_module_printer.h \
+    handlebars_module_printer.c \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_printer.c \
 	handlebars_opcode_serializer.h \
