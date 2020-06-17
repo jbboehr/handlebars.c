@@ -227,7 +227,7 @@ BLOCKPARAM [\x7C]
   										//yytext[yyleng -= 4] = 0;
   										//yytext += 5, yyleng -= 5;
 										handlebars_yy_copy_lval();
-  										return COMMENT;
+  										return LONG_COMMENT;
 									}
 
 <com1>([}]?[^}])*"}}"				{
@@ -403,7 +403,7 @@ BLOCKPARAM [\x7C]
 										yytext++, yyleng--;
 										handlebars_yy_copy_lval();
 										yylval->string = handlebars_string_stripcslashes(yylval->string);
-										return STRING;
+										return SINGLE_STRING;
                                 	}
 
 <mu>"@"                          	{

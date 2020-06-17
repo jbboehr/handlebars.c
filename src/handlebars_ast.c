@@ -260,15 +260,17 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
 }
 
 struct handlebars_ast_node * handlebars_ast_node_ctor_comment(
-        struct handlebars_parser * parser,
-        struct handlebars_string * comment,
-        struct handlebars_locinfo * locinfo
+    struct handlebars_parser * parser,
+    struct handlebars_string * comment,
+    bool is_long,
+    struct handlebars_locinfo * locinfo
 ) {
     struct handlebars_ast_node * ast_node;
     ast_node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_COMMENT);
     ast_node->loc = *locinfo;
     ast_node->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
     ast_node->node.comment.value = talloc_steal(ast_node, handlebars_string_copy_ctor(HBSCTX(parser), comment));
+    ast_node->node.comment.is_long = is_long;
     return ast_node;
 }
 
@@ -515,11 +517,13 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
 struct handlebars_ast_node * handlebars_ast_node_ctor_string(
     struct handlebars_parser * parser,
     struct handlebars_string * string,
+    bool is_single_quoted,
     struct handlebars_locinfo * locinfo
 ) {
     struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_STRING);
     ast_node->loc = *locinfo;
     ast_node->node.string.value = talloc_steal(ast_node, handlebars_string_copy_ctor(HBSCTX(parser), string));
+    ast_node->node.string.is_single_quoted = is_single_quoted;
     return ast_node;
 }
 

@@ -99,7 +99,9 @@ extern int handlebars_yy_debug;
     OPEN_BLOCK_PARAMS = 284,
     OPEN_INVERSE_CHAIN = 285,
     UNDEFINED = 286,
-    OPEN_PARTIAL_BLOCK = 287
+    OPEN_PARTIAL_BLOCK = 287,
+    LONG_COMMENT = 288,
+    SINGLE_STRING = 289
   };
 #endif
 
@@ -116,7 +118,7 @@ union YYSTYPE
     struct handlebars_yy_block_intermediate block_intermediate;
     struct handlebars_yy_block_params block_params;
 
-#line 120 "handlebars.tab.h"
+#line 122 "handlebars.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

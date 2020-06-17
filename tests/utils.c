@@ -234,7 +234,6 @@ char * normalize_template_whitespace(TALLOC_CTX *ctx, struct handlebars_string *
                 *j++ = '"';
                 break;
 
-            case '~': // sadface
             case '\r':
             case '\n':
             case '\t':

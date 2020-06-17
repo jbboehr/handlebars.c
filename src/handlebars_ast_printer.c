@@ -63,6 +63,20 @@
         } \
     } while(0)
 
+#define __APPEND_STRIP_LEFT(strip) \
+    do { \
+        if ((strip) & handlebars_ast_strip_flag_left) { \
+            __APPENDS("~"); \
+        } \
+    } while(0)
+
+#define __APPEND_STRIP_RIGHT(strip) \
+    do { \
+        if ((strip) & handlebars_ast_strip_flag_right) { \
+            __APPENDS("~"); \
+        } \
+    } while(0)
+
 #define __PAD(str) \
     hbs_ast_print_pad(str, ctx)
 
@@ -593,6 +607,7 @@ static void _handlebars_ast_to_string_mustache(struct handlebars_ast_node * ast_
     unsigned char unescaped = ast_node->node.mustache.unescaped;
 
     __APPENDS("{{");
+    __APPEND_STRIP_LEFT(ast_node->strip);
     if (unescaped == 1) {
         __APPENDS("{");
     } else if (unescaped == 3) {
@@ -606,6 +621,7 @@ static void _handlebars_ast_to_string_mustache(struct handlebars_ast_node * ast_
     if (unescaped == 1) {
         __APPENDS("}");
     }
+    __APPEND_STRIP_RIGHT(ast_node->strip);
     __APPENDS("}}");
 }
 
@@ -619,17 +635,23 @@ static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_nod
     // Use an inverted section
     if (ast_node->node.block.inverse && !ast_node->node.block.program) {
         if (is_raw) { __APPENDS("{{"); }
-        __APPENDS("{{^");
+        __APPENDS("{{");
+        __APPEND_STRIP_LEFT(ast_node->node.block.open_strip);
+        __APPENDS("^");
         _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path,
                 ast_node->node.block.params, ast_node->node.block.hash, ctx);
+        __APPEND_STRIP_RIGHT(ast_node->node.block.open_strip);
         __APPENDS("}}");
         if (is_raw) { __APPENDS("}}"); }
 
         __PRINT(ast_node->node.block.inverse);
 
         if (is_raw) { __APPENDS("{{"); }
-        __APPENDS("{{/");
+        __APPENDS("{{");
+        __APPEND_STRIP_LEFT(ast_node->node.block.close_strip);
+        __APPENDS("/");
         _handlebars_ast_to_string_path(ast_node->node.block.path, ctx, 1);
+        __APPEND_STRIP_RIGHT(ast_node->node.block.close_strip);
         __APPENDS("}}");
         if (is_raw) { __APPENDS("}}"); }
         goto done;
@@ -637,8 +659,14 @@ static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_nod
 
 
     // Sexpr
-    if (is_raw) { __APPENDS("{{{{"); }
-    else { __APPENDS("{{#"); }
+    if (is_raw) {
+        __APPENDS("{{{{");
+        __APPEND_STRIP_LEFT(ast_node->node.block.open_strip);
+    } else {
+        __APPENDS("{{");
+        __APPEND_STRIP_LEFT(ast_node->node.block.open_strip);
+        __APPENDS("#");
+    }
 	if( ast_node->node.block.is_decorator ) {
 		__APPENDS("*");
 	}
@@ -657,6 +685,7 @@ static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_nod
         }
     }
 
+    __APPEND_STRIP_RIGHT(ast_node->node.block.open_strip);
     __APPENDS("}}");
     if (is_raw) { __APPENDS("}}"); }
 
@@ -667,15 +696,22 @@ static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_nod
 
     // Inverse
     if( ast_node->node.block.inverse ) {
-        __APPENDS("{{^}}");
+        __APPENDS("{{");
+        __APPEND_STRIP_LEFT(ast_node->node.block.inverse_strip);
+        __APPENDS("^");
+        __APPEND_STRIP_RIGHT(ast_node->node.block.inverse_strip);
+        __APPENDS("}}");
         __PRINT(ast_node->node.block.inverse);
     }
 
     // end
     if (is_raw) { __APPENDS("{{"); }
-    __APPENDS("{{/");
+    __APPENDS("{{");
+    __APPEND_STRIP_LEFT(ast_node->node.block.close_strip);
+    __APPENDS("/");
     _handlebars_ast_to_string_path_params_hash(ast_node->node.block.path, NULL, NULL, ctx);
     // _handlebars_ast_to_string_path(ast_node->node.block.path, ctx, 1);
+    __APPEND_STRIP_RIGHT(ast_node->node.block.close_strip);
     __APPENDS("}}");
     if (is_raw) { __APPENDS("}}"); }
 
@@ -689,7 +725,9 @@ static void _handlebars_ast_to_string_partial(struct handlebars_ast_node * ast_n
 
     assert(ast_node->node.partial.name != NULL);
 
-    __APPENDS("{{>");
+    __APPENDS("{{");
+    __APPEND_STRIP_LEFT(ast_node->strip);
+    __APPENDS(">");
 
     __PRINT(ast_node->node.partial.name);
 
@@ -704,7 +742,8 @@ static void _handlebars_ast_to_string_partial(struct handlebars_ast_node * ast_n
         __PRINT(ast_node->node.partial.hash);
     }
 
-    __APPENDS(" }}");
+    __APPEND_STRIP_RIGHT(ast_node->strip);
+    __APPENDS("}}");
 
     ctx->in_partial = false;
 }
@@ -753,8 +792,17 @@ static void _handlebars_ast_to_string_content(struct handlebars_ast_node * ast_n
 
 static void _handlebars_ast_to_string_comment(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPENDS("{{!");
+    __APPENDS("{{");
+    __APPEND_STRIP_LEFT(ast_node->strip);
+    __APPENDS("!");
+    if (ast_node->node.comment.is_long) {
+        __APPENDS("--");
+    }
     __APPEND_STR(ast_node->node.comment.value);
+    if (ast_node->node.comment.is_long) {
+        __APPENDS("--");
+    }
+    __APPEND_STRIP_RIGHT(ast_node->strip);
     __APPENDS("}}");
 }
 
@@ -767,11 +815,17 @@ static void _handlebars_ast_to_string_sexpr(struct handlebars_ast_node * ast_nod
 
 static void _handlebars_ast_to_string_string(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    __APPENDS("\"");
-    struct handlebars_string *tmp = handlebars_string_addcslashes(ctx->ctx, ast_node->node.string.value, HBS_STRL("\""));
+    char quote[2] = {0, 0};
+    if (ast_node->node.string.is_single_quoted) {
+        quote[0] = '\'';
+    } else {
+        quote[0] = '"';
+    }
+    __APPEND(quote);
+    struct handlebars_string *tmp = handlebars_string_addcslashes(ctx->ctx, ast_node->node.string.value, quote, 1);
     __APPEND_STR(tmp);
     handlebars_talloc_free(tmp);
-    __APPENDS("\"");
+    __APPEND(quote);
 }
 
 static void _handlebars_ast_to_string_number(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)

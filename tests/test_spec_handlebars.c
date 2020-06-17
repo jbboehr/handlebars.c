@@ -53,7 +53,7 @@
 
 
 struct generic_test {
-    const char * suiteName;
+    const char * suite_name;
     char * description;
     char * it;
     char * tmpl;
@@ -173,14 +173,14 @@ static void loadRuntimeOptions(struct generic_test * test, json_object * object)
     }
 }
 
-static void loadSpecTest(json_object * object, const char *suiteName)
+static void loadSpecTest(json_object * object, const char *suite_name)
 {
     json_object * cur = NULL;
     int nreq = 0;
 
     // Get test
     struct generic_test * test = tests[tests_len++] = handlebars_talloc_zero(tests, struct generic_test);
-    test->suiteName = suiteName;
+    test->suite_name = suite_name;
     test->raw = json_object_to_json_string_ext(object, JSON_C_TO_STRING_PRETTY);
 
     // Get description
@@ -331,6 +331,12 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
     struct handlebars_string * tmpl;
     struct handlebars_string *ast_str;
     const char *actual;
+    bool dont_match = false;
+
+    if (test->exception) {
+        fprintf(stderr, "SKIPPED #%d\n", _i);
+        return;
+    }
 
     tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
     const char *expected = normalize_template_whitespace(parser, tmpl);
@@ -338,11 +344,13 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
     // Won't work with a bunch of shit from handlebars - ast is lossy
     // We're mostly doing this to make sure it won't segfault on handlebars sytax since
     // it's mainly meant to be used with mustache templates
-    if (test->exception || NULL != strstr(expected, "{{&") || NULL != strstr(expected, "{{else") ||
-            NULL != strstr(expected, "{{!--") || NULL != strstr(expected, "[") || NULL != strstr(expected, "{{>(") ||
-            NULL != strstr(expected, "\\{{") || NULL != strstr(hbs_str_val(tmpl), "{{'") ) {
-        fprintf(stderr, "SKIPPED #%d\n", _i);
-        return;
+    if (
+        NULL != strstr(expected, "else") ||
+        NULL != strstr(expected, "[") ||
+        NULL != strstr(expected, "{{>(") ||
+        NULL != strstr(expected, "\\{{")
+    ) {
+        dont_match = true;
     }
 
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
@@ -355,12 +363,19 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
     ast_str = handlebars_ast_to_string(context, ast);
 
     actual = normalize_template_whitespace(parser, ast_str);
-    if (strcmp(actual, expected) != 0) {
-            char *tmp = handlebars_talloc_asprintf(root,
-                                                   "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
-                                                   "" /*test->suite_name*/,
-                                                   test->description, test->it, test->flags,
-                                                   test->tmpl, expected, actual);
+    if (!dont_match && strcmp(actual, expected) != 0) {
+        char *tmp = handlebars_talloc_asprintf(
+            root,
+            "Failed.\nNum: %d\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+            _i,
+            test->suite_name,
+            test->description,
+            test->it,
+            test->flags,
+            test->tmpl,
+            expected,
+            actual
+        );
         ck_abort_msg(tmp);
     }
 }
@@ -370,9 +385,9 @@ static bool should_skip(struct generic_test * test);
 static bool should_skip(struct generic_test * test)
 {
 #define MYCHECKALL(s, d) \
-    if (0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description)) return true;
+    if (0 == strcmp(s, test->suite_name) && 0 == strcmp(d, test->description)) return true;
 #define MYCHECK(s, d, i) \
-    if( 0 == strcmp(s, test->suiteName) && 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return true;
+    if( 0 == strcmp(s, test->suite_name) && 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return true;
 
     // Still having issues with whitespace
     MYCHECK("blocks", "blocks - standalone sections", "block standalone else sections can be disabled");

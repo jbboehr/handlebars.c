@@ -139,6 +139,10 @@ int handlebars_yy_debug = 0;
 // Added in v4
 %token <string> OPEN_PARTIAL_BLOCK "{{#>"
 
+// Added later (cutom)
+%token <string> LONG_COMMENT
+%token <string> SINGLE_STRING
+
 %type <ast_node> program
 %type <ast_list> statements
 %type <ast_node> statement
@@ -234,9 +238,16 @@ statement
       // Strip comment strips in place
       unsigned strip = handlebars_ast_helper_strip_flags($1, $1);
       $$ = handlebars_ast_node_ctor_comment(parser,
-      			handlebars_ast_helper_strip_comment($1), &@$);
+      			handlebars_ast_helper_strip_comment($1), false, &@$);
       handlebars_ast_node_set_strip($$, strip);
     }
+  | LONG_COMMENT {
+      // Strip comment strips in place
+      unsigned strip = handlebars_ast_helper_strip_flags($1, $1);
+      $$ = handlebars_ast_node_ctor_comment(parser,
+      			handlebars_ast_helper_strip_comment($1), true, &@$);
+      handlebars_ast_node_set_strip($$, strip);
+  }
   ;
 
 content
@@ -506,8 +517,11 @@ helper_name
       $$ = $1;
     }
   | STRING {
-      $$ = handlebars_ast_node_ctor_string(parser, $1, &@$);
+      $$ = handlebars_ast_node_ctor_string(parser, $1, false, &@$);
     }
+  | SINGLE_STRING {
+      $$ = handlebars_ast_node_ctor_string(parser, $1, true, &@$);
+  }
   | NUMBER {
       $$ = handlebars_ast_node_ctor_number(parser, $1, &@$);
     }

@@ -108,6 +108,9 @@ const char * handlebars_token_readable_type(int type)
     _RTYPE_CASE(UNDEFINED);
     // Added in v4
     _RTYPE_CASE(OPEN_PARTIAL_BLOCK);
+    // Added later
+    case LONG_COMMENT: return "COMMENT";
+    case SINGLE_STRING: return "STRING";
     case NUL: return "NULL";
     default: return "UNKNOWN";
   }
@@ -147,6 +150,11 @@ int handlebars_token_reverse_readable_type(const char * type)
             _RTYPE_REV_CMP(INVALID);
             _RTYPE_REV_CMP(INVERSE);
             break;
+        case 'L':
+            if( strcmp(type, "LONG_COMMENT") == 0 ) { \
+                return COMMENT;
+            }
+            break;
         case 'N':
             _RTYPE_REV_CMP(NUMBER);
             if( strcmp(type, "NULL") == 0 ) {
@@ -171,6 +179,9 @@ int handlebars_token_reverse_readable_type(const char * type)
         case 'S':
             _RTYPE_REV_CMP(SEP);
             _RTYPE_REV_CMP(STRING);
+            if( strcmp(type, "SINGLE_STRING") == 0 ) { \
+                return STRING;
+            }
             break;
         case 'U':
         	// Added in v3

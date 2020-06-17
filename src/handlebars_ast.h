@@ -174,6 +174,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_boolean(
 struct handlebars_ast_node * handlebars_ast_node_ctor_comment(
     struct handlebars_parser * parser,
 	struct handlebars_string * comment,
+    bool is_long,
     struct handlebars_locinfo * locinfo
 ) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
@@ -278,6 +279,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
 struct handlebars_ast_node * handlebars_ast_node_ctor_string(
     struct handlebars_parser * parser,
     struct handlebars_string * string,
+    bool is_single_quoted,
     struct handlebars_locinfo * locinfo
 ) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
@@ -308,6 +310,7 @@ struct handlebars_ast_node_block {
 
 struct handlebars_ast_node_comment {
     struct handlebars_string * value;
+    bool is_long;
 };
 
 struct handlebars_ast_node_hash {
@@ -336,6 +339,7 @@ struct handlebars_ast_node_inverse {
 struct handlebars_ast_node_literal {
     struct handlebars_string * value;
 	struct handlebars_string * original;
+    bool is_single_quoted;
 };
 
 struct handlebars_ast_node_mustache {

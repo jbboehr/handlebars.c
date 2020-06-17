@@ -228,11 +228,18 @@ START_TEST(test_ast_to_string_on_mustache_spec)
     actual = normalize_template_whitespace(context, ast_str);
     expected = normalize_template_whitespace(context, tmpl);
     if (strcmp(actual, expected) != 0) {
-        char *tmp = handlebars_talloc_asprintf(tests,
-                                               "Failed.\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
-                                               "" /*test->suite_name*/,
-                                               test->name, test->desc, test->flags,
-                                               test->tmpl, expected, actual);
+        char *tmp = handlebars_talloc_asprintf(
+            tests,
+            "Failed.\nNum: %d\nSuite: %s\nTest: %s - %s\nFlags: %ld\nTemplate:\n%s\nExpected:\n%s\nActual:\n%s\n",
+            _i,
+            test->suite_name,
+            test->name,
+            test->desc,
+            test->flags,
+            test->tmpl,
+            expected,
+            actual
+        );
         ck_abort_msg(tmp);
     }
 
