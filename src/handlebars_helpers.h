@@ -72,6 +72,7 @@ struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS) HANDLEB
 struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;
 struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;
 struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;
+struct handlebars_value * handlebars_builtin_hbsc_set_delimiters(HANDLEBARS_HELPER_ARGS) HANDLEBARS_HELPER_ATTRS;
 
 HBS_EXTERN_C_END
 

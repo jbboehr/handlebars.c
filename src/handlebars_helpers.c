@@ -28,6 +28,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_value_private.h"
+#include "handlebars_vm_private.h"
 
 #include "handlebars_helpers.h"
 #include "handlebars_map.h"
@@ -382,7 +383,17 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
     return rv;
 }
 
-
+struct handlebars_value * handlebars_builtin_hbsc_set_delimiters(HANDLEBARS_HELPER_ARGS)
+{
+    if (argc == 2 && argv[0] && argv[1] && argv[0]->type == HANDLEBARS_VALUE_TYPE_STRING && argv[1]->type == HANDLEBARS_VALUE_TYPE_STRING) {
+        // @TODO we should delref the old ones
+        options->vm->delim_open = handlebars_value_get_string(argv[0]);
+        handlebars_string_addref(options->vm->delim_open);
+        options->vm->delim_close = handlebars_value_get_string(argv[1]);
+        handlebars_string_addref(options->vm->delim_close);
+    }
+    return rv;
+}
 
 
 
@@ -397,6 +408,7 @@ static const char * names[] = {
     "with",
     "log",
     "lookup",
+    "hbsc_set_delimiters",
     NULL
 };
 
@@ -409,6 +421,7 @@ static handlebars_helper_func builtins[] = {
     &handlebars_builtin_with,
     &handlebars_builtin_log,
     &handlebars_builtin_lookup,
+    &handlebars_builtin_hbsc_set_delimiters,
     NULL
 };
 

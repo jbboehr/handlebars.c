@@ -382,22 +382,24 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_parser *
     block->strip = strip;
 }
 
-static inline void handlebars_whitespace_accept_partial(struct handlebars_parser * parser,
-        struct handlebars_ast_node * partial)
-{
-    partial->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
-}
-
 static inline void handlebars_whitespace_accept_mustache(struct handlebars_parser * parser,
         struct handlebars_ast_node * mustache)
 {
     // nothing?
+
+    // hack to treat a function call to hbsc_set_delimiters as delimiters
+    if (mustache->node.mustache.path) {
+        struct handlebars_ast_node * path = mustache->node.mustache.path;
+        if (path->node.path.original && hbs_str_eq_strl(path->node.path.original, HBS_STRL("hbsc_set_delimiters"))) {
+            mustache->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
+        }
+    }
 }
 
-static inline void handlebars_whitespace_accept_comment(struct handlebars_parser * parser,
-        struct handlebars_ast_node * comment)
+static inline void handlebars_whitespace_accept_generic(struct handlebars_parser * parser,
+        struct handlebars_ast_node * ast_node)
 {
-    comment->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
+    ast_node->strip |= handlebars_ast_strip_flag_set | handlebars_ast_strip_flag_inline_standalone;
 }
 
 static inline void handlebars_whitespace_accept_raw_block(struct handlebars_parser * parser,
@@ -488,16 +490,16 @@ void handlebars_whitespace_accept(struct handlebars_parser * parser,
     switch( node->type ) {
         case HANDLEBARS_AST_NODE_BLOCK:
             return handlebars_whitespace_accept_block(parser, node);
-        case HANDLEBARS_AST_NODE_COMMENT:
-            return handlebars_whitespace_accept_comment(parser, node);
         case HANDLEBARS_AST_NODE_MUSTACHE:
             return handlebars_whitespace_accept_mustache(parser, node);
-        case HANDLEBARS_AST_NODE_PARTIAL:
-            return handlebars_whitespace_accept_partial(parser, node);
         case HANDLEBARS_AST_NODE_PROGRAM:
             return handlebars_whitespace_accept_program(parser, node);
         case HANDLEBARS_AST_NODE_RAW_BLOCK:
             return handlebars_whitespace_accept_raw_block(parser, node);
+
+        case HANDLEBARS_AST_NODE_PARTIAL:
+        case HANDLEBARS_AST_NODE_COMMENT:
+            return handlebars_whitespace_accept_generic(parser, node);
 
         // LCOV_EXCL_START
         // These don't do anything

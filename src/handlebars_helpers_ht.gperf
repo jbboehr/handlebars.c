@@ -10,3 +10,4 @@ unless,4
 with,5
 log,6
 lookup,7
+hbsc_set_delimiters,8

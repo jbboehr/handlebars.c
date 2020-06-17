@@ -87,7 +87,7 @@ void handlebars_yy_fatal_error(const char * msg, struct handlebars_parser * pars
     assert(parser != NULL);
 
 #if YYDEBUG
-    fprintf(stderr, "%s\n", err);
+    fprintf(stderr, "%s\n", msg);
 #endif
 
     handlebars_throw(CONTEXT, HANDLEBARS_PARSEERR, "%s", msg);

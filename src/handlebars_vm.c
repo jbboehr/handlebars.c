@@ -32,6 +32,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_private.h"
 #include "handlebars_value_private.h"
+#include "handlebars_vm_private.h"
 
 #include "handlebars_cache.h"
 #include "handlebars_closure.h"
@@ -70,34 +71,6 @@
 // {{{ Prototypes & Variables
 
 ACCEPT_FUNCTION(push_context);
-
-struct handlebars_vm {
-    struct handlebars_context ctx;
-    struct handlebars_cache * cache;
-
-    struct handlebars_module * module;
-
-    long depth;
-    unsigned long flags;
-
-    struct handlebars_string * buffer;
-
-    struct handlebars_value data;
-    struct handlebars_value helpers;
-    struct handlebars_value partials;
-
-    struct handlebars_string * last_helper;
-    struct handlebars_value * last_context;
-
-    struct handlebars_stack * stack;
-    struct handlebars_stack * contextStack;
-    struct handlebars_stack * hashStack;
-    struct handlebars_stack * blockParamStack;
-    struct handlebars_stack * partialBlockStack;
-
-    handlebars_log_func log_func;
-    void * log_ctx;
-};
 
 const size_t HANDLEBARS_VM_SIZE = sizeof(struct handlebars_vm);
 
@@ -155,6 +128,12 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
     handlebars_value_dtor(&vm->helpers);
     handlebars_value_dtor(&vm->partials);
     handlebars_value_dtor(&vm->data);
+    if (vm->delim_open) {
+        handlebars_string_delref(vm->delim_open);
+    }
+    if (vm->delim_close) {
+        handlebars_string_delref(vm->delim_close);
+    }
     handlebars_talloc_free(vm);
 }
 
@@ -355,7 +334,8 @@ static struct handlebars_string * execute_template(
     struct handlebars_string * volatile tmpl,
     struct handlebars_value * input,
     struct handlebars_string * indent,
-    int escape
+    int escape,
+    bool use_delimiters
 ) {
     struct handlebars_context * context = handlebars_context_ctor_ex(vm);
     struct handlebars_string * volatile retval = NULL;
@@ -382,7 +362,12 @@ static struct handlebars_string * execute_template(
         // Parse
         struct handlebars_parser * parser = handlebars_parser_ctor(context);
         if (vm->flags & handlebars_compiler_flag_compat) {
-            tmpl = handlebars_preprocess_delimiters(HBSCTX(context), tmpl, NULL, NULL);
+            tmpl = handlebars_preprocess_delimiters(
+                HBSCTX(context),
+                tmpl,
+                use_delimiters ? vm->delim_open : NULL,
+                use_delimiters ? vm->delim_close : NULL
+            );
             if (indent) {
                 tmpl = handlebars_string_indent(CONTEXT, tmpl, indent);
             }
@@ -567,7 +552,8 @@ static inline struct handlebars_value * invoke_mustache_style_lambda(
     struct handlebars_opcode *opcode,
     struct handlebars_value *value,
     struct handlebars_options *options,
-    struct handlebars_value * rv
+    struct handlebars_value * rv,
+    bool use_delimiters
 ) {
     struct handlebars_value * argv[1];
     struct handlebars_value arg = {0};
@@ -580,7 +566,7 @@ static inline struct handlebars_value * invoke_mustache_style_lambda(
 
     if (NULL != handlebars_value_call(value, 1, argv, options, lambda_result) && !handlebars_value_is_empty(lambda_result)) {
         struct handlebars_string * tmpl = handlebars_value_to_string(lambda_result, CONTEXT);
-        struct handlebars_string * rv_str = execute_template(vm, tmpl, value, NULL, 0);
+        struct handlebars_string * rv_str = execute_template(vm, tmpl, value, NULL, 0, use_delimiters);
         handlebars_value_str(rv, rv_str);
     }
 
@@ -608,7 +594,7 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     vm->last_helper = NULL;
 
     if (vm->flags & handlebars_compiler_flag_mustache_style_lambdas && handlebars_value_is_callable(value)) {
-        result = invoke_mustache_style_lambda(vm, opcode, value, &options, rv);
+        result = invoke_mustache_style_lambda(vm, opcode, value, &options, rv, opcode->op2.data.boolval);
         PUSH(vm->stack, result);
         vm->last_helper = handlebars_string_ctor(CONTEXT, HBS_STRL("lambda")); // hackey but it works
         handlebars_string_addref(vm->last_helper);
@@ -800,6 +786,7 @@ ACCEPT_FUNCTION(invoke_partial)
             handlebars_value_get_string(partial),
             argv[0],
             vm->flags & handlebars_compiler_flag_compat ? opcode->op3.data.string.string : NULL,
+            0,
             0
         );
     } else {
@@ -1327,6 +1314,8 @@ struct handlebars_string * handlebars_vm_execute_ex(
     struct handlebars_module * prev_module = vm->module;
     unsigned long prev_flags = vm->flags;
     struct handlebars_value * prev_last_context = vm->last_context;
+    struct handlebars_string * prev_delim_open = vm->delim_open;
+    struct handlebars_string * prev_delim_close = vm->delim_close;
 
     struct handlebars_string * buffer = NULL;
     bool volatile setup_stacks = false;
@@ -1373,6 +1362,8 @@ done:
     }
 
     // Reset
+    vm->delim_open = prev_delim_open;
+    vm->delim_close = prev_delim_close;
     vm->last_context = prev_last_context;
     vm->module = prev_module;
     vm->flags = prev_flags;

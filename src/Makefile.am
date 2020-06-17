@@ -99,7 +99,8 @@ noinst_HEADERS = \
 	handlebars_private.h \
 	handlebars_scanners.h \
 	handlebars_whitespace.h \
-	handlebars_value_private.h
+	handlebars_value_private.h \
+	handlebars_vm_private.h
 
 CLEANFILES = $(GENSOURCE) $(GENSOURCE2)
 BUILT_SOURCES = $(GENSOURCE) $(GENSOURCE2)

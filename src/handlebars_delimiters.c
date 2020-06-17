@@ -35,26 +35,24 @@
 
 
 #if defined(YYDEBUG)
-#define append(str, len) fprintf(stderr, "Delimiter preprocessor: appending: \"%.*s\"\n", len, str); \
+#define append(str, len) fprintf(stderr, "Delimiter preprocessor: appending: \"%.*s\"\n", (int) len, str); \
     new_tmpl = handlebars_string_append(ctx, new_tmpl, str, len)
 #define move_forward(x) \
-    if( x > i ) { \
-        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %ld", x); \
+    if( (ssize_t) x > (ssize_t) i ) { \
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %zd", (ssize_t) x); \
     } \
-    fprintf(stderr, "Delimiter preprocessor: moving forward %ld characters, new position: \"%c\"\n", x, *(p + x)); \
+    fprintf(stderr, "Delimiter preprocessor: moving forward %zd characters, new position: \"%c\"\n", (ssize_t) x, *(p + x)); \
     p += x; \
     i -= x
 #else
 #define append(str, len) new_tmpl = handlebars_string_append(ctx, new_tmpl, str, len)
 #define move_forward(x) \
-    if( x > (size_t) i ) { \
-        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %lu", (unsigned long) x); \
+    if( (ssize_t) x > (ssize_t) i ) { \
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "Failed to advanced scanner by %zd", (ssize_t) x); \
     } \
     p += x; \
     i -= x
 #endif
-
-static const char placeholder[] = "{{! delimiter placeholder }}";
 
 struct handlebars_string * handlebars_preprocess_delimiters(
     struct handlebars_context * ctx,
@@ -205,8 +203,18 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 fprintf(stderr, "Delimiter preprocessor: New delimiters: \"%.*s\", \"%.*s\"\n", (int) hbs_str_len(open), hbs_str_val(open), (int) hbs_str_len(close), hbs_str_val(close));
 #endif
 
-                // Append a comment - tricks whitespace rules into working
-                append(placeholder, (int) sizeof(placeholder) - 1);
+                // Append a special mustache tag
+                do {
+                    struct handlebars_string *open_escaped = handlebars_string_addcslashes(ctx, open, HBS_STRL("\""));
+                    struct handlebars_string *close_escaped = handlebars_string_addcslashes(ctx, close, HBS_STRL("\""));
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, HBS_STRL("{{hbsc_set_delimiters \""));
+                    new_tmpl = handlebars_string_append_str(ctx, new_tmpl, open_escaped);
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, HBS_STRL("\" \""));
+                    new_tmpl = handlebars_string_append_str(ctx, new_tmpl, close_escaped);
+                    new_tmpl = handlebars_string_append(ctx, new_tmpl, HBS_STRL("\"}}"));
+                    handlebars_string_delref(open_escaped);
+                    handlebars_string_delref(close_escaped);
+                } while (0);
 
                 // Goto new state
                 if( i > 0 ) {
@@ -230,6 +238,10 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 break;
         }
     }
+
+#if defined(YYDEBUG)
+    fprintf(stderr, "Delimiter preprocessor: Processed template: %.*s\n", (int) hbs_str_len(new_tmpl), hbs_str_val(new_tmpl));
+#endif
 
     // Free open/close
     handlebars_talloc_free(open);

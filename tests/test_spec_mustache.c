@@ -202,19 +202,6 @@ error:
     return error;
 }
 
-int should_skip(struct mustache_test * test);
-int should_skip(struct mustache_test * test)
-{
-#define MYCHECK(d, i) \
-    if( 0 == strcmp(d, test->name) && 0 == strcmp(i, test->desc) ) return 1;
-
-    MYCHECK("Section - Alternate Delimiters", "Lambdas used for sections should parse with the current delimiters.");
-
-    return 0;
-
-#undef MYCCHECK
-}
-
 START_TEST(test_ast_to_string_on_mustache_spec)
 {
     struct mustache_test * test = &tests[_i];
@@ -278,11 +265,6 @@ START_TEST(test_mustache_spec)
         talloc_free(tmp);
     }
 #endif
-
-    if( should_skip(test) ) {
-        fprintf(stderr, "SKIPPED #%d\n", _i);
-        return;
-    }
 
     // Initialize
     tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
