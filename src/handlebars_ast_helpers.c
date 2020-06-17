@@ -186,7 +186,11 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_mustache(
         	ast_node->node.mustache.is_decorator = 1;
         }
     }
-    ast_node->node.mustache.unescaped = (c == '{' || c == '&');
+    if (c == '{') {
+        ast_node->node.mustache.unescaped = 1;
+    } else if (c == '&') {
+        ast_node->node.mustache.unescaped = 3;
+    }
 
     // Free the intermediate node
     handlebars_talloc_free(intermediate);

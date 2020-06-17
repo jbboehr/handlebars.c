@@ -590,14 +590,14 @@ static void _handlebars_ast_to_string_program(struct handlebars_ast_node * ast_n
 
 static void _handlebars_ast_to_string_mustache(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx)
 {
-    short unescaped = ast_node->node.mustache.unescaped;
+    unsigned char unescaped = ast_node->node.mustache.unescaped;
 
     __APPENDS("{{");
     if (unescaped == 1) {
         __APPENDS("{");
-    } /*else if (unescaped == 3) {
+    } else if (unescaped == 3) {
         __APPENDS("&");
-    } */
+    }
 	if( ast_node->node.mustache.is_decorator ) {
 		__APPENDS("*");
 	}

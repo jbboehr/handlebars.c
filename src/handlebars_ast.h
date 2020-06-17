@@ -342,8 +342,9 @@ struct handlebars_ast_node_mustache {
     struct handlebars_ast_node * path;
     struct handlebars_ast_list * params;
     struct handlebars_ast_node * hash;
-	bool unescaped;
-	bool is_decorator;
+    //! 0 for default, 1 for '{', 3 for '&'
+    unsigned char unescaped;
+    bool is_decorator;
 };
 
 struct handlebars_ast_node_partial {

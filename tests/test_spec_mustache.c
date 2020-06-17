@@ -216,12 +216,6 @@ START_TEST(test_ast_to_string_on_mustache_spec)
     handlebars_string_addref(origtmpl); handlebars_string_addref(origtmpl); // ugh
     tmpl = handlebars_preprocess_delimiters(context, origtmpl, NULL, NULL);
 
-    // Won't work with custom delimters or with '{{&'
-    if (!handlebars_string_eq(origtmpl, tmpl) || NULL != strstr(hbs_str_val(origtmpl), "{{&")) {
-        fprintf(stderr, "SKIPPED #%d\n", _i);
-        goto done;
-    }
-
     ast = handlebars_parse_ex(parser, tmpl, test->flags);
 
     // Check error
@@ -241,7 +235,7 @@ START_TEST(test_ast_to_string_on_mustache_spec)
                                                test->tmpl, expected, actual);
         ck_abort_msg(tmp);
     }
-done:
+
     handlebars_string_delref(origtmpl);
 }
 END_TEST
