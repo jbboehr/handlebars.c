@@ -23,6 +23,10 @@
 #include <assert.h>
 #include <string.h>
 
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
 #include "handlebars.h"
 #include "handlebars_types.h"
 
@@ -104,7 +108,7 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
     handlebars_value_init(name);
 #endif
 
-#if defined(HANDLEBARS_ENABLE_DEBUG) && defined(HBS_HAVE_ATTR_CLEANUP)
+#if defined(HANDLEBARS_ENABLE_DEBUG)
 // The cleanup variable helps makes sure there is a matching pair of DECL/UNDECL
 #define HANDLEBARS_VALUE_DECL(name) \
     void * cleanup_ ## name = NULL; \
@@ -114,11 +118,61 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
     handlebars_value_dtor(name); \
     (void) cleanup_ ## name
 #else
-#define HANDLEBARS_VALUE_DECL(name) \
-    HANDLEBARS_VALUE_DECL_PRED(name)
+#define HANDLEBARS_VALUE_DECL(name) HANDLEBARS_VALUE_DECL_PRED(name)
+#define HANDLEBARS_VALUE_UNDECL(name) handlebars_value_dtor(name)
+#endif
 
-#define HANDLEBARS_VALUE_UNDECL(name) \
-    handlebars_value_dtor(name)
+#if (defined(HANDLEBARS_VALUE_SIZE) && !defined(__STDC_NO_VLA__))
+// We know the size of value at compile-time, but we don't know if num is a constant, so we have be able to support VLA
+#define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
+    struct handlebars_value name[num]; \
+    memset(&name, 0, sizeof(name));
+#define HANDLEBARS_VALUE_ARRAY_AT(name, pos) (&name[pos])
+#elif !defined(__STDC_NO_VLA__)
+// Use a char vla
+#define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
+    char mem_ ## name[HANDLEBARS_VALUE_SIZE * (num)]; \
+    struct handlebars_value * name = (void *) &mem_ ## name; \
+    memset(name, 0, HANDLEBARS_VALUE_SIZE * (num));
+#define HANDLEBARS_VALUE_ARRAY_AT(name, pos) ((struct handlebars_value *) ((char *) name + (HANDLEBARS_VALUE_SIZE * (pos))))
+#else
+// Use alloca
+#define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
+    struct handlebars_value * name = alloca(HANDLEBARS_VALUE_SIZE * (num)); \
+    memset(name, 0, HANDLEBARS_VALUE_SIZE * (num));
+#define HANDLEBARS_VALUE_ARRAY_AT(name, pos) ((struct handlebars_value *) ((char *) name + (HANDLEBARS_VALUE_SIZE * (pos))))
+#endif
+
+#define HANDLEBARS_VALUE_ARRAY_UNDECL_PRED(name, num) \
+    do { \
+        for (int i_ ## name = 0; i_ ## name < num; (i_ ## name)++) { \
+            handlebars_value_dtor(HANDLEBARS_VALUE_ARRAY_AT(name, i_ ## name)); \
+        } \
+    } while (0)
+
+#if defined(HANDLEBARS_ENABLE_DEBUG)
+// The cleanup variable helps makes sure there is a matching pair of DECL/UNDECL
+#define HANDLEBARS_VALUE_ARRAY_DECL(name, num) \
+    void * cleanup_ ## name = NULL; \
+    HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num)
+
+#define HANDLEBARS_VALUE_ARRAY_UNDECL(name, num) \
+    HANDLEBARS_VALUE_ARRAY_UNDECL_PRED(name, num); \
+    (void) cleanup_ ## name
+#else
+#define HANDLEBARS_VALUE_ARRAY_DECL(name, num) HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num)
+#define HANDLEBARS_VALUE_ARRAY_UNDECL(name, num) HANDLEBARS_VALUE_ARRAY_UNDECL_PRED(name, num)
+#endif
+
+#if defined(HANDLEBARS_ENABLE_DEBUG) && defined(HANDLEBARS_HAVE_STATEMENT_EXPRESSIONS)
+#define HANDLEBARS_ARG_AT_EX(argc, argv, pos) ({ \
+        assert(pos < argc); \
+        HANDLEBARS_VALUE_ARRAY_AT(argv, pos); \
+    })
+#define HANDLEBARS_ARG_AT(pos) HANDLEBARS_ARG_AT_EX(argc, argv, pos)
+#else
+#define HANDLEBARS_ARG_AT_EX(argc, argv, pos) HANDLEBARS_VALUE_ARRAY_AT(argv, pos)
+#define HANDLEBARS_ARG_AT(pos) HANDLEBARS_ARG_AT_EX(argc, argv, pos)
 #endif
 
 /**
@@ -458,7 +512,7 @@ char * handlebars_value_dump(
 struct handlebars_value * handlebars_value_call(
     struct handlebars_value * value,
     int argc,
-    struct handlebars_value * argv[],
+    struct handlebars_value * argv,
     struct handlebars_options * options,
     struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;

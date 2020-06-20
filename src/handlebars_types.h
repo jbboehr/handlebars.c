@@ -54,7 +54,7 @@ enum handlebars_value_flags
 
 typedef struct handlebars_value * (*handlebars_helper_func)(
     int argc,
-    struct handlebars_value * argv[],
+    struct handlebars_value * argv,
     struct handlebars_options * options,
     struct handlebars_value * rv
 );
@@ -71,7 +71,7 @@ struct handlebars_options {
 
 typedef void (*handlebars_log_func)(
     int argc,
-    struct handlebars_value * argv[],
+    struct handlebars_value * argv,
     struct handlebars_options * options
 );
 

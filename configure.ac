@@ -151,6 +151,7 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 AC_HEADER_STDC
 
 # Checks for functions
+AC_FUNC_ALLOCA
 AC_CHECK_FUNC(snprintf, , AC_MSG_ERROR([snprintf is required]))
 AC_CHECK_FUNC(qsort_r, [AC_DEFINE(HAVE_QSORT_R, [], [Does the system have qsort_r()?])])
 

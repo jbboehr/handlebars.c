@@ -24,6 +24,10 @@
 #include <assert.h>
 #include <string.h>
 
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
 #define HANDLEBARS_COMPILER_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 #define HANDLEBARS_OPCODES_PRIVATE

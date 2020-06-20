@@ -700,7 +700,7 @@ struct handlebars_value * handlebars_value_call(struct handlebars_value * value,
 
         case HANDLEBARS_VALUE_TYPE_CLOSURE:
             if (argc == 1) {
-                return handlebars_closure_call(value->v.closure, argv[0], NULL, NULL, rv);
+                return handlebars_closure_call(value->v.closure, &argv[0], NULL, NULL, rv);
             }
             break;
 

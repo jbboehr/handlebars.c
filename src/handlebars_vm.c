@@ -185,7 +185,7 @@ void * handlebars_vm_get_log_ctx(struct handlebars_vm * vm)
 // }}} Getters & Setters
 
 HBS_ATTR_NONNULL(1, 3, 4)
-static inline struct handlebars_value * call_helper(struct handlebars_string * string, int argc, struct handlebars_value * argv[], struct handlebars_options * options, struct handlebars_value * rv)
+static inline struct handlebars_value * call_helper(struct handlebars_string * string, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * rv)
 {
     HANDLEBARS_VALUE_DECL(rv2);
     struct handlebars_value * helper;
@@ -202,7 +202,7 @@ static inline struct handlebars_value * call_helper(struct handlebars_string * s
 }
 
 HBS_ATTR_NONNULL(1, 4, 5)
-struct handlebars_value * handlebars_vm_call_helper_str(const char * name, unsigned int len, int argc, struct handlebars_value * argv[], struct handlebars_options * options, struct handlebars_value * rv)
+struct handlebars_value * handlebars_vm_call_helper_str(const char * name, unsigned int len, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * rv)
 {
     HANDLEBARS_VALUE_DECL(rv2);
     struct handlebars_value * helper;
@@ -218,7 +218,7 @@ struct handlebars_value * handlebars_vm_call_helper_str(const char * name, unsig
     return rv;
 }
 
-static inline void setup_options(struct handlebars_vm * vm, int argc, struct handlebars_value * argv[], struct handlebars_options * options, struct handlebars_value * mem)
+static inline void setup_options(struct handlebars_vm * vm, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * mem)
 {
     struct handlebars_value * inverse;
     struct handlebars_value * program;
@@ -249,31 +249,21 @@ static inline void setup_options(struct handlebars_vm * vm, int argc, struct han
     }
 
     i = argc;
-    mem += argc;
     while( i-- ) {
-        argv[i] = POP(vm->stack, --mem);
+        POP(vm->stack, &argv[i]);
     }
 }
 
 #define VM_SETUP_OPTIONS(argc) \
     struct handlebars_options options = {0}; \
-    struct handlebars_value argv_mem[argc + 5]; \
-    struct handlebars_value * argv[argc]; \
-    memset(&argv_mem, 0, sizeof(argv_mem)); \
-    setup_options(vm, argc, argv, &options, argv_mem)
-
-static inline void teardown_options(struct handlebars_vm * vm, int argc, struct handlebars_value * argv[], struct handlebars_options * options)
-{
-    int i;
-    i = argc;
-    while( i-- ) {
-        handlebars_value_dtor(argv[i]);
-    }
-    handlebars_options_deinit(options);
-}
+    HANDLEBARS_VALUE_ARRAY_DECL(argv, argc); \
+    HANDLEBARS_VALUE_ARRAY_DECL(extra, 5); \
+    setup_options(vm, argc, argv, &options, extra)
 
 #define VM_TEARDOWN_OPTIONS(argc) \
-    teardown_options(vm, argc, argv, &options)
+    HANDLEBARS_VALUE_ARRAY_UNDECL(extra, 5); \
+    HANDLEBARS_VALUE_ARRAY_UNDECL(argv, argc); \
+    handlebars_options_deinit(&options)
 
 static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars_value * result, bool escape)
 {
@@ -555,14 +545,12 @@ static inline struct handlebars_value * invoke_mustache_style_lambda(
     struct handlebars_value * rv,
     bool use_delimiters
 ) {
-    struct handlebars_value * argv[1];
-    struct handlebars_value arg = {0};
+    HANDLEBARS_VALUE_ARRAY_DECL(argv, 1);
     HANDLEBARS_VALUE_DECL(lambda_result);
 
     assert(opcode->op3.type == handlebars_operand_type_string);
 
-    argv[0] = &arg;
-    handlebars_value_str(argv[0], opcode->op3.data.string.string);
+    handlebars_value_str(&argv[0], opcode->op3.data.string.string);
 
     if (NULL != handlebars_value_call(value, 1, argv, options, lambda_result) && !handlebars_value_is_empty(lambda_result)) {
         struct handlebars_string * tmpl = handlebars_value_to_string(lambda_result, CONTEXT);
@@ -570,6 +558,7 @@ static inline struct handlebars_value * invoke_mustache_style_lambda(
         handlebars_value_str(rv, rv_str);
     }
 
+    HANDLEBARS_VALUE_ARRAY_UNDECL(argv, 1);
     HANDLEBARS_VALUE_UNDECL(lambda_result);
 
     return rv;
@@ -740,16 +729,14 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     // Merge hashes
-    input = merge_hash(HBSCTX(vm), options.hash, argv[0], input_rv);
-    if (likely(argv[0] != NULL)) {
-        handlebars_value_dtor(argv[0]);
-    }
-    argv[0] = input;
+    input = merge_hash(HBSCTX(vm), options.hash, &argv[0], input_rv);
+    handlebars_value_dtor(&argv[0]);
+    handlebars_value_value(&argv[0], input);
 
     if (!partial) {
         if (options.program >= 0) {
             // basic partial block
-            buffer = handlebars_vm_execute_program_ex(vm, options.program, argv[0], NULL, TOP(vm->blockParamStack));
+            buffer = handlebars_vm_execute_program_ex(vm, options.program, &argv[0], NULL, TOP(vm->blockParamStack));
         } else if( vm->flags & handlebars_compiler_flag_compat ) {
             goto done;
         } else {
@@ -784,7 +771,7 @@ ACCEPT_FUNCTION(invoke_partial)
         buffer = execute_template(
             vm,
             handlebars_value_get_string(partial),
-            argv[0],
+            &argv[0],
             vm->flags & handlebars_compiler_flag_compat ? opcode->op3.data.string.string : NULL,
             0,
             0
@@ -1121,19 +1108,17 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
 
     if( handlebars_value_is_callable(value) ) {
         HANDLEBARS_VALUE_DECL(rv);
-        HANDLEBARS_VALUE_DECL(arg);
         struct handlebars_options options = {0};
-        int argc = 1;
-        struct handlebars_value * argv[1];
-        handlebars_value_value(arg, TOP(vm->contextStack));
-        argv[0] = arg;
+        const int argc = 1;
+        HANDLEBARS_VALUE_ARRAY_DECL(argv, argc);
+        handlebars_value_value(&argv[0], TOP(vm->contextStack));
         options.vm = vm;
-        options.scope = arg;
+        options.scope = &argv[0];
         struct handlebars_value * result = handlebars_value_call(value, argc, argv, &options, rv);
         HBS_ASSERT(result);
         PUSH(vm->stack, result);
+        HANDLEBARS_VALUE_ARRAY_UNDECL(argv, argc);
         handlebars_options_deinit(&options);
-        HANDLEBARS_VALUE_UNDECL(arg);
         HANDLEBARS_VALUE_UNDECL(rv);
     } else {
         PUSH(vm->stack, value);

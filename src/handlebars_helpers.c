@@ -85,23 +85,22 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Must pass iterator to #each");
     }
 
-    context = argv[0];
+    context = &argv[0];
 
     if( handlebars_value_is_callable(context) ) {
         struct handlebars_options options2 = {0};
-        int argc2 = 1;
-        //struct handlebars_value * argv2[argc2];
-        struct handlebars_value ** argv2 = alloca(sizeof(struct handlebars_value *) * argc2);
+        const int argc2 = 1;
+        HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
+        handlebars_value_value(&argv2[0], options->scope);
         options2.vm = options->vm;
-        options2.scope = options->scope;
-        argv2[0] = options->scope;
+        options2.scope = &argv2[0];
         struct handlebars_value * ret = handlebars_value_call(context, argc2, argv2, &options2, rv2);
+        context = ret;
+        HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
+        handlebars_options_deinit(&options2);
         if( !ret ) {
-            handlebars_options_deinit(&options2);
             goto whoopsie;
         }
-        context = ret;
-        handlebars_options_deinit(&options2);
     }
 
     if( handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_MAP && handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
@@ -201,7 +200,7 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HEL
         goto inverse;
     }
 
-    context = argv[0];
+    context = &argv[0];
     is_zero = handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_INTEGER && handlebars_value_get_intval(context) == 0;
 
     if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_TRUE ) {
@@ -248,7 +247,7 @@ struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
         int i;
         fprintf(stderr, "[INFO] ");
         for (i = 0; i < argc; i++) {
-            char *tmp = handlebars_value_dump(argv[i], HBSCTX(options->vm), 0);
+            char *tmp = handlebars_value_dump(&argv[i], HBSCTX(options->vm), 0);
             fprintf(stderr, "%s ", tmp);
             handlebars_talloc_free(tmp);
         }
@@ -265,8 +264,8 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "lookup requires two parameters");
     }
 
-    struct handlebars_value * context = argv[0];
-    struct handlebars_value * field = argv[1];
+    struct handlebars_value * context = &argv[0];
+    struct handlebars_value * field = &argv[1];
     enum handlebars_value_type type = handlebars_value_get_type(context);
 
     if( type == HANDLEBARS_VALUE_TYPE_MAP ) {
@@ -285,7 +284,7 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
 
 struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
 {
-    struct handlebars_value * conditional = argv[0];
+    struct handlebars_value * conditional = &argv[0];
     long program;
     struct handlebars_string * result_str = NULL;
     HANDLEBARS_VALUE_DECL(rv2);
@@ -296,15 +295,15 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
 
     if( handlebars_value_is_callable(conditional) ) {
         struct handlebars_options options2 = {0};
-        int argc2 = 1;
-        //struct handlebars_value * argv2[argc2];
-        struct handlebars_value ** argv2 = alloca(sizeof(struct handlebars_value *) * argc2);
+        const int argc2 = 1;
+        HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
+        handlebars_value_value(&argv2[0], options->scope);
         options2.vm = options->vm;
-        options2.scope = options->scope;
-        argv2[0] = options->scope;
+        options2.scope = &argv2[0];
         struct handlebars_value * result = handlebars_value_call(conditional, argc2, argv2, &options2, rv2);
         assert(result != NULL);
         conditional = result;
+        HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
         handlebars_options_deinit(&options2);
     }
 
@@ -334,7 +333,7 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "#unless requires exactly one argument");
     }
 
-    conditional = argv[0];
+    conditional = &argv[0];
     assert(conditional != NULL);
 
     handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
@@ -345,7 +344,7 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_string * result_str = NULL;
-    struct handlebars_value * context = argv[0];
+    struct handlebars_value * context = &argv[0];
     HANDLEBARS_VALUE_DECL(block_params);
     HANDLEBARS_VALUE_DECL(rv2);
 
@@ -355,12 +354,12 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
 
     if( handlebars_value_is_callable(context) ) {
         struct handlebars_options options2 = {0};
-        int argc2 = 1;
-        //struct handlebars_value * argv2[argc2];
-        struct handlebars_value ** argv2 = alloca(sizeof(struct handlebars_value *) * argc2);
-        argv2[0] = options->scope;
+        const int argc2 = 1;
+        HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
+        handlebars_value_value(&argv2[0], options->scope);
         struct handlebars_value * result = handlebars_value_call(context, argc2, argv2, options, rv2);
         context = result;
+        HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
         handlebars_options_deinit(&options2);
     }
 
@@ -385,11 +384,11 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
 
 struct handlebars_value * handlebars_builtin_hbsc_set_delimiters(HANDLEBARS_HELPER_ARGS)
 {
-    if (argc == 2 && argv[0] && argv[1] && argv[0]->type == HANDLEBARS_VALUE_TYPE_STRING && argv[1]->type == HANDLEBARS_VALUE_TYPE_STRING) {
+    if (argc == 2 && argv[0].type == HANDLEBARS_VALUE_TYPE_STRING && argv[1].type == HANDLEBARS_VALUE_TYPE_STRING) {
         // @TODO we should delref the old ones
-        options->vm->delim_open = handlebars_value_get_string(argv[0]);
+        options->vm->delim_open = handlebars_value_get_string(&argv[0]);
         handlebars_string_addref(options->vm->delim_open);
-        options->vm->delim_close = handlebars_value_get_string(argv[1]);
+        options->vm->delim_close = handlebars_value_get_string(&argv[1]);
         handlebars_string_addref(options->vm->delim_close);
     }
     return rv;

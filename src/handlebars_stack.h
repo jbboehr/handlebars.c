@@ -20,7 +20,9 @@
 #ifndef HANDLEBARS_STACK_H
 #define HANDLEBARS_STACK_H
 
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
 
 #include "handlebars.h"
 

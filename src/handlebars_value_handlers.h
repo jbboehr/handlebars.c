@@ -42,7 +42,7 @@ typedef bool (*handlebars_iterator_init_func)(struct handlebars_value_iterator *
 typedef struct handlebars_value * (*handlebars_call_func)(
     struct handlebars_value * value,
     int argc,
-    struct handlebars_value * argv[],
+    struct handlebars_value * argv,
     struct handlebars_options * options,
     struct handlebars_value * rv
 );

@@ -22,9 +22,12 @@
 #endif
 
 #include <assert.h>
-#include <alloca.h>
 #include <string.h>
 #include <talloc.h>
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 
 #define HANDLEBARS_AST_PRIVATE
 #define HANDLEBARS_AST_LIST_PRIVATE

@@ -32,7 +32,7 @@ struct handlebars_options;
 
 extern const size_t HANDLEBARS_OPTIONS_SIZE;
 
-#define HANDLEBARS_HELPER_ARGS int argc, struct handlebars_value * argv[], struct handlebars_options * options, struct handlebars_value * rv
+#define HANDLEBARS_HELPER_ARGS int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * rv
 #define HANDLEBARS_HELPER_ATTRS HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
 
 void handlebars_options_deinit(
