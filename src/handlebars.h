@@ -121,6 +121,11 @@
 #define HBS_ATTR_CLEANUP(func)
 #endif
 
+// statement expressions
+#if (defined(HAVE_STATEMENT_EXPRESSIONS) || (!__STRICT_ANSI__ && __GNUC__ >= 3)) && !defined(HANDLEBARS_NO_STATEMENT_EXPRESSIONS)
+#define HANDLEBARS_HAVE_STATEMENT_EXPRESSIONS 1
+#endif
+
 // Macros
 #define HBS_STRL(str) str, sizeof(str) - 1
 #define HBS_S1(x) #x

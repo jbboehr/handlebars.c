@@ -84,6 +84,9 @@
 /* Does the system have qsort_r()? */
 #undef HAVE_QSORT_R
 
+/* Define to 1 if the compiler supports statement expressions */
+#undef HAVE_STATEMENT_EXPRESSIONS
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
 

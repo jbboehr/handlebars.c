@@ -35,7 +35,7 @@ struct handlebars_stack_save_buf {
     size_t count;
 };
 
-#if (__GNUC__ >= 3)
+#ifdef HANDLEBARS_HAVE_STATEMENT_EXPRESSIONS
 #define handlebars_stack_alloca(ctx, capacity) ({ \
         void * HANDLEBARS_STACK_ALLOC_PTR = alloca(handlebars_stack_size(capacity)); \
         handlebars_stack_init(ctx, HANDLEBARS_STACK_ALLOC_PTR, capacity); \
