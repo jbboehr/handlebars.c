@@ -57,6 +57,10 @@ jobs:
         if [ -n "$(find scan-build -name '*.html')" ]; then
           echo "scan-build found potential issues"
           find scan-build -name 'index.html' -print -exec html2text \{} \;
-          find scan-build -name '*.html' -not -name 'index.html' -print -exec html2text \{} \;
           exit 1
         fi
+    - uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        name: scan-build
+        path: scan-build
