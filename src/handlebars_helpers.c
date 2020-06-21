@@ -65,9 +65,7 @@ void handlebars_options_deinit(struct handlebars_options * options)
 struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_value * context;
-    struct handlebars_string * result_str = handlebars_string_ctor(CONTEXT, HBS_STRL(""));
-    short use_data;
-    struct handlebars_string * tmp;
+    struct handlebars_string * result_str;
     size_t i = 0;
     size_t len;
     HANDLEBARS_VALUE_DECL(rv2);
@@ -77,9 +75,10 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     HANDLEBARS_VALUE_DECL(last);
     HANDLEBARS_VALUE_DECL(data);
     HANDLEBARS_VALUE_DECL(block_params);
+    HANDLEBARS_VALUE_DECL(call_rv);
+    HANDLEBARS_VALUE_ARRAY_DECL(child_argv, 3);
     struct handlebars_map * data_map = NULL;
-
-    use_data = (options->data != NULL);
+    bool use_data = (options->data != NULL);
 
     if( argc < 1 ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Must pass iterator to #each");
@@ -88,20 +87,28 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     context = &argv[0];
 
     if( handlebars_value_is_callable(context) ) {
-        const int argc2 = 1;
-        HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
-        handlebars_value_value(&argv2[0], options->scope);
-        context = handlebars_value_call(context, argc2, argv2, options, vm, rv2);
-        HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
+        struct handlebars_options options2 = {0};
+        handlebars_value_value(&child_argv[0], options->scope);
+        options2.scope = &child_argv[0];
+        context = handlebars_value_call(context, 1, child_argv, &options2, vm, rv2);
+        handlebars_options_deinit(&options2);
     }
 
-    if( handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_MAP && handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        use_data = false;
-        goto whoopsie;
+    len = handlebars_value_count(context);
+
+    if( len <= 0 || (handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_MAP && handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_ARRAY) ) {
+        if (options->inverse_fn) {
+            handlebars_value_value(&child_argv[0], options->scope);
+            rv = handlebars_value_call(options->inverse_fn, 1, child_argv, options, vm, rv);
+        }
+        goto done;
     }
+
+    len--;
+    result_str = handlebars_string_ctor(CONTEXT, HBS_STRL(""));
 
     if( use_data ) {
-        handlebars_value_array(block_params, handlebars_stack_ctor(CONTEXT, 2));
+        handlebars_value_array(&child_argv[2], handlebars_stack_ctor(CONTEXT, 2));
 
         if( handlebars_value_get_type(options->data) == HANDLEBARS_VALUE_TYPE_MAP ) {
             data_map = handlebars_map_ctor(CONTEXT, handlebars_value_count(options->data) + 4);
@@ -114,16 +121,13 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         handlebars_map_addref(data_map);
     }
 
-    len = handlebars_value_count(context);
-    if (len <= 0) goto whoopsie;
-    len--;
-
     HANDLEBARS_VALUE_FOREACH_IDX_KV(context, it_index, it_key, it_child) {
         // Disabled for Regressions - Undefined helper context
         // if( it.current->type == HANDLEBARS_VALUE_TYPE_NULL ) {
         //     i++;
         //     continue;
         // }
+        if (unlikely(options->fn == NULL)) continue;
 
         if( it_key /*it->value->type == HANDLEBARS_VALUE_TYPE_MAP*/ ) {
             handlebars_value_str(key, it_key);
@@ -131,7 +135,12 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
             handlebars_value_integer(key, it_index);
         }
 
+        int child_argc = 1;
+        handlebars_value_value(&child_argv[0], it_child);
+
         if( use_data && data_map ) {
+            child_argc = 3;
+
             if( it_index ) {
                 handlebars_value_integer(index, it_index);
             } else {
@@ -140,30 +149,22 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
             handlebars_value_boolean(first, i == 0);
             handlebars_value_boolean(last, i == len);
 
-            handlebars_value_array_set(block_params, 0, it_child);
-            handlebars_value_array_set(block_params, 1, key);
+            handlebars_value_array_set(&child_argv[2], 0, it_child);
+            handlebars_value_array_set(&child_argv[2], 1, key);
 
             data_map = handlebars_map_str_update(data_map, HBS_STRL("index"), index);
             data_map = handlebars_map_str_update(data_map, HBS_STRL("key"), key);
             data_map = handlebars_map_str_update(data_map, HBS_STRL("first"), first);
             data_map = handlebars_map_str_update(data_map, HBS_STRL("last"), last);
-            handlebars_value_map(data, data_map);
+            handlebars_value_map(&child_argv[1], data_map);
         }
 
-        tmp = handlebars_vm_execute_program_ex(vm, options->program, it_child, data, block_params);
-        result_str = handlebars_string_append(HBSCTX(vm), result_str, HBS_STR_STRL(tmp));
-
-        handlebars_value_null(data);
+        struct handlebars_string * tmp_str = handlebars_value_to_string(handlebars_value_call(options->fn, child_argc, child_argv, options, vm, call_rv), CONTEXT);
+        result_str = handlebars_string_append_str(HBSCTX(vm), result_str, tmp_str);
+        handlebars_string_delref(tmp_str);
 
         i++;
     } HANDLEBARS_VALUE_FOREACH_END();
-
-whoopsie:
-    if( i == 0 ) {
-        tmp = handlebars_vm_execute_program(vm, options->inverse, options->scope);
-        assert(tmp != NULL);
-        result_str = handlebars_string_append(HBSCTX(vm), result_str, HBS_STR_STRL(tmp));
-    }
 
     handlebars_value_str(rv, result_str);
 
@@ -171,6 +172,9 @@ whoopsie:
         handlebars_map_delref(data_map);
     }
 
+done:
+    HANDLEBARS_VALUE_ARRAY_UNDECL(child_argv, 3);
+    HANDLEBARS_VALUE_UNDECL(call_rv);
     HANDLEBARS_VALUE_UNDECL(rv2);
     HANDLEBARS_VALUE_UNDECL(block_params);
     HANDLEBARS_VALUE_UNDECL(data);
@@ -185,7 +189,7 @@ whoopsie:
 struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_value * context;
-    struct handlebars_string * result_str = NULL;
+    struct handlebars_value * program = NULL;
     bool is_zero;
 
     if( argc < 1 ) {
@@ -196,33 +200,40 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HEL
     is_zero = handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_INTEGER && handlebars_value_get_intval(context) == 0;
 
     if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_TRUE ) {
-        result_str = handlebars_vm_execute_program(vm, options->program, options->scope);
+        program = options->fn;
+        context = options->scope;
     } else if( handlebars_value_is_empty(context) && !is_zero ) {
 inverse:
-        result_str = handlebars_vm_execute_program(vm, options->inverse, options->scope);
+        program = options->inverse_fn;
+        context = options->scope;
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        rv = handlebars_vm_call_helper_str(HBS_STRL("each"), HANDLEBARS_HELPER_ARGS_PASSTHRU);
-        goto done;
+        return handlebars_vm_call_helper_str(HBS_STRL("each"), HANDLEBARS_HELPER_ARGS_PASSTHRU);
     } else {
         // For object, etc
-        result_str = handlebars_vm_execute_program(vm, options->program, context);
+        program = options->fn;
     }
 
-    handlebars_value_str(rv, result_str);
+    if (likely(program != NULL)) {
+        const int child_argc = 1;
+        HANDLEBARS_VALUE_ARRAY_DECL(child_argv, child_argc);
+        handlebars_value_value(&child_argv[0], context);
+        rv = handlebars_value_call(program, child_argc, child_argv, options, vm, rv);
+        HANDLEBARS_VALUE_ARRAY_UNDECL(child_argv, child_argc);
+    }
 
-done:
     return rv;
 }
 
 struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_ARGS)
 {
     if( argc != 0 ) {
+        struct handlebars_string * name = handlebars_value_to_string(options->name, CONTEXT);
         handlebars_throw(
             CONTEXT,
             HANDLEBARS_ERROR,
             "Missing helper: \"%.*s\"",
-            (int) hbs_str_len(options->name),
-            hbs_str_val(options->name)
+            (int) (name ? hbs_str_len(name) : sizeof("(nil)") - 1),
+            name ? hbs_str_val(name) : "(nil)"
         );
     }
 
@@ -277,8 +288,7 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
 struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
 {
     struct handlebars_value * conditional = &argv[0];
-    long program;
-    struct handlebars_string * result_str = NULL;
+    struct handlebars_value * program = NULL;
     HANDLEBARS_VALUE_DECL(rv2);
 
     if (argc != 1) {
@@ -294,17 +304,22 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
     }
 
     if( !handlebars_value_is_empty(conditional) ) {
-        program = options->program;
+        program = options->fn;
     } else if( handlebars_value_get_type(conditional) == HANDLEBARS_VALUE_TYPE_INTEGER &&
             handlebars_value_get_intval(conditional) == 0 &&
             NULL != handlebars_value_map_str_find(options->hash, HBS_STRL("includeZero"), rv2) ) {
-        program = options->program;
+        program = options->fn;
     } else {
-        program = options->inverse;
+        program = options->inverse_fn;
     }
 
-    result_str = handlebars_vm_execute_program(vm, program, options->scope);
-    handlebars_value_str(rv, result_str);
+    if (likely(program != NULL)) {
+        const int child_argc = 1;
+        HANDLEBARS_VALUE_ARRAY_DECL(child_argv, child_argc);
+        handlebars_value_value(&child_argv[0], options->scope);
+        rv = handlebars_value_call(program, child_argc, child_argv, options, vm, rv);
+        HANDLEBARS_VALUE_ARRAY_UNDECL(child_argv, child_argc);
+    }
 
     HANDLEBARS_VALUE_UNDECL(rv2);
 
@@ -329,8 +344,8 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 
 struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
 {
-    struct handlebars_string * result_str = NULL;
     struct handlebars_value * context = &argv[0];
+    struct handlebars_value * program = NULL;
     HANDLEBARS_VALUE_DECL(block_params);
     HANDLEBARS_VALUE_DECL(rv2);
 
@@ -349,15 +364,22 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
     assert(context != NULL);
 
     if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_NULL ) {
-        result_str = handlebars_vm_execute_program(vm, options->inverse, context);
+        program = options->inverse_fn;
     } else {
         handlebars_value_array(block_params, handlebars_stack_ctor(CONTEXT, 2));
         handlebars_value_array_set(block_params, 0, context);
 
-        result_str = handlebars_vm_execute_program_ex(vm, options->program, context, options->data, block_params);
+        program = options->fn;
     }
 
-    handlebars_value_str(rv, result_str);
+    if (likely(program != NULL)) {
+        const int child_argc = 3;
+        HANDLEBARS_VALUE_ARRAY_DECL(child_argv, child_argc);
+        handlebars_value_value(&child_argv[0], context);
+        handlebars_value_value(&child_argv[2], block_params);
+        rv = handlebars_value_call(program, child_argc, child_argv, options, vm, rv);
+        HANDLEBARS_VALUE_ARRAY_UNDECL(child_argv, child_argc);
+    }
 
     HANDLEBARS_VALUE_UNDECL(rv2);
     HANDLEBARS_VALUE_UNDECL(block_params);

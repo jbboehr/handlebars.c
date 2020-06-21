@@ -102,9 +102,9 @@ typedef struct handlebars_value * (*handlebars_closure_func)(HANDLEBARS_CLOSURE_
 // {{{ options
 
 struct handlebars_options {
-    long inverse;
-    long program;
-    struct handlebars_string * name;
+    struct handlebars_value * fn;
+    struct handlebars_value * inverse_fn;
+    struct handlebars_value * name;
     struct handlebars_value * scope;
     struct handlebars_value * data;
     struct handlebars_value * hash;

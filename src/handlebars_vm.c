@@ -230,49 +230,107 @@ struct handlebars_value * handlebars_vm_call_helper_str(const char * name, unsig
     return rv;
 }
 
+HANDLEBARS_CLOSURE_ATTRS
+static struct handlebars_value * execute_program_closure(HANDLEBARS_CLOSURE_ARGS)
+{
+    assert(HANDLEBARS_LOCAL_AT(0)->type == HANDLEBARS_VALUE_TYPE_PTR);
+    assert(HANDLEBARS_LOCAL_AT(1)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
+    struct handlebars_module * module = handlebars_value_get_ptr(HANDLEBARS_LOCAL_AT(0), struct handlebars_module);
+    long program = handlebars_value_get_intval(HANDLEBARS_LOCAL_AT(1));
+
+    if (program < 0) {
+        return rv;
+    }
+
+    // signature: input, [data, [block_params]]
+    struct handlebars_value * input = TOP(vm->contextStack);
+    struct handlebars_value * data = NULL;
+    struct handlebars_value * block_params = NULL;
+    switch (argc) {
+        default:
+            // fallthrough
+        case 3:
+            if (argv[2].type != HANDLEBARS_VALUE_TYPE_NULL) {
+                block_params = &argv[2];
+            }
+            // fallthrough
+        case 2:
+            if (argv[1].type != HANDLEBARS_VALUE_TYPE_NULL) {
+                data = &argv[1];
+            }
+            // fallthrough
+        case 1:
+            input = &argv[0];
+            // fallthrough
+        case 0: /* do nothing */ break;
+    }
+
+    struct handlebars_string * rv_str;
+    if (module == vm->module) {
+        rv_str = handlebars_vm_execute_program_ex(vm, program, input, data, block_params);
+    } else {
+        rv_str = handlebars_vm_execute_ex(vm, module, input, program, data, block_params);
+    }
+    assert(rv_str != NULL);
+    handlebars_value_str(rv, rv_str);
+    return rv;
+}
+
 static inline void setup_options(struct handlebars_vm * vm, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * mem)
 {
     struct handlebars_value * inverse;
     struct handlebars_value * program;
     int i;
+    const int closure_localc = 2;
+    HANDLEBARS_VALUE_ARRAY_DECL(closure_localv, closure_localc);
 
-    //options->name = ctx->name ? MC(handlebars_talloc_strndup(options, ctx->name->val, ctx->name->len)) : NULL;
-    options->hash = POP(vm->stack, mem++);
+    options->name = mem++;
+    options->hash = HBS_ASSERT(POP(vm->stack, mem++));
     options->scope = mem++;
     handlebars_value_value(options->scope, TOP(vm->contextStack));
     options->data = mem++;
     handlebars_value_value(options->data, &vm->data);
 
     // programs
-    inverse = POP(vm->stack, mem++);
-    program = POP(vm->stack, mem++);
-    if (inverse) {
-        options->inverse = handlebars_value_get_intval(inverse);
-        handlebars_value_dtor(inverse);
-    } else {
-        options->inverse = -1;
-    }
-    if (program) {
-        options->program = handlebars_value_get_intval(program);
-        handlebars_value_dtor(program);
-    } else {
-        options->program = -1;
-    }
+    inverse = HBS_ASSERT(POP(vm->stack, mem++));
+    program = HBS_ASSERT(POP(vm->stack, mem++));
 
+    // args
     i = argc;
     while( i-- ) {
-        POP(vm->stack, &argv[i]);
+        HBS_ASSERT(POP(vm->stack, &argv[i]));
     }
+
+    // inverse
+    long inverse_id = inverse->type == HANDLEBARS_VALUE_TYPE_INTEGER ? handlebars_value_get_intval(inverse) : -1;
+    if (inverse_id >= 0) {
+        options->inverse_fn = inverse;
+        handlebars_value_ptr(&closure_localv[0], handlebars_ptr_ctor(CONTEXT, struct handlebars_module, vm->module, true));
+        handlebars_value_integer(&closure_localv[1], inverse_id);
+        handlebars_value_closure(options->inverse_fn, handlebars_closure_ctor(vm, execute_program_closure, closure_localc, closure_localv));
+    }
+
+    // fn
+    long program_id = program->type == HANDLEBARS_VALUE_TYPE_INTEGER ? handlebars_value_get_intval(program) : -1;
+    if (program_id >= 0) {
+        options->fn = program;
+        handlebars_value_ptr(&closure_localv[0], handlebars_ptr_ctor(CONTEXT, struct handlebars_module, vm->module, true));
+        handlebars_value_integer(&closure_localv[1], program_id);
+        handlebars_value_closure(options->fn, handlebars_closure_ctor(vm, execute_program_closure, closure_localc, closure_localv));
+    }
+
+    // cleanup
+    HANDLEBARS_VALUE_ARRAY_UNDECL(closure_localv, closure_localc);
 }
 
 #define VM_SETUP_OPTIONS(argc) \
     struct handlebars_options options = {0}; \
     HANDLEBARS_VALUE_ARRAY_DECL(argv, argc); \
-    HANDLEBARS_VALUE_ARRAY_DECL(extra, 5); \
+    HANDLEBARS_VALUE_ARRAY_DECL(extra, 6); \
     setup_options(vm, argc, argv, &options, extra)
 
 #define VM_TEARDOWN_OPTIONS(argc) \
-    HANDLEBARS_VALUE_ARRAY_UNDECL(extra, 5); \
+    HANDLEBARS_VALUE_ARRAY_UNDECL(extra, 6); \
     HANDLEBARS_VALUE_ARRAY_UNDECL(argv, argc); \
     handlebars_options_deinit(&options)
 
@@ -419,14 +477,13 @@ done:
 HANDLEBARS_CLOSURE_ATTRS
 static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE_ARGS)
 {
-    assert(localc >= 3);
-    assert(HANDLEBARS_LOCAL_AT(0)->type == HANDLEBARS_VALUE_TYPE_PTR);
+    assert(localc >= 2);
+    assert(HANDLEBARS_LOCAL_AT(0)->type == HANDLEBARS_VALUE_TYPE_CLOSURE);
     assert(HANDLEBARS_LOCAL_AT(1)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
-    assert(HANDLEBARS_LOCAL_AT(2)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
 
-    struct handlebars_module * module = handlebars_value_get_ptr(HANDLEBARS_LOCAL_AT(0), struct handlebars_module);
-    long program = handlebars_value_get_intval(HANDLEBARS_LOCAL_AT(1));
-    long partial_block_depth = handlebars_value_get_intval(HANDLEBARS_LOCAL_AT(2));
+    HANDLEBARS_VALUE_ARRAY_DECL(child_argv, 3);
+    struct handlebars_value * fn = HANDLEBARS_LOCAL_AT(0);
+    long partial_block_depth = handlebars_value_get_intval(HANDLEBARS_LOCAL_AT(1));
     bool pushed_partial_block = false;
 
     // Push partial block
@@ -435,16 +492,17 @@ static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE
         PUSH(vm->partialBlockStack, handlebars_stack_get(vm->partialBlockStack, partial_block_depth - 1));
     }
 
-    struct handlebars_value * input = argc > 0 ? &argv[0] : TOP(vm->contextStack);
-    struct handlebars_string * buffer;
-    if (vm->module == module) {
-        buffer = handlebars_vm_execute_program_ex(vm, program, input, NULL, TOP(vm->blockParamStack));
-    } else {
-        buffer = handlebars_vm_execute_ex(vm, module, input, program, NULL, TOP(vm->blockParamStack));
+    // Execute partial block
+    int child_argc = 0;
+    if (argc > 0) {
+        child_argc = 1;
+        handlebars_value_value(&child_argv[0], &argv[0]);
     }
-    if (buffer) {
-        handlebars_value_str(rv, buffer);
+    if (LEN(vm->blockParamStack) > 0) {
+        child_argc = 3;
+        handlebars_value_value(&child_argv[2], TOP(vm->blockParamStack));
     }
+    rv = handlebars_value_call(fn, child_argc, child_argv, options, vm, rv);
 
     // Pop partial block
     if (pushed_partial_block) {
@@ -456,6 +514,8 @@ static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE
         POP(vm->partialBlockStack, closure_value);
         HANDLEBARS_VALUE_UNDECL(closure_value);
     }
+
+    HANDLEBARS_VALUE_ARRAY_UNDECL(child_argv, 3);
 
     return rv;
 }
@@ -603,7 +663,7 @@ ACCEPT_FUNCTION(block_value)
     assert(opcode->op1.type == handlebars_operand_type_string);
 
     VM_SETUP_OPTIONS(argc);
-    options.name = opcode->op1.data.string.string;
+    handlebars_value_str(options.name, opcode->op1.data.string.string);
 
     struct handlebars_value * result = handlebars_vm_call_helper_str(HBS_STRL("blockHelperMissing"), argc, argv, &options, vm, rv);
     if (likely(result != NULL)) {
@@ -659,8 +719,9 @@ ACCEPT_FUNCTION(invoke_ambiguous)
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(opcode->op2.type == handlebars_operand_type_boolean);
 
+    struct handlebars_string * const name = opcode->op1.data.string.string;
     VM_SETUP_OPTIONS(argc);
-    options.name = opcode->op1.data.string.string;
+    handlebars_value_str(options.name, name);
     vm->last_helper = NULL;
 
     if (vm->flags & handlebars_compiler_flag_mustache_style_lambdas && is_callable) {
@@ -682,8 +743,8 @@ ACCEPT_FUNCTION(invoke_ambiguous)
         handlebars_string_addref(last_helper);
 
         HANDLEBARS_VALUE_ARRAY_UNDECL(closure_localv, closure_localc);
-    } else if( NULL != (fn = lookup_helper(vm, options.name, fnv)) ) {
-        last_helper = options.name;
+    } else if( NULL != (fn = lookup_helper(vm, name, fnv)) ) {
+        last_helper = name;
         handlebars_string_addref(last_helper);
     } else if (value && is_callable) {
         fn = value;
@@ -723,11 +784,12 @@ ACCEPT_FUNCTION(invoke_helper)
     assert(opcode->op2.type == handlebars_operand_type_string);
     assert(opcode->op3.type == handlebars_operand_type_boolean);
 
-    int argc = (int) opcode->op1.data.longval;
+    struct handlebars_string * const name = opcode->op2.data.string.string;
+    const int argc = opcode->op1.data.longval;
     VM_SETUP_OPTIONS(argc);
-    options.name = opcode->op2.data.string.string;
+    handlebars_value_str(options.name, name);
 
-    if (opcode->op3.data.boolval && NULL != (fn = lookup_helper(vm, options.name, fnv))) { // isSimple
+    if (opcode->op3.data.boolval && NULL != (fn = lookup_helper(vm, name, fnv))) { // isSimple
         // fallthrough
     } else if (value && handlebars_value_is_callable(value)) {
         fn = value;
@@ -753,11 +815,12 @@ ACCEPT_FUNCTION(invoke_known_helper)
     assert(opcode->op1.type == handlebars_operand_type_long);
     assert(opcode->op2.type == handlebars_operand_type_string);
 
-    int argc = (int) opcode->op1.data.longval;
+    struct handlebars_string * const name = opcode->op2.data.string.string;
+    const int argc = opcode->op1.data.longval;
     VM_SETUP_OPTIONS(argc);
-    options.name = opcode->op2.data.string.string;
+    handlebars_value_str(options.name, name);
 
-    struct handlebars_value * fn = lookup_helper(vm, options.name, fnv);
+    struct handlebars_value * fn = lookup_helper(vm, name, fnv);
 
     if (unlikely(fn == NULL)) {
         handlebars_throw_ex(
@@ -765,8 +828,8 @@ ACCEPT_FUNCTION(invoke_known_helper)
             HANDLEBARS_ERROR,
             &opcode->loc,
             "Invalid known helper: %.*s",
-            (int) hbs_str_len(options.name),
-            hbs_str_val(options.name)
+            (int) hbs_str_len(name),
+            hbs_str_val(name)
         );
     }
 
@@ -799,7 +862,7 @@ ACCEPT_FUNCTION(invoke_partial)
         // Dynamic partial
         HBS_ASSERT(POP(vm->stack, tmp));
         name = handlebars_value_get_string(tmp);
-        options.name = NULL; // fear
+        handlebars_value_null(options.name); // fear
     } else {
         if( opcode->op2.type == handlebars_operand_type_long ) {
             char tmp_str[32];
@@ -821,12 +884,11 @@ ACCEPT_FUNCTION(invoke_partial)
     }
 
     // Push partial block
-    if (options.program > 0) {
+    if (options.fn != NULL) {
         const int closure_localc = 3;
         HANDLEBARS_VALUE_ARRAY_DECL(closure_localv, closure_localc);
-        handlebars_value_ptr(&closure_localv[0], handlebars_ptr_ctor(CONTEXT, struct handlebars_module, vm->module, true));
-        handlebars_value_integer(&closure_localv[1], options.program);
-        handlebars_value_integer(&closure_localv[2], LEN(vm->partialBlockStack));
+        handlebars_value_value(&closure_localv[0], options.fn);
+        handlebars_value_integer(&closure_localv[1], LEN(vm->partialBlockStack));
         handlebars_value_closure(partial_block, handlebars_closure_ctor(vm, invoke_partial_block_closure, closure_localc, closure_localv));
         pushed_partial_block = true;
         PUSH(vm->partialBlockStack, partial_block);
@@ -837,7 +899,7 @@ ACCEPT_FUNCTION(invoke_partial)
     merge_hash(HBSCTX(vm), &argv[0], options.hash);
 
     if (!partial) {
-        if (options.program >= 0) {
+        if (pushed_partial_block) {
             partial = partial_block;
         } else if (vm->flags & handlebars_compiler_flag_compat) {
             goto done;
