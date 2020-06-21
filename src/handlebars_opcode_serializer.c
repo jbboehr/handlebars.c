@@ -185,11 +185,13 @@ static void serialize_opcode(struct handlebars_module * module, struct handlebar
     serialize_operand(module, &new_opcode->op4);
 
     // Patch push_program opcode
-    if( new_opcode->type == handlebars_opcode_type_push_program ) {
+    if (new_opcode->type == handlebars_opcode_type_push_program) {
         if( new_opcode->op1.type == handlebars_operand_type_long && !new_opcode->op4.data.boolval ) {
             new_opcode->op1.data.longval = table[new_opcode->op1.data.longval]->guid;
             new_opcode->op4.data.boolval = 1;
         }
+    } else if (new_opcode->type == handlebars_opcode_type_bcall) {
+        new_opcode->op1.data.longval = table[new_opcode->op1.data.longval]->guid;
     }
 }
 

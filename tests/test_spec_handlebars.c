@@ -60,9 +60,8 @@ struct generic_test {
     struct json_object * context;
     struct json_object * data;
     struct json_object * helpers;
-    struct json_object * globalHelpers;
     struct json_object * partials;
-    struct json_object * globalPartials;
+    struct json_object * decorators;
     char * expected;
     char * message;
     short exception;
@@ -78,11 +77,12 @@ static size_t tests_len = 0;
 static size_t tests_size = 0;
 static const char * spec_dir;
 static int runs = 1;
+static long default_flags = 0;
 
 long json_load_compile_flags(struct json_object * object);
 long json_load_compile_flags(struct json_object * object)
 {
-    long flags = 0;
+    long flags = default_flags;
     json_object * cur = NULL;
 
     if( (cur = json_object_object_get(object, "compat")) && json_object_get_boolean(cur) ) {
@@ -251,12 +251,19 @@ static void loadSpecTest(json_object * object, const char *suite_name)
         test->partials = cur;
     }
 
+    // Get decorators
+    if( NULL != (cur = json_object_object_get(object, "decorators")) ) {
+        test->decorators = cur;
+    }
+
     // Get compile options
     cur = json_object_object_get(object, "compileOptions");
     struct json_object * kh = NULL;
     if( cur && json_object_get_type(cur) == json_type_object ) {
         test->flags = json_load_compile_flags(cur);
         // struct json_object * cur2 = json_object_object_get(cur, "knownHelpers");
+    } else {
+        test->flags = default_flags;
     }
     test->known_helpers = json_load_known_helpers(test, kh, test->helpers);
 
@@ -416,12 +423,18 @@ static bool should_skip(struct generic_test * test)
 
     return false;
 
+#undef MYCHECKALL
 #undef MYCCHECK
 }
 
 static inline void run_test(struct generic_test * test, int _i)
 {
     struct handlebars_module * module;
+
+    // We only want to turn on alternate decorators for some tests
+    if (0 == strcmp(test->description, "blocks - decorators")) {
+        test->flags |= handlebars_compiler_flag_alternate_decorators;
+    }
 
 #ifndef NDEBUG
     fprintf(stderr, "-----------\n");
@@ -487,6 +500,16 @@ static inline void run_test(struct generic_test * test, int _i)
         handlebars_value_map(partials, handlebars_map_ctor(HBSCTX(vm), 0));
     }
     handlebars_vm_set_partials(vm, partials);
+
+    // Setup decorators
+    HANDLEBARS_VALUE_DECL(decorators);
+    if( test->decorators ) {
+        handlebars_value_init_json_object(context, decorators, test->decorators);
+        load_fixtures(decorators);
+    } else {
+        handlebars_value_map(decorators, handlebars_map_ctor(HBSCTX(vm), 0));
+    }
+    handlebars_vm_set_decorators(vm, decorators);
 
     // Load context
     HANDLEBARS_VALUE_DECL(input);
@@ -557,6 +580,7 @@ static inline void run_test(struct generic_test * test, int _i)
 
     HANDLEBARS_VALUE_UNDECL(data);
     HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(decorators);
     HANDLEBARS_VALUE_UNDECL(partials);
     HANDLEBARS_VALUE_UNDECL(helpers);
 

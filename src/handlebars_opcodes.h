@@ -89,8 +89,9 @@ enum handlebars_opcode_type {
     // Added in v4
     handlebars_opcode_type_register_decorator = 26,
 
-    // Special opcode
-    handlebars_opcode_type_return = 27
+    // Special custom opcodes
+    handlebars_opcode_type_return = 27,
+    handlebars_opcode_type_bcall = 28,
 };
 
 /**

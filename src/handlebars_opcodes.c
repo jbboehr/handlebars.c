@@ -190,6 +190,7 @@ const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
 
         // Special
         _RTYPE_CASE(return, return);
+        _RTYPE_CASE(bcall, bcall);
 
         default: return "invalid";
     }
@@ -214,6 +215,7 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
             break;
         case 'b':
             _RTYPE_REV_CMP(block_value, blockValue);
+            _RTYPE_REV_CMP(bcall, bcall);
             break;
         case 'e':
             _RTYPE_REV_CMP(empty_hash, emptyHash);
@@ -250,6 +252,7 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(const char *
         case 'r':
             _RTYPE_REV_CMP(resolve_possible_lambda, resolvePossibleLambda);
             _RTYPE_REV_CMP(register_decorator, registerDecorator);
+            _RTYPE_REV_CMP(return, return);
             break;
 
         default: assert(0); break; // LCOV_EXCL_LINE
@@ -272,6 +275,8 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
         case handlebars_opcode_type_push_context:
         case handlebars_opcode_type_push_hash:
         case handlebars_opcode_type_resolve_possible_lambda:
+        // Special custom
+        case handlebars_opcode_type_return:
             return 0;
 
         case handlebars_opcode_type_get_context:
@@ -284,6 +289,8 @@ short handlebars_opcode_num_operands(enum handlebars_opcode_type type)
         case handlebars_opcode_type_push_string:
         // In v3, empty_hash was changed from zero to zero or one
         case handlebars_opcode_type_empty_hash:
+        // Special custom
+        case handlebars_opcode_type_bcall:
             return 1;
 
         case handlebars_opcode_type_push_string_param:

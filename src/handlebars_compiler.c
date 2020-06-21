@@ -106,6 +106,10 @@ struct handlebars_compiler {
      * @brief Compiler flags
      */
     unsigned long flags;
+
+    size_t depth;
+
+    struct handlebars_compiler * parent;
 };
 
 struct handlebars_block_param_pair {
@@ -170,9 +174,7 @@ static inline bool handlebars_compiler_block_param_index(
 
 static inline void handlebars_compiler_accept_decorator(
         struct handlebars_compiler * compiler,
-        struct handlebars_ast_node * ast_node,
-        long programGuid,
-        long inverseGuid
+        struct handlebars_ast_node * ast_node
 );
 
 const size_t HANDLEBARS_COMPILER_SIZE = sizeof(struct handlebars_compiler);
@@ -381,6 +383,8 @@ static inline long handlebars_compiler_compile_program(
     program = compiler->program;
     subcompiler = MC(handlebars_compiler_ctor(HBSCTX(compiler)));
     subcompiler->program->main = program->main;
+    subcompiler->depth = compiler->depth + 1;
+    subcompiler->parent = compiler;
 
     // copy compiler flags, bps, and options
     handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
@@ -737,15 +741,14 @@ static inline void handlebars_compiler_accept_block(
 
     assert(compiler != NULL);
 
-    handlebars_compiler_transform_literal_to_path(compiler, block);
-
-    programGuid = handlebars_compiler_compile_program(compiler, program);
-
     if( block->node.block.is_decorator ) {
         // Decorator
-    	handlebars_compiler_accept_decorator(compiler, block, programGuid, inverseGuid);
+    	handlebars_compiler_accept_decorator(compiler, block);
     } else {
 		// Normal
+        handlebars_compiler_transform_literal_to_path(compiler, block);
+
+        programGuid = handlebars_compiler_compile_program(compiler, program);
         inverseGuid = handlebars_compiler_compile_program(compiler, inverse);
 
 		switch( handlebars_compiler_classify_sexpr(compiler, sexpr) ) {
@@ -965,38 +968,30 @@ static inline void handlebars_compiler_accept_content(
 
 static inline void handlebars_compiler_accept_decorator(
         struct handlebars_compiler * compiler,
-        struct handlebars_ast_node * ast_node,
-        long programGuid,
-        long inverseGuid
+        struct handlebars_ast_node * ast_node
 ) {
-    struct handlebars_program * program = compiler->program;
     struct handlebars_ast_node * path = handlebars_ast_node_get_path(ast_node);
     struct handlebars_ast_list * params;
     struct handlebars_string * original;
-    struct handlebars_compiler * origcompiler;
-    struct handlebars_compiler * subcompiler;
+    long programGuid = -1;
 
-    if( compiler->flags & handlebars_compiler_flag_alternate_decorators ) {
-        // Realloc decorators array
-        if( program->decorators_size <= program->decorators_length ) {
-            program->decorators = MC(handlebars_talloc_realloc(program, program->decorators,
-                        struct handlebars_program *, program->decorators_size + 8));
-            program->decorators_size += 8;
-        }
+    compiler->program->result_flags |= handlebars_compiler_result_flag_use_decorators;
 
-        origcompiler = compiler;
-        subcompiler = talloc_steal(compiler, handlebars_compiler_ctor(CONTEXT));
-        program->decorators[program->decorators_length++] = talloc_steal(program, subcompiler->program);
-        compiler = subcompiler;
+    if (compiler->flags & handlebars_compiler_flag_alternate_decorators) {
+        // Inline the decorator into the parent before the current block
+        assert(compiler->parent != NULL);
+        compiler = compiler->parent;
+    }
 
-        origcompiler->program->result_flags |= handlebars_compiler_result_flag_use_decorators;
-    } else {
-        compiler->program->result_flags |= handlebars_compiler_result_flag_use_decorators;
+    if (ast_node->type == HANDLEBARS_AST_NODE_BLOCK) {
+        struct handlebars_ast_node * program = ast_node->node.block.program;
+        handlebars_compiler_transform_literal_to_path(compiler, ast_node);
+        programGuid = handlebars_compiler_compile_program(compiler, program);
     }
 
 	original = handlebars_ast_node_get_string_mode_value(CONTEXT, path);
 	params = handlebars_compiler_setup_full_mustache_params(
-                compiler, ast_node, programGuid, inverseGuid, 0);
+                compiler, ast_node, programGuid, -1, 0);
 
     struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_register_decorator);
     handlebars_operand_set_longval(&opcode->op1, handlebars_ast_list_count(params));
@@ -1013,7 +1008,7 @@ static inline void handlebars_compiler_accept_mustache(
     assert(mustache->type == HANDLEBARS_AST_NODE_MUSTACHE);
 
     if( mustache->node.mustache.is_decorator ) {
-        handlebars_compiler_accept_decorator(compiler, mustache, -1, -1);
+        handlebars_compiler_accept_decorator(compiler, mustache);
     } else {
         handlebars_compiler_accept_sexpr(compiler, mustache);
 
@@ -1469,9 +1464,15 @@ void handlebars_compiler_compile(
         compiler->sns->i = 0;
     }
 
-    // Compile
-    compiler->program->flags = compiler->flags;
-    handlebars_compiler_accept(compiler, node);
+    if (compiler->flags & handlebars_compiler_flag_alternate_decorators && compiler->depth == 0) {
+        // Add a fake top-level function for decorators to be compiled into
+        size_t main_guid = handlebars_compiler_compile_program(compiler, node);
+        __OPL(bcall, main_guid);
+    } else {
+        // Compile
+        compiler->program->flags = compiler->flags;
+        handlebars_compiler_accept(compiler, node);
+    }
 
     // Reset stacks
     compiler->bps = NULL;

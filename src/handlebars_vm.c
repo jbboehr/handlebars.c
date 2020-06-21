@@ -121,6 +121,7 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
     handlebars_context_bind(ctx, HBSCTX(vm));
     handlebars_value_map(&vm->helpers, handlebars_map_ctor(ctx, 0));
     handlebars_value_map(&vm->partials, handlebars_map_ctor(ctx, 0));
+    handlebars_value_map(&vm->decorators, handlebars_map_ctor(ctx, 0));
     return vm;
 }
 
@@ -129,6 +130,7 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
 {
     handlebars_value_dtor(&vm->helpers);
     handlebars_value_dtor(&vm->partials);
+    handlebars_value_dtor(&vm->decorators);
     handlebars_value_dtor(&vm->data);
     if (vm->delim_open) {
         handlebars_string_delref(vm->delim_open);
@@ -156,6 +158,11 @@ void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_valu
 void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * partials)
 {
     handlebars_value_value(&vm->partials, partials);
+}
+
+void handlebars_vm_set_decorators(struct handlebars_vm * vm, struct handlebars_value * decorators)
+{
+    handlebars_value_value(&vm->decorators, decorators);
 }
 
 void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data)
@@ -1217,6 +1224,18 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
     HANDLEBARS_VALUE_UNDECL(value);
 }
 
+ACCEPT_FUNCTION(bcall)
+{
+    assert(opcode->op1.type == handlebars_operand_type_long);
+    vm->buffer = handlebars_vm_execute_program(vm, opcode->op1.data.longval, TOP(vm->contextStack));
+}
+
+HBS_ATTR_NORETURN
+ACCEPT_FUNCTION(register_decorator)
+{
+    handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unhandled opcode: %s\n", handlebars_opcode_readable_type(opcode->type));
+}
+
 static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_module_table_entry * entry)
 {
 #if 0
@@ -1241,7 +1260,7 @@ static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_mo
             &&do_push_program, &&do_append_content, &&do_assign_to_hash, &&do_block_value, &&do_push,
             &&do_push_literal, &&do_push_string, &&do_invoke_partial, &&do_push_id, &&do_push_string_param,
             &&do_invoke_ambiguous, &&do_invoke_known_helper, &&do_invoke_helper, &&do_lookup_on_context, &&do_lookup_data,
-            &&do_lookup_block_param, &&do_register_decorator, &&do_return
+            &&do_lookup_block_param, &&do_register_decorator, &&do_return, &&do_bcall
     };
 #define ACCEPT_DEFAULT
 #define START_ACCEPT DISPATCH();
@@ -1278,8 +1297,10 @@ static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_mo
         ACCEPT(push_literal)
         ACCEPT(push_string)
         ACCEPT(resolve_possible_lambda)
+        ACCEPT(register_decorator)
 
-        // Special return opcode
+        // Special opcodes
+        ACCEPT(bcall)
         ACCEPT_CASE(return) return;
 
         // Unhandled opcodes
@@ -1287,7 +1308,6 @@ static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_mo
         ACCEPT_CASE(push)
         ACCEPT_CASE(push_id)
         ACCEPT_CASE(push_string_param)
-        ACCEPT_CASE(register_decorator)
         ACCEPT_DEFAULT
             ACCEPT_ERROR
     END_ACCEPT

@@ -45,6 +45,7 @@ struct handlebars_vm {
     struct handlebars_value data;
     struct handlebars_value helpers;
     struct handlebars_value partials;
+    struct handlebars_value decorators;
 
     struct handlebars_string * last_helper;
     struct handlebars_value * last_context;

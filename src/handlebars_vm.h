@@ -102,6 +102,7 @@ struct handlebars_value * handlebars_vm_call_helper_str(
 void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned long flags) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_value * helpers) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * helpers) HBS_ATTR_NONNULL_ALL;
+void handlebars_vm_set_decorators(struct handlebars_vm * vm, struct handlebars_value * decorators) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
 void handlebars_vm_set_logger(struct handlebars_vm * vm, handlebars_func log_func, void * log_ctx) HBS_ATTR_NONNULL(1, 2);
