@@ -38,15 +38,11 @@ struct handlebars_context;
 #define MEMCHKF(ptr) (HBS_TYPEOF(ptr)) handlebars_check(CONTEXT, (void *) (ptr), MEMCHK_MSG)
 #define MC(ptr) MEMCHKF(ptr)
 
-// Assert wrapper with side effects
-#if !defined(NDEBUG) && (__GNUC__ >= 3)
-#define HBS_ASSERT(act) assert(act)
-#define HBS_ASSERT_EQ(exp, act) assert((exp) == (act))
-#define HBS_ASSERT_NE(exp, act) assert((exp) != (act))
+// Assert wrapper with side effects, yielding the expression
+#if !defined(NDEBUG) && defined(HANDLEBARS_HAVE_STATEMENT_EXPRESSIONS)
+#define HBS_ASSERT(expr) ({ __typeof__ (expr) _expr = expr; assert(((void) #expr, _expr)); _expr; })
 #else
-#define HBS_ASSERT(act) (void) (act)
-#define HBS_ASSERT_EQ(exp, act) (void) (act)
-#define HBS_ASSERT_NE(exp, act) (void) (act)
+#define HBS_ASSERT(expr) (expr)
 #endif
 
 #define YY_NO_UNISTD_H 1

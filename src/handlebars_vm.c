@@ -1062,7 +1062,7 @@ ACCEPT_FUNCTION(lookup_on_context)
         ACCEPT_FN(push_context)(vm, opcode);
     }
 
-    HBS_ASSERT((value = POP(vm->stack, rv)));
+    value = HBS_ASSERT(POP(vm->stack, rv));
 
     do {
         bool is_last = arr == arr_end - 1;
