@@ -157,7 +157,7 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
 
     time(&module->ts);
 
-    struct handlebars_ptr * uptr = handlebars_ptr_ctor(HBSCTX(cache), talloc_steal(cache, module));
+    struct handlebars_ptr * uptr = handlebars_ptr_ctor(HBSCTX(cache), talloc_steal(cache, module), false);
     handlebars_value_ptr(value, uptr);
 
     intern->map = handlebars_map_add(intern->map, tmpl, value);

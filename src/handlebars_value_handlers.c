@@ -103,13 +103,14 @@ void handlebars_user_init(struct handlebars_user * user, struct handlebars_conte
 
 struct handlebars_ptr {
     struct handlebars_user user;
+    bool nofree;
     void * ptr;
 };
 
 static void hbs_ptr_dtor(struct handlebars_user * user)
 {
     struct handlebars_ptr * uptr = (struct handlebars_ptr *) user;
-    if( uptr && uptr->ptr ) {
+    if( uptr && uptr->ptr && !uptr->nofree ) {
         handlebars_talloc_free(uptr->ptr);
         uptr->ptr = NULL;
     }
@@ -130,9 +131,11 @@ static const struct handlebars_value_handlers ptr_handlers = {
 
 struct handlebars_ptr * handlebars_ptr_ctor(
     struct handlebars_context * ctx,
-    void * ptr
+    void * ptr,
+    bool nofree
 ) {
     struct handlebars_ptr * uptr = handlebars_talloc(ctx, struct handlebars_ptr);
+    uptr->nofree = nofree;
     HANDLEBARS_MEMCHECK(uptr, ctx);
     handlebars_user_init((struct handlebars_user *) uptr, ctx, &ptr_handlers);
     // talloc_set_destructor(uptr, hbs_ptr_dtor);

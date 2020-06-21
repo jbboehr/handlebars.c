@@ -38,10 +38,12 @@ struct handlebars_closure {
     struct handlebars_rc rc;
 #endif
     struct handlebars_vm * vm;
-    struct handlebars_module * module;
-    long program;
-    long partial_block_depth;
+    handlebars_closure_func fn;
+    int localc;
+    struct handlebars_value localv[];
 };
+
+const size_t HANDLEBARS_CLOSURE_SIZE = sizeof(struct handlebars_closure);
 
 
 // {{{ Reference Counting
@@ -54,6 +56,9 @@ static void closure_rc_dtor(struct handlebars_rc * rc)
     }
 #endif
     struct handlebars_closure * closure = talloc_get_type_abort(hbs_container_of(rc, struct handlebars_closure, rc), struct handlebars_closure);
+    for (int i = 0; i < closure->localc; i++) {
+        handlebars_value_dtor(&closure->localv[i]);
+    }
     handlebars_talloc_free(closure);
 }
 #endif
@@ -75,35 +80,29 @@ void handlebars_closure_delref(struct handlebars_closure * closure)
 
 struct handlebars_closure * handlebars_closure_ctor(
     struct handlebars_vm * vm,
-    struct handlebars_module * module,
-    long program,
-    long partial_block_depth
+    handlebars_closure_func fn,
+    int localc,
+    struct handlebars_value * localv
 ) {
-    struct handlebars_closure * closure = handlebars_talloc_zero(vm, struct handlebars_closure);
+    struct handlebars_closure * closure = handlebars_talloc_zero_size(vm, sizeof(struct handlebars_closure) + (sizeof(struct handlebars_value) * localc));
+    talloc_set_type(closure, struct handlebars_closure);
     handlebars_rc_init(&closure->rc);
     closure->vm = vm;
-    closure->module = module;
-    closure->program = program;
-    closure->partial_block_depth = partial_block_depth;
+    closure->fn = fn;
+    closure->localc = localc;
+    for (int i = 0; i < localc; i++) {
+        handlebars_value_value(&closure->localv[i], &localv[i]);
+    }
     return closure;
 }
 
 struct handlebars_value * handlebars_closure_call(
     struct handlebars_closure * closure,
-    struct handlebars_value * input,
-    struct handlebars_value * data,
-    struct handlebars_value * block_params,
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
     struct handlebars_value * rv
 ) {
-    struct handlebars_string * buffer = handlebars_vm_execute_ex(closure->vm, closure->module, input, closure->program, data, block_params);
-    if (buffer) {
-        handlebars_value_str(rv, buffer);
-    }
-    return rv;
-}
-
-long handlebars_closure_get_partial_block_depth(
-    struct handlebars_closure * closure
-) {
-    return closure->partial_block_depth;
+    assert(rv != NULL);
+    return closure->fn(closure->localc, closure->localv, argc, argv, options, rv);
 }

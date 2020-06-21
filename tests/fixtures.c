@@ -358,10 +358,9 @@ FIXTURE_FN(730672213)
         handlebars_value_cstrl(rv, tmp, strlen(tmp));
         handlebars_talloc_free(tmp);
         handlebars_value_set_flag(rv, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
-        return rv;
-    } else {
-        return NULL;
     }
+
+    return rv;
 }
 
 FIXTURE_FN(739773491)
@@ -495,10 +494,9 @@ FIXTURE_FN(1091971719)
         handlebars_value_cstrl(rv, tmp, strlen(tmp));
         handlebars_talloc_free(tmp);
         handlebars_value_set_flag(rv, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
-        return rv;
-    } else {
-        return NULL;
     }
+
+    return rv;
 }
 
 FIXTURE_FN(1041501180)

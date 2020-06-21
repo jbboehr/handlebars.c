@@ -694,26 +694,32 @@ void handlebars_value_map_update(struct handlebars_value * value, struct handleb
 
 struct handlebars_value * handlebars_value_call(struct handlebars_value * value, HANDLEBARS_HELPER_ARGS)
 {
+    assert(rv != NULL);
+
     switch (value->type) {
         case HANDLEBARS_VALUE_TYPE_HELPER:
-            return value->v.helper(argc, argv, options, rv);
+            rv = value->v.helper(argc, argv, options, rv);
+            break;
 
         case HANDLEBARS_VALUE_TYPE_CLOSURE:
-            if (argc == 1) {
-                return handlebars_closure_call(value->v.closure, &argv[0], NULL, NULL, rv);
-            }
+            rv = handlebars_closure_call(value->v.closure, argc, argv, options, rv);
             break;
 
         case HANDLEBARS_VALUE_TYPE_USER:
             if (handlebars_value_get_handlers(value)->call) {
-                return handlebars_value_get_handlers(value)->call(value, argc, argv, options, rv);
+                rv = handlebars_value_get_handlers(value)->call(value, argc, argv, options, rv);
+                break;
             }
-            break;
+            // fallthrough
 
-        default: /* do nothing */ break;
+        default:
+            handlebars_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "Unable to call value of type: %s", handlebars_value_type_readable(value->type));
+            break;
     }
 
-    handlebars_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "Unable to call value of type: %s", handlebars_value_type_readable(value->type));
+    assert(rv != NULL);
+
+    return rv;
 }
 
 char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_context * context, size_t depth)

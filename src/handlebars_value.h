@@ -134,12 +134,14 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
     char mem_ ## name[HANDLEBARS_VALUE_SIZE * (num)]; \
     struct handlebars_value * name = (void *) &mem_ ## name; \
     memset(name, 0, HANDLEBARS_VALUE_SIZE * (num));
-#define HANDLEBARS_VALUE_ARRAY_AT(name, pos) ((struct handlebars_value *) ((char *) name + (HANDLEBARS_VALUE_SIZE * (pos))))
 #else
 // Use alloca
 #define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
     struct handlebars_value * name = alloca(HANDLEBARS_VALUE_SIZE * (num)); \
     memset(name, 0, HANDLEBARS_VALUE_SIZE * (num));
+#endif
+
+#ifndef HANDLEBARS_VALUE_ARRAY_AT
 #define HANDLEBARS_VALUE_ARRAY_AT(name, pos) ((struct handlebars_value *) ((char *) name + (HANDLEBARS_VALUE_SIZE * (pos))))
 #endif
 
@@ -169,11 +171,12 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
         assert(pos < argc); \
         HANDLEBARS_VALUE_ARRAY_AT(argv, pos); \
     })
-#define HANDLEBARS_ARG_AT(pos) HANDLEBARS_ARG_AT_EX(argc, argv, pos)
 #else
 #define HANDLEBARS_ARG_AT_EX(argc, argv, pos) HANDLEBARS_VALUE_ARRAY_AT(argv, pos)
-#define HANDLEBARS_ARG_AT(pos) HANDLEBARS_ARG_AT_EX(argc, argv, pos)
 #endif
+
+#define HANDLEBARS_ARG_AT(pos) HANDLEBARS_ARG_AT_EX(argc, argv, pos)
+#define HANDLEBARS_LOCAL_AT(pos) HANDLEBARS_ARG_AT_EX(localc, localv, pos)
 
 /**
  * @brief Construct a new value
@@ -508,6 +511,7 @@ char * handlebars_value_dump(
  * @param[in] argc
  * @param[in] argv
  * @param[in] options
+ * @param[out] rv
  */
 struct handlebars_value * handlebars_value_call(
     struct handlebars_value * value,
@@ -515,10 +519,10 @@ struct handlebars_value * handlebars_value_call(
     struct handlebars_value * argv,
     struct handlebars_options * options,
     struct handlebars_value * rv
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 const char * handlebars_value_type_readable(enum handlebars_value_type type)
-    HBS_ATTR_NONNULL_ALL;
+    HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 // }}} Misc
 

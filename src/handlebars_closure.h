@@ -21,11 +21,18 @@
 #define HANDLEBARS_CLOSURE_H
 
 #include "handlebars.h"
+#include "handlebars_types.h"
 
 HBS_EXTERN_C_START
 
+struct handlebars_closure;
 struct handlebars_context;
 struct handlebars_module;
+
+#define HANDLEBARS_CLOSURE_ARGS int localc, struct handlebars_value * localv, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * rv
+#define HANDLEBARS_CLOSURE_ATTRS HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
+
+extern const size_t HANDLEBARS_CLOSURE_SIZE;
 
 // {{{ Reference Counting
 void handlebars_closure_addref(struct handlebars_closure * closure)
@@ -36,22 +43,18 @@ void handlebars_closure_delref(struct handlebars_closure * closure)
 
 struct handlebars_closure * handlebars_closure_ctor(
     struct handlebars_vm * vm,
-    struct handlebars_module * module,
-    long program,
-    long partial_block_depth
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+    handlebars_closure_func fn,
+    int localc,
+    struct handlebars_value * localv
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_value * handlebars_closure_call(
     struct handlebars_closure * closure,
-    struct handlebars_value * input,
-    struct handlebars_value * data,
-    struct handlebars_value * block_params,
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
     struct handlebars_value * rv
-) HBS_ATTR_NONNULL(1, 2, 5) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
-
-long handlebars_closure_get_partial_block_depth(
-    struct handlebars_closure * closure
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 HBS_EXTERN_C_END
 

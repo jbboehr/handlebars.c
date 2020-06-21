@@ -45,7 +45,7 @@ jobs:
     - name: Checkout submodules
       uses: textbook/git-checkout-submodule-action@master
     - name: Install packages
-      run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev clang-tools
+      run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev clang-tools html2text
     - name: create configure
       run: autoreconf -i
     - name: configure
@@ -54,8 +54,9 @@ jobs:
       run: scan-build -o scan-build make
     - name: check for issues
       run: |
-        if [ -n "$(find scan-build -type f)" ]; then
+        if [ -n "$(find scan-build -name '*.html')" ]; then
           echo "scan-build found potential issues"
-          find scan-build -type f -print -exec cat \{} \;
+          find scan-build -name 'index.html' -print -exec html2text \{} \;
+          find scan-build -name '*.html' -not -name 'index.html' -print -exec html2text \{} \;
           exit 1
         fi

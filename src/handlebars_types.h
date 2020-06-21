@@ -59,6 +59,15 @@ typedef struct handlebars_value * (*handlebars_helper_func)(
     struct handlebars_value * rv
 );
 
+typedef struct handlebars_value * (*handlebars_closure_func)(
+    int localc,
+    struct handlebars_value * localv,
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_value * rv
+);
+
 struct handlebars_options {
     struct handlebars_vm * vm;
     long inverse;

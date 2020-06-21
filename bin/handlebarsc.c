@@ -38,6 +38,7 @@
 #include "handlebars_ast.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_cache.h"
+#include "handlebars_closure.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
 #include "handlebars_json.h"
@@ -418,6 +419,7 @@ static int do_debuginfo(void)
     HBS_DEBUGINFO_PRINTSIZE("void *", "", sizeof(void *));
     HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_cache", HANDLEBARS_CACHE_SIZE);
     HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_cache_stat", sizeof(struct handlebars_cache_stat));
+    HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_closure", HANDLEBARS_CLOSURE_SIZE);
     HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_context", sizeof(struct handlebars_context));
     HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_compiler", HANDLEBARS_COMPILER_SIZE);
     HBS_DEBUGINFO_PRINTSIZE("struct", "handlebars_map", HANDLEBARS_MAP_SIZE);

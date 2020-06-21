@@ -69,7 +69,8 @@ void handlebars_user_delref_ex(struct handlebars_user * user, const char * expr,
 
 struct handlebars_ptr * handlebars_ptr_ctor(
     struct handlebars_context * ctx,
-    void * ptr
+    void * ptr,
+    bool nofree
 ) HBS_ATTR_NONNULL_ALL;
 
 void * handlebars_ptr_get_ptr(struct handlebars_ptr * uptr)
