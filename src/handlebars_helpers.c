@@ -88,14 +88,11 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
     context = &argv[0];
 
     if( handlebars_value_is_callable(context) ) {
-        struct handlebars_options options2 = {0};
         const int argc2 = 1;
         HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
         handlebars_value_value(&argv2[0], options->scope);
-        options2.scope = &argv2[0];
-        context = handlebars_value_call(context, argc2, argv2, &options2, vm, rv2);
+        context = handlebars_value_call(context, argc2, argv2, options, vm, rv2);
         HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
-        handlebars_options_deinit(&options2);
     }
 
     if( handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_MAP && handlebars_value_get_type(context) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
@@ -289,14 +286,11 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
     }
 
     if( handlebars_value_is_callable(conditional) ) {
-        struct handlebars_options options2 = {0};
         const int argc2 = 1;
         HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
         handlebars_value_value(&argv2[0], options->scope);
-        options2.scope = &argv2[0];
-        conditional = handlebars_value_call(conditional, argc2, argv2, &options2, vm, rv2);
+        conditional = handlebars_value_call(conditional, argc2, argv2, options, vm, rv2);
         HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
-        handlebars_options_deinit(&options2);
     }
 
     if( !handlebars_value_is_empty(conditional) ) {
@@ -345,13 +339,11 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
     }
 
     if( handlebars_value_is_callable(context) ) {
-        struct handlebars_options options2 = {0};
         const int argc2 = 1;
         HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
         handlebars_value_value(&argv2[0], options->scope);
         context = handlebars_value_call(context, argc2, argv2, options, vm, rv2);
         HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
-        handlebars_options_deinit(&options2);
     }
 
     assert(context != NULL);

@@ -1200,6 +1200,7 @@ ACCEPT_FUNCTION(resolve_possible_lambda)
 
     if( handlebars_value_is_callable(value) ) {
         HANDLEBARS_VALUE_DECL(rv);
+        // This should really use the same options object as invoke*
         struct handlebars_options options = {0};
         const int argc = 1;
         HANDLEBARS_VALUE_ARRAY_DECL(argv, argc);
