@@ -231,8 +231,9 @@ const struct handlebars_value_handlers * handlebars_value_get_handlers(struct ha
 struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
-void * handlebars_value_get_ptr(struct handlebars_value * value)
-    HBS_ATTR_NONNULL_ALL;
+void * handlebars_value_get_ptr_ex(struct handlebars_value * value, const char * typ)
+    HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+#define handlebars_value_get_ptr(value, typ) ((typ *) handlebars_value_get_ptr_ex(value, HBS_S1(typ)))
 
 struct handlebars_stack * handlebars_value_get_stack(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;

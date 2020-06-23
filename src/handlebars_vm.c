@@ -41,6 +41,7 @@
 #include "handlebars_helpers.h"
 #include "handlebars_map.h"
 #include "handlebars_parser.h"
+#include "handlebars_ptr.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
 #include "handlebars_opcode_serializer.h"
@@ -416,7 +417,7 @@ static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE
     assert(HANDLEBARS_LOCAL_AT(1)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
     assert(HANDLEBARS_LOCAL_AT(2)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
 
-    struct handlebars_module * module = talloc_get_type_abort(handlebars_value_get_ptr(HANDLEBARS_LOCAL_AT(0)), struct handlebars_module);
+    struct handlebars_module * module = handlebars_value_get_ptr(HANDLEBARS_LOCAL_AT(0), struct handlebars_module);
     long program = handlebars_value_get_intval(HANDLEBARS_LOCAL_AT(1));
     long partial_block_depth = handlebars_value_get_intval(HANDLEBARS_LOCAL_AT(2));
     bool pushed_partial_block = false;
@@ -816,7 +817,7 @@ ACCEPT_FUNCTION(invoke_partial)
     if (options.program > 0) {
         const int closure_localc = 3;
         HANDLEBARS_VALUE_ARRAY_DECL(closure_localv, closure_localc);
-        handlebars_value_ptr(&closure_localv[0], handlebars_ptr_ctor(CONTEXT, vm->module, true));
+        handlebars_value_ptr(&closure_localv[0], handlebars_ptr_ctor(CONTEXT, struct handlebars_module, vm->module, true));
         handlebars_value_integer(&closure_localv[1], options.program);
         handlebars_value_integer(&closure_localv[2], LEN(vm->partialBlockStack));
         handlebars_value_closure(partial_block, handlebars_closure_ctor(vm, invoke_partial_block_closure, closure_localc, closure_localv));

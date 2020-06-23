@@ -27,11 +27,12 @@
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 
 #include "handlebars.h"
+#include "handlebars_memory.h"
+#include "handlebars_private.h"
 #include "handlebars_cache.h"
 #include "handlebars_cache_private.h"
 #include "handlebars_map.h"
-#include "handlebars_memory.h"
-#include "handlebars_private.h"
+#include "handlebars_ptr.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "handlebars_value_handlers.h"
@@ -71,8 +72,8 @@ static int cache_compare(const struct handlebars_map_kv_pair * pair1, const stru
     assert(pair1->value != NULL);
     assert(pair2->value != NULL);
 
-    struct handlebars_module * entry1 = talloc_get_type_abort(handlebars_value_get_ptr(pair1->value), struct handlebars_module);
-    struct handlebars_module * entry2 = talloc_get_type_abort(handlebars_value_get_ptr(pair2->value), struct handlebars_module);
+    struct handlebars_module * entry1 = handlebars_value_get_ptr(pair1->value, struct handlebars_module);
+    struct handlebars_module * entry2 = handlebars_value_get_ptr(pair2->value, struct handlebars_module);
 
     assert(entry1 != NULL);
     assert(entry2 != NULL);
@@ -98,7 +99,7 @@ static int cache_gc(struct handlebars_cache * cache)
     intern->map = map = handlebars_map_sort(map, cache_compare);
 
     handlebars_map_foreach(map, index, key, value) {
-        struct handlebars_module * module = talloc_get_type_abort(handlebars_value_get_ptr(value), struct handlebars_module);
+        struct handlebars_module * module = handlebars_value_get_ptr(value, struct handlebars_module);
         if( should_gc_entry(cache, module, now) ) {
             handlebars_string_addref(key);
             remove_keys[remove_keys_i++] = key;
@@ -133,7 +134,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     struct handlebars_module * module = NULL;
     if( value ) {
         // module = (struct handlebars_module *) value->v.ptr;
-        module = talloc_get_type_abort(handlebars_value_get_ptr(value), struct handlebars_module);
+        module = handlebars_value_get_ptr(value, struct handlebars_module);
         assert(handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_PTR);
         assert(talloc_get_type_abort(module, struct handlebars_module) != NULL);
         time(&module->ts);
@@ -157,7 +158,8 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
 
     time(&module->ts);
 
-    struct handlebars_ptr * uptr = handlebars_ptr_ctor(HBSCTX(cache), talloc_steal(cache, module), false);
+    module = talloc_steal(cache, module);
+    struct handlebars_ptr * uptr = handlebars_ptr_ctor(HBSCTX(cache), struct handlebars_module, module, false);
     handlebars_value_ptr(value, uptr);
 
     intern->map = handlebars_map_add(intern->map, tmpl, value);

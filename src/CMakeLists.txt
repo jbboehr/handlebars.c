@@ -37,7 +37,7 @@ set(SOURCE_FILES
     handlebars_helpers.c
     handlebars_json.c
     handlebars_map.c
-#    handlebars_memory.c
+    # handlebars_memory.c
     handlebars_module_printer.c
     handlebars_opcode_printer.c
     handlebars_opcode_serializer.c
@@ -45,6 +45,7 @@ set(SOURCE_FILES
     handlebars_parser.c
     handlebars_parser_private.c
     handlebars_partial_loader.c
+    handlebars_ptr.c
     handlebars_rc.c
     handlebars_scanners.c
     handlebars_stack.c
@@ -78,10 +79,11 @@ set(HEADERS
     handlebars_opcodes.h
     handlebars_parser.h
     handlebars_partial_loader.h
+    handlebars_ptr.h
     handlebars_rc.h
     handlebars_stack.h
     handlebars_string.h
-	handlebars_types.h
+    handlebars_types.h
     handlebars_token.h
     handlebars_value.h
     handlebars_value_handlers.h

@@ -31,7 +31,6 @@ struct handlebars_string;
 struct handlebars_user;
 struct handlebars_value_iterator;
 struct handlebars_value_handlers;
-struct handlebars_ptr;
 
 typedef struct handlebars_value * (*handlebars_copy_func)(struct handlebars_value * value);
 typedef void (*handlebars_value_dtor_func)(struct handlebars_user * user);
@@ -61,15 +60,6 @@ void handlebars_user_delref_ex(struct handlebars_user * user, const char * expr,
 #define handlebars_user_delref(user) handlebars_user_delref_ex(user, #user, HBS_LOC)
 #endif
 // }}} Reference Counting
-
-struct handlebars_ptr * handlebars_ptr_ctor(
-    struct handlebars_context * ctx,
-    void * ptr,
-    bool nofree
-) HBS_ATTR_NONNULL_ALL;
-
-void * handlebars_ptr_get_ptr(struct handlebars_ptr * uptr)
-    HBS_ATTR_NONNULL_ALL;
 
 #ifndef HANDLEBARS_NO_REFCOUNT
 #include "handlebars_rc.h"

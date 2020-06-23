@@ -67,7 +67,7 @@ pkginclude_HEADERS = \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
 	handlebars_cache.h \
-    handlebars_closure.h \
+	handlebars_closure.h \
 	handlebars_compiler.h \
 	handlebars_config.h \
 	handlebars_delimiters.h \
@@ -75,13 +75,14 @@ pkginclude_HEADERS = \
 	handlebars_json.h \
 	handlebars_map.h \
 	handlebars_memory.h \
-    handlebars_module_printer.h \
+	handlebars_module_printer.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_serializer.h \
 	handlebars_opcodes.h \
 	handlebars_parser.h \
-    handlebars_partial_loader.h \
-    handlebars_rc.h \
+	handlebars_partial_loader.h \
+	handlebars_ptr.h \
+	handlebars_rc.h \
 	handlebars_stack.h \
 	handlebars_string.h \
 	handlebars_token.h \
@@ -130,8 +131,8 @@ libhandlebars_la_SOURCES = \
 	$(LMDBSOURCES) \
 	$(PTHREADSOURCES) \
 	handlebars_cache_simple.c \
-    handlebars_closure.c \
-    handlebars_closure.h \
+	handlebars_closure.c \
+	handlebars_closure.h \
 	handlebars_compiler.h \
 	handlebars_compiler.c \
 	handlebars_delimiters.c \
@@ -141,8 +142,8 @@ libhandlebars_la_SOURCES = \
 	$(JSONSOURCES) \
 	handlebars_map.h \
 	handlebars_map.c \
-    handlebars_module_printer.h \
-    handlebars_module_printer.c \
+	handlebars_module_printer.h \
+	handlebars_module_printer.c \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_printer.c \
 	handlebars_opcode_serializer.h \
@@ -153,11 +154,13 @@ libhandlebars_la_SOURCES = \
 	handlebars_parser.c \
 	handlebars_parser_private.h \
 	handlebars_parser_private.c \
-    handlebars_partial_loader.h \
-    handlebars_partial_loader.c \
+	handlebars_partial_loader.h \
+	handlebars_partial_loader.c \
 	handlebars_private.h \
-    handlebars_rc.c \
-    handlebars_rc.h \
+	handlebars_ptr.h \
+	handlebars_ptr.c \
+	handlebars_rc.c \
+	handlebars_rc.h \
 	handlebars_scanners.c \
 	handlebars_scanners.h \
 	handlebars_stack.h \

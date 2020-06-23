@@ -37,6 +37,7 @@
 #include "handlebars_closure.h"
 #include "handlebars_helpers.h"
 #include "handlebars_map.h"
+#include "handlebars_ptr.h"
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -88,7 +89,7 @@ void handlebars_value_dtor(struct handlebars_value * value)
             handlebars_user_delref(value->v.user);
             break;
         case HANDLEBARS_VALUE_TYPE_PTR:
-            handlebars_user_delref((struct handlebars_user *) value->v.ptr);
+            handlebars_ptr_delref(value->v.ptr);
             break;
         case HANDLEBARS_VALUE_TYPE_CLOSURE:
             handlebars_closure_delref(value->v.closure);
@@ -169,12 +170,13 @@ struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value
     }
 }
 
-void * handlebars_value_get_ptr(struct handlebars_value * value)
+void * handlebars_value_get_ptr_ex(struct handlebars_value * value, const char * typ)
 {
     if (value->type == HANDLEBARS_VALUE_TYPE_PTR) {
-        return handlebars_ptr_get_ptr(value->v.ptr);
+        return handlebars_ptr_get_ptr_ex(value->v.ptr, typ);
     } else {
-        return NULL;
+        fprintf(stderr, "Failed to retrieve ptr from type: %s\n", handlebars_value_type_readable(value->type));
+        abort();
     }
 }
 
@@ -470,7 +472,7 @@ void handlebars_value_str(struct handlebars_value * value, struct handlebars_str
 
 void handlebars_value_ptr(struct handlebars_value * value, struct handlebars_ptr * ptr)
 {
-    handlebars_user_addref((struct handlebars_user *) ptr);
+    handlebars_ptr_addref(ptr);
     handlebars_value_null(value);
     value->type = HANDLEBARS_VALUE_TYPE_PTR;
     value->v.ptr = ptr;
@@ -533,7 +535,7 @@ void handlebars_value_value(struct handlebars_value * dest, struct handlebars_va
             handlebars_user_addref(dest->v.user);
             break;
         case HANDLEBARS_VALUE_TYPE_PTR:
-            handlebars_user_addref((struct handlebars_user *) dest->v.ptr);
+            handlebars_ptr_addref(dest->v.ptr);
             break;
         case HANDLEBARS_VALUE_TYPE_CLOSURE:
             handlebars_closure_addref(dest->v.closure);

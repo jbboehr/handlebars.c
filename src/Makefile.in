@@ -196,14 +196,14 @@ am__libhandlebars_la_SOURCES_DIST = handlebars.tab.h handlebars.tab.c \
 	handlebars_opcodes.c handlebars_parser.h handlebars_parser.c \
 	handlebars_parser_private.h handlebars_parser_private.c \
 	handlebars_partial_loader.h handlebars_partial_loader.c \
-	handlebars_private.h handlebars_rc.c handlebars_rc.h \
-	handlebars_scanners.c handlebars_scanners.h handlebars_stack.h \
-	handlebars_stack.c handlebars_string.h handlebars_string.c \
-	handlebars_token.h handlebars_token.c handlebars_value.h \
-	handlebars_value.c handlebars_value_handlers.h \
-	handlebars_value_handlers.c handlebars_vm.h handlebars_vm.c \
-	handlebars_whitespace.h handlebars_whitespace.c \
-	handlebars_yaml.c handlebars_memory.c
+	handlebars_private.h handlebars_ptr.h handlebars_ptr.c \
+	handlebars_rc.c handlebars_rc.h handlebars_scanners.c \
+	handlebars_scanners.h handlebars_stack.h handlebars_stack.c \
+	handlebars_string.h handlebars_string.c handlebars_token.h \
+	handlebars_token.c handlebars_value.h handlebars_value.c \
+	handlebars_value_handlers.h handlebars_value_handlers.c \
+	handlebars_vm.h handlebars_vm.c handlebars_whitespace.h \
+	handlebars_whitespace.c handlebars_yaml.c handlebars_memory.c
 @LMDB_TRUE@am__objects_1 = handlebars_cache_lmdb.lo
 @PTHREAD_TRUE@am__objects_2 = handlebars_cache_mmap.lo
 @JSON_TRUE@am__objects_3 = handlebars_json.lo
@@ -219,8 +219,8 @@ am_libhandlebars_la_OBJECTS = handlebars.tab.lo handlebars.lex.lo \
 	handlebars_module_printer.lo handlebars_opcode_printer.lo \
 	handlebars_opcode_serializer.lo handlebars_opcodes.lo \
 	handlebars_parser.lo handlebars_parser_private.lo \
-	handlebars_partial_loader.lo handlebars_rc.lo \
-	handlebars_scanners.lo handlebars_stack.lo \
+	handlebars_partial_loader.lo handlebars_ptr.lo \
+	handlebars_rc.lo handlebars_scanners.lo handlebars_stack.lo \
 	handlebars_string.lo handlebars_token.lo handlebars_value.lo \
 	handlebars_value_handlers.lo handlebars_vm.lo \
 	handlebars_whitespace.lo $(am__objects_4) $(am__objects_5)
@@ -271,7 +271,7 @@ am__depfiles_remade = ./$(DEPDIR)/handlebars.Plo \
 	./$(DEPDIR)/handlebars_parser.Plo \
 	./$(DEPDIR)/handlebars_parser_private.Plo \
 	./$(DEPDIR)/handlebars_partial_loader.Plo \
-	./$(DEPDIR)/handlebars_rc.Plo \
+	./$(DEPDIR)/handlebars_ptr.Plo ./$(DEPDIR)/handlebars_rc.Plo \
 	./$(DEPDIR)/handlebars_scanners.Plo \
 	./$(DEPDIR)/handlebars_stack.Plo \
 	./$(DEPDIR)/handlebars_string.Plo \
@@ -545,7 +545,7 @@ pkginclude_HEADERS = \
 	handlebars_ast_list.h \
 	handlebars_ast_printer.h \
 	handlebars_cache.h \
-    handlebars_closure.h \
+	handlebars_closure.h \
 	handlebars_compiler.h \
 	handlebars_config.h \
 	handlebars_delimiters.h \
@@ -553,13 +553,14 @@ pkginclude_HEADERS = \
 	handlebars_json.h \
 	handlebars_map.h \
 	handlebars_memory.h \
-    handlebars_module_printer.h \
+	handlebars_module_printer.h \
 	handlebars_opcode_printer.h \
 	handlebars_opcode_serializer.h \
 	handlebars_opcodes.h \
 	handlebars_parser.h \
-    handlebars_partial_loader.h \
-    handlebars_rc.h \
+	handlebars_partial_loader.h \
+	handlebars_ptr.h \
+	handlebars_rc.h \
 	handlebars_stack.h \
 	handlebars_string.h \
 	handlebars_token.h \
@@ -604,14 +605,14 @@ libhandlebars_la_SOURCES = handlebars.tab.h handlebars.tab.c \
 	handlebars_opcodes.c handlebars_parser.h handlebars_parser.c \
 	handlebars_parser_private.h handlebars_parser_private.c \
 	handlebars_partial_loader.h handlebars_partial_loader.c \
-	handlebars_private.h handlebars_rc.c handlebars_rc.h \
-	handlebars_scanners.c handlebars_scanners.h handlebars_stack.h \
-	handlebars_stack.c handlebars_string.h handlebars_string.c \
-	handlebars_token.h handlebars_token.c handlebars_value.h \
-	handlebars_value.c handlebars_value_handlers.h \
-	handlebars_value_handlers.c handlebars_vm.h handlebars_vm.c \
-	handlebars_whitespace.h handlebars_whitespace.c $(YAMLSOURCES) \
-	$(am__append_5)
+	handlebars_private.h handlebars_ptr.h handlebars_ptr.c \
+	handlebars_rc.c handlebars_rc.h handlebars_scanners.c \
+	handlebars_scanners.h handlebars_stack.h handlebars_stack.c \
+	handlebars_string.h handlebars_string.c handlebars_token.h \
+	handlebars_token.c handlebars_value.h handlebars_value.c \
+	handlebars_value_handlers.h handlebars_value_handlers.c \
+	handlebars_vm.h handlebars_vm.c handlebars_whitespace.h \
+	handlebars_whitespace.c $(YAMLSOURCES) $(am__append_5)
 libhandlebars_la_LIBADD = $(LIBADD)
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
@@ -734,6 +735,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_parser.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_parser_private.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_partial_loader.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_ptr.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_rc.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_scanners.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebars_stack.Plo@am__quote@ # am--include-marker
@@ -984,6 +986,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/handlebars_parser.Plo
 	-rm -f ./$(DEPDIR)/handlebars_parser_private.Plo
 	-rm -f ./$(DEPDIR)/handlebars_partial_loader.Plo
+	-rm -f ./$(DEPDIR)/handlebars_ptr.Plo
 	-rm -f ./$(DEPDIR)/handlebars_rc.Plo
 	-rm -f ./$(DEPDIR)/handlebars_scanners.Plo
 	-rm -f ./$(DEPDIR)/handlebars_stack.Plo
@@ -1064,6 +1067,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/handlebars_parser.Plo
 	-rm -f ./$(DEPDIR)/handlebars_parser_private.Plo
 	-rm -f ./$(DEPDIR)/handlebars_partial_loader.Plo
+	-rm -f ./$(DEPDIR)/handlebars_ptr.Plo
 	-rm -f ./$(DEPDIR)/handlebars_rc.Plo
 	-rm -f ./$(DEPDIR)/handlebars_scanners.Plo
 	-rm -f ./$(DEPDIR)/handlebars_stack.Plo
