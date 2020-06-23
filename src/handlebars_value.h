@@ -511,6 +511,7 @@ char * handlebars_value_dump(
  * @param[in] argc
  * @param[in] argv
  * @param[in] options
+ * @param[in] vm
  * @param[out] rv
  */
 struct handlebars_value * handlebars_value_call(
@@ -518,6 +519,7 @@ struct handlebars_value * handlebars_value_call(
     int argc,
     struct handlebars_value * argv,
     struct handlebars_options * options,
+    struct handlebars_vm * vm,
     struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 

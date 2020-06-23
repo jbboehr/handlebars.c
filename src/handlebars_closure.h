@@ -29,9 +29,6 @@ struct handlebars_closure;
 struct handlebars_context;
 struct handlebars_module;
 
-#define HANDLEBARS_CLOSURE_ARGS int localc, struct handlebars_value * localv, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * rv
-#define HANDLEBARS_CLOSURE_ATTRS HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
-
 extern const size_t HANDLEBARS_CLOSURE_SIZE;
 
 // {{{ Reference Counting
@@ -50,11 +47,8 @@ struct handlebars_closure * handlebars_closure_ctor(
 
 struct handlebars_value * handlebars_closure_call(
     struct handlebars_closure * closure,
-    int argc,
-    struct handlebars_value * argv,
-    struct handlebars_options * options,
-    struct handlebars_value * rv
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+    HANDLEBARS_FUNCTION_ARGS
+) HANDLEBARS_CLOSURE_ATTRS;
 
 HBS_EXTERN_C_END
 

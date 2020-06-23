@@ -55,7 +55,7 @@ struct handlebars_vm {
     struct handlebars_stack * blockParamStack;
     struct handlebars_stack * partialBlockStack;
 
-    handlebars_log_func log_func;
+    handlebars_func log_func;
     void * log_ctx;
 
     struct handlebars_string * delim_open;

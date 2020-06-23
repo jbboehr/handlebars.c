@@ -98,11 +98,8 @@ struct handlebars_closure * handlebars_closure_ctor(
 
 struct handlebars_value * handlebars_closure_call(
     struct handlebars_closure * closure,
-    int argc,
-    struct handlebars_value * argv,
-    struct handlebars_options * options,
-    struct handlebars_value * rv
+    HANDLEBARS_FUNCTION_ARGS
 ) {
     assert(rv != NULL);
-    return closure->fn(closure->localc, closure->localv, argc, argv, options, rv);
+    return closure->fn(closure->localc, closure->localv, HANDLEBARS_FUNCTION_ARGS_PASSTHRU);
 }

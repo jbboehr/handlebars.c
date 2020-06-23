@@ -698,22 +698,22 @@ struct handlebars_value * handlebars_value_call(struct handlebars_value * value,
 
     switch (value->type) {
         case HANDLEBARS_VALUE_TYPE_HELPER:
-            rv = value->v.helper(argc, argv, options, rv);
+            rv = value->v.helper(HANDLEBARS_HELPER_ARGS_PASSTHRU);
             break;
 
         case HANDLEBARS_VALUE_TYPE_CLOSURE:
-            rv = handlebars_closure_call(value->v.closure, argc, argv, options, rv);
+            rv = handlebars_closure_call(value->v.closure, HANDLEBARS_HELPER_ARGS_PASSTHRU);
             break;
 
         case HANDLEBARS_VALUE_TYPE_USER:
             if (handlebars_value_get_handlers(value)->call) {
-                rv = handlebars_value_get_handlers(value)->call(value, argc, argv, options, rv);
+                rv = handlebars_value_get_handlers(value)->call(value, HANDLEBARS_HELPER_ARGS_PASSTHRU);
                 break;
             }
             // fallthrough
 
         default:
-            handlebars_throw(HBSCTX(options->vm), HANDLEBARS_ERROR, "Unable to call value of type: %s", handlebars_value_type_readable(value->type));
+            handlebars_throw(HBSCTX(vm), HANDLEBARS_ERROR, "Unable to call value of type: %s", handlebars_value_type_readable(value->type));
             break;
     }
 

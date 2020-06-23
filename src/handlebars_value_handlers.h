@@ -21,6 +21,7 @@
 #define HANDLEBARS_VALUE_HANDLERS_H
 
 #include "handlebars.h"
+#include "handlebars_types.h"
 
 HBS_EXTERN_C_START
 
@@ -39,13 +40,7 @@ typedef enum handlebars_value_type (*handlebars_value_type_func)(struct handleba
 typedef struct handlebars_value * (*handlebars_map_find_func)(struct handlebars_value * value, struct handlebars_string * key, struct handlebars_value * rv);
 typedef struct handlebars_value * (*handlebars_array_find_func)(struct handlebars_value * value, size_t index, struct handlebars_value * rv);
 typedef bool (*handlebars_iterator_init_func)(struct handlebars_value_iterator * it, struct handlebars_value * value);
-typedef struct handlebars_value * (*handlebars_call_func)(
-    struct handlebars_value * value,
-    int argc,
-    struct handlebars_value * argv,
-    struct handlebars_options * options,
-    struct handlebars_value * rv
-);
+typedef struct handlebars_value * (*handlebars_call_func)(struct handlebars_value * value, HANDLEBARS_FUNCTION_ARGS);
 typedef long (*handlebars_count_func)(struct handlebars_value * value);
 
 void handlebars_user_init(struct handlebars_user * user, struct handlebars_context * ctx, const struct handlebars_value_handlers * handlers)

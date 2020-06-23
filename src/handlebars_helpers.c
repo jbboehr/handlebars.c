@@ -47,7 +47,7 @@
 const size_t HANDLEBARS_OPTIONS_SIZE = sizeof(struct handlebars_options);
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(options->vm)
+#define CONTEXT HBSCTX(vm)
 
 void handlebars_options_deinit(struct handlebars_options * options)
 {
@@ -92,9 +92,8 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
         const int argc2 = 1;
         HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
         handlebars_value_value(&argv2[0], options->scope);
-        options2.vm = options->vm;
         options2.scope = &argv2[0];
-        context = handlebars_value_call(context, argc2, argv2, &options2, rv2);
+        context = handlebars_value_call(context, argc2, argv2, &options2, vm, rv2);
         HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
         handlebars_options_deinit(&options2);
     }
@@ -154,8 +153,8 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
             handlebars_value_map(data, data_map);
         }
 
-        tmp = handlebars_vm_execute_program_ex(options->vm, options->program, it_child, data, block_params);
-        result_str = handlebars_string_append(HBSCTX(options->vm), result_str, HBS_STR_STRL(tmp));
+        tmp = handlebars_vm_execute_program_ex(vm, options->program, it_child, data, block_params);
+        result_str = handlebars_string_append(HBSCTX(vm), result_str, HBS_STR_STRL(tmp));
 
         handlebars_value_null(data);
 
@@ -164,9 +163,9 @@ struct handlebars_value * handlebars_builtin_each(HANDLEBARS_HELPER_ARGS)
 
 whoopsie:
     if( i == 0 ) {
-        tmp = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
+        tmp = handlebars_vm_execute_program(vm, options->inverse, options->scope);
         assert(tmp != NULL);
-        result_str = handlebars_string_append(HBSCTX(options->vm), result_str, HBS_STR_STRL(tmp));
+        result_str = handlebars_string_append(HBSCTX(vm), result_str, HBS_STR_STRL(tmp));
     }
 
     handlebars_value_str(rv, result_str);
@@ -200,16 +199,16 @@ struct handlebars_value * handlebars_builtin_block_helper_missing(HANDLEBARS_HEL
     is_zero = handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_INTEGER && handlebars_value_get_intval(context) == 0;
 
     if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_TRUE ) {
-        result_str = handlebars_vm_execute_program(options->vm, options->program, options->scope);
+        result_str = handlebars_vm_execute_program(vm, options->program, options->scope);
     } else if( handlebars_value_is_empty(context) && !is_zero ) {
 inverse:
-        result_str = handlebars_vm_execute_program(options->vm, options->inverse, options->scope);
+        result_str = handlebars_vm_execute_program(vm, options->inverse, options->scope);
     } else if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        rv = handlebars_vm_call_helper_str(HBS_STRL("each"), argc, argv, options, rv);
+        rv = handlebars_vm_call_helper_str(HBS_STRL("each"), HANDLEBARS_HELPER_ARGS_PASSTHRU);
         goto done;
     } else {
         // For object, etc
-        result_str = handlebars_vm_execute_program(options->vm, options->program, context);
+        result_str = handlebars_vm_execute_program(vm, options->program, context);
     }
 
     handlebars_value_str(rv, result_str);
@@ -235,15 +234,15 @@ struct handlebars_value * handlebars_builtin_helper_missing(HANDLEBARS_HELPER_AR
 
 struct handlebars_value * handlebars_builtin_log(HANDLEBARS_HELPER_ARGS)
 {
-    handlebars_log_func log_func = handlebars_vm_get_log_func(options->vm);
+    handlebars_func log_func = handlebars_vm_get_log_func(vm);
 
     if (log_func) {
-        log_func(argc, argv, options);
+        rv = log_func(HANDLEBARS_FUNCTION_ARGS_PASSTHRU);
     } else {
         int i;
         fprintf(stderr, "[INFO] ");
         for (i = 0; i < argc; i++) {
-            char *tmp = handlebars_value_dump(&argv[i], HBSCTX(options->vm), 0);
+            char *tmp = handlebars_value_dump(&argv[i], HBSCTX(vm), 0);
             fprintf(stderr, "%s ", tmp);
             handlebars_talloc_free(tmp);
         }
@@ -294,9 +293,8 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
         const int argc2 = 1;
         HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
         handlebars_value_value(&argv2[0], options->scope);
-        options2.vm = options->vm;
         options2.scope = &argv2[0];
-        conditional = handlebars_value_call(conditional, argc2, argv2, &options2, rv2);
+        conditional = handlebars_value_call(conditional, argc2, argv2, &options2, vm, rv2);
         HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
         handlebars_options_deinit(&options2);
     }
@@ -311,7 +309,7 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
         program = options->inverse;
     }
 
-    result_str = handlebars_vm_execute_program(options->vm, program, options->scope);
+    result_str = handlebars_vm_execute_program(vm, program, options->scope);
     handlebars_value_str(rv, result_str);
 
     HANDLEBARS_VALUE_UNDECL(rv2);
@@ -332,7 +330,7 @@ struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 
     handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
 
-    return handlebars_vm_call_helper_str(HBS_STRL("if"), argc, argv, options, rv);
+    return handlebars_vm_call_helper_str(HBS_STRL("if"), HANDLEBARS_HELPER_ARGS_PASSTHRU);
 }
 
 struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
@@ -351,7 +349,7 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
         const int argc2 = 1;
         HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
         handlebars_value_value(&argv2[0], options->scope);
-        context = handlebars_value_call(context, argc2, argv2, options, rv2);
+        context = handlebars_value_call(context, argc2, argv2, options, vm, rv2);
         HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
         handlebars_options_deinit(&options2);
     }
@@ -359,12 +357,12 @@ struct handlebars_value * handlebars_builtin_with(HANDLEBARS_HELPER_ARGS)
     assert(context != NULL);
 
     if( handlebars_value_get_type(context) == HANDLEBARS_VALUE_TYPE_NULL ) {
-        result_str = handlebars_vm_execute_program(options->vm, options->inverse, context);
+        result_str = handlebars_vm_execute_program(vm, options->inverse, context);
     } else {
         handlebars_value_array(block_params, handlebars_stack_ctor(CONTEXT, 2));
         handlebars_value_array_set(block_params, 0, context);
 
-        result_str = handlebars_vm_execute_program_ex(options->vm, options->program, context, options->data, block_params);
+        result_str = handlebars_vm_execute_program_ex(vm, options->program, context, options->data, block_params);
     }
 
     handlebars_value_str(rv, result_str);
@@ -379,10 +377,10 @@ struct handlebars_value * handlebars_builtin_hbsc_set_delimiters(HANDLEBARS_HELP
 {
     if (argc == 2 && argv[0].type == HANDLEBARS_VALUE_TYPE_STRING && argv[1].type == HANDLEBARS_VALUE_TYPE_STRING) {
         // @TODO we should delref the old ones
-        options->vm->delim_open = handlebars_value_get_string(&argv[0]);
-        handlebars_string_addref(options->vm->delim_open);
-        options->vm->delim_close = handlebars_value_get_string(&argv[1]);
-        handlebars_string_addref(options->vm->delim_close);
+        vm->delim_open = handlebars_value_get_string(&argv[0]);
+        handlebars_string_addref(vm->delim_open);
+        vm->delim_close = handlebars_value_get_string(&argv[1]);
+        handlebars_string_addref(vm->delim_close);
     }
     return rv;
 }

@@ -23,6 +23,9 @@
 HBS_EXTERN_C_START
 
 struct handlebars_options;
+struct handlebars_vm;
+
+// {{{ value
 
 /**
  * @brief Enumeration of value types
@@ -52,24 +55,53 @@ enum handlebars_value_flags
     HANDLEBARS_VALUE_FLAG_SAFE_STRING = 1
 };
 
-typedef struct handlebars_value * (*handlebars_helper_func)(
-    int argc,
-    struct handlebars_value * argv,
-    struct handlebars_options * options,
-    struct handlebars_value * rv
-);
+// }}} value
+// {{{ function
 
-typedef struct handlebars_value * (*handlebars_closure_func)(
-    int localc,
-    struct handlebars_value * localv,
-    int argc,
-    struct handlebars_value * argv,
-    struct handlebars_options * options,
+#define HANDLEBARS_FUNCTION_ARGS \
+    int argc, \
+    struct handlebars_value * argv, \
+    struct handlebars_options * options, \
+    struct handlebars_vm * vm, \
     struct handlebars_value * rv
-);
+#define HANDLEBARS_FUNCTION_ATTRS HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT
+#define HANDLEBARS_FUNCTION_ARGS_PASSTHRU argc, argv, options, vm, rv
+#define HANDLEBARS_FUNCTION(name) HANDLEBARS_FUNCTION_ATTRS struct handlebars_value * name(HANDLEBARS_FUNCTION_ARGS)
+
+#if defined(__GNUC__) && !defined(__clang__)
+// clang throws -Wignored-attributes
+typedef HANDLEBARS_FUNCTION_ATTRS struct handlebars_value * (*handlebars_func)(HANDLEBARS_FUNCTION_ARGS);
+#else
+typedef struct handlebars_value * (*handlebars_func)(HANDLEBARS_FUNCTION_ARGS);
+#endif
+
+/* b/c */
+#define handlebars_helper_func handlebars_func
+#define HANDLEBARS_HELPER_ARGS HANDLEBARS_FUNCTION_ARGS
+#define HANDLEBARS_HELPER_ATTRS HANDLEBARS_FUNCTION_ATTRS
+#define HANDLEBARS_HELPER_ARGS_PASSTHRU HANDLEBARS_FUNCTION_ARGS_PASSTHRU
+
+// }}} function
+// {{{ closure
+
+#define HANDLEBARS_CLOSURE_ARGS \
+    int localc, \
+    struct handlebars_value * localv, \
+    HANDLEBARS_FUNCTION_ARGS
+#define HANDLEBARS_CLOSURE_ATTRS HANDLEBARS_FUNCTION_ATTRS
+#define HANDLEBARS_CLOSURE(name) HANDLEBARS_CLOSURE_ATTRS struct handlebars_value * name(HANDLEBARS_CLOSURE_ARGS)
+
+#if defined(__GNUC__) && !defined(__clang__)
+// clang throws -Wignored-attributes
+typedef HANDLEBARS_CLOSURE_ATTRS struct handlebars_value * (*handlebars_closure_func)(HANDLEBARS_CLOSURE_ARGS);
+#else
+typedef struct handlebars_value * (*handlebars_closure_func)(HANDLEBARS_CLOSURE_ARGS);
+#endif
+
+// }}} closure
+// {{{ options
 
 struct handlebars_options {
-    struct handlebars_vm * vm;
     long inverse;
     long program;
     struct handlebars_string * name;
@@ -78,11 +110,7 @@ struct handlebars_options {
     struct handlebars_value * hash;
 };
 
-typedef void (*handlebars_log_func)(
-    int argc,
-    struct handlebars_value * argv,
-    struct handlebars_options * options
-);
+// }}} options
 
 HBS_EXTERN_C_END
 
