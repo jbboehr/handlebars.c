@@ -3,18 +3,20 @@ language: c
 dist: focal
 
 matrix:
+    fast_finish: true
+    allow_failures:
+    - env:
+      - MYCC="gcc-9"
+      - ARCH="armhf"
+    # - env:
+    #   - MYCC="gcc-9"
+    #   - VALGRIND=true
     include:
 # gcc-5, xenial
     - dist: xenial
       env:
       - MYCC="gcc-5"
       - GCOV="gcov-5"
-# gcc-5, xenial, i386
-    - dist: xenial
-      env:
-      - MYCC="gcc-5"
-      - GCOV="gcov-5"
-      - ARCH="i386"
 # gcc-6, bionic
     - dist: bionic
       env:
@@ -41,13 +43,23 @@ matrix:
       env:
       - MYCC="gcc-9"
       - GCOV="gcov-9"
-# # gcc-9, focal, ppc64le
-# # this is just hanging forever in the queue
-#     - dist: focal
-#       arch: ppc64le
-#       env:
-#       - MYCC="gcc-9"
-#       - GCOV="gcov-9"
+# gcc-9, focal, armhf
+    - dist: focal
+      arch: arm64
+      env:
+      - MYCC="gcc-9"
+      - ARCH="armhf"
+# gcc-9, focal, i386
+    - dist: focal
+      env:
+      - MYCC="gcc-9"
+      - ARCH="i386"
+# gcc-9, focal, ppc64le
+    - dist: focal
+      arch: ppc64le
+      env:
+      - MYCC="gcc-9"
+      - GCOV="gcov-9"
 # gcc-9, focal, s390x
     - dist: focal
       arch: s390x
@@ -77,11 +89,10 @@ matrix:
       - GCOV="gcov-9"
       - MINIMAL=true
 # gcc-9, focal, valgrind
-# still not working, fails with "missing test plan"
-#     - dist: focal
-#       env:
-#       - MYCC="gcc-9"
-#       - VALGRIND=true
+    # - dist: focal
+    #   env:
+    #   - MYCC="gcc-9"
+    #   - VALGRIND=true
 # gcc-10, focal, toolchain test
     - dist: focal
       env: MYCC="gcc-10"

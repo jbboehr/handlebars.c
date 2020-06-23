@@ -26,9 +26,17 @@ if [ -z "$ARCH" ]; then
 fi
 
 if [ "$ARCH" = "i386" ]; then
-	export BUILD_ARCH=$ARCH
+	export HOST_ARCH=i686-linux-gnu
 	export CFLAGS="$CFLAGS -m32"
-	#export LDFLAGS="$LDFLAGS -m32"
+	$SUDO dpkg --add-architecture i386
+	unset CC
+elif [ "$ARCH" = "armhf" ]; then
+	export HOST_ARCH=arm-linux-gnueabihf
+	$SUDO dpkg --add-architecture armhf
+	unset CC
+elif [ "$ARCH" = "ppc64le" ]; then
+	# debian calls this differently
+	export ARCH="ppc64el"
 fi
 
 function install_apt_packages() (
@@ -46,7 +54,11 @@ function install_apt_packages() (
 
 	local apt_packages_to_install="${MYCC} autotools-dev autoconf automake libtool m4 make bats pkg-config:${ARCH} check:${ARCH} libpcre3-dev:${ARCH} libtalloc-dev:${ARCH} libsubunit-dev:${ARCH}"
 	if [ "$ARCH" = "i386" ]; then
-		apt_packages_to_install="${apt_packages_to_install} gcc-multilib"
+		apt_packages_to_install="${apt_packages_to_install} ${MYCC}-i686-linux-gnu crossbuild-essential-i386"
+	elif [ "$ARCH" = "armhf" ]; then
+		apt_packages_to_install="${apt_packages_to_install} ${MYCC}-arm-linux-gnueabihf crossbuild-essential-armhf"
+		# this is brittle af
+		# apt_packages_to_install="${apt_packages_to_install} libjson-c4:${ARCH} liblmdb0:${ARCH}"
 	fi
 	if [ ! -z "$GCOV" ]; then
 		apt_packages_to_install="${apt_packages_to_install} lcov"
@@ -56,7 +68,7 @@ function install_apt_packages() (
 		apt_packages_to_install="${apt_packages_to_install} libjson-c-dev:${ARCH} liblmdb-dev:${ARCH} libyaml-dev:${ARCH}"
 	fi
 	if [ "$VALGRIND" == "true" ]; then
-		apt_packages_to_install="${apt_packages_to_install} valgrind"
+		apt_packages_to_install="${apt_packages_to_install} valgrind:${ARCH}"
 	fi
 
 	$SUDO apt-get install -y ${apt_packages_to_install}
@@ -81,10 +93,10 @@ function configure_handlebars() {
 	export CFLAGS="$CFLAGS -Wno-deprecated-declarations -Wno-error=deprecated-declarations"
 
 	# configure flags
-	local extra_configure_flags="--prefix=${PREFIX} --enable-benchmark"
+	local extra_configure_flags="--prefix=${PREFIX}"
 
-	if [ -n "$BUILD_ARCH" ]; then
-		extra_configure_flags="${extra_configure_flags} --build=${BUILD_ARCH}"
+	if [ -n "$HOST_ARCH" ]; then
+		extra_configure_flags="${extra_configure_flags} --host=${HOST_ARCH}"
 	fi
 
 	if [ ! -z "$GCOV" ]; then
@@ -114,7 +126,7 @@ function configure_handlebars() {
 	if [ "$MINIMAL" = "true" ]; then
 		extra_configure_flags="${extra_configure_flags} --disable-testing-exports --disable-handlebars-memory --enable-check --disable-json --disable-lmdb --enable-pcre --disable-pthread --enable-subunit --disable-yaml"
 	else
-		extra_configure_flags="${extra_configure_flags} --enable-testing-exports --enable-handlebars-memory --enable-check --enable-json --enable-lmdb --enable-pcre  --enable-pthread --enable-subunit --enable-yaml"
+		extra_configure_flags="${extra_configure_flags} --enable-testing-exports --enable-handlebars-memory --enable-check --enable-json --enable-lmdb --enable-pcre  --enable-pthread --enable-subunit --enable-yaml --enable-benchmark"
 	fi
 
 	if [ "$VALGRIND" = "true" ]; then
@@ -150,14 +162,18 @@ function test_handlebars() (
 
 	if [ "$VALGRIND" == "true" ]; then
 		make check-valgrind
-	elif [ ! -z "$GCOV" ]; then
-		make check-code-coverage
 	else
 		make check
 	fi
 
-	echo "Printing benchmark results"
-	cat ./bench/run.sh.log
+	if [ ! -z "$GCOV" ]; then
+		make code-coverage-capture
+	fi
+
+	if [ -f ./bench/run.sh.log ]; then
+		echo "Printing benchmark results"
+		cat ./bench/run.sh.log
+	fi
 )
 
 function upload_coverage() (
