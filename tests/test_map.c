@@ -349,6 +349,7 @@ static Suite * suite(void)
     Suite * s = suite_create("Map");
 
     REGISTER_TEST_FIXTURE(s, test_map, "Map");
+    tcase_set_timeout(tc_test_map, 30);
     REGISTER_TEST_FIXTURE(s, test_map_sort, "handlebars_map_sort");
     REGISTER_TEST_FIXTURE(s, test_map_copy_ctor, "Map copy constructor");
 #ifndef HANDLEBARS_NO_REFCOUNT

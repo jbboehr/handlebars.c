@@ -142,11 +142,11 @@ struct handlebars_module
     //! Array of opcodes
     struct handlebars_opcode * opcodes;
 
-    //! Size of data segment
-    size_t data_size;
+    //! Current offfset of data segment
+    size_t data_offset;
 
-    //! Pointer to the beginning of the data segment
-    void * data;
+    //! Data segment
+    char data[];
 };
 
 #endif /* HANDLEBARS_OPCODE_SERIALIZER_PRIVATE */

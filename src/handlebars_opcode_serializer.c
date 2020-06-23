@@ -41,40 +41,28 @@
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
 
-#define PTR_DIFF(a, b) ((size_t) (((char *) a) - ((char *) b)))
-#define PTR_ADD(a, b) ((void *) (((char *) a) + (b)))
-
 #define PATCH(ptr, baseaddr) ptr = (void *) (((char *) ptr) - ((char *) module->addr) + ((char *) baseaddr))
+#define align_size(size) handlebars_align_size(size, sizeof(void *))
 
 const size_t HANDLEBARS_MODULE_SIZE = sizeof(struct handlebars_module);
 const size_t HANDLEBARS_MODULE_TABLE_ENTRY_SIZE = sizeof(struct handlebars_module_table_entry);
 
-static size_t align_size(size_t size)
-{
-    size_t rem = size % 8;
-    if (rem == 0) {
-        return size;
-    } else {
-        return size + (8 - rem);
-    }
-}
-
 static void * append(struct handlebars_module * module, void * source, size_t size)
 {
     size_t aligned_size = align_size(size);
-    void * addr = PTR_ADD(module->data, module->data_size);
+    void * addr = &module->data[module->data_offset];
 #ifdef HANDLEBARS_ENABLE_DEBUG
-    assert((void *) module->data > (void *) module);
-    size_t data_offset = PTR_DIFF(module->data, module);
     if (NULL != getenv("HANDLEBARS_OPCODE_SERIALIZE_DEBUG")) {
-        fprintf(stderr, "Data offset: %ld, Data size: %ld, Append size: %ld, Buffer size: %ld, Aligned size: %zu\n", data_offset, module->data_size, size, module->size, aligned_size);
+        fprintf(stderr, "Data offset: %zu, Append size: %zu, Buffer size: %zu, Aligned size: %zu\n", module->data_offset, size, module->size, aligned_size);
     }
-    assert(data_offset + module->data_size + size <= module->size);
-    assert(((uintptr_t) addr) % 8 == 0);
+    assert(module->data_offset < module->size - sizeof(struct handlebars_module));
+    assert(((uintptr_t) addr) % sizeof(void *) == 0);
 #endif
     memcpy(addr, source, size);
-    memset((char *) addr + size, 0, aligned_size - size);
-    module->data_size += aligned_size;
+    if (aligned_size != size) {
+        memset((char *) addr + size, 0, aligned_size - size);
+    }
+    module->data_offset += aligned_size;
     return addr;
 }
 
@@ -82,60 +70,70 @@ static inline void patch_string(struct handlebars_string * str) {
     handlebars_string_immortalize(str);
 }
 
-static void calculate_size_operand(struct handlebars_module * module, struct handlebars_operand * operand)
+static size_t calculate_size_operand(struct handlebars_module * module, struct handlebars_operand * operand)
 {
     size_t i;
+    size_t size = 0;
 
     // Increment for children
     switch( operand->type ) {
         case handlebars_operand_type_string:
-            module->data_size += align_size(HBS_STR_SIZE(hbs_str_len(operand->data.string.string)));
+            size += align_size(HBS_STR_SIZE(hbs_str_len(operand->data.string.string)));
             break;
         case handlebars_operand_type_array:
-            module->data_size += align_size(sizeof(struct handlebars_operand_string) * operand->data.array.count);
+            size += align_size(sizeof(struct handlebars_operand_string) * operand->data.array.count);
             for( i = 0; i < operand->data.array.count; i++ ) {
-                module->data_size += align_size(HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string)));
+                size += align_size(HBS_STR_SIZE(hbs_str_len(operand->data.array.array[i].string)));
             }
             break;
         default:
             // nothing
             break;
     }
+
+    return size;
 }
 
-static void calculate_size_opcode(struct handlebars_module * module, struct handlebars_opcode * opcode)
+static size_t calculate_size_opcode(struct handlebars_module * module, struct handlebars_opcode * opcode)
 {
-    module->size += sizeof(struct handlebars_opcode);
+    size_t size = 0;
+
+    size += sizeof(struct handlebars_opcode);
     module->opcode_count++;
 
-    calculate_size_operand(module, &opcode->op1);
-    calculate_size_operand(module, &opcode->op2);
-    calculate_size_operand(module, &opcode->op3);
-    calculate_size_operand(module, &opcode->op4);
+    size += calculate_size_operand(module, &opcode->op1);
+    size += calculate_size_operand(module, &opcode->op2);
+    size += calculate_size_operand(module, &opcode->op3);
+    size += calculate_size_operand(module, &opcode->op4);
+
+    return size;
 }
 
-static void calculate_size_program(struct handlebars_module * module, struct handlebars_program * program)
+static size_t calculate_size_program(struct handlebars_module * module, struct handlebars_program * program)
 {
     size_t i;
+    size_t size = 0;
 
     // Increment for self
-    module->size += sizeof(struct handlebars_module_table_entry);
+    size += sizeof(struct handlebars_module_table_entry);
     module->program_count++;
 
     // Increment for children
     for( i = 0; i < program->children_length; i++ ) {
-        calculate_size_program(module, program->children[i]);
+        size += calculate_size_program(module, program->children[i]);
     }
 
     // Increment for opcodes
     for( i = 0; i < program->opcodes_length; i++ ) {
-        calculate_size_opcode(module, program->opcodes[i]);
+        size += calculate_size_opcode(module, program->opcodes[i]);
     }
 
     // Insert return opcode
     struct handlebars_opcode opcode = {0};
     opcode.type = handlebars_opcode_type_return;
-    calculate_size_opcode(module, &opcode);
+    size += calculate_size_opcode(module, &opcode);
+
+    return size;
 }
 
 static void serialize_operand(struct handlebars_module * module, struct handlebars_operand * operand)
@@ -247,13 +245,11 @@ struct handlebars_module * handlebars_program_serialize(
     struct handlebars_module * module = handlebars_talloc_zero(context, struct handlebars_module);
     memcpy(&module->header, "HBSCM", sizeof("HBSCM"));
     module->version = handlebars_version();
-    module->size = sizeof(struct handlebars_module);
     module->flags = program->flags;
     time(&module->ts);
 
     // Calculate size
-    calculate_size_program(module, program);
-    module->size += module->data_size;
+    module->size = sizeof(struct handlebars_module) + calculate_size_program(module, program);
 
     // Reallocate buffer
     module = handlebars_talloc_realloc_size(context, module, module->size);
@@ -261,18 +257,20 @@ struct handlebars_module * handlebars_program_serialize(
     talloc_set_type(module, struct handlebars_module);
 
     // Setup pointers
-    module->programs = PTR_ADD(module, sizeof(struct handlebars_module));
-    module->opcodes = PTR_ADD(module->programs, (sizeof(struct handlebars_module_table_entry) * module->program_count));
-    module->data = PTR_ADD(module->opcodes, (sizeof(struct handlebars_opcode) * module->opcode_count));
+    size_t offset = 0;
+    module->programs = (void *) &module->data[offset];
+    offset += sizeof(struct handlebars_module_table_entry) * module->program_count;
+    module->opcodes = (void *) &module->data[offset];
+    offset += sizeof(struct handlebars_opcode) * module->opcode_count;
 
     // Reset counts - use as index
 #ifndef NDEBUG
     size_t program_count = module->program_count;
     size_t opcode_count = module->opcode_count;
-    size_t data_size = module->data_size;
 #endif
 
-    module->program_count = module->opcode_count = module->data_size = 0;
+    module->program_count = module->opcode_count = 0;
+    module->data_offset = offset;
 
     // Copy data
     serialize_program(module, program);
@@ -280,7 +278,7 @@ struct handlebars_module * handlebars_program_serialize(
 #ifndef NDEBUG
     assert(module->program_count == program_count);
     assert(module->opcode_count == opcode_count);
-    assert(module->data_size == data_size);
+    assert(module->data_offset + sizeof(struct handlebars_module) == module->size);
 #endif
 
     return module;
@@ -326,7 +324,6 @@ void handlebars_module_normalize_pointers(struct handlebars_module * module, voi
 
     PATCH(module->programs, baseaddr);
     PATCH(module->opcodes, baseaddr);
-    PATCH(module->data, baseaddr); // TBH we can probably zero this out
 
     module->addr = baseaddr;
 }
@@ -360,7 +357,6 @@ void handlebars_module_patch_pointers(struct handlebars_module * module)
         return;
     }
 
-    PATCH(module->data, baseaddr); // TBH we can probably zero this out
     PATCH(module->programs, baseaddr);
     PATCH(module->opcodes, baseaddr);
 

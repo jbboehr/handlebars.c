@@ -48,6 +48,17 @@ struct handlebars_context;
 #define YY_NO_UNISTD_H 1
 #define YYLTYPE handlebars_locinfo
 
+HBS_ATTR_CONST
+static inline size_t handlebars_align_size(size_t size, size_t alignment)
+{
+    size_t rem = size % alignment;
+    if (rem == 0) {
+        return size;
+    } else {
+        return size + alignment - rem;
+    }
+}
+
 HBS_EXTERN_C_END
 
 #endif

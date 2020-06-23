@@ -134,30 +134,19 @@ struct table_entry {
     void * data;
 };
 
-static inline size_t align_size(size_t size)
-{
-    size_t pages = (size / page_size);
-    if( size % page_size != 0 ) {
-        pages++;
-    }
-    return pages * page_size;
-}
-
 static inline void * append(struct handlebars_cache_mmap * intern, void * source, size_t size)
 {
+    size_t aligned_size = handlebars_align_size(size + PADDING, sizeof(void *));
     void * addr = (char *) intern->data + intern->data_length;
-    uintptr_t align = (uintptr_t) (void *) addr % 8;
-    if (align > 0) {
-        memset(addr, 0, align);
-        addr = (char *) addr + (8 - align);
-        intern->data_length += (8 - align);
-    }
-    if( intern->data_length + size + PADDING >= intern->data_size ) {
+    assert(((uintptr_t) addr) % sizeof(void *) == 0);
+    if( intern->data_length + aligned_size >= intern->data_size ) {
         return NULL;
     }
-    intern->data_length += size + PADDING;
+    intern->data_length += aligned_size;
     memcpy(addr, source, size);
-    memset((char *) addr + size, 0, PADDING);
+    if (aligned_size > size) {
+        memset((char *) addr + size, 0, aligned_size - size);
+    }
     return addr;
 }
 
@@ -456,9 +445,9 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 #endif
 
     // Calculate sizes
-    size_t intern_size = align_size(sizeof(struct handlebars_cache_mmap));
-    size_t shm_size = align_size(size);
-    size_t table_size = align_size(entries * sizeof(struct table_entry *));
+    size_t intern_size = handlebars_align_size(sizeof(struct handlebars_cache_mmap), page_size);
+    size_t shm_size = handlebars_align_size(size, page_size);
+    size_t table_size = handlebars_align_size(entries * sizeof(struct table_entry *), page_size);
     size_t data_size = shm_size - table_size - intern_size;
 
     if( table_size >= shm_size ) {

@@ -56,7 +56,7 @@ struct handlebars_string * handlebars_module_print(
         "VERSION: %d\n"
         "ADDR: %p\n"
         "SIZE: %zu\n"
-        "DATA SIZE: %zu\n"
+        "DATA OFFSET: %zu\n"
         "TS: %s" // "\n"
         "FLAGS: %lu\n"
         "PROGRAMS: %zu\n"
@@ -66,7 +66,7 @@ struct handlebars_string * handlebars_module_print(
         module->version,
         module->addr,
         module->size,
-        module->data_size,
+        module->data_offset,
         ctime(&module->ts),
         module->flags,
         module->program_count,
