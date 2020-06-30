@@ -113,17 +113,10 @@ branches:
     - dev-1.x
 
 before_install:
-    - source ./.travis.sh
-    - travis_retry install_apt_packages
-    - travis_retry install_coveralls_lcov
+    - source ./.ci/travis.sh
+    - travis_retry before_install
 
-install:
-    - configure_handlebars
-    - make_handlebars
-    - install_handlebars
-
-script:
-    - test_handlebars
-
-after_success: upload_coverage
-after_failure: dump_logs
+install: install
+script: script
+after_success: after_success
+after_failure: after_failure

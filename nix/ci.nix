@@ -1,6 +1,6 @@
 let
   generateHandlebarsCTestsForPlatform = { pkgs, stdenv, ... }@args:
-    pkgs.callPackage ./default.nix (args // {
+    pkgs.callPackage ../default.nix (args // {
       inherit stdenv;
       WerrorSupport = true;
     });

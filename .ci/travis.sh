@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 
-# this might break stuff in travis. most of the work is run in subshells so
-# they should be safe
-#set -e -o pipefail
+set -o errexit -o pipefail
 
+source .ci/fold.sh
+
+export PS4=' \e[33m$(date +"%H:%M:%S"): $BASH_SOURCE@$LINENO ${FUNCNAME[0]} -> \e[0m'
 export CC="$MYCC"
 export PREFIX="$HOME/build"
 export PATH="$PREFIX/bin:$PATH"
-export CFLAGS="-I$PREFIX/include -I$PREFIX/include/json-c"
-export LDFLAGS="-L$PREFIX/lib $LDFLAGS"
-export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:/usr/lib/$ARCH-linux-gnu/pkgconfig"
+export CFLAGS="${CFLAGS} -I$PREFIX/include -I$PREFIX/include/json-c"
+export LDFLAGS="${LDFLAGS} -L$PREFIX/lib $LDFLAGS"
+export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$PREFIX/lib/pkgconfig:/usr/lib/$ARCH-linux-gnu/pkgconfig"
 export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
 export SUDO="sudo"
 
@@ -39,8 +40,14 @@ elif [ "$ARCH" = "ppc64le" ]; then
 	export ARCH="ppc64el"
 fi
 
+if [ "$VALGRIND" == "true" ]; then
+	export CHECK_TARGET=check-valgrind
+else
+	export CHECK_TARGET=check
+fi
+
 function install_apt_packages() (
-	set -e -o pipefail
+    set -o errexit -o pipefail -o xtrace
 
 	# we only need ubuntu-toolchain-r/test for gcc-10 now
 	if [ "$MYCC" = "gcc-10" ]; then
@@ -75,15 +82,27 @@ function install_apt_packages() (
 )
 
 function install_coveralls_lcov() (
-	set -e -o pipefail
+    set -o errexit -o pipefail -o xtrace
 
 	if [ ! -z "$GCOV" ]; then
 		gem install coveralls-lcov
 	fi
 )
 
+function before_install() (
+    set -o errexit -o pipefail
+
+    if [[ ! -z "${TRAVIS}" ]] || [[ ! -z "${GITHUB_RUN_ID}" ]]; then
+        cifold "install apt packages" install_apt_packages
+	fi
+
+	if [ ! -z "$GCOV" ]; then
+        cifold "install coveralls-lcov" install_coveralls_lcov
+    fi
+)
+
 function configure_handlebars() {
-	set -e -o pipefail
+    set -o errexit -o pipefail -o xtrace
 
 	# cflags
 	export CFLAGS="$CFLAGS -g -O2"
@@ -137,55 +156,69 @@ function configure_handlebars() {
 
 	autoreconf -v
 
-	echo "Configuring with flags: ${extra_configure_flags}"
-	trap "cat config.log" ERR
+	# trap "cat config.log" ERR
 	./configure ${extra_configure_flags}
-	trap - ERR
+	# trap - ERR
 }
 
 function make_handlebars() (
-	set -e -o pipefail
+    set -o errexit -o pipefail -o xtrace
 
 	make clean all
 )
 
 function install_handlebars() (
-	set -e -o pipefail
+    set -o errexit -o pipefail -o xtrace
 
 	make install
 )
 
+function install() (
+    set -o errexit -o pipefail
+
+    cifold "main configure step" configure_handlebars
+    cifold "main build step" make_handlebars
+    cifold "main install step" install_handlebars
+)
+
 function test_handlebars() (
-	set -e -o pipefail
+    set -o errexit -o pipefail -o xtrace
 
-	trap "dump_logs" ERR
-
-	if [ "$VALGRIND" == "true" ]; then
-		make check-valgrind
-	else
-		make check
-	fi
+	make ${CHECK_TARGET}
 
 	if [ ! -z "$GCOV" ]; then
 		make code-coverage-capture
 	fi
 
 	if [ -f ./bench/run.sh.log ]; then
-		echo "Printing benchmark results"
 		cat ./bench/run.sh.log
 	fi
 )
 
+function script() (
+    set -o errexit -o pipefail
+
+    cifold "main test suite" test_handlebars
+)
+
 function upload_coverage() (
-	set -e -o pipefail
+    set -o errexit -o pipefail -o xtrace
 
 	if [ ! -z "$GCOV" ]; then
 		coveralls-lcov handlebars-coverage.info
 	fi
 )
 
+function after_success() (
+    set -o errexit -o pipefail
+
+	if [ ! -z "$GCOV" ]; then
+        cifold "upload coverage" upload_coverage
+	fi
+)
+
 function dump_logs() (
-	set -e -o pipefail
+    #set -o errexit -o pipefail
 
 	for i in `find bench tests -name "*.log" 2>/dev/null`; do
 		echo "-- START ${i}";
@@ -193,3 +226,23 @@ function dump_logs() (
 		echo "-- END";
 	done
 )
+
+function after_failure() (
+    set -o errexit -o pipefail
+
+    cifold "dump logs" dump_logs
+)
+
+function run_all() (
+    set -o errexit -o pipefail
+    trap after_failure ERR
+    before_install
+    install
+    # before_script
+    script
+    after_success
+)
+
+if [ "$1" == "run-all-now" ]; then
+    run_all
+fi

@@ -44,7 +44,7 @@
   yamlSupport ? true
 }:
 
-pkgs.callPackage ./derivation.nix {
+pkgs.callPackage ./nix/derivation.nix {
   inherit stdenv;
   inherit handlebarscVersion handlebarscSrc handlebarscSha256;
   inherit mustache_spec handlebars_spec;
