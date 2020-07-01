@@ -111,6 +111,7 @@ branches:
     - master
     - travis
     - dev-1.x
+    - ci
 
 before_install:
     - source ./.ci/travis.sh

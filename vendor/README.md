@@ -15,6 +15,7 @@
 
 * Repo: [https://github.com/noporpoise/sort_r](https://github.com/noporpoise/sort_r)
 * Ref: [c8c65c1e183df8f3bd1b221e27653d9705ff4abe](https://github.com/noporpoise/sort_r/commit/c8c65c1e183df8f3bd1b221e27653d9705ff4abe)
+* Patches: https://github.com/noporpoise/sort_r/issues/12#issuecomment-652638632
 
 ## xxhash
 

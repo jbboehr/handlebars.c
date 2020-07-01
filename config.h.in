@@ -96,9 +96,6 @@
 /* Have PTHREAD_PRIO_INHERIT. */
 #undef HAVE_PTHREAD_PRIO_INHERIT
 
-/* Does the system have qsort_r()? */
-#undef HAVE_QSORT_R
-
 /* Define to 1 if the compiler supports statement expressions */
 #undef HAVE_STATEMENT_EXPRESSIONS
 

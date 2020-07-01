@@ -49,10 +49,6 @@
 #include "handlebars_rc.h"
 #endif
 
-#ifndef HAVE_QSORT_R
-#define sort_r sort_r_simple
-#endif
-
 
 
 struct handlebars_map {

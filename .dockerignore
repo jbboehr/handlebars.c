@@ -76,3 +76,7 @@ cmake-build/
 # docker
 *Dockerfile
 .dockerignore
+
+# nix
+**/nix/**
+**/*.nix

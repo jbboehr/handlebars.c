@@ -5,6 +5,7 @@ on:
         branches:
         - master
         - dev-1.x
+        - ci
 
 jobs:
     publish_alpine_docker_hub:

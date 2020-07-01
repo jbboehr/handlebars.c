@@ -278,7 +278,7 @@ static _SORT_R_INLINE void sort_r_simple(void *base, size_t nel, size_t w,
   {
     #if defined _SORT_R_LINUX
 
-      #if defined __GLIBC__ && ((__GLIBC__ < 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 8))
+      #if !defined __GLIBC__ || ((__GLIBC__ < 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 8))
 
         /* no qsort_r in glibc before 2.8, need to use nested qsort */
         sort_r_simple(base, nel, width, compar, arg);

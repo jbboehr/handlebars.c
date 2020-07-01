@@ -17500,13 +17500,6 @@ else
   as_fn_error $? "snprintf is required" "$LINENO" 5
 fi
 
-ac_fn_c_check_func "$LINENO" "qsort_r" "ac_cv_func_qsort_r"
-if test "x$ac_cv_func_qsort_r" = xyes; then :
-
-$as_echo "#define HAVE_QSORT_R /**/" >>confdefs.h
-
-fi
-
 
 # Checks for typedefs, structures, and compiler characteristics
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for an ANSI C-conforming const" >&5
