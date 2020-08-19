@@ -3,6 +3,7 @@ let
     pkgs.callPackage ../default.nix (args // {
       inherit stdenv;
       WerrorSupport = true;
+      check = pkgs.callPackage ./check.nix {};
     });
 
   generateHandlebarsCTestsForPlatform2 = { pkgs, ... }@args:

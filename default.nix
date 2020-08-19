@@ -26,6 +26,8 @@
     sha256 = "0c4f0aydy5ni3skbyvsrg6yskvljmsrqhhpx54lk0jlwblqziah4";
   }))) {},
 
+  check ? pkgs.callPackage ./nix/check.nix {},
+
   checkSupport ? true,
   cmakeSupport ? false,
   debugSupport ? false,
@@ -45,7 +47,7 @@
 }:
 
 pkgs.callPackage ./nix/derivation.nix {
-  inherit stdenv;
+  inherit stdenv check;
   inherit handlebarscVersion handlebarscSrc handlebarscSha256;
   inherit mustache_spec handlebars_spec;
   inherit checkSupport cmakeSupport debugSupport devSupport doxygenSupport hardeningSupport jsonSupport lmdbSupport ltoSupport noRefcountingSupport pthreadSupport sharedSupport staticSupport WerrorSupport valgrindSupport yamlSupport;
