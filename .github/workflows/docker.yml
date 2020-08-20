@@ -6,9 +6,10 @@ on:
         - master
         - dev-1.x
         - ci
+        - github-actions
 
 jobs:
-    publish_alpine_docker_hub:
+    publish_alpine:
         runs-on: ubuntu-20.04
         steps:
         - uses: actions/checkout@v2
@@ -24,12 +25,6 @@ jobs:
             tag_with_ref: true
             tag_with_sha: true
             add_git_labels: true
-    publish_alpine_github_packages:
-        runs-on: ubuntu-20.04
-        steps:
-        - uses: actions/checkout@v2
-        - name: Checkout submodules
-          uses: textbook/git-checkout-submodule-action@master
         - name: Publish to GitHub Packages
           uses: docker/build-push-action@v1
           with:
@@ -41,3 +36,61 @@ jobs:
             tag_with_ref: true
             tag_with_sha: true
             add_git_labels: true
+    publish_debian:
+        runs-on: ubuntu-20.04
+        steps:
+        - uses: actions/checkout@v2
+        - name: Checkout submodules
+          uses: textbook/git-checkout-submodule-action@master
+        - name: Publish to Docker Hub
+          uses: docker/build-push-action@v1
+          with:
+            dockerfile: .github/debian.Dockerfile
+            username: ${{ secrets.DOCKER_HUB_USERNAME }}
+            password: ${{ secrets.DOCKER_HUB_TOKEN }}
+            repository: jbboehr/handlebars.c
+            tag_with_ref: false
+            tag_with_sha: false
+            add_git_labels: true
+            tags: debian
+        - name: Publish to GitHub Packages
+          uses: docker/build-push-action@v1
+          with:
+            dockerfile: .github/debian.Dockerfile
+            username: ${{ secrets.GH_PKG_USERNAME }}
+            password: ${{ secrets.GH_PKG_TOKEN }}
+            registry: docker.pkg.github.com
+            repository: jbboehr/handlebars.c/handlebarsc
+            tag_with_ref: false
+            tag_with_sha: false
+            add_git_labels: true
+            tags: debian
+    publish_fedora:
+        runs-on: ubuntu-20.04
+        steps:
+        - uses: actions/checkout@v2
+        - name: Checkout submodules
+          uses: textbook/git-checkout-submodule-action@master
+        - name: Publish to Docker Hub
+          uses: docker/build-push-action@v1
+          with:
+            dockerfile: .github/fedora.Dockerfile
+            username: ${{ secrets.DOCKER_HUB_USERNAME }}
+            password: ${{ secrets.DOCKER_HUB_TOKEN }}
+            repository: jbboehr/handlebars.c
+            tag_with_ref: false
+            tag_with_sha: false
+            add_git_labels: true
+            tags: fedora
+        - name: Publish to GitHub Packages
+          uses: docker/build-push-action@v1
+          with:
+            dockerfile: .github/fedora.Dockerfile
+            username: ${{ secrets.GH_PKG_USERNAME }}
+            password: ${{ secrets.GH_PKG_TOKEN }}
+            registry: docker.pkg.github.com
+            repository: jbboehr/handlebars.c/handlebarsc
+            tag_with_ref: false
+            tag_with_sha: false
+            add_git_labels: true
+            tags: fedora

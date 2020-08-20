@@ -1,14 +1,25 @@
 
-ARG BASE_IMAGE=alpine:latest
+
+ARG BASE_IMAGE=debian:buster
 
 # image0
 FROM ${BASE_IMAGE}
-WORKDIR /srv/handlebars.c
+WORKDIR /build/handlebars.c
 
-RUN apk update && \
-    apk --no-cache add alpine-sdk automake autoconf libtool talloc-dev json-c-dev yaml-dev \
-        pcre-dev check-dev bats
+RUN apt-get update && apt-get install -y \
+        autoconf \
+        automake \
+        gcc \
+        git \
+        libjson-c-dev \
+        libtalloc-dev \
+        libyaml-dev \
+        libtool \
+        m4 \
+        make \
+        pkg-config
 ADD . .
+RUN autoreconf -fiv
 RUN ./configure \
         --prefix /usr/local/ \
         --enable-lto \
@@ -33,6 +44,9 @@ RUN make install
 # image1
 FROM ${BASE_IMAGE}
 WORKDIR /srv/
-RUN apk --no-cache add talloc json-c yaml
+RUN apt-get update && apt-get install -y \
+        libjson-c-dev \
+        libtalloc-dev \
+        libyaml-dev
 COPY --from=0 /usr/local/bin/handlebarsc /usr/local/bin/handlebarsc
 ENTRYPOINT ["/usr/local/bin/handlebarsc"]

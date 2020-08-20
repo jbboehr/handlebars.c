@@ -74,8 +74,8 @@ cmake-build/
 **/vgcore.*
 
 # docker
-*Dockerfile
-.dockerignore
+**/*Dockerfile
+**/.dockerignore
 
 # nix
 **/nix/**

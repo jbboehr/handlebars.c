@@ -1,14 +1,27 @@
 
-ARG BASE_IMAGE=alpine:latest
+ARG BASE_IMAGE=fedora:latest
 
 # image0
 FROM ${BASE_IMAGE}
-WORKDIR /srv/handlebars.c
+WORKDIR /build/handlebars.c
 
-RUN apk update && \
-    apk --no-cache add alpine-sdk automake autoconf libtool talloc-dev json-c-dev yaml-dev \
-        pcre-dev check-dev bats
+# handlebars.c
+RUN dnf groupinstall 'Development Tools' -y
+RUN dnf install \
+    git-all \
+    gcc \
+    automake \
+    autoconf \
+    libtool \
+    libyaml-devel \
+    json-c-devel \
+    libtalloc-devel \
+    pcre-devel \
+    check-devel \
+    bats \
+    -y
 ADD . .
+RUN autoreconf -fiv
 RUN ./configure \
         --prefix /usr/local/ \
         --enable-lto \
@@ -28,11 +41,12 @@ RUN ./configure \
         CFLAGS="-O3"
 RUN make
 RUN make check
-RUN make install
+RUN sudo make install
+RUN sudo ldconfig
 
 # image1
 FROM ${BASE_IMAGE}
 WORKDIR /srv/
-RUN apk --no-cache add talloc json-c yaml
+RUN dnf install libyaml json-c libtalloc -y
 COPY --from=0 /usr/local/bin/handlebarsc /usr/local/bin/handlebarsc
 ENTRYPOINT ["/usr/local/bin/handlebarsc"]
