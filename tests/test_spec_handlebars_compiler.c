@@ -701,7 +701,7 @@ START_TEST(handlebars_spec_compiler)
                 test->suite_name,
                 test->description, test->it, test->flags,
                 test->tmpl, hbs_str_val(test->expected), hbs_str_val(actual));
-            ck_abort_msg(tmp);
+            ck_abort_msg("%s", tmp);
         }
     /* } */
 }

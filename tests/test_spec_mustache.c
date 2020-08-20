@@ -220,7 +220,7 @@ START_TEST(test_ast_to_string_on_mustache_spec)
 
     // Check error
     if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(context));
+        ck_assert_msg(0, "%s", handlebars_error_msg(context));
     }
 
     ast_str = handlebars_ast_to_string(context, ast);
@@ -240,7 +240,7 @@ START_TEST(test_ast_to_string_on_mustache_spec)
             expected,
             actual
         );
-        ck_abort_msg(tmp);
+        ck_abort_msg("%s", tmp);
     }
 
     handlebars_string_delref(origtmpl);
@@ -276,7 +276,7 @@ START_TEST(test_mustache_spec)
 
     // Check error
     if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(context));
+        ck_assert_msg(0, "%s", handlebars_error_msg(context));
     }
 
     // Compile
@@ -284,7 +284,7 @@ START_TEST(test_mustache_spec)
     handlebars_compiler_compile(compiler, ast);
 
     if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(context));
+        ck_assert_msg(0, "%s", handlebars_error_msg(context));
     }
 
     // Serialize
@@ -319,7 +319,7 @@ START_TEST(test_mustache_spec)
 
     // Check error
     if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(context));
+        ck_assert_msg(0, "%s", handlebars_error_msg(context));
     }
 
     ck_assert_ptr_ne(buffer, NULL);
@@ -345,7 +345,7 @@ START_TEST(test_mustache_spec)
             test->expected,
             hbs_str_val(buffer)
         );
-        ck_abort_msg(tmp);
+        ck_abort_msg("%s", tmp);
     }
 
     // ugh

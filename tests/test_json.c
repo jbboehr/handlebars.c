@@ -279,7 +279,7 @@ START_TEST(test_parse_error_json)
     if( handlebars_setjmp_ex(context, &buf) ) {
         char * error = NULL;
         if( 0 != regex_compare("^JSON Parse error", handlebars_error_msg(context), &error) ) {
-            ck_abort_msg(error);
+            ck_abort_msg("%s", error);
         }
         return;
     }

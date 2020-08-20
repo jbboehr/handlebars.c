@@ -53,14 +53,14 @@ static struct handlebars_string * execute_template(const char *template)
     // Check error
     if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
         // @todo maybe check message
-        ck_abort_msg(handlebars_error_msg(context));
+        ck_abort_msg("%s", handlebars_error_msg(context));
         return NULL;
     }
 
     // Compile
     struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
     if( handlebars_error_num(context) != HANDLEBARS_SUCCESS ) {
-        ck_abort_msg(handlebars_error_msg(context));
+        ck_abort_msg("%s", handlebars_error_msg(context));
         return NULL;
     }
 
@@ -97,7 +97,7 @@ static struct handlebars_string * execute_template(const char *template)
     // Execute
     struct handlebars_string * buffer = handlebars_vm_execute(vm, module, input);
 
-    ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
 
     // Test iterator/count
     ck_assert_int_eq(1, handlebars_value_count(partials));
