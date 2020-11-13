@@ -1,67 +1,126 @@
 name: linux
 
 on:
-  push:
-    branches:
-    - master
-    - dev-1.x
-    - github-actions
-    - ci
-  pull_request:
-    branches:
-    - master
+    push:
+        branches:
+            - master
+            - dev-1.x
+            - github-actions
+            - ci
+    pull_request:
+        branches:
+            - master
 
 jobs:
-  build_linux_autotools_default_args:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-    - name: Checkout submodules
-      uses: textbook/git-checkout-submodule-action@master
-    - name: Install packages
-      run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev
-    - name: create configure
-      run: autoreconf -i
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
-    - name: dump logs
-      if: ${{ failure() }}
-      run: |
-        for i in `find tests -name "*.log" 2>/dev/null`; do
-            echo "-- START ${i}";
-            cat "${i}";
-            echo "-- END";
-        done
+    linux:
+        runs-on: ${{ matrix.DISTRO }}
+        strategy:
+            fail-fast: false
+            matrix:
+                DISTRO:
+                    - "ubuntu-16.04"
+                    - "ubuntu-18.04"
+                    - "ubuntu-20.04"
+                CC:
+                    - "gcc"
+                    - "clang"
+        steps:
+            - uses: actions/checkout@v2
+            - name: Checkout submodules
+              uses: textbook/git-checkout-submodule-action@master
+            - name: Install packages
+              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev ${{ matrix.CC }}
+            - run: autoreconf -i
+            - run: ./configure
+              env:
+                CC: ${{ matrix.CC }}
+                # json-c undeprecated json_object_object_get, but the version in xenial
+                # is too old, so let's silence deprecated warnings. le sigh.
+                CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
+            - run: make
+            - run: make check
+            - run: make distcheck
+            - name: dump logs
+              if: ${{ failure() }}
+              run: |
+                  for i in `find tests -name "*.log" 2>/dev/null`; do
+                      echo "-- START ${i}";
+                      cat "${i}";
+                      echo "-- END";
+                  done
 
-  build_linux_scanbuild:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-    - name: Checkout submodules
-      uses: textbook/git-checkout-submodule-action@master
-    - name: Install packages
-      run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev clang-tools html2text
-    - name: create configure
-      run: autoreconf -i
-    - name: configure
-      run: scan-build ./configure
-    - name: make
-      run: scan-build -o scan-build make
-    - name: check for issues
-      run: |
-        if [ -n "$(find scan-build -name '*.html')" ]; then
-          echo "scan-build found potential issues"
-          find scan-build -name 'index.html' -print -exec html2text \{} \;
-          exit 1
-        fi
-    - uses: actions/upload-artifact@v2
-      if: failure()
-      with:
-        name: scan-build
-        path: scan-build
+    linux_coverage:
+        runs-on: ${{ matrix.DISTRO }}
+        strategy:
+            fail-fast: false
+            matrix:
+                DISTRO:
+                    - "ubuntu-16.04"
+                    - "ubuntu-18.04"
+                    - "ubuntu-20.04"
+                CC:
+                    - "gcc"
+                    # - "clang"
+        steps:
+            - uses: actions/checkout@v2
+            - name: Checkout submodules
+              uses: textbook/git-checkout-submodule-action@master
+            - name: Install packages
+              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev lcov ${{ matrix.CC }}
+            - run: autoreconf -i
+            - run: ./configure --enable-code-coverage
+              env:
+                CC: ${{ matrix.CC }}
+                # json-c undeprecated json_object_object_get, but the version in xenial
+                # is too old, so let's silence deprecated warnings. le sigh.
+                CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
+            - run: make
+            - run: make check
+            - run: make code-coverage-capture
+            - name: Coveralls
+            #   if: ${{ matrix.COVERAGE == 'true' }}
+              uses: coverallsapp/github-action@master
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  path-to-lcov: ./handlebars-coverage.info
+            - name: dump logs
+              if: ${{ failure() }}
+              run: |
+                  for i in `find tests -name "*.log" 2>/dev/null`; do
+                      echo "-- START ${i}";
+                      cat "${i}";
+                      echo "-- END";
+                  done
+
+    linux_scanbuild:
+        runs-on: ${{ matrix.DISTRO }}
+        strategy:
+            fail-fast: false
+            matrix:
+                DISTRO:
+                    - "ubuntu-20.04"
+        steps:
+            - uses: actions/checkout@v2
+            - name: Checkout submodules
+              uses: textbook/git-checkout-submodule-action@master
+            - name: Install packages
+              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev clang-tools html2text
+            - run: autoreconf -i
+            - run: scan-build ./configure
+              env:
+                # json-c undeprecated json_object_object_get, but the version in xenial
+                # is too old, so let's silence deprecated warnings. le sigh.
+                CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
+            - run: scan-build -o scan-build make
+            - name: check for issues
+              run: |
+                  if [ -n "$(find scan-build -name '*.html')" ]; then
+                    echo "scan-build found potential issues"
+                    find scan-build -name 'index.html' -print -exec html2text \{} \;
+                    exit 1
+                  fi
+            - uses: actions/upload-artifact@v2
+              if: failure()
+              with:
+                  name: scan-build
+                  path: scan-build
