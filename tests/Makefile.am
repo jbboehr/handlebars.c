@@ -98,5 +98,4 @@ endif
 AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_LDFLAGS = -static  # for speed and Valgrind
 AM_CFLAGS = @CHECK_CFLAGS@
-LDADD = $(top_builddir)/src/libhandlebars.la @CHECK_LIBS@
-
+LDADD = $(top_builddir)/src/libhandlebars.la $(LIBS) $(CHECK_LIBS)

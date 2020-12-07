@@ -2,6 +2,7 @@
 EXTRA_DIST = handlebars.l handlebars.y handlebars_scanners.re handlebars_helpers_ht.gperf
 GENSOURCE = handlebars_config.h
 GENSOURCE2 =
+LIBADD = $(LIBS)
 
 if BISON
 handlebars.tab.h: handlebars.tab.c
@@ -123,6 +124,8 @@ libhandlebars_la_SOURCES = \
 if HANDLEBARS_MEMORY
 libhandlebars_la_SOURCES += handlebars_memory.c
 endif
+
+libhandlebars_la_LIBADD = $(LIBADD)
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libhandlebars_la_LDFLAGS = \
