@@ -2,7 +2,7 @@
   pkgs ? import <nixpkgs> {},
 
   handlebarscWithCmake ? false,
-  handlebarscVersion ? "v0.7.2",
+  handlebarscVersion ? "v0.7.3",
   handlebarscSrc ? ./.,
   handlebarscSha256 ? null,
 
