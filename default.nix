@@ -9,7 +9,7 @@
       sha256 = "sha256:186pvp1y5fid8mm8c7ycjzwzhv7i6s3hh33rbi05ggrs7r3as3yy";
   }) { inherit (pkgs) lib; }).gitignoreSource,
 
-  handlebarscVersion ? "v0.7.2",
+  handlebarscVersion ? "v0.7.3",
   handlebarscSha256 ? null,
   handlebarscSrc ? pkgs.lib.cleanSourceWith {
     filter = (path: type: (builtins.all (x: x != baseNameOf path) [".idea" ".git" "ci.nix" ".travis.sh" ".travis.yml" ".github"]));

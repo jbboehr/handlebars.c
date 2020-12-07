@@ -1,5 +1,5 @@
 /* ANSI-C code produced by gperf version 3.1 */
-/* Command-line: /nix/store/pki0gnnbvrwd8vp5dg5snca5jbvncayr-gperf-3.1/bin/gperf --struct-type --readonly-tables --compare-strncmp --compare-lengths --global-table --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf  */
+/* Command-line: /nix/store/zmi23k8aqagkgwqs39gc13mf99chiwp9-gperf-3.1/bin/gperf --struct-type --readonly-tables --compare-strncmp --compare-lengths --global-table --output-file=handlebars_helpers_ht.h handlebars_helpers_ht.gperf  */
 /* Computed positions: -k'1' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \

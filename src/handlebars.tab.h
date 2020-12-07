@@ -1,4 +1,4 @@
-/* A Bison parser, made by GNU Bison 3.5.1.  */
+/* A Bison parser, made by GNU Bison 3.7.1.  */
 
 /* Bison interface for Yacc-like parsers in C
 
@@ -31,8 +31,9 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
-/* Undocumented macros, especially those whose name start with YY_,
-   are private implementation details.  Do not rely on them.  */
+/* DO NOT RELY ON FEATURES THAT ARE NOT DOCUMENTED in the manual,
+   especially those whose name start with YY_ or yy_.  They are
+   private implementation details that can be changed or removed.  */
 
 #ifndef YY_HANDLEBARS_YY_HANDLEBARS_TAB_H_INCLUDED
 # define YY_HANDLEBARS_YY_HANDLEBARS_TAB_H_INCLUDED
@@ -62,47 +63,51 @@ extern int handlebars_yy_debug;
         struct handlebars_ast_node * inverse_chain;
     };
 
-#line 66 "handlebars.tab.h"
+#line 67 "handlebars.tab.h"
 
-/* Token type.  */
+/* Token kinds.  */
 #ifndef YYTOKENTYPE
 # define YYTOKENTYPE
   enum yytokentype
   {
-    END = 0,
-    BOOLEAN = 258,
-    CLOSE = 259,
-    CLOSE_RAW_BLOCK = 260,
-    CLOSE_SEXPR = 261,
-    CLOSE_UNESCAPED = 262,
-    COMMENT = 263,
-    CONTENT = 264,
-    DATA = 265,
-    END_RAW_BLOCK = 266,
-    EQUALS = 267,
-    ID = 268,
-    INVALID = 269,
-    INVERSE = 270,
-    NUMBER = 271,
-    OPEN = 272,
-    OPEN_BLOCK = 273,
-    OPEN_ENDBLOCK = 274,
-    OPEN_INVERSE = 275,
-    OPEN_PARTIAL = 276,
-    OPEN_RAW_BLOCK = 277,
-    OPEN_SEXPR = 278,
-    OPEN_UNESCAPED = 279,
-    SEP = 280,
-    STRING = 281,
-    CLOSE_BLOCK_PARAMS = 282,
-    NUL = 283,
-    OPEN_BLOCK_PARAMS = 284,
-    OPEN_INVERSE_CHAIN = 285,
-    UNDEFINED = 286,
-    OPEN_PARTIAL_BLOCK = 287,
-    LONG_COMMENT = 288,
-    SINGLE_STRING = 289
+    YYEMPTY = -2,
+    END = 0,                       /* "end of file"  */
+    YYerror = 256,                 /* error  */
+    YYUNDEF = 257,                 /* "invalid token"  */
+    BOOLEAN = 258,                 /* BOOLEAN  */
+    CLOSE = 259,                   /* "}}"  */
+    CLOSE_RAW_BLOCK = 260,         /* "}}}}"  */
+    CLOSE_SEXPR = 261,             /* ")"  */
+    CLOSE_UNESCAPED = 262,         /* "}}}"  */
+    COMMENT = 263,                 /* COMMENT  */
+    CONTENT = 264,                 /* CONTENT  */
+    DATA = 265,                    /* DATA  */
+    END_RAW_BLOCK = 266,           /* END_RAW_BLOCK  */
+    EQUALS = 267,                  /* "="  */
+    ID = 268,                      /* ID  */
+    INVALID = 269,                 /* INVALID  */
+    INVERSE = 270,                 /* INVERSE  */
+    NUMBER = 271,                  /* NUMBER  */
+    OPEN = 272,                    /* "{{"  */
+    OPEN_BLOCK = 273,              /* "{{#"  */
+    OPEN_ENDBLOCK = 274,           /* OPEN_ENDBLOCK  */
+    OPEN_INVERSE = 275,            /* "{{^"  */
+    OPEN_PARTIAL = 276,            /* "{{>"  */
+    OPEN_RAW_BLOCK = 277,          /* "{{{{"  */
+    OPEN_SEXPR = 278,              /* "("  */
+    OPEN_UNESCAPED = 279,          /* "{{{"  */
+    SEP = 280,                     /* SEP  */
+    STRING = 281,                  /* STRING  */
+    CLOSE_BLOCK_PARAMS = 282,      /* CLOSE_BLOCK_PARAMS  */
+    NUL = 283,                     /* "NULL"  */
+    OPEN_BLOCK_PARAMS = 284,       /* OPEN_BLOCK_PARAMS  */
+    OPEN_INVERSE_CHAIN = 285,      /* OPEN_INVERSE_CHAIN  */
+    UNDEFINED = 286,               /* "undefined"  */
+    OPEN_PARTIAL_BLOCK = 287,      /* "{{#>"  */
+    LONG_COMMENT = 288,            /* LONG_COMMENT  */
+    SINGLE_STRING = 289            /* SINGLE_STRING  */
   };
+  typedef enum yytokentype yytoken_kind_t;
 #endif
 
 /* Value type.  */
@@ -118,7 +123,7 @@ union YYSTYPE
     struct handlebars_yy_block_intermediate block_intermediate;
     struct handlebars_yy_block_params block_params;
 
-#line 122 "handlebars.tab.h"
+#line 127 "handlebars.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
