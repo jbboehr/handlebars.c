@@ -697,7 +697,7 @@ START_TEST(handlebars_spec_compiler)
                 test->suite_name,
                 test->description, test->it, test->flags,
                 test->tmpl, test->expected->val, actual->val);
-            ck_abort_msg(tmp);
+            ck_abort_msg("%s", tmp);
         }
     /* } */
 

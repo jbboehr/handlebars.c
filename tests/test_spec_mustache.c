@@ -258,7 +258,7 @@ START_TEST(test_ast_to_string_on_mustache_spec)
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(ctx));
+        ck_assert_msg(0, "%s", handlebars_error_msg(ctx));
     }
 
     ast_str = handlebars_ast_to_string(ctx, parser->program);
@@ -271,7 +271,7 @@ START_TEST(test_ast_to_string_on_mustache_spec)
                                                "" /*test->suite_name*/,
                                                test->name, test->desc, test->flags,
                                                test->tmpl, expected, actual);
-        ck_abort_msg(tmp);
+        ck_abort_msg("%s", tmp);
     }
 
 done:
@@ -322,7 +322,7 @@ START_TEST(test_mustache_spec)
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(ctx));
+        ck_assert_msg(0, "%s", handlebars_error_msg(ctx));
     }
 
     // Compile
@@ -330,7 +330,7 @@ START_TEST(test_mustache_spec)
     handlebars_compiler_compile(compiler, parser->program);
 
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(ctx));
+        ck_assert_msg(0, "%s", handlebars_error_msg(ctx));
     }
 
     // Serialize
@@ -368,7 +368,7 @@ START_TEST(test_mustache_spec)
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(ctx));
+        ck_assert_msg(0, "%s", handlebars_error_msg(ctx));
     }
 
     ck_assert_ptr_ne(vm->buffer, NULL);
@@ -379,7 +379,7 @@ START_TEST(test_mustache_spec)
                                                "" /*test->suite_name*/,
                                                test->name, test->desc, test->flags,
                                                test->tmpl, test->expected, vm->buffer->val);
-        ck_abort_msg(tmp);
+        ck_abort_msg("%s", tmp);
     }
 
     handlebars_context_dtor(ctx);

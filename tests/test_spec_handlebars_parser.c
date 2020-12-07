@@ -209,7 +209,7 @@ START_TEST(handlebars_spec_parser)
                 if( 0 == regex_compare(tmp, errmsgjs, &regex_error) ) {
                     // ok
                 } else {
-                    ck_assert_msg(0, regex_error);
+                    ck_assert_msg(0, "%s", regex_error);
                 }
                 free(tmp);
             } else {
@@ -222,7 +222,7 @@ START_TEST(handlebars_spec_parser)
             lesigh = handlebars_talloc_strdup_append(lesigh, errmsg);
             lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
             lesigh = handlebars_talloc_strdup_append(lesigh, test->tmpl);
-            ck_assert_msg(0, lesigh);
+            ck_assert_msg(0, "%s", lesigh);
         }
     } else {
         struct handlebars_string * output = handlebars_ast_print(HBSCTX(parser), parser->program);
@@ -238,10 +238,10 @@ START_TEST(handlebars_spec_parser)
                 lesigh = handlebars_talloc_strdup_append(lesigh, output->val);
                 lesigh = handlebars_talloc_strdup_append(lesigh, "\nTemplate: \n");
                 lesigh = handlebars_talloc_strdup_append(lesigh, test->tmpl);
-                ck_assert_msg(0, lesigh);
+                ck_assert_msg(0, "%s", lesigh);
             }
         } else {
-            ck_assert_msg(0, test->message);
+            ck_assert_msg(0, "%s", test->message);
         }
         
         handlebars_talloc_free(output);

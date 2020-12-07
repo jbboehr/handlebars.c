@@ -434,7 +434,7 @@ START_TEST(test_json_parse_error)
     if( handlebars_setjmp_ex(context, &buf) ) {
         char * error = NULL;
         if( 0 != regex_compare("^JSON Parse error", handlebars_error_msg(context), &error) ) {
-            ck_abort_msg(error);
+            ck_abort_msg("%s", error);
         }
         return;
     }
@@ -451,7 +451,7 @@ START_TEST(test_yaml_parse_error)
     if( handlebars_setjmp_ex(context, &buf) ) {
         char * error = NULL;
         if( 0 != regex_compare("^YAML Parse Error", handlebars_error_msg(context), &error) ) {
-            ck_abort_msg(error);
+            ck_abort_msg("%s", error);
         }
         return;
     }

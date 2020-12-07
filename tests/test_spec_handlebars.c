@@ -333,7 +333,7 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
 
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
-        ck_assert_msg(0, handlebars_error_msg(ctx));
+        ck_assert_msg(0, "%s", handlebars_error_msg(ctx));
     }
 
     ast_str = handlebars_ast_to_string(ctx, parser->program);
@@ -345,7 +345,7 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
                                                    "" /*test->suite_name*/,
                                                    test->description, test->it, test->flags,
                                                    test->tmpl, expected, actual);
-        ck_abort_msg(tmp);
+        ck_abort_msg("%s", tmp);
     }
 
 done:
@@ -447,7 +447,7 @@ static inline void run_test(struct generic_test * test, int _i)
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         // @todo maybe check message
-        ck_assert_msg(test->exception, handlebars_error_msg(ctx));
+        ck_assert_msg(test->exception, "%s", handlebars_error_msg(ctx));
         goto done;
     }
 
@@ -560,14 +560,14 @@ static inline void run_test(struct generic_test * test, int _i)
             if( 0 == regex_compare(tmp, handlebars_error_msg(HBSCTX(vm)), &regex_error) ) {
                 // ok
             } else {
-                ck_assert_msg(0, regex_error);
+                ck_assert_msg(0, "%s", regex_error);
             }
             free(tmp);
         } else {
             ck_assert_str_eq(test->message, handlebars_error_msg(HBSCTX(vm)));
         }
     } else {
-        ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
+        ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
         ck_assert_ptr_ne(test->expected, NULL);
         ck_assert_ptr_ne(vm->buffer, NULL);
 
@@ -577,7 +577,7 @@ static inline void run_test(struct generic_test * test, int _i)
                                                    "" /*test->suite_name*/,
                                                    test->description, test->it, test->flags,
                                                    test->tmpl, test->expected, vm->buffer->val);
-            ck_abort_msg(tmp);
+            ck_abort_msg("%s", tmp);
         }
     }
 

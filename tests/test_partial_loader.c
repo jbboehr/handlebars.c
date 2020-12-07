@@ -64,14 +64,14 @@ static struct handlebars_string * execute_template(const char *template)
     // Check error
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
         // @todo maybe check message
-        ck_abort_msg(handlebars_error_msg(ctx));
+        ck_abort_msg("%s", handlebars_error_msg(ctx));
         goto done;
     }
 
     // Compile
     handlebars_compiler_compile(compiler, parser->program);
     if( handlebars_error_num(ctx) != HANDLEBARS_SUCCESS ) {
-        ck_abort_msg(handlebars_error_msg(ctx));
+        ck_abort_msg("%s", handlebars_error_msg(ctx));
         goto done;
     }
 
@@ -97,7 +97,7 @@ static struct handlebars_string * execute_template(const char *template)
     // Execute
     handlebars_vm_execute(vm, module, context);
 
-    ck_assert_msg(handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_msg("%s", handlebars_error_msg(HBSCTX(vm)) == NULL, handlebars_error_msg(HBSCTX(vm)));
 
     retval = talloc_steal(NULL, vm->buffer);
 
