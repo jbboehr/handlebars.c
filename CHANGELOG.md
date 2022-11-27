@@ -7,14 +7,19 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 ## [Unreleased]
 
 ### Changed
-- Updated handlebars-spec to v104.7.6 (handlebars.js v4.7.6)
+- Updated handlebars-spec to v4.7.7
 - The executable and the test suite are now licensed under the AGPLv3 or later. The
   library remains licensed under the LGPLv2.1 or later.
+- Various improvements and cleanup
 
 ### Fixed
 - Segmentation fault when attempting to use unimplemented inline partials in the VM
 - Empty raw block no longer has a parse error
 - Access of uninitialized memory in partials related to indentation
+
+### Added
+- Partial blocks support
+- Improved mustache compatibility
 
 ## [0.7.3] - 2020-12-06
 
