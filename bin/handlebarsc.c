@@ -676,7 +676,8 @@ static int do_execute(void)
     if( input_data_name ) {
         size_t input_data_name_len = strlen(input_data_name);
         char * input_str = file_get_contents(input_data_name);
-        if (input_str && strlen(input_str)) {
+        size_t input_str_size = talloc_array_length(input_str);
+        if (input_str && input_str_size > 1) {
             if (handlebars_value_is_empty(input) && input_data_name_len > 5 && (0 == strcmp(input_data_name + input_data_name_len - 5, ".yaml") ||
                     0 == strcmp(input_data_name + input_data_name_len - 4, ".yml"))) {
 #ifdef HANDLEBARS_HAVE_YAML
@@ -689,7 +690,7 @@ static int do_execute(void)
             if (handlebars_value_is_empty(input)) {
 #ifdef HANDLEBARS_HAVE_JSON
                 // assume json
-                handlebars_value_init_json_string(ctx, input, input_str);
+                handlebars_value_init_json_stringl(ctx, input, input_str, input_str_size - 1);
                 if (convert_input) {
                     handlebars_value_convert(input);
                 }

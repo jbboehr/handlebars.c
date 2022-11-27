@@ -53,6 +53,20 @@ void handlebars_value_init_json_string(
     const char * json
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Initialize a value from a JSON string
+ * @param[in] ctx The handlebars context
+ * @param[in] value The value to initialize
+ * @param[in] json The JSON string
+ * @param[in] length The JSON string length
+ */
+void handlebars_value_init_json_stringl(
+    struct handlebars_context * ctx,
+    struct handlebars_value * value,
+    const char * json,
+    size_t length
+) HBS_ATTR_NONNULL_ALL;
+
 HBS_EXTERN_C_END
 
 #endif /* HANDLEBARS_JSON_H */

@@ -319,14 +319,42 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
     }
 }
 
-void handlebars_value_init_json_string(struct handlebars_context *ctx, struct handlebars_value * value, const char * json)
+static struct json_object *json_tokener_parse_verbose_length(const char *str, size_t length, enum json_tokener_error *error)
+{
+	struct json_tokener *tok;
+	struct json_object *obj;
+
+	tok = json_tokener_new();
+	if (!tok) {
+		return NULL;
+    }
+
+	obj = json_tokener_parse_ex(tok, str, length);
+	*error = tok->err;
+	if (tok->err != json_tokener_success) {
+		if (obj != NULL) {
+			json_object_put(obj);
+        }
+		obj = NULL;
+	}
+
+	json_tokener_free(tok);
+	return obj;
+}
+
+void handlebars_value_init_json_stringl(struct handlebars_context *ctx, struct handlebars_value * value, const char * json, size_t length)
 {
     enum json_tokener_error parse_err = json_tokener_success;
-    struct json_object * result = json_tokener_parse_verbose(json, &parse_err);
+    struct json_object * result = json_tokener_parse_verbose_length(json, length, &parse_err);
     if( parse_err == json_tokener_success ) {
         handlebars_value_init_json_object(ctx, value, result);
         json_object_put(result);
     } else {
         handlebars_throw(ctx, HANDLEBARS_ERROR, "JSON Parse error: %s", json_tokener_error_desc(parse_err));
     }
+}
+
+void handlebars_value_init_json_string(struct handlebars_context *ctx, struct handlebars_value * value, const char * json)
+{
+    handlebars_value_init_json_stringl(ctx, value, json, strlen(json) + 1);
 }
