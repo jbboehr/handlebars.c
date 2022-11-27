@@ -7,6 +7,7 @@
   check, subunit, bats, pcre, # testing deps
   autoconf-archive, bison, flex, gperf, lcov, re2c, valgrind, kcachegrind, bc, # dev deps
   handlebars_spec, mustache_spec, # my special stuff
+  gitignoreSource,
   # source options
   handlebarscVersion ? null,
   handlebarscSrc ? null,
@@ -30,18 +31,15 @@
   yamlSupport ? true
 }:
 
-let
-  orDefault = x: y: (if (!isNull x) then x else y);
-in
-
 stdenv.mkDerivation rec {
   name = "handlebars.c-${version}";
-  version = orDefault handlebarscVersion "v0.7.1";
+  version = "v0.7.1";
 
-  src = orDefault handlebarscSrc (fetchurl {
-    url = "https://github.com/jbboehr/handlebars.c/archive/${version}.tar.gz";
-    sha256 = orDefault handlebarscSha256 "1irss3zbpjshmlp0ng1pr796hqzs151yhj8y6gp2jwgin9ha2dr8";
-  });
+  src = lib.cleanSourceWith {
+    filter = (path: type: (builtins.all (x: x != baseNameOf path)
+        [".idea" ".git" "nix" "ci.nix" ".travis.sh" ".travis.yml" ".github" "flake.nix" "flake.lock"]));
+    src = gitignoreSource ../.;
+  };
 
   outputs = [ "out" "dev" "bin" ]
     ++ lib.optionals doxygenSupport [ "man" "doc" ]

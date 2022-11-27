@@ -9,6 +9,7 @@ doc/html
 doc/man
 src/handlebars_config.h
 handlebars-lmdb-cache-test.mdb*
+/result*
 
 # hackey rules
 bin/handlebarsc

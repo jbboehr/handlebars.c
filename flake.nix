@@ -3,12 +3,21 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
-    flake-utils.url = "github:numtide/flake-utils";
-    mustache_spec.url = "github:jbboehr/mustache-spec";
-    handlebars_spec.url = "github:jbboehr/handlebars-spec";
+    flake-utils = {
+      url = "github:numtide/flake-utils";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    mustache_spec = {
+      url = "github:jbboehr/mustache-spec";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    handlebars_spec = {
+      url = "github:jbboehr/handlebars-spec";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     gitignore = {
-        url = "github:hercules-ci/gitignore.nix";
-        inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:hercules-ci/gitignore.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
@@ -19,7 +28,7 @@
       in
       rec {
         packages = flake-utils.lib.flattenTree rec {
-          handlebars-c = pkgs.callPackage ./default.nix {
+          handlebars-c = pkgs.callPackage ./nix/derivation.nix {
             handlebars_spec = handlebars_spec.packages.${system}.handlebars-spec;
             mustache_spec = mustache_spec.packages.${system}.mustache-spec;
             inherit (gitignore.lib) gitignoreSource;
