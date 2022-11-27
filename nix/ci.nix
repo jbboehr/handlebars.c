@@ -35,12 +35,12 @@ builtins.mapAttrs (k: _v:
     };
 
     # 32bit (gcc only)
-    i686 = pkgs.recurseIntoAttrs {
-      gcc = generateHandlebarsCTestsForPlatform {
-        pkgs = pkgs.pkgsi686Linux;
-        stdenv = pkgs.pkgsi686Linux.stdenv;
-      };
-    };
+    # i686 = pkgs.recurseIntoAttrs {
+    #   gcc = generateHandlebarsCTestsForPlatform {
+    #     pkgs = pkgs.pkgsi686Linux;
+    #     stdenv = pkgs.pkgsi686Linux.stdenv;
+    #   };
+    # };
 
     # refcounting disabled
     norc = generateHandlebarsCTestsForPlatform3 {

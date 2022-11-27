@@ -136,5 +136,6 @@ stdenv.mkDerivation rec {
     homepage = https://github.com/jbboehr/handlebars.c;
     license = "LGPLv2.1+";
     maintainers = [ "John Boehr <jbboehr@gmail.com>" ];
+    mainProgram = "handlebarsc";
   };
 }

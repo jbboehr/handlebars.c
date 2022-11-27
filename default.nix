@@ -26,7 +26,8 @@
     sha256 = "088qzggkgl1v1a15l1plxdwiphh773q50k3w4pj0v45qc1cgyr7c";
   }))) {},
 
-  check ? pkgs.callPackage ./nix/check.nix {},
+  check ? pkgs.check,
+  # check ? pkgs.callPackage ./nix/check.nix {},
 
   checkSupport ? true,
   cmakeSupport ? false,
