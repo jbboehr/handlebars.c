@@ -4,13 +4,13 @@ All Notable changes to `handlebars.c` will be documented in this file.
 
 Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) principles.
 
-## [Unreleased]
+## [1.0.0]
 
 ### Changed
+- *Various improvements and cleanup*
 - Updated handlebars-spec to v4.7.7
 - The executable and the test suite are now licensed under the AGPLv3 or later. The
   library remains licensed under the LGPLv2.1 or later.
-- Various improvements and cleanup
 
 ### Fixed
 - Segmentation fault when attempting to use unimplemented inline partials in the VM
@@ -93,7 +93,8 @@ function to receive a new template with converted delimiters
 ### Changed
 - Changed the license from `LGPLv3` to `LGPLv2.1 or later`
 
-[Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/jbboehr/handlebars.c/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/jbboehr/handlebars.c/compare/v0.7.3...v1.0.0
 [0.7.3]: https://github.com/jbboehr/handlebars.c/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/jbboehr/handlebars.c/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/jbboehr/handlebars.c/compare/v0.7.0...v0.7.1

@@ -1,16 +1,16 @@
 
 # Define the package version numbers
-m4_define([HANDLEBARS_MAJOR], 0)
-m4_define([HANDLEBARS_MINOR], 7)
-m4_define([HANDLEBARS_PATCH], 3)
+m4_define([HANDLEBARS_MAJOR], 1)
+m4_define([HANDLEBARS_MINOR], 0)
+m4_define([HANDLEBARS_PATCH], 0)
 
 # Define the libtool version numbers; check the Autobook, Section 11.4.
-m4_define([HANDLEBARS_CURRENT], 8)
-m4_define([HANDLEBARS_REVISION], 1)
-m4_define([HANDLEBARS_AGE], 3)
+m4_define([HANDLEBARS_CURRENT], 9)
+m4_define([HANDLEBARS_REVISION], 0)
+m4_define([HANDLEBARS_AGE], 0)
 
 # Define the version of the specs
-m4_define([HANDLEBARS_SPEC_VERSION], [4.7.6])
+m4_define([HANDLEBARS_SPEC_VERSION], [4.7.7])
 m4_define([MUSTACHE_SPEC_VERSION], [1.1.3])
 
 # Initialize autoconf & automake.
