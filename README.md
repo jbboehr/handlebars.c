@@ -1,8 +1,6 @@
 # handlebars.c
 
-[![Build Status](https://travis-ci.com/jbboehr/handlebars.c.svg?branch=master)](https://travis-ci.com/jbboehr/handlebars.c)
-[![Linux Build Status](https://github.com/jbboehr/handlebars.c/workflows/linux/badge.svg)](https://github.com/jbboehr/handlebars.c/actions?query=workflow%3Alinux)
-[![OSX Build Status](https://github.com/jbboehr/handlebars.c/workflows/osx/badge.svg)](https://github.com/jbboehr/handlebars.c/actions?query=workflow%3Aosx)
+[![GitHub Build Status](https://github.com/jbboehr/handlebars.c/workflows/ci/badge.svg)](https://github.com/jbboehr/handlebars.c/actions?query=workflow%3Aci)
 [![Coverage Status](https://coveralls.io/repos/jbboehr/handlebars.c/badge.svg?branch=master&service=github)](https://coveralls.io/github/jbboehr/handlebars.c?branch=master)
 [![License](https://img.shields.io/badge/license-LGPLv2.1-brightgreen.svg)](LICENSE.md)
 

@@ -17,13 +17,13 @@
   },
 
   mustache_spec ? pkgs.callPackage (import ((fetchTarball {
-    url = https://github.com/jbboehr/mustache-spec/archive/5b85c1b58309e241a6f7c09fa57bd1c7b16fa9be.tar.gz;
+    url = "https://github.com/jbboehr/mustache-spec/archive/5b85c1b58309e241a6f7c09fa57bd1c7b16fa9be.tar.gz";
     sha256 = "1h9zsnj4h8qdnzji5l9f9zmdy1nyxnf8by9869plyn7qlk71gdyv";
   }))) {},
 
   handlebars_spec ? pkgs.callPackage (import ((fetchTarball {
-    url = https://github.com/jbboehr/handlebars-spec/archive/2dedb7ab0bb0088f2a8ea588759b1016ed37c82d.tar.gz;
-    sha256 = "0c4f0aydy5ni3skbyvsrg6yskvljmsrqhhpx54lk0jlwblqziah4";
+    url = "https://github.com/jbboehr/handlebars-spec/archive/3eb919f19988f37a539779c08342d2ce50aa75d0.tar.gz";
+    sha256 = "088qzggkgl1v1a15l1plxdwiphh773q50k3w4pj0v45qc1cgyr7c";
   }))) {},
 
   check ? pkgs.callPackage ./nix/check.nix {},

@@ -131,7 +131,7 @@ stdenv.mkDerivation rec {
   doCheck = checkSupport;
   checkTarget = if cmakeSupport then "test" else (if valgrindSupport then "check-valgrind" else "check");
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "C implementation of handlebars.js";
     homepage = https://github.com/jbboehr/handlebars.c;
     license = "LGPLv2.1+";

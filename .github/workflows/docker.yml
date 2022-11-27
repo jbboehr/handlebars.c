@@ -3,94 +3,117 @@ name: docker
 on:
     push:
         branches:
-        - master
-        - dev-1.x
-        - ci
-        - github-actions
+            - master
+            - ci
+            - github-actions
+            # - dev-1.x
 
 jobs:
-    publish_alpine:
-        runs-on: ubuntu-20.04
+    publish_alpine_docker_hub:
+        runs-on: ubuntu-latest
         steps:
-        - uses: actions/checkout@v2
-        - name: Checkout submodules
-          uses: textbook/git-checkout-submodule-action@master
-        - name: Publish to Docker Hub
-          uses: docker/build-push-action@v1
-          with:
-            dockerfile: .github/alpine.Dockerfile
-            username: ${{ secrets.DOCKER_HUB_USERNAME }}
-            password: ${{ secrets.DOCKER_HUB_TOKEN }}
-            repository: jbboehr/handlebars.c
-            tag_with_ref: true
-            tag_with_sha: true
-            add_git_labels: true
-        - name: Publish to GitHub Packages
-          uses: docker/build-push-action@v1
-          with:
-            dockerfile: .github/alpine.Dockerfile
-            username: ${{ secrets.GH_PKG_USERNAME }}
-            password: ${{ secrets.GH_PKG_TOKEN }}
-            registry: docker.pkg.github.com
-            repository: jbboehr/handlebars.c/handlebarsc
-            tag_with_ref: true
-            tag_with_sha: true
-            add_git_labels: true
-    publish_debian:
-        runs-on: ubuntu-20.04
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: Login to Docker Hub
+              uses: docker/login-action@v2
+              with:
+                  username: ${{ secrets.DOCKER_HUB_USERNAME }}
+                  password: ${{ secrets.DOCKER_HUB_TOKEN }}
+            - name: Publish to Docker Hub
+              uses: docker/build-push-action@v3
+              with:
+                  file: .github/alpine.Dockerfile
+                  push: true
+                  tags: |
+                    jbboehr/handlebars.c:latest
+                    jbboehr/handlebars.c:alpine
+
+    publish_alpine_gh_pkg:
+        runs-on: ubuntu-latest
         steps:
-        - uses: actions/checkout@v2
-        - name: Checkout submodules
-          uses: textbook/git-checkout-submodule-action@master
-        - name: Publish to Docker Hub
-          uses: docker/build-push-action@v1
-          with:
-            dockerfile: .github/debian.Dockerfile
-            username: ${{ secrets.DOCKER_HUB_USERNAME }}
-            password: ${{ secrets.DOCKER_HUB_TOKEN }}
-            repository: jbboehr/handlebars.c
-            tag_with_ref: false
-            tag_with_sha: false
-            add_git_labels: true
-            tags: debian
-        - name: Publish to GitHub Packages
-          uses: docker/build-push-action@v1
-          with:
-            dockerfile: .github/debian.Dockerfile
-            username: ${{ secrets.GH_PKG_USERNAME }}
-            password: ${{ secrets.GH_PKG_TOKEN }}
-            registry: docker.pkg.github.com
-            repository: jbboehr/handlebars.c/handlebarsc
-            tag_with_ref: false
-            tag_with_sha: false
-            add_git_labels: true
-            tags: debian
-    publish_fedora:
-        runs-on: ubuntu-20.04
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@v2
+              with:
+                registry: ghcr.io
+                username: ${{ github.repository_owner }}
+                password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Publish to GitHub Packages
+              uses: docker/build-push-action@v3
+              with:
+                  file: .github/alpine.Dockerfile
+                  push: true
+                  tags: |
+                    ghcr.io/jbboehr/handlebars.c/handlebarsc:latest
+                    ghcr.io/jbboehr/handlebars.c/handlebarsc:alpine
+
+    publish_debian_docker_hub:
+        runs-on: ubuntu-latest
         steps:
-        - uses: actions/checkout@v2
-        - name: Checkout submodules
-          uses: textbook/git-checkout-submodule-action@master
-        - name: Publish to Docker Hub
-          uses: docker/build-push-action@v1
-          with:
-            dockerfile: .github/fedora.Dockerfile
-            username: ${{ secrets.DOCKER_HUB_USERNAME }}
-            password: ${{ secrets.DOCKER_HUB_TOKEN }}
-            repository: jbboehr/handlebars.c
-            tag_with_ref: false
-            tag_with_sha: false
-            add_git_labels: true
-            tags: fedora
-        - name: Publish to GitHub Packages
-          uses: docker/build-push-action@v1
-          with:
-            dockerfile: .github/fedora.Dockerfile
-            username: ${{ secrets.GH_PKG_USERNAME }}
-            password: ${{ secrets.GH_PKG_TOKEN }}
-            registry: docker.pkg.github.com
-            repository: jbboehr/handlebars.c/handlebarsc
-            tag_with_ref: false
-            tag_with_sha: false
-            add_git_labels: true
-            tags: fedora
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: Login to Docker Hub
+              uses: docker/login-action@v2
+              with:
+                  username: ${{ secrets.DOCKER_HUB_USERNAME }}
+                  password: ${{ secrets.DOCKER_HUB_TOKEN }}
+            - name: Publish to Docker Hub
+              uses: docker/build-push-action@v3
+              with:
+                  file: .github/debian.Dockerfile
+                  push: true
+                  tags: "jbboehr/handlebars.c:alpine"
+
+    publish_debian_gh_pkg:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@v2
+              with:
+                registry: ghcr.io
+                username: ${{ github.repository_owner }}
+                password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Publish to GitHub Packages
+              uses: docker/build-push-action@v3
+              with:
+                  file: .github/debian.Dockerfile
+                  push: true
+                  tags: "ghcr.io/jbboehr/handlebars.c/handlebarsc:debian"
+
+    publish_fedora_docker_hub:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: Login to Docker Hub
+              uses: docker/login-action@v2
+              with:
+                  username: ${{ secrets.DOCKER_HUB_USERNAME }}
+                  password: ${{ secrets.DOCKER_HUB_TOKEN }}
+            - name: Publish to Docker Hub
+              uses: docker/build-push-action@v3
+              with:
+                  file: .github/fedora.Dockerfile
+                  push: true
+                  tags: "jbboehr/handlebars.c:fedora"
+
+    publish_fedora_gh_pkgs:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@v2
+              with:
+                registry: ghcr.io
+                username: ${{ github.repository_owner }}
+                password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Publish to GitHub Packages
+              uses: docker/build-push-action@v3
+              with:
+                  file: .github/fedora.Dockerfile
+                  push: true
+                  tags: "ghcr.io/jbboehr/handlebars.c/handlebarsc:fedora"

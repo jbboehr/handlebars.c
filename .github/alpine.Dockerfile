@@ -9,6 +9,7 @@ RUN apk update && \
     apk --no-cache add alpine-sdk automake autoconf libtool talloc-dev json-c-dev yaml-dev \
         pcre-dev check-dev bats
 ADD . .
+RUN autoreconf -fiv
 RUN ./configure \
         --prefix /usr/local/ \
         --enable-lto \

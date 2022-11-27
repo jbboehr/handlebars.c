@@ -19,8 +19,8 @@ in
 builtins.mapAttrs (k: _v:
   let
     path = builtins.fetchTarball {
-      url = https://github.com/NixOS/nixpkgs/archive/nixos-20.09.tar.gz;
-      name = "nixos-20.09";
+      url = https://github.com/NixOS/nixpkgs/archive/nixos-22.05.tar.gz;
+      name = "nixos-22.05";
     };
     pkgs = import (path) { system = k; };
     generateHandlebarsCTestsForPlatform3 = { ... }@args:

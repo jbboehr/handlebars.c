@@ -1,4 +1,4 @@
-name: linux
+name: ci
 
 on:
     push:
@@ -18,25 +18,25 @@ jobs:
             fail-fast: false
             matrix:
                 DISTRO:
-                    - "ubuntu-16.04"
                     - "ubuntu-18.04"
                     - "ubuntu-20.04"
+                    - "ubuntu-22.04"
                 CC:
                     - "gcc"
                     - "clang"
         steps:
-            - uses: actions/checkout@v2
-            - name: Checkout submodules
-              uses: textbook/git-checkout-submodule-action@master
+            - uses: actions/checkout@v3
+              with:
+                  submodules: recursive
             - name: Install packages
               run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev ${{ matrix.CC }}
             - run: autoreconf -i
             - run: ./configure
               env:
-                CC: ${{ matrix.CC }}
-                # json-c undeprecated json_object_object_get, but the version in xenial
-                # is too old, so let's silence deprecated warnings. le sigh.
-                CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
+                  CC: ${{ matrix.CC }}
+                  # json-c undeprecated json_object_object_get, but the version in xenial
+                  # is too old, so let's silence deprecated warnings. le sigh.
+                  CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
             - run: make
             - run: make check
             - run: make distcheck
@@ -55,30 +55,30 @@ jobs:
             fail-fast: false
             matrix:
                 DISTRO:
-                    - "ubuntu-16.04"
                     - "ubuntu-18.04"
                     - "ubuntu-20.04"
+                    - "ubuntu-22.04"
                 CC:
                     - "gcc"
                     # - "clang"
         steps:
-            - uses: actions/checkout@v2
-            - name: Checkout submodules
-              uses: textbook/git-checkout-submodule-action@master
+            - uses: actions/checkout@v3
+              with:
+                  submodules: recursive
             - name: Install packages
               run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev lcov ${{ matrix.CC }}
             - run: autoreconf -i
             - run: ./configure --enable-code-coverage
               env:
-                CC: ${{ matrix.CC }}
-                # json-c undeprecated json_object_object_get, but the version in xenial
-                # is too old, so let's silence deprecated warnings. le sigh.
-                CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
+                  CC: ${{ matrix.CC }}
+                  # json-c undeprecated json_object_object_get, but the version in xenial
+                  # is too old, so let's silence deprecated warnings. le sigh.
+                  CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
             - run: make
             - run: make check
             - run: make code-coverage-capture
             - name: Coveralls
-            #   if: ${{ matrix.COVERAGE == 'true' }}
+              #   if: ${{ matrix.COVERAGE == 'true' }}
               uses: coverallsapp/github-action@master
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -100,17 +100,17 @@ jobs:
                 DISTRO:
                     - "ubuntu-20.04"
         steps:
-            - uses: actions/checkout@v2
-            - name: Checkout submodules
-              uses: textbook/git-checkout-submodule-action@master
+            - uses: actions/checkout@v3
+              with:
+                  submodules: recursive
             - name: Install packages
               run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev clang-tools html2text
             - run: autoreconf -i
             - run: scan-build ./configure
               env:
-                # json-c undeprecated json_object_object_get, but the version in xenial
-                # is too old, so let's silence deprecated warnings. le sigh.
-                CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
+                  # json-c undeprecated json_object_object_get, but the version in xenial
+                  # is too old, so let's silence deprecated warnings. le sigh.
+                  CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
             - run: scan-build -o scan-build make
             - name: check for issues
               run: |
@@ -124,3 +124,43 @@ jobs:
               with:
                   name: scan-build
                   path: scan-build
+
+    build_osx_autotools_default_args:
+        runs-on: macos-latest
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  submodules: recursive
+            - name: Install packages
+              run: brew install autoconf automake bats-core json-c libtool libyaml lmdb pkg-config talloc check lcov pcre
+            - name: create configure
+              run: autoreconf -i
+            - name: configure
+              # disabling compiler warnings as error because of some weird issue with libtool and '-Wl,-fatal_warnings'
+              run: ./configure --disable-bison --disable-flex --disable-gperf --enable-compile-warnings=yes
+            - name: make
+              run: make
+            - name: make check
+              run: make check
+            - name: make distcheck
+              run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--disable-bison --disable-flex --disable-gperf --enable-compile-warnings=yes"
+            - name: dump logs
+              if: ${{ failure() }}
+              run: |
+                  for i in `find tests -name "*.log" 2>/dev/null`; do
+                      echo "-- START ${i}";
+                      cat "${i}";
+                      echo "-- END";
+                  done
+
+    nix:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  submodules: recursive
+            - uses: cachix/install-nix-action@v18
+              with:
+                  nix_path: nixpkgs=channel:nixos-22.05
+            - run: nix-build
+            - run: nix-build nix/ci.nix
