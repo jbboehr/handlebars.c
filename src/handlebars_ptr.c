@@ -36,7 +36,9 @@
 
 
 struct handlebars_ptr {
+#ifndef HANDLEBARS_NO_REFCOUNT
     struct handlebars_rc rc;
+#endif
     const char * typ;
     void * uptr;
     bool nofree;
@@ -75,7 +77,9 @@ struct handlebars_ptr * handlebars_ptr_ctor_ex(
 ) {
     struct handlebars_ptr * ptr = handlebars_talloc(ctx, struct handlebars_ptr);
     HANDLEBARS_MEMCHECK(ptr, ctx);
+#ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_rc_init(&ptr->rc);
+#endif
     ptr->typ = typ;
     ptr->nofree = nofree;
     ptr->uptr = uptr;

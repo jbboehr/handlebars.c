@@ -291,20 +291,24 @@ void handlebars_map_delref(struct handlebars_map * map)
 
 void handlebars_map_addref_ex(struct handlebars_map * map, const char * expr, const char * loc)
 {
+#ifndef HANDLEBARS_NO_REFCOUNT
     if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
         size_t rc = handlebars_rc_refcount(&map->rc);
         fprintf(stderr, "MAP ADDREF %p (%zu -> %zu) %s %s\n", map, rc, rc + 1, expr, loc);
     } // LCOV_EXCL_STOP
     handlebars_map_addref(map);
+#endif
 }
 
 void handlebars_map_delref_ex(struct handlebars_map * map, const char * expr, const char * loc)
 {
+#ifndef HANDLEBARS_NO_REFCOUNT
     if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
         size_t rc = handlebars_rc_refcount(&map->rc);
         fprintf(stderr, "MAP DELREF %p (%zu -> %zu) %s %s\n", map, rc, rc - 1, expr, loc);
     } // LCOV_EXCL_STOP
     handlebars_map_delref(map);
+#endif
 }
 
 #ifdef HANDLEBARS_ENABLE_DEBUG
@@ -523,9 +527,11 @@ struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool 
         size_t vec_capacity = 1 << map_choose_vec_capacity_log2(map->i + 1);
         struct handlebars_map * prev_map = map;
         map = handlebars_map_copy_ctor(prev_map, vec_capacity);
+#ifndef HANDLEBARS_NO_REFCOUNT
         if (handlebars_rc_refcount(&prev_map->rc) >= 1) { // ugh
             handlebars_map_addref(map);
         }
+#endif
         handlebars_map_delref(prev_map);
     }
 

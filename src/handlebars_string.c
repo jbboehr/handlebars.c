@@ -170,20 +170,24 @@ void handlebars_string_delref(struct handlebars_string * string)
 
 void handlebars_string_addref_ex(struct handlebars_string * string, const char * expr, const char * loc)
 {
+#ifndef HANDLEBARS_NO_REFCOUNT
     if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
         size_t rc = handlebars_rc_refcount(&string->rc);
         fprintf(stderr, "STR ADDREF %p (%zu -> %zu) %s %s\n", string, rc, rc + 1, expr, loc);
     } // LCOV_EXCL_STOP
     handlebars_string_addref(string);
+#endif
 }
 
 void handlebars_string_delref_ex(struct handlebars_string * string, const char * expr, const char * loc)
 {
+#ifndef HANDLEBARS_NO_REFCOUNT
     if (getenv("HANDLEBARS_RC_DEBUG")) { // LCOV_EXCL_START
         size_t rc = handlebars_rc_refcount(&string->rc);
         fprintf(stderr, "STR DELREF %p (%zu -> %zu) %s %s\n", string, rc, rc - 1, expr, loc);
     } // LCOV_EXCL_STOP
     handlebars_string_delref(string);
+#endif
 }
 
 #ifdef HANDLEBARS_ENABLE_DEBUG
@@ -211,7 +215,9 @@ static inline struct handlebars_string * separate_string(struct handlebars_strin
 
 void handlebars_string_immortalize(struct handlebars_string * string)
 {
+#ifndef HANDLEBARS_NO_REFCOUNT
     string->rc.refcount = UINT8_MAX;
+#endif
 }
 // }}} Reference Counting
 
@@ -750,9 +756,11 @@ struct handlebars_string * handlebars_string_indent(
     const struct handlebars_string * indent_str
 ) {
     struct handlebars_string * new_string = handlebars_string_init(context, string->len);
+#ifndef HANDLEBARS_NO_REFCOUNT
     if (handlebars_rc_refcount(&string->rc) > 0) {
         handlebars_string_addref(new_string);
     }
+#endif
     return handlebars_string_indent_append(context, new_string, string, indent_str);
 }
 
