@@ -15,18 +15,19 @@ let
       #clang = generateHandlebarsCTestsForPlatform (args // { stdenv = pkgs.clangStdenv; });
     };
 in
-builtins.mapAttrs (k: _v:
+builtins.mapAttrs
+  (k: _v:
   let
     path = builtins.fetchTarball {
-      url = https://github.com/NixOS/nixpkgs/archive/nixos-22.05.tar.gz;
-      name = "nixos-22.05";
+      url = https://github.com/NixOS/nixpkgs/archive/nixos-22.11.tar.gz;
+      name = "nixos-22.11";
     };
     pkgs = import (path) { system = k; };
     generateHandlebarsCTestsForPlatform3 = { ... }@args:
       generateHandlebarsCTestsForPlatform2 { inherit pkgs; } // args;
   in
   pkgs.recurseIntoAttrs {
-    std = generateHandlebarsCTestsForPlatform3 {};
+    std = generateHandlebarsCTestsForPlatform3 { };
 
     # cmake
     cmake = generateHandlebarsCTestsForPlatform3 {
@@ -95,8 +96,9 @@ builtins.mapAttrs (k: _v:
     #  inherit pkgs;
     # };
   }
-) {
-  x86_64-linux = {};
+  )
+{
+  x86_64-linux = { };
   # Uncomment to test build on macOS too
   # x86_64-darwin = {};
 }

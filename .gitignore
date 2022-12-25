@@ -10,6 +10,7 @@ doc/man
 src/handlebars_config.h
 handlebars-lmdb-cache-test.mdb*
 /result*
+.pre-commit-config.yaml
 
 # hackey rules
 bin/handlebarsc

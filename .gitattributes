@@ -28,5 +28,5 @@ build/*				linguist-generated=true linguist-vendored=true
 cmake/*				linguist-vendored=true
 cmake/config.h.in		linguist-vendored=false
 cmake/handlebars_config.h.in	linguist-vendored=false
-m4/*				linguist-vendored=true
+m4/*				linguist-generated=true linguist-vendored=true
 vendor/*			linguist-vendored=true

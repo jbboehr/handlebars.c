@@ -161,6 +161,18 @@ jobs:
                   submodules: recursive
             - uses: cachix/install-nix-action@v18
               with:
-                  nix_path: nixpkgs=channel:nixos-22.05
+                  nix_path: nixpkgs=channel:nixos-22.11
             - run: nix-build
             - run: nix-build nix/ci.nix
+
+    nix-flake:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  submodules: recursive
+            - uses: cachix/install-nix-action@v18
+              with:
+                  nix_path: nixpkgs=channel:nixos-22.11
+            - run: nix build -L
+            - run: nix flake check -L

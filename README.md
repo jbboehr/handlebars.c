@@ -4,7 +4,6 @@
 [![Coverage Status](https://coveralls.io/repos/jbboehr/handlebars.c/badge.svg?branch=master&service=github)](https://coveralls.io/github/jbboehr/handlebars.c?branch=master)
 [![License](https://img.shields.io/badge/license-LGPLv2.1-brightgreen.svg)](LICENSE.md)
 
-
 C implementation of [handlebars.js](https://github.com/wycats/handlebars.js/),
 developed in conjunction with [php-handlebars](https://github.com/jbboehr/php-handlebars)
 and [handlebars.php](https://github.com/jbboehr/handlebars.php).
