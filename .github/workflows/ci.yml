@@ -5,8 +5,7 @@ on:
         branches:
             - master
             - dev-1.x
-            - github-actions
-            - ci
+            - develop
     pull_request:
         branches:
             - master
@@ -18,9 +17,9 @@ jobs:
             fail-fast: false
             matrix:
                 DISTRO:
-                    - "ubuntu-18.04"
                     - "ubuntu-20.04"
                     - "ubuntu-22.04"
+                    - "ubuntu-latest"
                 CC:
                     - "gcc"
                     - "clang"
@@ -55,9 +54,9 @@ jobs:
             fail-fast: false
             matrix:
                 DISTRO:
-                    - "ubuntu-18.04"
                     - "ubuntu-20.04"
                     - "ubuntu-22.04"
+                    - "ubuntu-latest"
                 CC:
                     - "gcc"
                     # - "clang"
@@ -153,26 +152,65 @@ jobs:
                       echo "-- END";
                   done
 
-    nix:
+    nix-matrix:
         runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.set-matrix.outputs.matrix }}
         steps:
-            - uses: actions/checkout@v3
-              with:
-                  submodules: recursive
-            - uses: cachix/install-nix-action@v18
-              with:
-                  nix_path: nixpkgs=channel:nixos-22.11
-            - run: nix-build
-            - run: nix-build nix/ci.nix
+            -   uses: actions/checkout@v4
+            -   uses: cachix/install-nix-action@v26
+            -   id: set-matrix
+                name: Generate Nix Matrix
+                run: |
+                    set -Eeu
+                    matrix="$(nix eval --json '.#githubActions.matrix')"
+                    echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
-    nix-flake:
-        runs-on: ubuntu-latest
+    nix:
+        name: "nix (${{ matrix.name }})"
+        runs-on: ${{ matrix.os }}
+        needs: nix-matrix
+        strategy:
+            matrix: ${{fromJSON(needs.nix-matrix.outputs.matrix)}}
         steps:
-            - uses: actions/checkout@v3
-              with:
-                  submodules: recursive
-            - uses: cachix/install-nix-action@v18
-              with:
-                  nix_path: nixpkgs=channel:nixos-22.11
-            - run: nix build -L
-            - run: nix flake check -L
+            -   uses: actions/checkout@v4
+
+            -   name: Set Up Build Cache
+                uses: actions/cache@v4
+                id: nix-cache
+                with:
+                    path: /tmp/nix-store.nar
+                    key: nix-store.nar-${{ runner.os }}-${{ hashFiles('flake.lock') }}-${{ matrix.attr }}
+                    restore-keys: |
+                        nix-store.nar-${{ runner.os }}-${{ hashFiles('flake.lock') }}-${{ matrix.attr }}
+                        nix-store.nar-${{ runner.os }}-${{ hashFiles('flake.lock') }}-
+                        nix-store.nar-${{ runner.os }}-
+
+            -   uses: cachix/install-nix-action@v26
+                with:
+                    nix_path: nixpkgs=channel:nixos-23.11
+                    extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
+
+            -   name: Import Nix Store Cache
+                if: "steps.nix-cache.outputs.cache-hit == 'true'"
+                run: |
+                    nix-store --import < /tmp/nix-store.nar
+
+            -   run: sudo sysctl -w kernel.perf_event_paranoid=1
+
+            -   run: nix build -L ".#${{ matrix.attr }}"
+
+            #            -   run: nix flake check -L
+
+            # broken sigh
+            # -   name: Export Nix Store Cache
+            #     shell: bash
+            #     # partially based on https://github.com/NixOS/nix/issues/1245#issuecomment-282586759
+            #     run: |
+            #         drv="$(nix-store -qd "$(readlink result)")"
+            #         drvRefs="$( echo "$drv" | xargs nix-store -q --references )"
+            #         ( echo "$drvRefs" | grep '[.]drv$' | xargs nix-store -q --outputs ;
+            #           echo "$drvRefs" | grep -v '[.]drv$' ) | \
+            #             xargs nix-store -r | \
+            #             xargs nix-store -qR |
+            #             xargs nix-store --export > /tmp/nix-store.nar

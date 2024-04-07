@@ -4,9 +4,7 @@ on:
     push:
         branches:
             - master
-            - ci
-            - github-actions
-            # - dev-1.x
+            - develop
 
 jobs:
     publish_alpine_docker_hub:

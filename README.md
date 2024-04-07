@@ -88,7 +88,8 @@ docker pull docker.pkg.github.com/jbboehr/handlebars.c/handlebarsc:latest
 
 ## Usage
 
-```
+```console
+$ handlebarsc --help
 Usage: handlebarsc [OPTIONS]
 Example: handlebarsc -t foo.hbs -D bar.json
 

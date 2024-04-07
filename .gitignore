@@ -77,3 +77,6 @@ stamp-h2
 
 # valgrind?
 vgcore.*
+
+# nix
+.direnv
