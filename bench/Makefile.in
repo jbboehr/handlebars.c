@@ -13,6 +13,21 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
+# Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -107,11 +122,13 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/ax_ac_append_to_file.m4 \
 	$(top_srcdir)/m4/ax_compiler_flags_cflags.m4 \
 	$(top_srcdir)/m4/ax_compiler_flags_gir.m4 \
 	$(top_srcdir)/m4/ax_compiler_flags_ldflags.m4 \
+	$(top_srcdir)/m4/ax_compiler_vendor.m4 \
 	$(top_srcdir)/m4/ax_file_escapes.m4 \
 	$(top_srcdir)/m4/ax_gcc_builtin.m4 \
 	$(top_srcdir)/m4/ax_gcc_func_attribute.m4 \
 	$(top_srcdir)/m4/ax_gcc_var_attribute.m4 \
 	$(top_srcdir)/m4/ax_is_release.m4 \
+	$(top_srcdir)/m4/ax_prepend_flag.m4 \
 	$(top_srcdir)/m4/ax_prog_bison.m4 \
 	$(top_srcdir)/m4/ax_prog_bison_version.m4 \
 	$(top_srcdir)/m4/ax_prog_flex.m4 \
@@ -477,6 +494,7 @@ PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_CXX = @PTHREAD_CXX@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 RANLIB = @RANLIB@
 RE2C = @RE2C@

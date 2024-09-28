@@ -2,19 +2,23 @@
   description = "handlebars.c";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
     systems.url = "github:nix-systems/default";
     flake-utils = {
       url = "github:numtide/flake-utils";
       inputs.systems.follows = "systems";
     };
     mustache_spec = {
-      url = "github:jbboehr/mustache-spec";
-      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:mustache/spec/v1.1.3";
+      flake = false;
     };
     handlebars_spec = {
       url = "github:jbboehr/handlebars-spec";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.systems.follows = "systems";
+      inputs.gitignore.follows = "gitignore";
+      inputs.pre-commit-hooks.follows = "pre-commit-hooks";
+      inputs.flake-utils.follows = "flake-utils";
     };
     gitignore = {
       url = "github:hercules-ci/gitignore.nix";
@@ -23,6 +27,8 @@
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs-stable.follows = "nixpkgs";
+      inputs.gitignore.follows = "gitignore";
     };
     nix-github-actions = {
       url = "github:nix-community/nix-github-actions";
@@ -81,22 +87,30 @@
             inputsFrom = [package];
             buildInputs = with pkgs; [
               actionlint
+              autoconf
               autoconf-archive
+              bison
               clang-tools
               editorconfig-checker
+              flex
               lcov
               gdb
               valgrind
             ];
-            shellHook = ''
+            shellHook = with package.passthru; ''
               ${pre-commit-check.shellHook}
+              export handlebars_export_dir=${handlebars_spec}/share/handlebars-spec/export/
+              export handlebars_spec_dir=${handlebars_spec}/share/handlebars-spec/spec/
+              export handlebars_tokenizer_spec=${handlebars_spec}/share/handlebars-spec/spec/tokenizer.json
+              export handlebars_parser_spec=${handlebars_spec}/share/handlebars-spec/spec/parser.json
+              export mustache_spec_dir=${mustache_spec}/specs
             '';
           };
 
         makePackage = {...} @ args:
           pkgs.callPackage ./nix/derivation.nix ({
               handlebars_spec = handlebars_spec.packages.${system}.handlebars-spec;
-              mustache_spec = mustache_spec.packages.${system}.mustache-spec;
+              inherit mustache_spec;
               inherit (gitignore.lib) gitignoreSource;
             }
             // args);

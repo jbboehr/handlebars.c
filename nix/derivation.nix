@@ -79,7 +79,7 @@ stdenv.mkDerivation rec {
   };
 
   passthru = {
-    inherit stdenv;
+    inherit stdenv handlebars_spec mustache_spec;
   };
 
   outputs =
@@ -99,7 +99,7 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs =
     [makeWrapper]
-    ++ lib.optionals checkSupport [handlebars_spec mustache_spec check subunit bats]
+    ++ lib.optionals checkSupport [handlebars_spec check subunit bats]
     ++ lib.optional cmakeSupport cmake
     ++ lib.optionals (!cmakeSupport) [autoreconfHook autoconf automake libtool m4]
     ++ lib.optionals devSupport [autoconf-archive bc bison gperf flex kcachegrind lcov re2c valgrind]
@@ -112,7 +112,7 @@ stdenv.mkDerivation rec {
     ["--bindir=$(bin)/bin"]
     ++ lib.optionals checkSupport [
       "--with-handlebars-spec=${handlebars_spec}/share/handlebars-spec/"
-      "--with-mustache-spec=${mustache_spec}/share/mustache-spec/"
+      "--with-mustache-spec=${mustache_spec}/"
       "--enable-check"
       "--enable-pcre"
       "--enable-subunit"
@@ -163,7 +163,7 @@ stdenv.mkDerivation rec {
     export handlebars_spec_dir=${handlebars_spec}/share/handlebars-spec/spec/
     export handlebars_tokenizer_spec=${handlebars_spec}/share/handlebars-spec/spec/tokenizer.json
     export handlebars_parser_spec=${handlebars_spec}/share/handlebars-spec/spec/parser.json
-    export mustache_spec_dir=${mustache_spec}/share/mustache-spec/specs
+    export mustache_spec_dir=${mustache_spec}/specs
   '';
 
   doCheck = checkSupport;

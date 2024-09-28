@@ -14,8 +14,8 @@
 m4_ifndef([AC_CONFIG_MACRO_DIRS], [m4_defun([_AM_CONFIG_MACRO_DIRS], [])m4_defun([AC_CONFIG_MACRO_DIRS], [_AM_CONFIG_MACRO_DIRS($@)])])
 m4_ifndef([AC_AUTOCONF_VERSION],
   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
-m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.71],,
-[m4_warning([this file was generated for autoconf 2.71.
+m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.72],,
+[m4_warning([this file was generated for autoconf 2.72.
 You have another version of autoconf.  It may work, but is not guaranteed to.
 If you have problems, you may need to regenerate the build system entirely.
 To do so, use the procedure documented by the package, typically 'autoreconf'.])])
@@ -1261,11 +1261,13 @@ m4_include([m4/ax_compiler_flags.m4])
 m4_include([m4/ax_compiler_flags_cflags.m4])
 m4_include([m4/ax_compiler_flags_gir.m4])
 m4_include([m4/ax_compiler_flags_ldflags.m4])
+m4_include([m4/ax_compiler_vendor.m4])
 m4_include([m4/ax_file_escapes.m4])
 m4_include([m4/ax_gcc_builtin.m4])
 m4_include([m4/ax_gcc_func_attribute.m4])
 m4_include([m4/ax_gcc_var_attribute.m4])
 m4_include([m4/ax_is_release.m4])
+m4_include([m4/ax_prepend_flag.m4])
 m4_include([m4/ax_prog_bison.m4])
 m4_include([m4/ax_prog_bison_version.m4])
 m4_include([m4/ax_prog_flex.m4])

@@ -5010,24 +5010,22 @@ static const flex_int32_t yy_rule_can_match_eol[52] =
 #define YY_RESTORE_YY_MORE_OFFSET
 #line 1 "handlebars.l"
 /**
- * Copyright (C) 2016 John Boehr
+ * Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors
  *
- * This file is part of handlebars.c.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * handlebars.c is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 2.1 of the License, or
- * (at your option) any later version.
- *
- * handlebars.c is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#line 21 "handlebars.l"
+#line 19 "handlebars.l"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -5103,9 +5101,9 @@ static const flex_int32_t yy_rule_can_match_eol[52] =
     yylloc->last_column = yycolumn + yyleng - 1; \
     yycolumn += yyleng; \
    	YY_USER_DEBUG_ACTION;
-#line 5106 "handlebars.lex.c"
+#line 5104 "handlebars.lex.c"
 
-#line 5108 "handlebars.lex.c"
+#line 5106 "handlebars.lex.c"
 
 #define INITIAL 0
 #define mu 1
@@ -5384,11 +5382,11 @@ YY_DECL
 		}
 
 	{
-#line 139 "handlebars.l"
+#line 137 "handlebars.l"
 
 
 
-#line 5391 "handlebars.lex.c"
+#line 5389 "handlebars.lex.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -5455,7 +5453,7 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 142 "handlebars.l"
+#line 140 "handlebars.l"
 {
 										int n = yytext[yyleng - 3] == '{' ? 3 : 2;
 										handlebars_yy_unput_n(n);
@@ -5468,7 +5466,7 @@ YY_RULE_SETUP
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 151 "handlebars.l"
+#line 149 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 31
 										handlebars_yy_copy_lval();
@@ -5477,7 +5475,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 157 "handlebars.l"
+#line 155 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 32
 										handlebars_yy_unput_n(2);
@@ -5492,7 +5490,7 @@ YY_RULE_SETUP
 case 4:
 /* rule 4 can match eol */
 YY_RULE_SETUP
-#line 168 "handlebars.l"
+#line 166 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 35
 										yy_push_state(emu, yyscanner);
@@ -5503,7 +5501,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 176 "handlebars.l"
+#line 174 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 38
 										handlebars_yy_unput_all;
@@ -5512,7 +5510,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 182 "handlebars.l"
+#line 180 "handlebars.l"
 {
 										handlebars_yy_copy_lval();
 										return CONTENT;
@@ -5520,7 +5518,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 187 "handlebars.l"
+#line 185 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 47
 										handlebars_yy_unput_all;
@@ -5534,7 +5532,7 @@ YY_LINENO_REWIND_TO(yy_bp + 4);
 yyg->yy_c_buf_p = yy_cp = yy_bp + 4;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 193 "handlebars.l"
+#line 191 "handlebars.l"
 {
                                   		yy_push_state(raw, yyscanner);
 										handlebars_yy_copy_lval();
@@ -5543,7 +5541,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 199 "handlebars.l"
+#line 197 "handlebars.l"
 {
 										// v4.0.2 handlebars.l line 54
 
@@ -5561,7 +5559,7 @@ YY_RULE_SETUP
 case 10:
 /* rule 10 can match eol */
 YY_RULE_SETUP
-#line 213 "handlebars.l"
+#line 211 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 57
 										handlebars_yy_copy_lval();
@@ -5570,7 +5568,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 219 "handlebars.l"
+#line 217 "handlebars.l"
 {
 										handlebars_yy_copy_lval();
 										return CONTENT;
@@ -5579,7 +5577,7 @@ YY_RULE_SETUP
 case 12:
 /* rule 12 can match eol */
 YY_RULE_SETUP
-#line 224 "handlebars.l"
+#line 222 "handlebars.l"
 {
 										// v3.0.3 handlebars.l line 59
   										yy_pop_state(yyg);
@@ -5592,7 +5590,7 @@ YY_RULE_SETUP
 case 13:
 /* rule 13 can match eol */
 YY_RULE_SETUP
-#line 233 "handlebars.l"
+#line 231 "handlebars.l"
 {
   										//yytext[yyleng -= 2] = 0;
   										yy_pop_state(yyg);
@@ -5602,7 +5600,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 240 "handlebars.l"
+#line 238 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 61
 										handlebars_yy_copy_lval();
@@ -5611,7 +5609,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 246 "handlebars.l"
+#line 244 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 62
 										handlebars_yy_copy_lval();
@@ -5620,7 +5618,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 252 "handlebars.l"
+#line 250 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 64
 										handlebars_yy_copy_lval();
@@ -5629,7 +5627,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 258 "handlebars.l"
+#line 256 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 65
 										yy_pop_state(yyg);
@@ -5640,7 +5638,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 266 "handlebars.l"
+#line 264 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 70
 										handlebars_yy_copy_lval();
@@ -5649,7 +5647,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 272 "handlebars.l"
+#line 270 "handlebars.l"
 {
 										// v4.0.2 handlebars.l line 83
 										handlebars_yy_copy_lval();
@@ -5658,7 +5656,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 278 "handlebars.l"
+#line 276 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 71
 										handlebars_yy_copy_lval();
@@ -5667,7 +5665,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 284 "handlebars.l"
+#line 282 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 72
 										handlebars_yy_copy_lval();
@@ -5676,7 +5674,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 290 "handlebars.l"
+#line 288 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 73
 										yy_pop_state(yyg);
@@ -5687,7 +5685,7 @@ YY_RULE_SETUP
 case 23:
 /* rule 23 can match eol */
 YY_RULE_SETUP
-#line 297 "handlebars.l"
+#line 295 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 74
 										yy_pop_state(yyg);
@@ -5697,7 +5695,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 304 "handlebars.l"
+#line 302 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 75
 										handlebars_yy_copy_lval();
@@ -5706,7 +5704,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 310 "handlebars.l"
+#line 308 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 76
 										handlebars_yy_copy_lval();
@@ -5715,7 +5713,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 316 "handlebars.l"
+#line 314 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 77
 										handlebars_yy_copy_lval();
@@ -5724,7 +5722,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 322 "handlebars.l"
+#line 320 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 78
 										handlebars_yy_copy_lval();
@@ -5733,7 +5731,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 328 "handlebars.l"
+#line 326 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 79
 										handlebars_yy_unput_all;
@@ -5743,7 +5741,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 335 "handlebars.l"
+#line 333 "handlebars.l"
 {
 										// v3.0.3 handlebars.l line 80
 										handlebars_yy_unput_all;
@@ -5753,7 +5751,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 342 "handlebars.l"
+#line 340 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 81
 										handlebars_yy_copy_lval();
@@ -5762,7 +5760,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 348 "handlebars.l"
+#line 346 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 83
 										handlebars_yy_copy_lval();
@@ -5771,7 +5769,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 354 "handlebars.l"
+#line 352 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 84
 										handlebars_yy_copy_lval();
@@ -5785,7 +5783,7 @@ YY_LINENO_REWIND_TO(yy_bp + 1);
 yyg->yy_c_buf_p = yy_cp = yy_bp + 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 360 "handlebars.l"
+#line 358 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 85
 										handlebars_yy_copy_lval();
@@ -5794,7 +5792,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 366 "handlebars.l"
+#line 364 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 86
 										handlebars_yy_copy_lval();
@@ -5804,7 +5802,7 @@ YY_RULE_SETUP
 case 35:
 /* rule 35 can match eol */
 YY_RULE_SETUP
-#line 372 "handlebars.l"
+#line 370 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 87
 										// ignore whitespace
@@ -5812,7 +5810,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 377 "handlebars.l"
+#line 375 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 88
 										yy_pop_state(yyg);
@@ -5822,7 +5820,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 384 "handlebars.l"
+#line 382 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 89
 										yy_pop_state(yyg);
@@ -5833,7 +5831,7 @@ YY_RULE_SETUP
 case 38:
 /* rule 38 can match eol */
 YY_RULE_SETUP
-#line 391 "handlebars.l"
+#line 389 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 90
 										yytext[--yyleng] = 0;
@@ -5846,7 +5844,7 @@ YY_RULE_SETUP
 case 39:
 /* rule 39 can match eol */
 YY_RULE_SETUP
-#line 400 "handlebars.l"
+#line 398 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 91
 										yytext[--yyleng] = 0;
@@ -5858,7 +5856,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 409 "handlebars.l"
+#line 407 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 92
 										handlebars_yy_copy_lval();
@@ -5868,7 +5866,7 @@ YY_RULE_SETUP
 case 41:
 /* rule 41 can match eol */
 YY_RULE_SETUP
-#line 415 "handlebars.l"
+#line 413 "handlebars.l"
 {
 										// v3.0.3 handlebars.l line 108
 										handlebars_yy_copy_lval();
@@ -5877,7 +5875,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 421 "handlebars.l"
+#line 419 "handlebars.l"
 {
 										// v3.0.3 handlebars.l line 109
 										handlebars_yy_copy_lval();
@@ -5891,7 +5889,7 @@ YY_LINENO_REWIND_TO(yy_bp + 4);
 yyg->yy_c_buf_p = yy_cp = yy_bp + 4;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 427 "handlebars.l"
+#line 425 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 93
 										handlebars_yy_copy_lval();
@@ -5905,7 +5903,7 @@ YY_LINENO_REWIND_TO(yy_bp + 5);
 yyg->yy_c_buf_p = yy_cp = yy_bp + 5;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 433 "handlebars.l"
+#line 431 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 94
 										handlebars_yy_copy_lval();
@@ -5919,7 +5917,7 @@ YY_LINENO_REWIND_TO(yy_bp + 9);
 yyg->yy_c_buf_p = yy_cp = yy_bp + 9;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 439 "handlebars.l"
+#line 437 "handlebars.l"
 {
 										// v3.0.3 handlebars.l line 105
 										handlebars_yy_copy_lval();
@@ -5933,7 +5931,7 @@ YY_LINENO_REWIND_TO(yy_bp + 4);
 yyg->yy_c_buf_p = yy_cp = yy_bp + 4;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 445 "handlebars.l"
+#line 443 "handlebars.l"
 {
 										// v3.0.3 handlebars.l line 106
 										handlebars_yy_copy_lval();
@@ -5947,7 +5945,7 @@ YY_LINENO_REWIND_TO(yy_cp - 1);
 yyg->yy_c_buf_p = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 451 "handlebars.l"
+#line 449 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 95
 										handlebars_yy_copy_lval();
@@ -5961,7 +5959,7 @@ YY_LINENO_REWIND_TO(yy_cp - 1);
 yyg->yy_c_buf_p = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 458 "handlebars.l"
+#line 456 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 97
 										handlebars_yy_copy_lval();
@@ -5971,7 +5969,7 @@ YY_RULE_SETUP
 case 49:
 /* rule 49 can match eol */
 YY_RULE_SETUP
-#line 464 "handlebars.l"
+#line 462 "handlebars.l"
 {
 										// v4.0.3 handlebars.l line 123
 										// yytext = strip(1,2);
@@ -5984,7 +5982,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 474 "handlebars.l"
+#line 472 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 100
 										handlebars_yy_copy_lval();
@@ -5997,7 +5995,7 @@ case YY_STATE_EOF(emu):
 case YY_STATE_EOF(com):
 case YY_STATE_EOF(com1):
 case YY_STATE_EOF(raw):
-#line 480 "handlebars.l"
+#line 478 "handlebars.l"
 {
 										// v2.0.0 handlebars.l line 102
 										return END;
@@ -6005,10 +6003,10 @@ case YY_STATE_EOF(raw):
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 485 "handlebars.l"
+#line 483 "handlebars.l"
 ECHO;
 	YY_BREAK
-#line 6011 "handlebars.lex.c"
+#line 6009 "handlebars.lex.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -7216,6 +7214,6 @@ static int yy_flex_strlen (const char * s , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 485 "handlebars.l"
+#line 483 "handlebars.l"
 
 

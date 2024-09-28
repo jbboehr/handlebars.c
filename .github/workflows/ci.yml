@@ -24,7 +24,7 @@ jobs:
                     - "gcc"
                     - "clang"
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
               with:
                   submodules: recursive
             - name: Install packages
@@ -61,7 +61,7 @@ jobs:
                     - "gcc"
                     # - "clang"
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
               with:
                   submodules: recursive
             - name: Install packages
@@ -99,7 +99,7 @@ jobs:
                 DISTRO:
                     - "ubuntu-20.04"
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
               with:
                   submodules: recursive
             - name: Install packages
@@ -118,7 +118,7 @@ jobs:
                     find scan-build -name 'index.html' -print -exec html2text \{} \;
                     exit 1
                   fi
-            - uses: actions/upload-artifact@v2
+            - uses: actions/upload-artifact@v4
               if: failure()
               with:
                   name: scan-build
@@ -127,7 +127,7 @@ jobs:
     build_osx_autotools_default_args:
         runs-on: macos-latest
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
               with:
                   submodules: recursive
             - name: Install packages
@@ -158,7 +158,10 @@ jobs:
             matrix: ${{ steps.set-matrix.outputs.matrix }}
         steps:
             -   uses: actions/checkout@v4
-            -   uses: cachix/install-nix-action@v26
+            -   uses: cachix/install-nix-action@v27
+                with:
+                    nix_path: nixpkgs=channel:nixos-24.05
+                    extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
             -   id: set-matrix
                 name: Generate Nix Matrix
                 run: |
@@ -186,9 +189,9 @@ jobs:
                         nix-store.nar-${{ runner.os }}-${{ hashFiles('flake.lock') }}-
                         nix-store.nar-${{ runner.os }}-
 
-            -   uses: cachix/install-nix-action@v26
+            -   uses: cachix/install-nix-action@v27
                 with:
-                    nix_path: nixpkgs=channel:nixos-23.11
+                    nix_path: nixpkgs=channel:nixos-24.05
                     extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
 
             -   name: Import Nix Store Cache

@@ -1,7 +1,4 @@
-#
-# Copyright (C) 2020 John Boehr
-#
-# This file is part of handlebars.c.
+# Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -15,10 +12,8 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 
-set(SOURCES
-        handlebarsc.c)
+set(SOURCES handlebarsc.c)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../src ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 

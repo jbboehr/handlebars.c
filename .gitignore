@@ -74,6 +74,7 @@ stamp-h2
 .c9
 .idea
 /cmake-build/
+/cmake-build-debug/
 
 # valgrind?
 vgcore.*

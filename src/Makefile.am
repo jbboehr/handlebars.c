@@ -1,3 +1,17 @@
+# Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, see <http://www.gnu.org/licenses/>.
 
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_srcdir)/vendor/sort_r -I$(top_srcdir)/vendor/xxhash
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(VALGRIND_CFLAGS) $(YAML_CFLAGS)

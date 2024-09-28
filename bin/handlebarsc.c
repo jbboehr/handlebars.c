@@ -1,7 +1,5 @@
- /**
- * Copyright (C) 2020 John Boehr
- *
- * This file is part of handlebars.c.
+/**
+ * Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -381,20 +379,26 @@ static int do_usage(void)
         "\n"
         "If a FILE is specified as '-', it will be read from STDIN.\n"
         "\n"
-        "handlebarsc home page: https://github.com/jbboehr/handlebars.c"
+        "handlebarsc home page: https://github.com/jbboehr/handlebars.c\n"
+        "%s\n",
+        HANDLEBARS_MOTD
     );
     return 0;
 }
 
 static int do_version(void)
 {
-    fprintf(stdout,
+    fprintf(
+        stdout,
         "handlebarsc v%s\n"
-        "Copyright (C) 2020 John Boehr\n"
+        "Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors\n"
         "License AGPLv3.0+: Affero GNU GPL version 3.0 or later <https://www.gnu.org/licenses/agpl-3.0.html>.\n"
         "This is free software: you are free to change and redistribute it.\n"
-        "There is NO WARRANTY, to the extent permitted by law.\n",
-        handlebars_version_string());
+        "There is NO WARRANTY, to the extent permitted by law.\n"
+        "%s\n",
+        handlebars_version_string(),
+        HANDLEBARS_MOTD
+    );
     return 0;
 }
 

@@ -1,20 +1,18 @@
 /**
- * Copyright (C) 2016 John Boehr
+ * Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors
  *
- * This file is part of handlebars.c.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * handlebars.c is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 2.1 of the License, or
- * (at your option) any later version.
- *
- * handlebars.c is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with handlebars.c.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -269,3 +267,5 @@ struct handlebars_context * handlebars_get_context(void * ctx, const char * loc)
     fprintf(stderr, "Not a context at %s\n", loc);
     abort();
 }
+
+const char* HANDLEBARS_MOTD = "Think not that I am come to send peace on earth: I came not to send peace, but a sword. Matthew 10:34";
