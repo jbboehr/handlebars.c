@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <check.h>
 #include <stdio.h>
-#include <pcre.h>
 #include <talloc.h>
 
 // json-c undeprecated json_object_object_get, but the version in xenial
