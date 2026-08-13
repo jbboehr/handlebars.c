@@ -1,12 +1,12 @@
 
-ARG BASE_IMAGE=fedora:latest
+ARG BASE_IMAGE=fedora:44
 
 # image0
 FROM ${BASE_IMAGE}
 WORKDIR /build/handlebars.c
 
 # handlebars.c
-RUN dnf groupinstall 'Development Tools' -y
+RUN dnf group install development-tools -y
 RUN dnf install \
     git-all \
     gcc \

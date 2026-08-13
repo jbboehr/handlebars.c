@@ -38,14 +38,18 @@ my-clean-local:
 if CODE_COVERAGE_ENABLED
 CODE_COVERAGE_OUTPUT_FILE = $(PACKAGE_NAME)-coverage.info
 CODE_COVERAGE_OUTPUT_DIRECTORY = $(PACKAGE_NAME)-coverage
+CODE_COVERAGE_IGNORE_PATTERN = \
+	'/usr/*' \
+	'/nix/store/*' \
+	'*/tests/*' \
+	'*/vendor/*' \
+	'*/handlebars.tab.c' \
+	'*/handlebars.lex.c' \
+	'*/handlebars_scanners.c'
 CODE_COVERAGE_LCOV_RMOPTS = $(CODE_COVERAGE_LCOV_RMOPTS_DEFAULT) \
-	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '/usr/*' \
-	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '/nix/store/*' \
-	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/tests/*' \
-	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/vendor/*' \
-	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars.tab.c' \
-	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars.lex.c' \
-	--remove "$(CODE_COVERAGE_OUTPUT_FILE).tmp" '*/handlebars_scanners.c'
+	--ignore-errors unused
+CODE_COVERAGE_GENHTML_OPTIONS = $(CODE_COVERAGE_GENHTML_OPTIONS_DEFAULT) \
+	--ignore-errors unmapped
 include $(top_srcdir)/build/aminclude_static.am
 clean-local: code-coverage-clean my-clean-local
 distclean-local: code-coverage-dist-clean

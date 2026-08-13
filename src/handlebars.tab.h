@@ -45,7 +45,7 @@
 extern int handlebars_yy_debug;
 #endif
 /* "%code requires" blocks.  */
-#line 31 "handlebars.y"
+#line 32 "handlebars.y"
 
     struct handlebars_parser; /* needed for bison 2.7 */
     #define YY_END_OF_BUFFER_CHAR 0
@@ -114,7 +114,7 @@ extern int handlebars_yy_debug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 95 "handlebars.y"
+#line 96 "handlebars.y"
 
     struct handlebars_string * string;
     struct handlebars_ast_node * ast_node;

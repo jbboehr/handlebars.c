@@ -120,23 +120,26 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
 #define HANDLEBARS_VALUE_UNDECL(name) handlebars_value_dtor(name)
 #endif
 
+// C does not support zero-length arrays, so reserve one slot for an empty logical array
+#define HANDLEBARS_VALUE_ARRAY_CAPACITY(num) ((num) > 0 ? (num) : 1)
+
 #if (defined(HANDLEBARS_VALUE_SIZE) && !defined(__STDC_NO_VLA__))
 // We know the size of value at compile-time, but we don't know if num is a constant, so we have be able to support VLA
 #define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
-    struct handlebars_value name[num]; \
+    struct handlebars_value name[HANDLEBARS_VALUE_ARRAY_CAPACITY(num)]; \
     memset(&name, 0, sizeof(name));
 #define HANDLEBARS_VALUE_ARRAY_AT(name, pos) (&name[pos])
 #elif !defined(__STDC_NO_VLA__)
 // Use a char vla
 #define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
-    char mem_ ## name[HANDLEBARS_VALUE_SIZE * (num)]; \
+    char mem_ ## name[HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num)]; \
     struct handlebars_value * name = (void *) &mem_ ## name; \
-    memset(name, 0, HANDLEBARS_VALUE_SIZE * (num));
+    memset(name, 0, HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num));
 #else
 // Use alloca
 #define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
-    struct handlebars_value * name = alloca(HANDLEBARS_VALUE_SIZE * (num)); \
-    memset(name, 0, HANDLEBARS_VALUE_SIZE * (num));
+    struct handlebars_value * name = alloca(HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num)); \
+    memset(name, 0, HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num));
 #endif
 
 #ifndef HANDLEBARS_VALUE_ARRAY_AT

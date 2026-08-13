@@ -19,6 +19,7 @@
 %name-prefix "handlebars_yy_"
 %pure-parser
 %error-verbose
+%initial-action { (void) yynerrs; }
 
 %lex-param {
     void * scanner
