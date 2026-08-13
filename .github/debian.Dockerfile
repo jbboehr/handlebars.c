@@ -1,6 +1,6 @@
 
 
-ARG BASE_IMAGE=debian:buster
+ARG BASE_IMAGE=debian:trixie
 
 # image0
 FROM ${BASE_IMAGE}

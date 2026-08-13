@@ -32,7 +32,7 @@
   lcov,
   re2c,
   valgrind,
-  kcachegrind,
+  kdePackages,
   bc,
   # dev deps
   handlebars_spec,
@@ -102,7 +102,7 @@ stdenv.mkDerivation rec {
     ++ lib.optionals checkSupport [handlebars_spec check subunit bats]
     ++ lib.optional cmakeSupport cmake
     ++ lib.optionals (!cmakeSupport) [autoreconfHook autoconf automake libtool m4]
-    ++ lib.optionals devSupport [autoconf-archive bc bison gperf flex kcachegrind lcov re2c valgrind]
+    ++ lib.optionals devSupport [autoconf-archive bc bison gperf flex kdePackages.kcachegrind lcov re2c valgrind]
     ++ lib.optional doxygenSupport doxygen
     ++ lib.optional valgrindSupport valgrind;
 

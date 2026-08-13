@@ -2,7 +2,7 @@
   description = "handlebars.c";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     systems.url = "github:nix-systems/default";
     flake-utils = {
       url = "github:numtide/flake-utils";
@@ -27,8 +27,6 @@
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.nixpkgs-stable.follows = "nixpkgs";
-      inputs.gitignore.follows = "gitignore";
     };
     nix-github-actions = {
       url = "github:nix-community/nix-github-actions";
@@ -59,7 +57,7 @@
           src = gitignore.lib.gitignoreSource ./.;
         };
 
-        pre-commit-check = pre-commit-hooks.lib.${system}.run {
+        pre-commit-hooks-config = pre-commit-hooks.lib.${system}.run {
           inherit src;
           hooks = {
             alejandra.enable = true;
@@ -78,6 +76,9 @@
             };
             #shellcheck.enable = true;
           };
+        };
+        pre-commit-check = pre-commit-hooks-config.overrideAttrs {
+          dontConfigure = true;
         };
 
         makeDevShell = package:
@@ -98,7 +99,7 @@
               valgrind
             ];
             shellHook = with package.passthru; ''
-              ${pre-commit-check.shellHook}
+              ${pre-commit-hooks-config.shellHook}
               export handlebars_export_dir=${handlebars_spec}/share/handlebars-spec/export/
               export handlebars_spec_dir=${handlebars_spec}/share/handlebars-spec/spec/
               export handlebars_tokenizer_spec=${handlebars_spec}/share/handlebars-spec/spec/tokenizer.json
