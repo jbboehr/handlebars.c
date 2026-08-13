@@ -723,6 +723,7 @@ CODE_COVERAGE_LIBS
 CODE_COVERAGE_CXXFLAGS
 CODE_COVERAGE_CFLAGS
 CODE_COVERAGE_CPPFLAGS
+GENHTML_IGNORE_ERRORS_UNMAPPED
 GENHTML
 GCOV
 ifnGNUmake
@@ -20609,6 +20610,22 @@ then :
 		as_fn_error $? "Could not find genhtml from the lcov package" "$LINENO" 5
 
 fi
+
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether genhtml supports --ignore-errors unmapped" >&5
+printf %s "checking whether genhtml supports --ignore-errors unmapped... " >&6; }
+	genhtml_ignore_errors_unmapped=
+	genhtml_ignore_errors_output=`$GENHTML --ignore-errors unmapped 2>&1`
+	case $genhtml_ignore_errors_output in #(
+  *unknown*argument*) :
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; } ;; #(
+  *) :
+    genhtml_ignore_errors_unmapped="--ignore-errors unmapped"
+		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; } ;;
+esac
+	GENHTML_IGNORE_ERRORS_UNMAPPED=$genhtml_ignore_errors_unmapped
+
 
 			CODE_COVERAGE_CPPFLAGS="-DNDEBUG"
 	CODE_COVERAGE_CFLAGS="-O0 -g -fprofile-arcs -ftest-coverage"

@@ -207,6 +207,15 @@ AC_DEFUN([_AX_CODE_COVERAGE_ENABLED],[
 		AC_MSG_ERROR([Could not find genhtml from the lcov package])
 	])
 
+	AC_MSG_CHECKING([whether genhtml supports --ignore-errors unmapped])
+	genhtml_ignore_errors_unmapped=
+	genhtml_ignore_errors_output=`$GENHTML --ignore-errors unmapped 2>&1`
+	AS_CASE([$genhtml_ignore_errors_output],
+		[*unknown*argument*], [AC_MSG_RESULT([no])],
+		[genhtml_ignore_errors_unmapped="--ignore-errors unmapped"
+		 AC_MSG_RESULT([yes])])
+	AC_SUBST([GENHTML_IGNORE_ERRORS_UNMAPPED], [$genhtml_ignore_errors_unmapped])
+
 	dnl Build the code coverage flags
 	dnl Define CODE_COVERAGE_LDFLAGS for backwards compatibility
 	CODE_COVERAGE_CPPFLAGS="-DNDEBUG"
