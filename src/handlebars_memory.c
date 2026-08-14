@@ -295,7 +295,7 @@ static char * _handlebars_memfail_talloc_strndup_append_buffer(char *s, const ch
             handlebars_memory_fail_disable();
             // fall through
         } else {
-            return talloc_strndup(s, a, n);;
+            return talloc_strndup_append_buffer(s, a, n);
         }
     }
 

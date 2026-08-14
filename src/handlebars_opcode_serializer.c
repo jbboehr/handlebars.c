@@ -202,8 +202,12 @@ static struct handlebars_module_table_entry * serialize_program_shallow(struct h
 static void serialize_program2(struct handlebars_module * module, struct handlebars_program * program, struct handlebars_module_table_entry * entry)
 {
     size_t i;
-    //struct handlebars_module_table_entry * children[program->children_length];
-    struct handlebars_module_table_entry ** children = alloca(sizeof(struct handlebars_module_table_entry *) * program->children_length);
+    struct handlebars_module_table_entry ** children = NULL;
+
+    if( program->children_length > 0 ) {
+        children = handlebars_talloc_array(module, struct handlebars_module_table_entry *, program->children_length);
+        HANDLEBARS_MEMCHECK(children, HBSCTX(talloc_parent(module)));
+    }
 
     // Serialize children (shallow)
     for( i = 0; i < program->children_length; i++ ) {
@@ -227,6 +231,8 @@ static void serialize_program2(struct handlebars_module * module, struct handleb
     for( i = 0; i < program->children_length; i++ ) {
         serialize_program2(module, program->children[i], children[i]);
     }
+
+    handlebars_talloc_free(children);
 }
 
 static void serialize_program(struct handlebars_module * module, struct handlebars_program * program)
@@ -410,6 +416,13 @@ bool handlebars_module_verify(
     struct handlebars_module * module,
     struct handlebars_context * ctx
 ) {
+    if( module->size < sizeof(struct handlebars_module)
+            || memcmp(module->header, "HBSCM", sizeof("HBSCM")) != 0 ) {
+        if( ctx != NULL ) {
+            handlebars_throw(ctx, HANDLEBARS_ERROR, "Invalid module header or size");
+        }
+        return false;
+    }
     uint64_t hash = calculate_hash(module);
     bool matched = true;
     if (hash != module->hash) {

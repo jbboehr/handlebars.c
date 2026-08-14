@@ -82,7 +82,7 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
 
 // {{{ Constructors and Destructors
 
-#if defined(HANDLEBARS_ENABLE_DEBUG) && defined(HBS_HAVE_ATTR_CLEANUP)
+#if defined(HBS_HAVE_ATTR_CLEANUP)
 #define HANDLEBARS_VALUE_DECL_CLEANUP HBS_ATTR_CLEANUP(handlebars_value_cleanup)
 #else
 #define HANDLEBARS_VALUE_DECL_CLEANUP

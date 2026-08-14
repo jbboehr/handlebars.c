@@ -222,7 +222,7 @@ struct handlebars_value * handlebars_stack_pop(struct handlebars_stack * stack, 
     }
 #endif
 
-    if (stack->i < stack->protect) {
+    if (stack->i <= stack->protect) {
         handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Attempting to pop protected stack segment i=%zu protect=%zu", stack->i, stack->protect);
     }
 

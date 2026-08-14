@@ -100,8 +100,8 @@ load "../vendor/bats-assert/assert"
     local empty_file=$(mktemp)
     run $HANDLEBARSC --lex $empty_file
     rm $empty_file
-    assert_failure
-    assert_output --partial "Failed to read file"
+    assert_success
+    assert_output ""
 }
 
 @test "--lex --template <TEMPLATE>" {
@@ -249,6 +249,12 @@ load "../vendor/bats-assert/assert"
     assert_output --partial "Failed to open file"
 }
 
+@test "--execute (directory)" {
+    run $HANDLEBARSC --execute $TEST_DIR
+    assert_failure
+    assert_output --partial "Input is not a regular file"
+}
+
 @test "--execute (no file)" {
     run $HANDLEBARSC --execute
     assert_failure
@@ -259,8 +265,8 @@ load "../vendor/bats-assert/assert"
     local empty_file=$(mktemp)
     run $HANDLEBARSC --execute $empty_file
     rm $empty_file
-    assert_failure
-    assert_output --partial "Failed to read file"
+    assert_success
+    assert_output ""
 }
 
 @test "--execute (is default mode)" {

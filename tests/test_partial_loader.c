@@ -40,7 +40,7 @@
 
 
 
-static struct handlebars_string * execute_template(const char *template)
+static struct handlebars_string * execute_template(const char *template, const char * partial_name, const char * partial_value)
 {
     struct handlebars_string *retval = NULL;
     struct handlebars_module * module;
@@ -100,8 +100,8 @@ static struct handlebars_string * execute_template(const char *template)
     // Test iterator/count
     ck_assert_int_eq(1, handlebars_value_count(partials));
     HANDLEBARS_VALUE_FOREACH_KV(partials, key, child) {
-        ck_assert_str_eq("fixture1", hbs_str_val(key));
-        ck_assert_str_eq("|{{foo}}|", handlebars_value_get_strval(child));
+        ck_assert_str_eq(partial_name, hbs_str_val(key));
+        ck_assert_str_eq(partial_value, handlebars_value_get_strval(child));
     } HANDLEBARS_VALUE_FOREACH_END();
 
     retval = talloc_steal(NULL, buffer);
@@ -115,7 +115,7 @@ static struct handlebars_string * execute_template(const char *template)
 
 START_TEST(test_partial_loader_1)
 {
-    struct handlebars_string *rv = execute_template("{{> fixture1 .}}");
+    struct handlebars_string *rv = execute_template("{{> fixture1 .}}", "fixture1", "|{{foo}}|");
     ck_assert_hbs_str_eq_cstr(rv, "|bar|");
     talloc_free(rv);
 }
@@ -123,7 +123,7 @@ END_TEST
 
 START_TEST(test_partial_loader_2)
 {
-    struct handlebars_string *rv = execute_template("{{> fixture1 .}}{{> fixture1 .}}");
+    struct handlebars_string *rv = execute_template("{{> fixture1 .}}{{> fixture1 .}}", "fixture1", "|{{foo}}|");
     ck_assert_hbs_str_eq_cstr(rv, "|bar||bar|");
     talloc_free(rv);
 }
@@ -139,23 +139,38 @@ START_TEST(test_partial_loader_error)
         return;
     }
 
-    (void) execute_template("{{> nonexist .}}");
+    (void) execute_template("{{> nonexist .}}", "nonexist", "");
     ck_assert(0);
 }
 END_TEST
 
-START_TEST(test_partial_loader_empty_error)
+START_TEST(test_partial_loader_empty)
 {
+    struct handlebars_string *rv = execute_template("{{> fixture4}}", "fixture4", "");
+    ck_assert_hbs_str_eq_cstr(rv, "");
+    talloc_free(rv);
+}
+END_TEST
+
+START_TEST(test_partial_loader_rejects_traversal)
+{
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(rv);
+    struct handlebars_string * path = handlebars_string_ctor(context, HBS_STRL("tests"));
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("../fixture1"));
+    handlebars_value_partial_loader_init(context, path, extension, partials);
     jmp_buf buf;
 
     if( handlebars_setjmp_ex(context, &buf) ) {
-        fprintf(stderr, "Got expected error: %s\n", handlebars_error_message(context));
-        ck_assert(1);
+        ck_assert_str_eq(handlebars_error_msg(context), "Invalid partial name");
+        HANDLEBARS_VALUE_UNDECL(rv);
+        HANDLEBARS_VALUE_UNDECL(partials);
         return;
     }
 
-    (void) execute_template("{{> fixture4}}");
-    ck_assert(0);
+    (void) handlebars_value_map_find(partials, key, rv);
+    ck_abort_msg("Expected unsafe partial name to be rejected");
 }
 END_TEST
 
@@ -167,7 +182,8 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_1, "Partial loader 1");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_2, "Partial loader 2");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_error, "Partial loader error");
-	REGISTER_TEST_FIXTURE(s, test_partial_loader_empty_error, "Partial loader empty error");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_empty, "Partial loader empty file");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_rejects_traversal, "Partial loader rejects traversal");
 
     return s;
 }

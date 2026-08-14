@@ -101,10 +101,10 @@ uint32_t hbs_str_hash(struct handlebars_string * str) {
 uint32_t handlebars_hash_djbx33a(const char * str, size_t len)
 {
     uint32_t hash = 5381;
-    uint32_t c;
+    uint32_t c = 0;
     const unsigned char * ptr = (const unsigned char *) str;
     const unsigned char * end = ptr + len;
-    for (c = *ptr++; ptr <= end && c; c = *ptr++) {
+    while( ptr < end && (c = *ptr++) != 0 ) {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     }
     return hash;
@@ -214,7 +214,7 @@ static inline struct handlebars_string * separate_string(struct handlebars_strin
 void handlebars_string_immortalize(struct handlebars_string * string)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
-    string->rc.refcount = UINT8_MAX;
+    string->rc.refcount = UINT32_MAX;
 #endif
 }
 // }}} Reference Counting
@@ -334,7 +334,8 @@ bool handlebars_string_eq(
     if( string1->len != string2->len ) {
         return false;
     } else {
-        return hbs_str_hash(string1) == hbs_str_hash(string2);
+        return hbs_str_hash(string1) == hbs_str_hash(string2)
+            && memcmp(string1->val, string2->val, string1->len) == 0;
     }
 }
 
@@ -345,10 +346,15 @@ struct handlebars_string * handlebars_string_truncate(
 ) {
     string = separate_string(string);
 
-    // Truncate right
-    if (end < string->len) {
-        string->len = end;
+    if( end > string->len ) {
+        end = string->len;
     }
+    if( start > end ) {
+        start = end;
+    }
+
+    // Truncate right
+    string->len = end;
 
     // Truncate left
     if (start > 0) {
@@ -370,19 +376,19 @@ bool hbs_str_eq_strl(
     if (hbs_str_len(string1) != len2) {
         return false;
     }
-    return 0 == strncmp(hbs_str_val(string1), str2, len2);
+    return 0 == memcmp(hbs_str_val(string1), str2, len2);
 }
 
 const char * handlebars_strnstr(const char * haystack, size_t haystack_len, const char * needle, size_t needle_len)
 {
-    const char * end = haystack + haystack_len - needle_len;
-
-    if( !needle_len || !haystack_len ) {
+    if( !needle_len || !haystack_len || needle_len > haystack_len ) {
         return NULL;
     }
 
+    const char * end = haystack + haystack_len - needle_len;
+
     for( ; haystack <= end; haystack++ ) {
-        if( haystack[0] == needle[0] && strncmp(haystack, needle, needle_len) == 0 ) {
+        if( haystack[0] == needle[0] && memcmp(haystack, needle, needle_len) == 0 ) {
             return haystack;
         }
     }
@@ -395,13 +401,14 @@ struct handlebars_string * handlebars_str_reduce(
     const char * search, size_t search_len,
     const char * replacement, size_t replacement_len
 ) {
-    char * tok = string->val;
+    char * tok;
 
     if( replacement_len > search_len || search_len <= 0 || string->len <= 0 ) {
         return string;
     }
 
     string = separate_string(string);
+    tok = string->val;
 
     while( NULL != (tok = (char *) handlebars_strnstr(tok, string->len - (tok - string->val), search, search_len)) ) {
         memmove(tok, replacement, replacement_len);
@@ -510,14 +517,15 @@ struct handlebars_string * handlebars_string_addcslashes(struct handlebars_conte
 
 struct handlebars_string * handlebars_string_stripcslashes(struct handlebars_string * string)
 {
-    char * source = string->val;
-    char * target = string->val;
-    char * end = string->val + string->len;
     size_t nlen = string->len;
     size_t i;
     char numtmp[4];
 
     string = separate_string(string);
+
+    char * source = string->val;
+    char * target = string->val;
+    char * end = string->val + string->len;
 
     for( ; source < end; source++ ) {
         if( *source == '\\' && source + 1 < end ) {
@@ -770,7 +778,7 @@ struct handlebars_string * handlebars_string_indent_append(
 ) {
     const char * str = input_string->val;
     size_t str_len = input_string->len;
-    bool endsInLine = (str[str_len - 1] == '\n');
+    bool endsInLine = str_len > 0 && (str[str_len - 1] == '\n');
     size_t i;
     char tmp[2] = "\0";
 

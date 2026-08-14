@@ -134,10 +134,13 @@ struct table_entry {
 
 static inline void * append(struct handlebars_cache_mmap * intern, void * source, size_t size)
 {
+    if( size > SIZE_MAX - PADDING - (sizeof(void *) - 1) ) {
+        return NULL;
+    }
     size_t aligned_size = handlebars_align_size(size + PADDING, sizeof(void *));
     void * addr = (char *) intern->data + intern->data_length;
     assert(((uintptr_t) addr) % sizeof(void *) == 0);
-    if( intern->data_length + aligned_size >= intern->data_size ) {
+    if( aligned_size > intern->data_size - intern->data_length ) {
         return NULL;
     }
     intern->data_length += aligned_size;
@@ -154,7 +157,8 @@ static inline void protect(struct handlebars_cache * cache, bool on)
     int prot = on ? PROT_READ : PROT_READ | PROT_WRITE;
     int rc = mprotect(intern->table, intern->table_size + intern->data_size, prot);
     if( rc != 0 ) {
-        handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "mprotect error: %s (%d)", strerror(rc), rc);
+        int error = errno;
+        handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "mprotect error: %s (%d)", strerror(error), error);
     }
 }
 
@@ -196,14 +200,12 @@ static inline struct table_entry * table_find(struct handlebars_cache_mmap * int
     return intern->table[offset];
 }
 
-static inline void table_set(struct handlebars_cache_mmap * intern, struct table_entry * entry)
+static inline bool table_set(struct handlebars_cache_mmap * intern, struct table_entry * entry)
 {
+    assert(entry != NULL);
     uint32_t offset = hbs_str_hash(entry->key) % intern->table_count;
-    if( entry == NULL ) {
-        intern->table[offset] = NULL;
-    } else {
-        intern->table[offset] = append(intern, entry, sizeof(struct table_entry));
-    }
+    intern->table[offset] = append(intern, entry, sizeof(struct table_entry));
+    return intern->table[offset] != NULL;
 }
 
 static inline void table_unset(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
@@ -312,6 +314,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
         intern->table_entries--;
         protect(cache, true);
         unlock(cache);
+        module = NULL;
         goto error;
     }
 
@@ -373,7 +376,12 @@ static void cache_add(
     handlebars_module_patch_pointers(entry.data);
 
     // Finish;
-    table_set(intern, &entry);
+    if( unlikely(!table_set(intern, &entry)) ) {
+        protect(cache, true);
+        unlock(cache);
+        cache_reset(cache);
+        return;
+    }
     intern->table_entries++;
 
 error:
@@ -435,7 +443,11 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 
     // Get page size
 #if defined(_SC_PAGESIZE)
-    page_size = (size_t) sysconf(_SC_PAGESIZE);
+    long page_size_result = sysconf(_SC_PAGESIZE);
+    if( page_size_result <= 0 ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Unable to query page size");
+    }
+    page_size = (size_t) page_size_result;
 #elif defined(PAGE_SIZE)
     page_size = PAGE_SIZE;
 #else
@@ -443,14 +455,24 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
 #endif
 
     // Calculate sizes
+    if( entries == 0 || entries > UINT32_MAX || entries > SIZE_MAX / sizeof(struct table_entry *) ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid number of cache entries: %zu", entries);
+    }
+    if( size > SIZE_MAX - (page_size - 1) ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Cache segment size is too large");
+    }
     size_t intern_size = handlebars_align_size(sizeof(struct handlebars_cache_mmap), page_size);
     size_t shm_size = handlebars_align_size(size, page_size);
-    size_t table_size = handlebars_align_size(entries * sizeof(struct table_entry *), page_size);
-    size_t data_size = shm_size - table_size - intern_size;
-
-    if( table_size >= shm_size ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Table size must not be greater than segment size");
+    size_t table_bytes = entries * sizeof(struct table_entry *);
+    if( table_bytes > SIZE_MAX - (page_size - 1) ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Cache table size is too large");
     }
+    size_t table_size = handlebars_align_size(table_bytes, page_size);
+
+    if( intern_size >= shm_size || table_size >= shm_size - intern_size ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Cache metadata and table must be smaller than segment size");
+    }
+    size_t data_size = shm_size - intern_size - table_size;
 
     struct handlebars_cache_mmap * intern = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if( intern == MAP_FAILED ) {

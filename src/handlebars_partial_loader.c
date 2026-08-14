@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <talloc.h>
 
 #include "handlebars.h"
@@ -49,6 +50,35 @@ struct handlebars_partial_loader {
     struct handlebars_string *extension;
     struct handlebars_map * map;
 };
+
+static bool partial_name_is_safe(struct handlebars_string * key)
+{
+    const char * name = hbs_str_val(key);
+    size_t len = hbs_str_len(key);
+    size_t component_start = 0;
+
+    if( len == 0 || name[0] == '/' || name[0] == '\\' ) {
+        return false;
+    }
+
+    for( size_t i = 0; i <= len; i++ ) {
+        if( i < len && name[i] == '\0' ) {
+            return false;
+        }
+        if( i < len && name[i] == '\\' ) {
+            return false;
+        }
+        if( i == len || name[i] == '/' ) {
+            size_t component_len = i - component_start;
+            if( component_len == 2 && name[component_start] == '.' && name[component_start + 1] == '.' ) {
+                return false;
+            }
+            component_start = i + 1;
+        }
+    }
+
+    return true;
+}
 
 static int partial_loader_dtor(struct handlebars_partial_loader * intern)
 {
@@ -90,6 +120,10 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
         return rv;
     }
 
+    if( !partial_name_is_safe(key) ) {
+        handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Invalid partial name");
+    }
+
     struct handlebars_string *filename = handlebars_string_copy_ctor(intern->user.ctx, intern->base_path);
     filename = handlebars_string_append(intern->user.ctx, filename, HBS_STRL("/"));
     filename = handlebars_string_append_str(intern->user.ctx, filename, key);
@@ -105,15 +139,33 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
         handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "File to open partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
-    fseek(f, 0, SEEK_END);
-    size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    struct stat file_stat;
+    if( fstat(fileno(f), &file_stat) != 0 || !S_ISREG(file_stat.st_mode) ) {
+        fclose(f);
+        handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Partial is not a regular file: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
+    }
 
-    char * buf = handlebars_talloc_array(intern->user.ctx, char, size + 1);
-    size_t read = fread(buf, size, 1, f);
+    if( fseek(f, 0, SEEK_END) != 0 ) {
+        fclose(f);
+        handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Failed to seek partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
+    }
+    size = ftell(f);
+    if( size < 0 || fseek(f, 0, SEEK_SET) != 0 ) {
+        fclose(f);
+        handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Failed to determine partial size: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
+    }
+
+    char * buf = handlebars_talloc_size(intern->user.ctx, (size_t) size + 1);
+    if( buf == NULL ) {
+        fclose(f);
+        handlebars_throw(intern->user.ctx, HANDLEBARS_NOMEM, "%s", HANDLEBARS_MEMCHECK_MSG);
+    }
+    size_t read = fread(buf, 1, (size_t) size, f);
+    bool read_failed = read != (size_t) size || ferror(f);
     fclose(f);
 
-    if (!read) {
+    if (read_failed) {
+        handlebars_talloc_free(buf);
         handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Failed to read partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
@@ -122,7 +174,7 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
     // Need to duplicate the key because it may be owned by a child VM
     key = handlebars_string_copy_ctor(intern->user.ctx, key);
 
-    handlebars_value_str(rv, handlebars_string_ctor(intern->user.ctx, buf, size));
+    handlebars_value_str(rv, handlebars_string_ctor(intern->user.ctx, buf, (size_t) size));
     handlebars_talloc_free(buf);
 
     intern->map = handlebars_map_add(intern->map, key, rv);

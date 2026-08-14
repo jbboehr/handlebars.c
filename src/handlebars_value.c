@@ -119,10 +119,9 @@ void handlebars_value_cleanup(struct handlebars_value * const * value_pp)
 
     struct handlebars_value * value = *value_pp;
 
-    // Check refcount
+    // Release values that remain live when a scope exits early.
     if (value->type != HANDLEBARS_VALUE_TYPE_NULL) {
-        fprintf(stderr, "value %p was not destructed\n", value);
-        abort();
+        handlebars_value_dtor(value);
     }
 
 #ifdef HANDLEBARS_HAVE_VALGRIND

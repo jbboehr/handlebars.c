@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <talloc.h>
 
@@ -101,6 +102,27 @@ START_TEST(test_stack_push_with_separation)
 END_TEST
 #endif
 
+START_TEST(test_stack_pop_protected_boundary)
+{
+    struct handlebars_stack * stack = handlebars_stack_ctor(context, 1);
+    HANDLEBARS_VALUE_DECL(tmp);
+    handlebars_value_integer(tmp, 1);
+    stack = handlebars_stack_push(stack, tmp);
+    handlebars_stack_protect(stack, 1);
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_STACK_OVERFLOW);
+        handlebars_stack_delref(stack);
+        HANDLEBARS_VALUE_UNDECL(tmp);
+        return;
+    }
+
+    (void) handlebars_stack_pop(stack, tmp);
+    ck_abort_msg("Expected pop at the protected boundary to fail");
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -110,6 +132,7 @@ static Suite * suite(void)
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_stack_push_with_separation, "Stack push with separation");
 #endif
+    REGISTER_TEST_FIXTURE(s, test_stack_pop_protected_boundary, "Stack protected pop boundary");
 
     return s;
 }

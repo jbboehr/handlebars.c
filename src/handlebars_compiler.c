@@ -112,13 +112,13 @@ struct handlebars_block_param_pair {
 };
 
 struct handlebars_block_param_stack {
-    struct handlebars_block_param_pair s[HANDLEBARS_COMPILER_STACK_SIZE];
     int i;
+    struct handlebars_block_param_pair s[HANDLEBARS_COMPILER_STACK_SIZE];
 };
 
 struct handlebars_source_node_stack {
-    struct handlebars_ast_node * s[HANDLEBARS_COMPILER_STACK_SIZE];
     int i;
+    struct handlebars_ast_node * s[HANDLEBARS_COMPILER_STACK_SIZE];
 };
 
 
@@ -691,7 +691,7 @@ static inline void handlebars_compiler_accept_program(
 
     assert(compiler != NULL);
 
-    if( compiler->bps->i > HANDLEBARS_COMPILER_STACK_SIZE ) {
+    if( compiler->bps->i >= HANDLEBARS_COMPILER_STACK_SIZE ) {
         handlebars_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Block param stack blown");
     }
     compiler->bps->s[compiler->bps->i].block_param1 = block_param1;
@@ -1367,7 +1367,7 @@ static void handlebars_compiler_accept(
     }
 
     // Add node to source node stack
-    if( compiler->sns->i > HANDLEBARS_COMPILER_STACK_SIZE ) {
+    if( compiler->sns->i >= HANDLEBARS_COMPILER_STACK_SIZE ) {
         handlebars_throw(CONTEXT, HANDLEBARS_STACK_OVERFLOW, "Source node stack blown");
     }
     compiler->sns->s[compiler->sns->i] = node;

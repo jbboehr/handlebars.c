@@ -34,11 +34,11 @@ typedef void (*handlebars_rc_dtor_func)(
 );
 
 struct handlebars_rc {
-    uint8_t refcount;
+    uint32_t refcount;
 };
 
-#ifndef UINT8_MAX
-#define UINT8_MAX 255
+#ifndef UINT32_MAX
+#define UINT32_MAX 4294967295U
 #endif
 
 HBS_ATTR_NONNULL_ALL HBS_ATTR_ALWAYS_INLINE
@@ -50,7 +50,7 @@ inline void handlebars_rc_init(struct handlebars_rc * rc)
 HBS_ATTR_NONNULL_ALL HBS_ATTR_ALWAYS_INLINE
 inline void handlebars_rc_addref(struct handlebars_rc * rc)
 {
-    if (rc->refcount < UINT8_MAX) {
+    if (rc->refcount < UINT32_MAX) {
         rc->refcount++;
     }
 }
@@ -58,7 +58,7 @@ inline void handlebars_rc_addref(struct handlebars_rc * rc)
 HBS_ATTR_NONNULL_ALL HBS_ATTR_ALWAYS_INLINE
 inline void handlebars_rc_delref(struct handlebars_rc * rc, handlebars_rc_dtor_func dtor)
 {
-    if (rc->refcount == UINT8_MAX) {
+    if (rc->refcount == UINT32_MAX) {
         // immortal
     } else if (rc->refcount <= 1) {
         rc->refcount = 0;

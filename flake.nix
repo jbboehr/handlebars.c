@@ -132,11 +132,14 @@
           #  attr = "handlebars-c-norc";
           #  noRefcountingSupport = true;
           #}
-          #{
-          #  attr = "handlebars-c-debug";
-          #  debugSupport = true;
-          #  hardeningSupport = false;
-          #}
+          {
+            attr = "handlebars-c-debug";
+            debugSupport = true;
+            hardeningSupport = false;
+            # Automake's Valgrind wrapper cannot invoke Bats tests with their
+            # required filename argument; runtime memory checks run separately.
+            valgrindSupport = false;
+          }
           #{
           #  attr = "handlebars-c-lto";
           #  ltoSupport = true;

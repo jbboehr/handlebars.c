@@ -93,7 +93,9 @@ static int cache_gc(struct handlebars_cache * cache)
                 data.mv_data, (int) data.mv_size, (char *) data.mv_data); */
 
         struct handlebars_module * module = (struct handlebars_module *) data.mv_data;
-        if( cache->max_age >= 0 && difftime(now, module->ts) > cache->max_age ) {
+        if( data.mv_size < sizeof(struct handlebars_module)
+                || module->size != data.mv_size
+                || (cache->max_age >= 0 && difftime(now, module->ts) > cache->max_age) ) {
             mdb_del(txn, dbi, &key, NULL);
         }
     }
@@ -113,12 +115,16 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     MDB_dbi dbi;
     MDB_val key;
     MDB_val data;
-    char tmp[256];
     struct handlebars_module * module;
     time_t now;
     size_t size;
 
     time(&now);
+
+    if( hbs_str_len(tmpl) >= (size_t) mdb_env_get_maxkeysize(intern->env) ) {
+        intern->stat.misses++;
+        return NULL;
+    }
 
     err = mdb_txn_begin(intern->env, NULL, MDB_RDONLY, &txn);
     HANDLE_RC(err);
@@ -127,14 +133,8 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     if( err != 0 ) goto error;
 
     // Make key
-    if( hbs_str_len(tmpl) > (size_t) mdb_env_get_maxkeysize(intern->env) ) {
-        snprintf(tmp, 256, "hash:%lu", (unsigned long) hbs_str_hash(tmpl));
-        key.mv_size = strlen(tmp);
-        key.mv_data = tmp;
-    } else {
-        key.mv_size = hbs_str_len(tmpl) + 1;
-        key.mv_data = hbs_str_val(tmpl);
-    }
+    key.mv_size = hbs_str_len(tmpl) + 1;
+    key.mv_data = hbs_str_val(tmpl);
 
     // Fetch data
     err = mdb_get(txn, dbi, &key, &data);
@@ -146,6 +146,11 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     if( err != 0 ) goto error;
 
     module = ((struct handlebars_module *) data.mv_data);
+
+    if( data.mv_size < sizeof(struct handlebars_module) || module->size != data.mv_size ) {
+        intern->stat.misses++;
+        goto error;
+    }
 
 #if defined(HANDLEBARS_ENABLE_DEBUG)
     // In debug mode, throw
@@ -197,8 +202,13 @@ static void cache_add(
     MDB_dbi dbi;
     MDB_val key;
     MDB_val data;
-    char tmp[256];
     struct handlebars_module * module_copy;
+
+    // LMDB cannot store keys beyond this limit. Do not reduce long templates
+    // to a non-unique hash key, since that can return another template's module.
+    if( hbs_str_len(tmpl) >= (size_t) mdb_env_get_maxkeysize(intern->env) ) {
+        return;
+    }
 
     err = mdb_txn_begin(intern->env, NULL, 0, &txn);
     HANDLE_RC(err);
@@ -207,14 +217,8 @@ static void cache_add(
     if( err != 0 ) goto error;
 
     // Make key
-    if( hbs_str_len(tmpl) > (size_t) mdb_env_get_maxkeysize(intern->env) ) {
-        snprintf(tmp, 256, "hash:%lu", (unsigned long) hbs_str_hash(tmpl));
-        key.mv_size = strlen(tmp);
-        key.mv_data = tmp;
-    } else {
-        key.mv_size = hbs_str_len(tmpl) + 1;
-        key.mv_data = hbs_str_val(tmpl);
-    }
+    key.mv_size = hbs_str_len(tmpl) + 1;
+    key.mv_data = hbs_str_val(tmpl);
 
     // Normalize pointers
     module_copy = handlebars_talloc_size(CONTEXT, module->size);

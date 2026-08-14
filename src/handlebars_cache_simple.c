@@ -147,6 +147,7 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
 {
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
     struct handlebars_cache_stat * stat = &intern->stat;
+    struct handlebars_string * key;
     HANDLEBARS_VALUE_DECL(value);
 
     // Check if it would exceed the size
@@ -160,7 +161,12 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     struct handlebars_ptr * uptr = handlebars_ptr_ctor(HBSCTX(cache), struct handlebars_module, module, false);
     handlebars_value_ptr(value, uptr);
 
-    intern->map = handlebars_map_add(intern->map, tmpl, value);
+    // Cache keys must outlive the caller's template. The map only takes a
+    // reference to its key, which is not enough when the incoming string has
+    // no independently retained reference or is a temporary preprocessing
+    // result.
+    key = handlebars_string_copy_ctor(HBSCTX(cache), tmpl);
+    intern->map = handlebars_map_add(intern->map, key, value);
 
     // Update master
     stat->current_entries++;

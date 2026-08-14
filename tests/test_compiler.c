@@ -30,7 +30,9 @@
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
+#include "handlebars_delimiters.h"
 #include "handlebars_opcodes.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_memory.h"
 #include "utils.h"
@@ -46,6 +48,45 @@ START_TEST(test_compiler_ctor)
     ck_assert_ptr_ne(NULL, mycompiler);
 
     handlebars_compiler_dtor(mycompiler);
+}
+END_TEST
+
+START_TEST(test_compiler_nested_program_stack_limit)
+{
+    struct handlebars_string * tmpl = handlebars_string_init(context, 1024);
+    for( int i = 0; i < HANDLEBARS_COMPILER_STACK_SIZE + 1; i++ ) {
+        tmpl = handlebars_string_append(context, tmpl, HBS_STRL("{{#if a}}"));
+    }
+    for( int i = 0; i < HANDLEBARS_COMPILER_STACK_SIZE + 1; i++ ) {
+        tmpl = handlebars_string_append(context, tmpl, HBS_STRL("{{/if}}"));
+    }
+
+    jmp_buf buf;
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_STACK_OVERFLOW);
+        return;
+    }
+
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
+    (void) program;
+    ck_abort_msg("Expected deeply nested programs to hit the compiler stack limit");
+}
+END_TEST
+
+START_TEST(test_delimiter_change_requires_close_delimiter)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL("{{=a =}}x"));
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        return;
+    }
+
+    struct handlebars_string * processed = handlebars_preprocess_delimiters(context, tmpl, NULL, NULL);
+    (void) processed;
+    ck_abort_msg("Expected whitespace-only closing delimiter to be rejected");
 }
 END_TEST
 
@@ -174,6 +215,8 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");
+	REGISTER_TEST_FIXTURE(s, test_compiler_nested_program_stack_limit, "Nested program stack limit");
+	REGISTER_TEST_FIXTURE(s, test_delimiter_change_requires_close_delimiter, "Delimiter change requires close delimiter");
 #ifdef HANDLEBARS_TESTING_EXPORTS
 	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");
 	REGISTER_TEST_FIXTURE(s, test_compiler_opcode, "Push opcode");

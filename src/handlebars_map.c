@@ -49,6 +49,12 @@
 
 
 
+struct handlebars_map_entry {
+    struct handlebars_string * key;
+    struct handlebars_value value;
+    uint32_t table_offset;
+};
+
 struct handlebars_map {
     struct handlebars_context * ctx;
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -62,13 +68,7 @@ struct handlebars_map {
 
     bool is_in_iteration;
 
-    char data[];
-};
-
-struct handlebars_map_entry {
-    struct handlebars_string * key;
-    struct handlebars_value value;
-    uint32_t table_offset;
+    struct handlebars_map_entry data[];
 };
 
 struct ht_find_result {
@@ -146,9 +146,20 @@ static inline uint8_t map_choose_vec_capacity_log2(size_t capacity) {
 
 HBS_ATTR_PURE
 static inline size_t ht_choose_table_capacity(size_t elements) {
-    size_t target_capacity = elements * 100 / HANDLEBARS_MAP_MAX_LOAD_FACTOR;
+    const size_t capacity_count = sizeof(HANDLEBARS_MAP_CAPACITY_TABLE) / sizeof(HANDLEBARS_MAP_CAPACITY_TABLE[0]);
+    const size_t max_table_capacity = HANDLEBARS_MAP_CAPACITY_TABLE[capacity_count - 1];
+    const size_t max_elements = (max_table_capacity / 100) * HANDLEBARS_MAP_MAX_LOAD_FACTOR
+        + ((max_table_capacity % 100) * HANDLEBARS_MAP_MAX_LOAD_FACTOR) / 100;
+    if( elements > max_elements ) {
+        // LCOV_EXCL_START
+        fprintf(stderr, "Failed to obtain hash table capacity for minimum elements %zu\n", elements);
+        abort();
+        // LCOV_EXCL_STOP
+    }
+    size_t target_capacity = (elements / HANDLEBARS_MAP_MAX_LOAD_FACTOR) * 100
+        + ((elements % HANDLEBARS_MAP_MAX_LOAD_FACTOR) * 100) / HANDLEBARS_MAP_MAX_LOAD_FACTOR;
     size_t i = 0;
-    for (i = 0; i < sizeof(HANDLEBARS_MAP_CAPACITY_TABLE) - 1; i++) {
+    for (i = 0; i < capacity_count; i++) {
         if (HANDLEBARS_MAP_CAPACITY_TABLE[i] >= target_capacity) {
             return HANDLEBARS_MAP_CAPACITY_TABLE[i];
         }
@@ -163,7 +174,7 @@ HBS_ATTR_PURE
 static inline struct handlebars_map_entry * map_vec(struct handlebars_map * map)
 {
     // Is it worth doing this to save 8 bytes off the map structure?
-    return (struct handlebars_map_entry *) (void *) (map->data + HT_BOUNDARY_SIZE);
+    return (struct handlebars_map_entry *) (void *) ((char *) map->data + HT_BOUNDARY_SIZE);
 }
 
 HBS_ATTR_PURE
@@ -171,7 +182,7 @@ static inline struct handlebars_map_entry ** map_table(struct handlebars_map * m
 {
     // Is it worth doing this to save 8 bytes off the map structure?
     size_t vec_size = map->vec_capacity * sizeof(struct handlebars_map_entry);
-    return (struct handlebars_map_entry **) (void *) (map->data + HT_BOUNDARY_SIZE * 2 + vec_size);
+    return (struct handlebars_map_entry **) (void *) ((char *) map->data + HT_BOUNDARY_SIZE * 2 + vec_size);
 }
 
 static inline struct ht_find_result map_find_entry(
@@ -188,13 +199,15 @@ static inline struct ht_find_result map_find_entry(
     for (i = 0; i < table_capacity; i++) {
         pos = (start + i) % table_capacity;
         if (!table[pos]) {
-            ret.empty_found = true;
-            ret.empty_offset = pos;
+            if (!ret.empty_found) {
+                ret.empty_found = true;
+                ret.empty_offset = pos;
+            }
             break;
         } else if (table[pos] == HANDLEBARS_MAP_TOMBSTONE) {
             ret.tombstones++;
             if (!ret.empty_found) {
-                ret.empty_offset = true;
+                ret.empty_found = true;
                 ret.empty_offset = pos;
             }
         } else if( handlebars_string_eq(table[pos]->key, key) ) {
@@ -324,8 +337,18 @@ const size_t HANDLEBARS_MAP_SIZE = sizeof(struct handlebars_map);
     size_t vec_capacity = capacity; \
     size_t table_capacity = ht_choose_table_capacity(vec_capacity); \
     size_t size = sizeof(struct handlebars_map); \
+    if( vec_capacity > UINT32_MAX || vec_capacity > SIZE_MAX / sizeof(struct handlebars_map_entry) \
+            || table_capacity > SIZE_MAX / sizeof(struct handlebars_map_entry *) ) { \
+        fprintf(stderr, "Map capacity is too large: %zu\n", vec_capacity); \
+        abort(); \
+    } \
     size_t vec_size = vec_capacity * sizeof(struct handlebars_map_entry); \
     size_t table_size = table_capacity * sizeof(struct handlebars_map_entry *); \
+    if( vec_size > SIZE_MAX - size - HT_BOUNDARY_SIZE * 3 \
+            || table_size > SIZE_MAX - size - HT_BOUNDARY_SIZE * 3 - vec_size ) { \
+        fprintf(stderr, "Map allocation size is too large: %zu\n", vec_capacity); \
+        abort(); \
+    } \
     size += HT_BOUNDARY_SIZE * 3 + vec_size + table_size
 
 size_t handlebars_map_size_of(size_t capacity) {
@@ -355,9 +378,9 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
     memset(map_table(map), 0, table_size);
 
 #ifdef HANDLEBARS_HAVE_VALGRIND
-   VALGRIND_MAKE_MEM_NOACCESS(map->data, HT_BOUNDARY_SIZE);
-   VALGRIND_MAKE_MEM_NOACCESS(map->data + HT_BOUNDARY_SIZE + vec_size, HT_BOUNDARY_SIZE);
-   VALGRIND_MAKE_MEM_NOACCESS(map->data + HT_BOUNDARY_SIZE + vec_size + HT_BOUNDARY_SIZE + table_size, HT_BOUNDARY_SIZE);
+   VALGRIND_MAKE_MEM_NOACCESS((char *) map->data, HT_BOUNDARY_SIZE);
+   VALGRIND_MAKE_MEM_NOACCESS((char *) map->data + HT_BOUNDARY_SIZE + vec_size, HT_BOUNDARY_SIZE);
+   VALGRIND_MAKE_MEM_NOACCESS((char *) map->data + HT_BOUNDARY_SIZE + vec_size + HT_BOUNDARY_SIZE + table_size, HT_BOUNDARY_SIZE);
 #endif
 
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -552,9 +575,9 @@ void handlebars_map_sparse_array_compact(struct handlebars_map * map)
     for (; i < map->vec_offset; i++) {
         if (0 == memcmp(&vec[i], &HANDLEBARS_MAP_TOMBSTONE_V, sizeof(HANDLEBARS_MAP_TOMBSTONE_V))) {
             i++;
-            vec_offset++;
             break;
         }
+        vec_offset++;
     }
 
     // Now patch everything
@@ -567,6 +590,7 @@ void handlebars_map_sparse_array_compact(struct handlebars_map * map)
     }
 
     map->vec_offset = vec_offset;
+    assert(map->vec_offset == map->i);
 }
 
 size_t handlebars_map_sparse_array_count(struct handlebars_map * map)

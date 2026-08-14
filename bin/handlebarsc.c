@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <talloc.h>
 
 #include <assert.h>
@@ -318,17 +319,38 @@ static char * file_get_contents(char * filename)
         exit(1);
     }
 
-    fseek(f, 0, SEEK_END);
-    size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    struct stat file_stat;
+    if( fstat(fileno(f), &file_stat) != 0 || !S_ISREG(file_stat.st_mode) ) {
+        fprintf(stderr, "Input is not a regular file: %s\n", filename);
+        fclose(f);
+        exit(1);
+    }
 
-    buf = talloc_array(root, char, size + 1);
-    size_t read = fread(buf, size, 1, f);
+    if( fseek(f, 0, SEEK_END) != 0 ) {
+        fprintf(stderr, "Failed to seek file: %s\n", filename);
+        fclose(f);
+        exit(1);
+    }
+    size = ftell(f);
+    if( size < 0 || fseek(f, 0, SEEK_SET) != 0 ) {
+        fprintf(stderr, "Failed to determine file size: %s\n", filename);
+        fclose(f);
+        exit(1);
+    }
+
+    buf = talloc_array(root, char, (size_t) size + 1);
+    if( buf == NULL ) {
+        fprintf(stderr, "Failed to allocate input buffer: %s\n", filename);
+        fclose(f);
+        exit(1);
+    }
+    size_t read = fread(buf, 1, (size_t) size, f);
+    bool read_failed = read != (size_t) size || ferror(f);
     fclose(f);
 
     buf[size] = 0;
 
-    if (!read) {
+    if (read_failed) {
         fprintf(stderr, "Failed to read file: %s\n", filename);
         exit(1);
     }
@@ -465,7 +487,7 @@ static int do_lex(void)
 
     // Read
     readInput();
-    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, strlen(input_buf));
+    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, input_buf_length);
 
     // Preprocess
     if( compiler_flags & handlebars_compiler_flag_compat ) {
@@ -508,7 +530,7 @@ static int do_parse(void)
 
     // Read
     readInput();
-    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, strlen(input_buf));
+    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, input_buf_length);
 
     // Preprocess
     if( compiler_flags & handlebars_compiler_flag_compat ) {
@@ -554,7 +576,7 @@ static int do_compile(void)
 
     // Read
     readInput();
-    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, strlen(input_buf));
+    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, input_buf_length);
 
     // Preprocess
     if( compiler_flags & handlebars_compiler_flag_compat ) {
@@ -603,7 +625,7 @@ static int do_module(void)
 
     // Read
     readInput();
-    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, strlen(input_buf));
+    tmpl = handlebars_string_ctor(HBSCTX(ctx), input_buf, input_buf_length);
 
     // Preprocess
     if( compiler_flags & handlebars_compiler_flag_compat ) {
@@ -668,7 +690,12 @@ static int do_execute(void)
 
     // Read
     readInput();
-    tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, strlen(input_buf));
+    if( input_buf_length == 0 ) {
+        HANDLEBARS_VALUE_UNDECL(partials);
+        handlebars_context_dtor(ctx);
+        return 0;
+    }
+    tmpl = handlebars_string_ctor(HBSCTX(parser), input_buf, input_buf_length);
 
     // Preprocess
     if( compiler_flags & handlebars_compiler_flag_compat ) {

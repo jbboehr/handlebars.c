@@ -341,6 +341,53 @@ START_TEST(test_map_remove_nonexist)
 }
 END_TEST
 
+START_TEST(test_map_sparse_array_compact_multiple_tombstones)
+{
+    struct handlebars_map * map = handlebars_map_ctor(context, 8);
+    HANDLEBARS_VALUE_DECL(value);
+
+    for( long i = 0; i < 4; i++ ) {
+        char key[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(value, i);
+        map = handlebars_map_str_add(map, key, 1, value);
+    }
+
+    map = handlebars_map_str_remove(map, HBS_STRL("a"));
+    map = handlebars_map_str_remove(map, HBS_STRL("c"));
+    ck_assert(handlebars_map_is_sparse(map));
+
+    handlebars_map_sparse_array_compact(map);
+
+    ck_assert(!handlebars_map_is_sparse(map));
+    ck_assert_uint_eq(handlebars_map_count(map), 2);
+    ck_assert_hbs_str_eq_cstr(handlebars_map_get_key_at_index(map, 0), "b");
+    ck_assert_hbs_str_eq_cstr(handlebars_map_get_key_at_index(map, 1), "d");
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("b"))), 1);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("d"))), 3);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_map_delref(map);
+}
+END_TEST
+
+START_TEST(test_map_distinguishes_hash_collisions)
+{
+    struct handlebars_map * map = handlebars_map_ctor(context, 2);
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_integer(value, 1);
+    map = handlebars_map_str_add(map, HBS_STRL("lwaaaa"), value);
+    handlebars_value_integer(value, 2);
+    map = handlebars_map_str_add(map, HBS_STRL("tnsaaa"), value);
+
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("lwaaaa"))), 1);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("tnsaaa"))), 2);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_map_delref(map);
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -355,6 +402,8 @@ static Suite * suite(void)
 #endif
     REGISTER_TEST_FIXTURE(s, test_map_sizeof, "Map sizeof");
     REGISTER_TEST_FIXTURE(s, test_map_remove_nonexist, "Map remove noexistent key");
+    REGISTER_TEST_FIXTURE(s, test_map_sparse_array_compact_multiple_tombstones, "Compact multiple sparse map entries");
+    REGISTER_TEST_FIXTURE(s, test_map_distinguishes_hash_collisions, "Map distinguishes hash collisions");
 
     return s;
 }

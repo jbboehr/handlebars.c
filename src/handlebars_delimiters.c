@@ -169,13 +169,17 @@ struct handlebars_string * handlebars_preprocess_delimiters(
                 }
 
                 // Scan backwards while whitespace
-                pce = p - 1;
-                while( *pce == ' ' ) {
+                pce = p;
+                while( pce > pc && pce[-1] == ' ' ) {
                     pce--;
                 }
 
+                if( pce == pc ) {
+                    handlebars_throw(ctx, HANDLEBARS_ERROR, "Delimiter change must contain a closing delimiter");
+                }
+
                 // Save new close tag
-                new_close = handlebars_string_ctor(ctx, pc, pce - pc + 1);
+                new_close = handlebars_string_ctor(ctx, pc, pce - pc);
 
                 // Skip over equals
                 move_forward(1);

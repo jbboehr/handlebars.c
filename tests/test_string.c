@@ -25,6 +25,7 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
+#include "handlebars_rc.h"
 #include "handlebars_string.h"
 #include "utils.h"
 
@@ -83,6 +84,53 @@ START_TEST(test_handlebars_strnstr_5)
 }
 END_TEST
 
+START_TEST(test_handlebars_strnstr_needle_longer_than_haystack)
+{
+    const char string[] = "a";
+    const char * res = handlebars_strnstr(HBS_STRL(string), HBS_STRL("longer"));
+    ck_assert_ptr_eq(res, NULL);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_hash_collision_is_not_equal)
+{
+    struct handlebars_string * string1 = handlebars_string_ctor(context, HBS_STRL("lwaaaa"));
+    struct handlebars_string * string2 = handlebars_string_ctor(context, HBS_STRL("tnsaaa"));
+
+    ck_assert_uint_eq(hbs_str_hash(string1), hbs_str_hash(string2));
+    ck_assert(!handlebars_string_eq(string1, string2));
+
+    handlebars_talloc_free(string1);
+    handlebars_talloc_free(string2);
+}
+END_TEST
+
+static unsigned rc_dtor_calls;
+
+static void test_rc_dtor(struct handlebars_rc * rc)
+{
+    (void) rc;
+    rc_dtor_calls++;
+}
+
+START_TEST(test_handlebars_rc_exceeds_byte_range)
+{
+    struct handlebars_rc rc;
+    handlebars_rc_init(&rc);
+    rc_dtor_calls = 0;
+
+    for( size_t i = 0; i < 300; i++ ) {
+        handlebars_rc_addref(&rc);
+    }
+    ck_assert_uint_eq(handlebars_rc_refcount(&rc), 300);
+
+    for( size_t i = 0; i < 300; i++ ) {
+        handlebars_rc_delref(&rc, test_rc_dtor);
+    }
+    ck_assert_uint_eq(rc_dtor_calls, 1);
+}
+END_TEST
+
 START_TEST(test_handlebars_string_reduce_1)
 {
     struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("abcdef"));
@@ -109,6 +157,25 @@ START_TEST(test_handlebars_string_reduce_3)
     handlebars_talloc_free(input);
 }
 END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_handlebars_string_reduce_with_separation)
+{
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("abcdef"));
+    struct handlebars_string * shared = input;
+    handlebars_string_addref(input);
+    handlebars_string_addref(input);
+
+    struct handlebars_string * actual = handlebars_str_reduce(input, HBS_STRL("bcd"), HBS_STRL("qq"));
+
+    ck_assert_ptr_ne(actual, shared);
+    ck_assert_hbs_str_eq_cstr(actual, "aqqef");
+    ck_assert_hbs_str_eq_cstr(shared, "abcdef");
+    handlebars_string_delref(actual);
+    handlebars_string_delref(shared);
+}
+END_TEST
+#endif
 
 START_TEST(test_handlebars_string_replace_1)
 {
@@ -276,6 +343,25 @@ START_TEST(test_handlebars_string_stripcslashes_7)
     handlebars_talloc_free(input);
 }
 END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_handlebars_string_stripcslashes_with_separation)
+{
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("\\n\\r"));
+    struct handlebars_string * shared = input;
+    handlebars_string_addref(input);
+    handlebars_string_addref(input);
+
+    struct handlebars_string * actual = handlebars_string_stripcslashes(input);
+
+    ck_assert_ptr_ne(actual, shared);
+    ck_assert_cstr_eq_hbs_str("\n\r", actual);
+    ck_assert_hbs_str_eq_cstr(shared, "\\n\\r");
+    handlebars_string_delref(actual);
+    handlebars_string_delref(shared);
+}
+END_TEST
+#endif
 
 START_TEST(test_handlebars_string_asprintf)
 {
@@ -466,6 +552,27 @@ START_TEST(test_handlebars_string_truncate_4)
 }
 END_TEST
 
+START_TEST(test_handlebars_string_truncate_invalid_range)
+{
+    struct handlebars_string * str = handlebars_string_ctor(context, HBS_STRL("abc"));
+    str = handlebars_string_truncate(str, 5, 2);
+    ck_assert_hbs_str_eq_cstr(str, "");
+    handlebars_talloc_free(str);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_indent_empty)
+{
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL(""));
+    struct handlebars_string * indent = handlebars_string_ctor(context, HBS_STRL("  "));
+    struct handlebars_string * actual = handlebars_string_indent(context, input, indent);
+
+    ck_assert_hbs_str_eq_cstr(actual, "  ");
+    handlebars_talloc_free(indent);
+    handlebars_talloc_free(actual);
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -477,9 +584,15 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_3, "handlebars_strnstr 3");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_4, "handlebars_strnstr 4");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_5, "handlebars_strnstr 5");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_needle_longer_than_haystack, "handlebars_strnstr needle longer than haystack");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_hash_collision_is_not_equal, "hash collision is not string equality");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_rc_exceeds_byte_range, "reference count exceeds byte range");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_1, "handlebars_string_reduce 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_2, "handlebars_string_reduce 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_3, "handlebars_string_reduce 3");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_with_separation, "handlebars_string_reduce with separation");
+#endif
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_1, "handlebars_string_replace 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_2, "handlebars_string_replace 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_3, "handlebars_string_replace 3");
@@ -496,6 +609,9 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_5, "handlebars_string_addcslashes 5");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_6, "handlebars_string_addcslashes 6");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_7, "handlebars_string_addcslashes 7");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_stripcslashes_with_separation, "handlebars_string_stripcslashes with separation");
+#endif
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf, "handlebars_string_asprintf");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_asprintf_append, "handlebars_string_asprintf_append");
 
@@ -519,6 +635,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_truncate_2, "handlebars_string_truncate 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_truncate_3, "handlebars_string_truncate 3");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_truncate_4, "handlebars_string_truncate 4");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_truncate_invalid_range, "handlebars_string_truncate invalid range");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_indent_empty, "handlebars_string_indent empty input");
 
     return s;
 }

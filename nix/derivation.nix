@@ -72,6 +72,10 @@ stdenv.mkDerivation rec {
     );
   version = "v1.0.0";
 
+  # glibc's fortify headers require optimization, while the strict debug
+  # configuration intentionally uses -O0.
+  hardeningDisable = lib.optionals debugSupport ["fortify"];
+
   src = lib.cleanSourceWith {
     filter = path: type: (builtins.all (x: x != baseNameOf path)
       [".idea" ".git" "nix" "ci.nix" ".travis.sh" ".travis.yml" ".github" "flake.nix" "flake.lock"]);
