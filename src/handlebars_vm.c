@@ -583,9 +583,7 @@ ACCEPT_FUNCTION(assign_to_hash)
     assert(opcode->op1.type == handlebars_operand_type_string);
     assert(handlebars_value_get_type(hash) == HANDLEBARS_VALUE_TYPE_MAP);
 
-    struct handlebars_map * map = handlebars_value_get_map(hash);
-    map = handlebars_map_update(map, opcode->op1.data.string.string, value);
-    handlebars_value_map(hash, map);
+    handlebars_value_map_update(hash, opcode->op1.data.string.string, value);
 
     PUSH(vm->hashStack, hash);
 

@@ -984,6 +984,10 @@ static inline void handlebars_compiler_accept_decorator(
 
         origcompiler = compiler;
         subcompiler = talloc_steal(compiler, handlebars_compiler_ctor(CONTEXT));
+        handlebars_compiler_set_flags(subcompiler, handlebars_compiler_get_flags(compiler));
+        subcompiler->bps = compiler->bps;
+        subcompiler->sns = compiler->sns;
+        subcompiler->known_helpers = compiler->known_helpers;
         program->decorators[program->decorators_length++] = talloc_steal(program, subcompiler->program);
         compiler = subcompiler;
 
@@ -1106,6 +1110,9 @@ static inline void handlebars_compiler_accept_sexpr_helper(
     assert(path->type == HANDLEBARS_AST_NODE_PATH);
 
     name = handlebars_ast_node_get_id_part(path);
+    if( name == NULL ) {
+        name = path->node.path.original;
+    }
 
     if( handlebars_compiler_is_known_helper(compiler, path) ) {
         struct handlebars_opcode * opcode = handlebars_opcode_ctor(CONTEXT, handlebars_opcode_type_invoke_known_helper);

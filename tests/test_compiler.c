@@ -113,6 +113,57 @@ START_TEST(test_serialize_rejects_invalid_child_program)
 }
 END_TEST
 
+START_TEST(test_known_helpers_only_rejects_parent_path)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL("{{..f}}"));
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_program * program;
+
+    ck_assert_ptr_ne(NULL, ast);
+    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_known_helpers_only);
+    program = handlebars_compiler_compile_ex(compiler, ast);
+
+    ck_assert_ptr_ne(NULL, program);
+    ck_assert_int_eq(HANDLEBARS_UNKNOWN_HELPER, handlebars_error_num(context));
+    ck_assert_msg(
+        strstr(handlebars_error_msg(context), "unknown helper ..") != NULL,
+        "Unexpected error message: %s",
+        handlebars_error_msg(context)
+    );
+}
+END_TEST
+
+START_TEST(test_string_params_supports_implicit_partial_context)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL("{{> foo}}"));
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_program * program;
+
+    ck_assert_ptr_ne(NULL, ast);
+    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_string_params);
+    program = handlebars_compiler_compile_ex(compiler, ast);
+
+    ck_assert_ptr_ne(NULL, program);
+    ck_assert_int_eq(HANDLEBARS_SUCCESS, handlebars_error_num(context));
+}
+END_TEST
+
+START_TEST(test_alternate_decorator_compiler_inherits_state)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL("{{*decorator foo}}"));
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_program * program;
+
+    ck_assert_ptr_ne(NULL, ast);
+    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_alternate_decorators);
+    program = handlebars_compiler_compile_ex(compiler, ast);
+
+    ck_assert_ptr_ne(NULL, program);
+    ck_assert_int_eq(HANDLEBARS_SUCCESS, handlebars_error_num(context));
+    ck_assert_int_eq(1, program->decorators_length);
+}
+END_TEST
+
 START_TEST(test_compiler_ctor_failed_alloc)
 {
 #ifdef HANDLEBARS_MEMORY
@@ -241,6 +292,9 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_nested_program_stack_limit, "Nested program stack limit");
 	REGISTER_TEST_FIXTURE(s, test_delimiter_change_requires_close_delimiter, "Delimiter change requires close delimiter");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_program, "Reject invalid child program index");
+	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");
+	REGISTER_TEST_FIXTURE(s, test_string_params_supports_implicit_partial_context, "String params with implicit partial context");
+	REGISTER_TEST_FIXTURE(s, test_alternate_decorator_compiler_inherits_state, "Alternate decorator compiler state");
 #ifdef HANDLEBARS_TESTING_EXPORTS
 	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");
 	REGISTER_TEST_FIXTURE(s, test_compiler_opcode, "Push opcode");

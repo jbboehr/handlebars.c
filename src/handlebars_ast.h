@@ -99,8 +99,8 @@ struct handlebars_string * handlebars_ast_node_get_id_part(
 ) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Get the string mode value of an AST node. Returns NULL if not
- * applicable. Returns a pointer to the current buffer.
+ * @brief Get the string mode value of an AST node. Returns an empty string if
+ * not applicable. Returns a pointer to the current buffer.
  *
  * @param[in] context The handlebars context
  * @param[in] ast_node The AST node

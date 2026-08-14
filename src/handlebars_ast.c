@@ -109,6 +109,10 @@ struct handlebars_string * handlebars_ast_node_get_string_mode_value(
             break;
     }
 
+    if( string == NULL ) {
+        string = handlebars_string_ctor(context, HBS_STRL(""));
+    }
+
     return string;
 }
 

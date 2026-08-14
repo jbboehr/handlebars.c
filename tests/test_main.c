@@ -87,6 +87,23 @@ START_TEST(test_lex)
 }
 END_TEST
 
+START_TEST(test_parse_rejects_embedded_nul)
+{
+    static const char tmpl[] = {'\0', (char) 0xff};
+    struct handlebars_ast_node * ast;
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, tmpl, sizeof(tmpl)),
+        0
+    );
+
+    ck_assert_ptr_eq(NULL, ast);
+    ck_assert_int_eq(HANDLEBARS_PARSEERR, handlebars_error_num(HBSCTX(parser)));
+    ck_assert_ptr_ne(NULL, strstr(handlebars_error_msg(HBSCTX(parser)), "embedded NUL"));
+}
+END_TEST
+
 START_TEST(test_context_ctor_dtor)
 {
     struct handlebars_context * mycontext = handlebars_context_ctor();
@@ -244,6 +261,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_spec_version_string, "Handlebars Spec Version String");
     REGISTER_TEST_FIXTURE(s, test_mustache_spec_version_string, "Mustache Spec Version String");
     REGISTER_TEST_FIXTURE(s, test_lex, "Lex Convenience Function");
+    REGISTER_TEST_FIXTURE(s, test_parse_rejects_embedded_nul, "Reject Embedded NUL");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_dtor, "Constructor/Destructor");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_failed_alloc, "Constructor (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_ex_failed_alloc, "Constructor ex (failed alloc)");

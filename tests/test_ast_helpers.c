@@ -109,6 +109,26 @@ START_TEST(test_ast_helper_strip_comment)
 }
 END_TEST
 
+START_TEST(test_ast_helper_strip_id_literal)
+{
+    struct handlebars_string * tmp;
+
+    ck_assert_ptr_eq(handlebars_ast_helper_strip_id_literal(NULL), NULL);
+
+    tmp = handlebars_string_ctor(context, HBS_STRL(""));
+    ck_assert_hbs_str_eq_cstr(handlebars_ast_helper_strip_id_literal(tmp), "");
+
+    tmp = handlebars_string_ctor(context, HBS_STRL("["));
+    ck_assert_hbs_str_eq_cstr(handlebars_ast_helper_strip_id_literal(tmp), "[");
+
+    tmp = handlebars_string_ctor(context, HBS_STRL("[]"));
+    ck_assert_hbs_str_eq_cstr(handlebars_ast_helper_strip_id_literal(tmp), "");
+
+    tmp = handlebars_string_ctor(context, HBS_STRL("[foo]"));
+    ck_assert_hbs_str_eq_cstr(handlebars_ast_helper_strip_id_literal(tmp), "foo");
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -116,6 +136,7 @@ static Suite * suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_ast_helper_set_strip_flags, "Set strip flags");
     REGISTER_TEST_FIXTURE(s, test_ast_helper_strip_comment, "Strip comment");
+    REGISTER_TEST_FIXTURE(s, test_ast_helper_strip_id_literal, "Strip ID literal");
 
     return s;
 }

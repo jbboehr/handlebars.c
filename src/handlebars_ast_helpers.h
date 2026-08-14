@@ -91,7 +91,7 @@ struct handlebars_string * handlebars_ast_helper_strip_comment(
 
 struct handlebars_string * handlebars_ast_helper_strip_id_literal(
     struct handlebars_string * comment
-) HBS_TEST_PUBLIC HBS_ATTR_RETURNS_NONNULL;
+) HBS_TEST_PUBLIC;
 
 /**
  * @brief Set the strip flags of a node

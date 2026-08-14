@@ -429,6 +429,20 @@ START_TEST(test_vm_rejects_empty_opcode_range)
 }
 END_TEST
 
+START_TEST(test_vm_error_returns_null_without_outer_handler)
+{
+    struct handlebars_module * module = serialize_template("test");
+    module->programs[0].opcode_count = 0;
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_eq(output, NULL);
+    ck_assert_str_eq(handlebars_error_msg(context), "Invalid opcode range for program: 0");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 START_TEST(test_vm_rejects_empty_lookup_path)
 {
     struct handlebars_module * module = serialize_template("{{foo}}");
@@ -456,6 +470,21 @@ START_TEST(test_vm_rejects_empty_lookup_path)
 }
 END_TEST
 
+START_TEST(test_vm_hash_rehash)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#if true a=1 b=2 c=3 d=4 e=5}}yes{{/if}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_ne(output, NULL);
+    ck_assert_hbs_str_eq_cstr(output, "yes");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -480,7 +509,9 @@ static Suite * suite(void)
 #endif
     REGISTER_TEST_FIXTURE(s, test_compat_partial_cache_uses_processed_template_key, "Compat partial cache key");
     REGISTER_TEST_FIXTURE(s, test_vm_rejects_empty_opcode_range, "VM rejects empty opcode range");
+    REGISTER_TEST_FIXTURE(s, test_vm_error_returns_null_without_outer_handler, "VM error returns NULL without outer handler");
     REGISTER_TEST_FIXTURE(s, test_vm_rejects_empty_lookup_path, "VM rejects empty lookup path");
+    REGISTER_TEST_FIXTURE(s, test_vm_hash_rehash, "VM rehashes helper hashes safely");
 
     return s;
 }

@@ -116,7 +116,7 @@ static void loadSpecTestExpected(struct tokenizer_test * test, json_object * obj
 
         // Append
         struct handlebars_string * tmp = handlebars_token_print(test->ctx, token, 1);
-        test->expected = handlebars_string_append_str(context, test->expected, tmp);
+        test->expected = handlebars_string_append_str(test->ctx, test->expected, tmp);
         handlebars_talloc_free(tmp);
     }
 

@@ -39,7 +39,7 @@
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_string.h"
 
-#define PATCH(ptr, baseaddr) ptr = (void *) (((char *) ptr) - ((char *) module->addr) + ((char *) baseaddr))
+#define PATCH(ptr, baseaddr) ptr = (void *) ((uintptr_t) (ptr) - (uintptr_t) module->addr + (uintptr_t) (baseaddr))
 #define align_size(size) handlebars_align_size(size, sizeof(void *))
 
 const size_t HANDLEBARS_MODULE_SIZE = sizeof(struct handlebars_module);

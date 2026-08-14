@@ -56,6 +56,16 @@ START_TEST(test_boolean_json_false)
 }
 END_TEST
 
+START_TEST(test_null_json_object)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_init_json_object(context, value, NULL);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_NULL);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_int_json)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -297,6 +307,7 @@ static Suite * suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_boolean_json_true, "Boolean - true");
     REGISTER_TEST_FIXTURE(s, test_boolean_json_false, "Boolean - false");
+    REGISTER_TEST_FIXTURE(s, test_null_json_object, "Null object");
     REGISTER_TEST_FIXTURE(s, test_int_json, "Integer");
     REGISTER_TEST_FIXTURE(s, test_float_json, "Float");
     REGISTER_TEST_FIXTURE(s, test_string_json, "String");

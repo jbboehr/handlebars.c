@@ -37,7 +37,7 @@ void handlebars_value_init_json_object(
     struct handlebars_context * ctx,
     struct handlebars_value * value,
     struct json_object * json
-) HBS_ATTR_NONNULL_ALL;
+) HBS_ATTR_NONNULL(1, 2);
 
 /**
  * @brief Initialize a value from a JSON string

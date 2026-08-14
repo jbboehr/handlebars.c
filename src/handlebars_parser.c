@@ -22,11 +22,13 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
 #include "handlebars_private.h"
+#include "handlebars_string.h"
 #include "handlebars_token.h"
 
 #pragma GCC diagnostic push
@@ -83,6 +85,15 @@ void handlebars_parser_dtor(struct handlebars_parser * parser)
 #undef CONTEXT
 #define CONTEXT HBSCTX(parser)
 
+static void handlebars_parser_validate_template(
+    struct handlebars_parser * parser,
+    struct handlebars_string * tmpl
+) {
+    if( memchr(hbs_str_val(tmpl), '\0', hbs_str_len(tmpl)) != NULL ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_PARSEERR, "Template contains an embedded NUL byte");
+    }
+}
+
 struct handlebars_token ** handlebars_lex_ex(
     struct handlebars_parser * parser,
     struct handlebars_string * tmpl
@@ -105,6 +116,8 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
             return NULL;
         }
     }
+
+    handlebars_parser_validate_template(parser, parser->tmpl);
 
     YYSTYPE yylval_param;
     YYLTYPE yylloc_param;
@@ -154,6 +167,8 @@ struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * pars
             return NULL;
         }
     }
+
+    handlebars_parser_validate_template(parser, tmpl);
 
     parser->tmpl = tmpl;
     parser->flags = flags;

@@ -415,16 +415,24 @@ struct handlebars_string * handlebars_ast_helper_strip_comment(struct handlebars
 
 struct handlebars_string * handlebars_ast_helper_strip_id_literal(struct handlebars_string * comment)
 {
+    size_t len;
+    char * val;
+
     if (!comment) {
         return comment;
     }
 
-    char * val = hbs_str_val(comment);
-	if( val[0] == '[' && val[hbs_str_len(comment) - 1] == ']' ) {
-        comment = handlebars_string_truncate(comment, 1, hbs_str_len(comment) - 1);
-	}
+    len = hbs_str_len(comment);
+    if( len < 2 ) {
+        return comment;
+    }
 
-	return comment;
+    val = hbs_str_val(comment);
+    if( val[0] == '[' && val[len - 1] == ']' ) {
+        comment = handlebars_string_truncate(comment, 1, len - 1);
+    }
+
+    return comment;
 }
 
 void handlebars_ast_helper_set_strip_flags(
