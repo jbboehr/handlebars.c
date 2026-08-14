@@ -166,7 +166,13 @@ static void serialize_operand(struct handlebars_module * module, struct handleba
     }
 }
 
-static void serialize_opcode(struct handlebars_module * module, struct handlebars_opcode * opcode, struct handlebars_module_table_entry ** table)
+static void serialize_opcode(
+    struct handlebars_context * context,
+    struct handlebars_module * module,
+    struct handlebars_opcode * opcode,
+    struct handlebars_module_table_entry ** table,
+    size_t table_count
+)
 {
     size_t guid = module->opcode_count++;
     struct handlebars_opcode * new_opcode = &module->opcodes[guid];
@@ -183,7 +189,14 @@ static void serialize_opcode(struct handlebars_module * module, struct handlebar
     // Patch push_program opcode
     if( new_opcode->type == handlebars_opcode_type_push_program ) {
         if( new_opcode->op1.type == handlebars_operand_type_long && !new_opcode->op4.data.boolval ) {
-            new_opcode->op1.data.longval = table[new_opcode->op1.data.longval]->guid;
+            long child_index = new_opcode->op1.data.longval;
+            if( child_index < 0
+                    || table == NULL
+                    || (size_t) child_index >= table_count
+                    || table[child_index] == NULL ) {
+                handlebars_throw(context, HANDLEBARS_ERROR, "Invalid child program index: %ld", child_index);
+            }
+            new_opcode->op1.data.longval = table[child_index]->guid;
             new_opcode->op4.data.boolval = 1;
         }
     }
@@ -199,7 +212,12 @@ static struct handlebars_module_table_entry * serialize_program_shallow(struct h
     return entry;
 }
 
-static void serialize_program2(struct handlebars_module * module, struct handlebars_program * program, struct handlebars_module_table_entry * entry)
+static void serialize_program2(
+    struct handlebars_context * context,
+    struct handlebars_module * module,
+    struct handlebars_program * program,
+    struct handlebars_module_table_entry * entry
+)
 {
     size_t i;
     struct handlebars_module_table_entry ** children = NULL;
@@ -218,27 +236,31 @@ static void serialize_program2(struct handlebars_module * module, struct handleb
     entry->opcode_count = program->opcodes_length;
     entry->opcode_offset = module->opcode_count;
     for( i = 0 ; i < program->opcodes_length; i++ ) {
-        serialize_opcode(module, program->opcodes[i], children);
+        serialize_opcode(context, module, program->opcodes[i], children, program->children_length);
     }
 
     // Insert return opcode
     struct handlebars_opcode opcode = {0};
     opcode.type = handlebars_opcode_type_return;
-    serialize_opcode(module, &opcode, children);
+    serialize_opcode(context, module, &opcode, children, program->children_length);
     entry->opcode_count++;
 
     // Serialize children
     for( i = 0; i < program->children_length; i++ ) {
-        serialize_program2(module, program->children[i], children[i]);
+        serialize_program2(context, module, program->children[i], children[i]);
     }
 
     handlebars_talloc_free(children);
 }
 
-static void serialize_program(struct handlebars_module * module, struct handlebars_program * program)
+static void serialize_program(
+    struct handlebars_context * context,
+    struct handlebars_module * module,
+    struct handlebars_program * program
+)
 {
     struct handlebars_module_table_entry * entry = serialize_program_shallow(module, program);
-    serialize_program2(module, program, entry);
+    serialize_program2(context, module, program, entry);
 }
 
 struct handlebars_module * handlebars_program_serialize(
@@ -277,7 +299,7 @@ struct handlebars_module * handlebars_program_serialize(
     module->data_offset = offset;
 
     // Copy data
-    serialize_program(module, program);
+    serialize_program(context, module, program);
 
 #ifndef NDEBUG
     assert(module->program_count == program_count);

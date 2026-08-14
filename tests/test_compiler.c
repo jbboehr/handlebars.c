@@ -31,6 +31,7 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
+#include "handlebars_opcode_serializer.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_parser.h"
 #include "handlebars_string.h"
@@ -87,6 +88,28 @@ START_TEST(test_delimiter_change_requires_close_delimiter)
     struct handlebars_string * processed = handlebars_preprocess_delimiters(context, tmpl, NULL, NULL);
     (void) processed;
     ck_abort_msg("Expected whitespace-only closing delimiter to be rejected");
+}
+END_TEST
+
+START_TEST(test_serialize_rejects_invalid_child_program)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL("{{#if foo}}bar{{/if}}"));
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
+    jmp_buf buf;
+
+    ck_assert_int_gt(program->children_length, 0);
+    program->children_length = 0;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_str_eq(handlebars_error_msg(context), "Invalid child program index: 0");
+        return;
+    }
+
+    struct handlebars_module * module = handlebars_program_serialize(context, program);
+    (void) module;
+    ck_abort_msg("Expected invalid child program index to be rejected");
 }
 END_TEST
 
@@ -217,6 +240,7 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_nested_program_stack_limit, "Nested program stack limit");
 	REGISTER_TEST_FIXTURE(s, test_delimiter_change_requires_close_delimiter, "Delimiter change requires close delimiter");
+	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_program, "Reject invalid child program index");
 #ifdef HANDLEBARS_TESTING_EXPORTS
 	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");
 	REGISTER_TEST_FIXTURE(s, test_compiler_opcode, "Push opcode");
