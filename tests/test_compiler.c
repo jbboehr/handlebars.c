@@ -236,7 +236,7 @@ START_TEST(test_serialize_rejects_invalid_child_program)
 }
 END_TEST
 
-static void assert_serialize_rejects_invalid_array(
+static void assert_serialize_rejects_program(
     struct handlebars_program * program,
     const char * expected_error
 )
@@ -255,7 +255,7 @@ static void assert_serialize_rejects_invalid_array(
     module = handlebars_program_serialize(context, program);
     (void) module;
     context->e->jmp = prev;
-    ck_abort_msg("Expected invalid program array to be rejected");
+    ck_abort_msg("Expected invalid program to be rejected");
 }
 
 START_TEST(test_serialize_rejects_invalid_child_array_length)
@@ -268,7 +268,7 @@ START_TEST(test_serialize_rejects_invalid_child_array_length)
     program.children_length = 2;
     program.children_size = 1;
 
-    assert_serialize_rejects_invalid_array(&program, "Invalid child program array");
+    assert_serialize_rejects_program(&program, "Invalid child program array");
 }
 END_TEST
 
@@ -282,7 +282,137 @@ START_TEST(test_serialize_rejects_invalid_opcode_array_length)
     program.opcodes_length = 2;
     program.opcodes_size = 1;
 
-    assert_serialize_rejects_invalid_array(&program, "Invalid opcode array");
+    assert_serialize_rejects_program(&program, "Invalid opcode array");
+}
+END_TEST
+
+START_TEST(test_serialize_rejects_self_referential_program)
+{
+    struct handlebars_program program = {0};
+    struct handlebars_program * children[] = {&program};
+
+    program.children = children;
+    program.children_length = 1;
+    program.children_size = 1;
+
+    assert_serialize_rejects_program(&program, "Cyclic child program reference");
+}
+END_TEST
+
+START_TEST(test_serialize_rejects_mutually_recursive_programs)
+{
+    struct handlebars_program programs[2] = {{0}};
+    struct handlebars_program * first_children[] = {&programs[1]};
+    struct handlebars_program * second_children[] = {&programs[0]};
+
+    programs[0].children = first_children;
+    programs[0].children_length = 1;
+    programs[0].children_size = 1;
+    programs[1].children = second_children;
+    programs[1].children_length = 1;
+    programs[1].children_size = 1;
+
+    assert_serialize_rejects_program(&programs[0], "Cyclic child program reference");
+}
+END_TEST
+
+START_TEST(test_serialize_accepts_shared_acyclic_program)
+{
+    struct handlebars_program root_program = {0};
+    struct handlebars_program child = {0};
+    struct handlebars_program * children[] = {&child, &child};
+    struct handlebars_module * module;
+
+    root_program.children = children;
+    root_program.children_length = 2;
+    root_program.children_size = 2;
+
+    module = handlebars_program_serialize(context, &root_program);
+    ck_assert_uint_eq(module->program_count, 3);
+    ck_assert_uint_eq(module->opcode_count, 3);
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, context));
+}
+END_TEST
+
+static struct handlebars_program * create_deep_program(size_t depth)
+{
+    struct handlebars_program * programs;
+    struct handlebars_program ** children;
+
+    ck_assert_uint_gt(depth, 0);
+    programs = handlebars_talloc_array(context, struct handlebars_program, depth);
+    ck_assert_ptr_nonnull(programs);
+    memset(programs, 0, sizeof(*programs) * depth);
+    children = handlebars_talloc_array(context, struct handlebars_program *, depth);
+    ck_assert_ptr_nonnull(children);
+
+    for( size_t i = 0; i + 1 < depth; i++ ) {
+        children[i] = &programs[i + 1];
+        programs[i].children = &children[i];
+        programs[i].children_length = 1;
+        programs[i].children_size = 1;
+    }
+
+    return programs;
+}
+
+START_TEST(test_serialize_rejects_deep_program_cycle)
+{
+    const size_t depth = 65;
+    struct handlebars_program * programs = create_deep_program(depth);
+    struct handlebars_program ** child = handlebars_talloc_array(
+        context,
+        struct handlebars_program *,
+        1
+    );
+
+    ck_assert_ptr_nonnull(child);
+    child[0] = &programs[0];
+    programs[depth - 1].children = child;
+    programs[depth - 1].children_length = 1;
+    programs[depth - 1].children_size = 1;
+
+    assert_serialize_rejects_program(&programs[0], "Cyclic child program reference");
+}
+END_TEST
+
+START_TEST(test_serialize_accepts_deep_shared_acyclic_program)
+{
+    const size_t depth = 65;
+    struct handlebars_program * programs = create_deep_program(depth);
+    struct handlebars_program ** children = handlebars_talloc_array(
+        context,
+        struct handlebars_program *,
+        2
+    );
+    struct handlebars_module * module;
+
+    ck_assert_ptr_nonnull(children);
+    children[0] = &programs[depth - 1];
+    children[1] = &programs[depth - 1];
+    programs[depth - 2].children = children;
+    programs[depth - 2].children_length = 2;
+    programs[depth - 2].children_size = 2;
+
+    module = handlebars_program_serialize(context, &programs[0]);
+    ck_assert_uint_eq(module->program_count, depth + 1);
+    ck_assert_uint_eq(module->opcode_count, depth + 1);
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, context));
+}
+END_TEST
+
+START_TEST(test_serialize_deep_program_without_c_stack_recursion)
+{
+    const size_t depth = 100000;
+    struct handlebars_program * programs = create_deep_program(depth);
+    struct handlebars_module * module = handlebars_program_serialize(context, &programs[0]);
+
+    ck_assert_uint_eq(module->program_count, depth);
+    ck_assert_uint_eq(module->opcode_count, depth);
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, context));
 }
 END_TEST
 
@@ -371,6 +501,18 @@ START_TEST(test_serialize_allocation_failures)
     assert_serialize_allocation_failure(program, 1);
     assert_serialize_allocation_failure(program, 2);
     assert_serialize_allocation_failure(program, 3);
+}
+END_TEST
+
+START_TEST(test_serialize_traversal_allocation_failures)
+{
+    struct handlebars_program * programs = create_deep_program(97);
+
+    assert_serialize_allocation_failure(&programs[0], 2);
+    assert_serialize_allocation_failure(&programs[0], 3);
+    assert_serialize_allocation_failure(&programs[0], 4);
+    assert_serialize_allocation_failure(&programs[0], 5);
+    assert_serialize_allocation_failure(&programs[0], 6);
 }
 END_TEST
 #endif
@@ -746,10 +888,17 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_program, "Reject invalid child program index");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_array_length, "Reject invalid child array length");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_opcode_array_length, "Reject invalid opcode array length");
+	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_self_referential_program, "Reject self-referential program");
+	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_mutually_recursive_programs, "Reject mutually recursive programs");
+	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_deep_program_cycle, "Reject deeply nested program cycle");
+	REGISTER_TEST_FIXTURE(s, test_serialize_accepts_shared_acyclic_program, "Accept shared acyclic program");
+	REGISTER_TEST_FIXTURE(s, test_serialize_accepts_deep_shared_acyclic_program, "Accept deeply nested shared acyclic program");
+	REGISTER_TEST_FIXTURE(s, test_serialize_deep_program_without_c_stack_recursion, "Serialize deeply nested program without C stack recursion");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_operand_size_multiplication_overflow, "Reject overflowing operand array size");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_aggregate_size_overflow, "Reject overflowing serialized module size");
 #ifdef HANDLEBARS_MEMORY
 	REGISTER_TEST_FIXTURE(s, test_serialize_allocation_failures, "Serialized module allocation failures");
+	REGISTER_TEST_FIXTURE(s, test_serialize_traversal_allocation_failures, "Serialized module traversal allocation failures");
 #endif
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_verification, "Verify serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");

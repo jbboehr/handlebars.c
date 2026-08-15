@@ -43,6 +43,7 @@
 #define PATCH(ptr, baseaddr) ptr = (void *) ((uintptr_t) (ptr) - (uintptr_t) module->addr + (uintptr_t) (baseaddr))
 #define align_size(size) handlebars_align_size(size, sizeof(void *))
 #define SERIALIZER_SIZE_ERROR "Serialized module is too large"
+#define SERIALIZER_LOCAL_FRAME_COUNT 64
 
 const size_t HANDLEBARS_MODULE_SIZE = sizeof(struct handlebars_module);
 const size_t HANDLEBARS_MODULE_TABLE_ENTRY_SIZE = sizeof(struct handlebars_module_table_entry);
@@ -116,6 +117,29 @@ struct handlebars_serialize_state {
     struct handlebars_module * module;
     size_t program_limit;
     size_t opcode_limit;
+};
+
+struct handlebars_size_program_frame {
+    struct handlebars_program * program;
+    size_t child_index;
+};
+
+struct handlebars_active_program_slot {
+    struct handlebars_program * program;
+    unsigned char active;
+};
+
+struct handlebars_active_program_set {
+    struct handlebars_active_program_slot * slots;
+    size_t count;
+    size_t capacity;
+};
+
+struct handlebars_serialize_program_frame {
+    struct handlebars_program * program;
+    struct handlebars_module_table_entry * entry;
+    struct handlebars_module_table_entry ** children;
+    size_t child_index;
 };
 
 static void * append(
@@ -217,16 +241,11 @@ static void calculate_size_opcode(
     calculate_size_operand(context, &opcode->op4, size);
 }
 
-static void calculate_size_program(
+static void validate_program(
     struct handlebars_context * context,
-    struct handlebars_module * module,
-    struct handlebars_program * program,
-    size_t * size
+    struct handlebars_program * program
 )
 {
-    size_t i;
-    struct handlebars_opcode opcode = {0};
-
     if( unlikely(program == NULL) ) {
         handlebars_throw(context, HANDLEBARS_ERROR, "Invalid child program");
     }
@@ -242,30 +261,269 @@ static void calculate_size_program(
     ) ) {
         handlebars_throw(context, HANDLEBARS_ERROR, "Invalid opcode array");
     }
+}
+
+static size_t active_program_hash(struct handlebars_program * program)
+{
+    uintptr_t address = (uintptr_t) program;
+
+    return (size_t) handlebars_hash_xxh3((const char *) &address, sizeof(address));
+}
+
+static void active_program_set_grow(
+    struct handlebars_context * context,
+    struct handlebars_module * module,
+    struct handlebars_active_program_set * set
+)
+{
+    struct handlebars_active_program_slot * slots;
+    size_t capacity;
+    size_t bytes;
+
+    if( set->capacity == 0 ) {
+        capacity = SERIALIZER_LOCAL_FRAME_COUNT * 2;
+    } else {
+        if( unlikely(set->capacity > SIZE_MAX / 2) ) {
+            handlebars_throw(context, HANDLEBARS_NOMEM, SERIALIZER_SIZE_ERROR);
+        }
+        capacity = set->capacity * 2;
+    }
+    bytes = serialize_size_multiply(
+        context,
+        capacity,
+        sizeof(struct handlebars_active_program_slot)
+    );
+    slots = handlebars_talloc_zero_size(module, bytes);
+    HANDLEBARS_MEMCHECK(slots, context);
+
+    for( size_t i = 0; i < set->capacity; i++ ) {
+        struct handlebars_active_program_slot * old_slot = &set->slots[i];
+        size_t index;
+
+        if( old_slot->program == NULL ) {
+            continue;
+        }
+        index = active_program_hash(old_slot->program) & (capacity - 1);
+        while( slots[index].program != NULL ) {
+            index = (index + 1) & (capacity - 1);
+        }
+        slots[index] = *old_slot;
+    }
+
+    handlebars_talloc_free(set->slots);
+    set->slots = slots;
+    set->capacity = capacity;
+}
+
+static bool active_program_set_enter(
+    struct handlebars_context * context,
+    struct handlebars_module * module,
+    struct handlebars_active_program_set * set,
+    struct handlebars_program * program
+)
+{
+    for( ;; ) {
+        size_t index;
+
+        if( set->capacity == 0 ) {
+            active_program_set_grow(context, module, set);
+        }
+        index = active_program_hash(program) & (set->capacity - 1);
+        while( set->slots[index].program != NULL ) {
+            if( set->slots[index].program == program ) {
+                if( set->slots[index].active ) {
+                    return false;
+                }
+                set->slots[index].active = 1;
+                return true;
+            }
+            index = (index + 1) & (set->capacity - 1);
+        }
+
+        if( set->count < set->capacity - set->capacity / 4 ) {
+            set->slots[index].program = program;
+            set->slots[index].active = 1;
+            set->count++;
+            return true;
+        }
+        active_program_set_grow(context, module, set);
+    }
+}
+
+static void active_program_set_leave(
+    struct handlebars_active_program_set * set,
+    struct handlebars_program * program
+)
+{
+    size_t index = active_program_hash(program) & (set->capacity - 1);
+
+    while( set->slots[index].program != NULL ) {
+        if( set->slots[index].program == program ) {
+            assert(set->slots[index].active);
+            set->slots[index].active = 0;
+            return;
+        }
+        index = (index + 1) & (set->capacity - 1);
+    }
+    assert(false);
+}
+
+static struct handlebars_size_program_frame * grow_size_program_frames(
+    struct handlebars_context * context,
+    struct handlebars_module * module,
+    struct handlebars_size_program_frame * frames,
+    struct handlebars_size_program_frame * local_frames,
+    size_t length,
+    size_t * capacity
+)
+{
+    struct handlebars_size_program_frame * new_frames;
+    size_t new_capacity;
+    size_t bytes;
+
+    if( unlikely(*capacity > SIZE_MAX / 2) ) {
+        handlebars_throw(context, HANDLEBARS_NOMEM, SERIALIZER_SIZE_ERROR);
+    }
+    new_capacity = *capacity * 2;
+    bytes = serialize_size_multiply(
+        context,
+        new_capacity,
+        sizeof(struct handlebars_size_program_frame)
+    );
+
+    if( frames == local_frames ) {
+        new_frames = handlebars_talloc_size(module, bytes);
+        HANDLEBARS_MEMCHECK(new_frames, context);
+        memcpy(
+            new_frames,
+            frames,
+            serialize_size_multiply(
+                context,
+                length,
+                sizeof(struct handlebars_size_program_frame)
+            )
+        );
+    } else {
+        new_frames = handlebars_talloc_realloc_size(module, frames, bytes);
+        HANDLEBARS_MEMCHECK(new_frames, context);
+    }
+
+    *capacity = new_capacity;
+    return new_frames;
+}
+
+static void calculate_size_program(
+    struct handlebars_context * context,
+    struct handlebars_module * module,
+    struct handlebars_program * program,
+    size_t * size,
+    size_t * max_depth
+)
+{
+    struct handlebars_size_program_frame local_frames[SERIALIZER_LOCAL_FRAME_COUNT];
+    struct handlebars_size_program_frame * frames = local_frames;
+    struct handlebars_active_program_set active_programs = {0};
+    size_t capacity = SERIALIZER_LOCAL_FRAME_COUNT;
+    size_t length = 1;
+    struct handlebars_opcode opcode = {0};
+
+    validate_program(context, program);
+    frames[0].program = program;
+    frames[0].child_index = 0;
+    *max_depth = 1;
 
     // Increment for self
     *size = serialize_size_add(context, *size, sizeof(struct handlebars_module_table_entry));
     serialize_count_increment(context, &module->program_count);
 
-    // Increment for children
-    for( i = 0; i < program->children_length; i++ ) {
-        if( unlikely(program->children[i] == NULL) ) {
-            handlebars_throw(context, HANDLEBARS_ERROR, "Invalid child program");
+    while( length != 0 ) {
+        struct handlebars_size_program_frame * frame = &frames[length - 1];
+
+        if( frame->child_index < frame->program->children_length ) {
+            struct handlebars_program * child = frame->program->children[frame->child_index++];
+
+            if( unlikely(child == NULL) ) {
+                handlebars_throw(context, HANDLEBARS_ERROR, "Invalid child program");
+            }
+            if( active_programs.slots == NULL
+                    && length < SERIALIZER_LOCAL_FRAME_COUNT ) {
+                for( size_t i = 0; i < length; i++ ) {
+                    if( unlikely(frames[i].program == child) ) {
+                        handlebars_throw(context, HANDLEBARS_ERROR, "Cyclic child program reference");
+                    }
+                }
+            } else {
+                if( active_programs.slots == NULL ) {
+                    for( size_t i = 0; i < length; i++ ) {
+                        if( unlikely(!active_program_set_enter(
+                                context,
+                                module,
+                                &active_programs,
+                                frames[i].program
+                        )) ) {
+                            handlebars_throw(
+                                context,
+                                HANDLEBARS_ERROR,
+                                "Cyclic child program reference"
+                            );
+                        }
+                    }
+                }
+                if( unlikely(!active_program_set_enter(
+                        context,
+                        module,
+                        &active_programs,
+                        child
+                )) ) {
+                    handlebars_throw(context, HANDLEBARS_ERROR, "Cyclic child program reference");
+                }
+            }
+            validate_program(context, child);
+
+            if( length == capacity ) {
+                frames = grow_size_program_frames(
+                    context,
+                    module,
+                    frames,
+                    local_frames,
+                    length,
+                    &capacity
+                );
+            }
+
+            frames[length].program = child;
+            frames[length].child_index = 0;
+            length++;
+            if( length > *max_depth ) {
+                *max_depth = length;
+            }
+
+            *size = serialize_size_add(context, *size, sizeof(struct handlebars_module_table_entry));
+            serialize_count_increment(context, &module->program_count);
+            continue;
         }
-        calculate_size_program(context, module, program->children[i], size);
+
+        // Increment for opcodes
+        for( size_t i = 0; i < frame->program->opcodes_length; i++ ) {
+            if( unlikely(frame->program->opcodes[i] == NULL) ) {
+                handlebars_throw(context, HANDLEBARS_ERROR, "Invalid opcode");
+            }
+            calculate_size_opcode(context, module, frame->program->opcodes[i], size);
+        }
+
+        // Insert return opcode
+        opcode.type = handlebars_opcode_type_return;
+        calculate_size_opcode(context, module, &opcode, size);
+        if( active_programs.slots != NULL ) {
+            active_program_set_leave(&active_programs, frame->program);
+        }
+        length--;
     }
 
-    // Increment for opcodes
-    for( i = 0; i < program->opcodes_length; i++ ) {
-        if( unlikely(program->opcodes[i] == NULL) ) {
-            handlebars_throw(context, HANDLEBARS_ERROR, "Invalid opcode");
-        }
-        calculate_size_opcode(context, module, program->opcodes[i], size);
+    handlebars_talloc_free(active_programs.slots);
+    if( frames != local_frames ) {
+        handlebars_talloc_free(frames);
     }
-
-    // Insert return opcode
-    opcode.type = handlebars_opcode_type_return;
-    calculate_size_opcode(context, module, &opcode, size);
 }
 
 static void serialize_operand(
@@ -375,54 +633,101 @@ static struct handlebars_module_table_entry * serialize_program_shallow(
     return entry;
 }
 
-static void serialize_program2(
+static void serialize_program_frame_enter(
     struct handlebars_serialize_state * state,
-    struct handlebars_program * program,
-    struct handlebars_module_table_entry * entry
+    struct handlebars_serialize_program_frame * frame
 )
 {
     struct handlebars_module * module = state->module;
-    size_t i;
-    struct handlebars_module_table_entry ** children = NULL;
 
-    if( program->children_length > 0 ) {
-        children = handlebars_talloc_array(module, struct handlebars_module_table_entry *, program->children_length);
-        HANDLEBARS_MEMCHECK(children, state->context);
+    frame->children = NULL;
+    frame->child_index = 0;
+    if( frame->program->children_length > 0 ) {
+        frame->children = handlebars_talloc_array(
+            module,
+            struct handlebars_module_table_entry *,
+            frame->program->children_length
+        );
+        HANDLEBARS_MEMCHECK(frame->children, state->context);
     }
 
     // Serialize children (shallow)
-    for( i = 0; i < program->children_length; i++ ) {
-        children[i] = serialize_program_shallow(state, program->children[i]);
+    for( size_t i = 0; i < frame->program->children_length; i++ ) {
+        frame->children[i] = serialize_program_shallow(state, frame->program->children[i]);
     }
 
     // Serialize opcodes
-    entry->opcode_count = program->opcodes_length;
-    entry->opcode_offset = module->opcode_count;
-    for( i = 0 ; i < program->opcodes_length; i++ ) {
-        serialize_opcode(state, program->opcodes[i], children, program->children_length);
+    frame->entry->opcode_count = frame->program->opcodes_length;
+    frame->entry->opcode_offset = module->opcode_count;
+    for( size_t i = 0 ; i < frame->program->opcodes_length; i++ ) {
+        serialize_opcode(
+            state,
+            frame->program->opcodes[i],
+            frame->children,
+            frame->program->children_length
+        );
     }
 
     // Insert return opcode
     struct handlebars_opcode opcode = {0};
     opcode.type = handlebars_opcode_type_return;
-    serialize_opcode(state, &opcode, children, program->children_length);
-    serialize_count_increment(state->context, &entry->opcode_count);
-
-    // Serialize children
-    for( i = 0; i < program->children_length; i++ ) {
-        serialize_program2(state, program->children[i], children[i]);
-    }
-
-    handlebars_talloc_free(children);
+    serialize_opcode(state, &opcode, frame->children, frame->program->children_length);
+    serialize_count_increment(state->context, &frame->entry->opcode_count);
 }
 
 static void serialize_program(
     struct handlebars_serialize_state * state,
-    struct handlebars_program * program
+    struct handlebars_program * program,
+    size_t max_depth
 )
 {
-    struct handlebars_module_table_entry * entry = serialize_program_shallow(state, program);
-    serialize_program2(state, program, entry);
+    struct handlebars_serialize_program_frame local_frames[SERIALIZER_LOCAL_FRAME_COUNT];
+    struct handlebars_serialize_program_frame * frames = local_frames;
+    size_t capacity = SERIALIZER_LOCAL_FRAME_COUNT;
+    size_t length = 1;
+
+    if( max_depth > capacity ) {
+        size_t bytes = serialize_size_multiply(
+            state->context,
+            max_depth,
+            sizeof(struct handlebars_serialize_program_frame)
+        );
+        frames = handlebars_talloc_size(state->module, bytes);
+        HANDLEBARS_MEMCHECK(frames, state->context);
+        capacity = max_depth;
+    }
+
+    frames[0].program = program;
+    frames[0].entry = serialize_program_shallow(state, program);
+    serialize_program_frame_enter(state, &frames[0]);
+
+    while( length != 0 ) {
+        struct handlebars_serialize_program_frame * frame = &frames[length - 1];
+
+        if( frame->child_index < frame->program->children_length ) {
+            size_t child_index = frame->child_index++;
+
+            if( unlikely(length >= capacity) ) {
+                handlebars_throw(
+                    state->context,
+                    HANDLEBARS_ERROR,
+                    "Serialized program depth exceeds calculated traversal depth"
+                );
+            }
+            frames[length].program = frame->program->children[child_index];
+            frames[length].entry = frame->children[child_index];
+            serialize_program_frame_enter(state, &frames[length]);
+            length++;
+            continue;
+        }
+
+        handlebars_talloc_free(frame->children);
+        length--;
+    }
+
+    if( frames != local_frames ) {
+        handlebars_talloc_free(frames);
+    }
 }
 
 struct handlebars_module * handlebars_program_serialize(
@@ -431,6 +736,7 @@ struct handlebars_module * handlebars_program_serialize(
 ) {
     struct handlebars_serialize_state state;
     size_t data_size;
+    size_t max_depth;
     size_t offset;
 
     // Allocate initial buffer
@@ -442,7 +748,7 @@ struct handlebars_module * handlebars_program_serialize(
 
     // Calculate size
     data_size = 0;
-    calculate_size_program(context, module, program, &data_size);
+    calculate_size_program(context, module, program, &data_size, &max_depth);
     module->size = serialize_size_add(context, sizeof(struct handlebars_module), data_size);
 
     // Reallocate buffer
@@ -479,7 +785,7 @@ struct handlebars_module * handlebars_program_serialize(
     module->data_offset = offset;
 
     // Copy data
-    serialize_program(&state, program);
+    serialize_program(&state, program, max_depth);
 
     if( unlikely(module->program_count != state.program_limit
             || module->opcode_count != state.opcode_limit
