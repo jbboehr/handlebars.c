@@ -77,6 +77,63 @@ const unsigned HANDLEBARS_XXHASH_VERSION_ID = (XXH_VERSION_MAJOR * 100 * 100) + 
 
 
 
+size_t handlebars_string_size(size_t length)
+{
+    if( length > SIZE_MAX - HANDLEBARS_STRING_SIZE - 1 ) {
+        return 0;
+    }
+
+    return HANDLEBARS_STRING_SIZE + length + 1;
+}
+
+static size_t string_size_or_throw(struct handlebars_context * context, size_t length)
+{
+    size_t size = handlebars_string_size(length);
+
+    if( size == 0 ) {
+        handlebars_throw(context, HANDLEBARS_NOMEM, "String capacity is too large: %zu", length);
+    }
+
+    return size;
+}
+
+static size_t string_length_add(
+    struct handlebars_context * context,
+    size_t left,
+    size_t right
+) {
+    if( right > SIZE_MAX - left ) {
+        handlebars_throw(context, HANDLEBARS_NOMEM, "String length is too large");
+    }
+
+    return left + right;
+}
+
+static bool string_source_offset(
+    const struct handlebars_string * string,
+    const char * source,
+    size_t length,
+    size_t * offset
+) {
+    uintptr_t base = (uintptr_t) string->val;
+    uintptr_t address = (uintptr_t) source;
+    size_t source_offset;
+
+    if( address < base ) {
+        return false;
+    }
+
+    source_offset = address - base;
+    if( source_offset > string->len || length > string->len - source_offset ) {
+        return false;
+    }
+
+    *offset = source_offset;
+    return true;
+}
+
+
+
 // {{{ Accessors
 
 char * hbs_str_val(struct handlebars_string * str) {
@@ -225,7 +282,8 @@ struct handlebars_string * handlebars_string_init(
     struct handlebars_context * context,
     size_t length
 ) {
-    struct handlebars_string * st = handlebars_talloc_zero_size(context, HBS_STR_SIZE(length));
+    size_t size = string_size_or_throw(context, length);
+    struct handlebars_string * st = handlebars_talloc_zero_size(context, size);
     HANDLEBARS_MEMCHECK(st, context);
     talloc_set_type(st, struct handlebars_string);
     st->val[0] = 0;
@@ -241,8 +299,7 @@ struct handlebars_string * handlebars_string_ctor_ex(
     size_t len,
     uint32_t hash
 ) {
-    struct handlebars_string * st = handlebars_string_init(context, len + 1);
-    HANDLEBARS_MEMCHECK(st, context);
+    struct handlebars_string * st = handlebars_string_init(context, len);
     st->len = len;
     memcpy(st->val, str, len);
     st->val[st->len] = 0;
@@ -262,7 +319,7 @@ struct handlebars_string * handlebars_string_copy_ctor(
     struct handlebars_context * context,
     const struct handlebars_string * string
 ) {
-    size_t size = HBS_STR_SIZE(string->len);
+    size_t size = string_size_or_throw(context, string->len);
     struct handlebars_string * st = handlebars_talloc_size(context, size);
     HANDLEBARS_MEMCHECK(st, context);
     talloc_set_type(st, struct handlebars_string);
@@ -273,17 +330,76 @@ struct handlebars_string * handlebars_string_copy_ctor(
     return st;
 }
 
+static struct handlebars_string * string_copy_for_capacity(
+    struct handlebars_context * context,
+    const struct handlebars_string * string,
+    size_t capacity
+) {
+    size_t size = string_size_or_throw(context, capacity);
+    size_t used_size = string_size_or_throw(context, string->len);
+    void * parent = talloc_parent(string);
+    struct handlebars_string * copy;
+
+    if( size < used_size ) {
+        size = used_size;
+    }
+
+    assert(parent != NULL);
+    copy = handlebars_talloc_size(parent, size);
+    HANDLEBARS_MEMCHECK(copy, context);
+    talloc_set_type(copy, struct handlebars_string);
+    memcpy(copy, string, used_size);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    handlebars_rc_init(&copy->rc);
+#endif
+    return copy;
+}
+
+static struct handlebars_string * string_take_copy(
+    struct handlebars_string * string,
+    struct handlebars_string * copy
+) {
+#ifndef HANDLEBARS_NO_REFCOUNT
+    if( handlebars_rc_refcount(&string->rc) >= 1 ) {
+        handlebars_string_addref(copy);
+    }
+    handlebars_string_delref(string);
+#else
+    handlebars_talloc_free(string);
+#endif
+    return copy;
+}
+
+static struct handlebars_string * string_reserve_for_write(
+    struct handlebars_context * context,
+    struct handlebars_string * string,
+    size_t len
+) {
+    size_t size = string_size_or_throw(context, len);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    if( handlebars_rc_refcount(&string->rc) > 1 ) {
+        struct handlebars_string * copy = string_copy_for_capacity(context, string, len);
+        return string_take_copy(string, copy);
+    }
+#endif
+    if( size > talloc_get_size(string) ) {
+        struct handlebars_string * resized = (struct handlebars_string *) handlebars_talloc_realloc_size(context, string, size);
+        HANDLEBARS_MEMCHECK(resized, context);
+        string = resized;
+        talloc_set_type(resized, struct handlebars_string);
+    }
+    return string;
+}
+
 struct handlebars_string * handlebars_string_extend(
     struct handlebars_context * context,
     struct handlebars_string * string,
     size_t len
 ) {
-    size_t size = HBS_STR_SIZE(len);
+    size_t size = string_size_or_throw(context, len);
+
     if( size > talloc_get_size(string) ) {
-        string = separate_string(string);
-        string = (struct handlebars_string *) handlebars_talloc_realloc_size(context, string, size);
-        HANDLEBARS_MEMCHECK(string, context);
-        talloc_set_type(string, struct handlebars_string);
+        string = string_reserve_for_write(context, string, len);
     }
     return string;
 }
@@ -292,7 +408,7 @@ struct handlebars_string * handlebars_string_append_unsafe(
     struct handlebars_string * string,
     const char * str, size_t len
 ) {
-    memcpy(string->val + string->len, str, len);
+    memmove(string->val + string->len, str, len);
     string->len += len;
     string->val[string->len] = 0;
     string->hash = 0;
@@ -304,8 +420,14 @@ struct handlebars_string * handlebars_string_append(
     struct handlebars_string * string,
     const char * str, size_t len
 ) {
-    string = separate_string(string);
-    string = handlebars_string_extend(context, string, string->len + len);
+    size_t source_offset = 0;
+    bool source_is_internal = string_source_offset(string, str, len, &source_offset);
+    size_t new_length = string_length_add(context, string->len, len);
+
+    string = string_reserve_for_write(context, string, new_length);
+    if( source_is_internal ) {
+        str = string->val + source_offset;
+    }
     string = handlebars_string_append_unsafe(string, str, len);
     return string;
 }
@@ -319,10 +441,15 @@ struct handlebars_string * handlebars_string_append_str(
 }
 
 struct handlebars_string * handlebars_string_compact(struct handlebars_string * string) {
-    size_t size = HBS_STR_SIZE(string->len);
-    if( talloc_get_size(string) > size ) {
+    size_t size = handlebars_string_size(string->len);
+    if( size != 0 && talloc_get_size(string) > size ) {
+        struct handlebars_string * resized;
         string = separate_string(string);
-        string = (struct handlebars_string *) handlebars_talloc_realloc_size(NULL, string, size);
+        resized = (struct handlebars_string *) handlebars_talloc_realloc_size(NULL, string, size);
+        if( resized != NULL ) {
+            string = resized;
+            talloc_set_type(resized, struct handlebars_string);
+        }
     }
     return string;
 }
@@ -436,25 +563,37 @@ struct handlebars_string * handlebars_str_replace(
 ) {
     const char * tok = string->val;
     const char * last_tok = string->val;
+    struct handlebars_string * new_string;
+    size_t new_len = 0;
 
     if( search_len <= 0 || string->len <= 0 ) {
         return (struct handlebars_string *) string;
     }
 
-    struct handlebars_string *new_string = handlebars_string_init(context, string->len * 4 + 1);
+    // Calculate the exact output size before allocating. Besides making the
+    // arithmetic checkable, this avoids reallocating once per expanding match.
+    while( NULL != (tok = handlebars_strnstr(tok, string->len - (tok - string->val), search, search_len)) ) {
+        new_len = string_length_add(context, new_len, tok - last_tok);
+        new_len = string_length_add(context, new_len, replacement_len);
+        tok += search_len;
+        last_tok = tok;
+    }
+    new_len = string_length_add(context, new_len, string->len - (last_tok - string->val));
 
-    while( NULL != (tok = (char *) handlebars_strnstr(tok, string->len - (tok - string->val), search, search_len)) ) {
-        new_string = handlebars_string_append(context, new_string, last_tok, tok - last_tok);
-        new_string = handlebars_string_append(context, new_string, replacement, replacement_len);
+    new_string = handlebars_string_init(context, new_len);
+
+    tok = string->val;
+    last_tok = string->val;
+
+    while( NULL != (tok = handlebars_strnstr(tok, string->len - (tok - string->val), search, search_len)) ) {
+        new_string = handlebars_string_append_unsafe(new_string, last_tok, tok - last_tok);
+        new_string = handlebars_string_append_unsafe(new_string, replacement, replacement_len);
 
         tok += search_len;
         last_tok = tok;
-        if( tok >= string->val + string->len ) {
-            break;
-        }
     }
 
-    new_string = handlebars_string_append(context, new_string, last_tok, string->len - (last_tok - string->val));
+    new_string = handlebars_string_append_unsafe(new_string, last_tok, string->len - (last_tok - string->val));
 
     assert(new_string->val[new_string->len] == 0);
     new_string->hash = 0;
@@ -471,6 +610,7 @@ struct handlebars_string * handlebars_string_addcslashes(struct handlebars_conte
     char * target;
     char * end;
     size_t i;
+    size_t new_len = string->len;
 
     // Make char mask
     memset(flags, 0, sizeof(flags));
@@ -478,8 +618,34 @@ struct handlebars_string * handlebars_string_addcslashes(struct handlebars_conte
         flags[(unsigned char) what[i]] = 1;
     }
 
+    // Calculate the exact output size.
+    for( i = 0; i < string->len; i++ ) {
+        unsigned char c = (unsigned char) string->val[i];
+        size_t extra = 0;
+
+        if( flags[c] ) {
+            extra = 1;
+            if( c < 32 || c > 126 ) {
+                switch( c ) {
+                    case '\n':
+                    case '\t':
+                    case '\r':
+                    case '\a':
+                    case '\v':
+                    case '\b':
+                    case '\f':
+                        break;
+                    default:
+                        extra = 3;
+                        break;
+                }
+            }
+        }
+        new_len = string_length_add(context, new_len, extra);
+    }
+
     // Allocate new string
-    new_string = handlebars_string_init(context, string->len * 4 + 1);
+    new_string = handlebars_string_init(context, new_len);
 
     // Perform replace
     source = string->val;
@@ -540,9 +706,9 @@ struct handlebars_string * handlebars_string_stripcslashes(struct handlebars_str
                 case 'f':  *target++='\f'; nlen--; break;
                 case '\\': *target++='\\'; nlen--; break;
                 case 'x':
-                    if( source+1 < end && isxdigit((int)(*(source+1))) ) {
+                    if( source+1 < end && isxdigit((unsigned char) *(source+1)) ) {
                         numtmp[0] = *++source;
-                        if( source+1 < end && isxdigit((int)(*(source+1))) ) {
+                        if( source+1 < end && isxdigit((unsigned char) *(source+1)) ) {
                             numtmp[1] = *++source;
                             numtmp[2] = '\0';
                             nlen -= 3;
@@ -635,32 +801,39 @@ struct handlebars_string * handlebars_string_vasprintf_append(
     va_list ap
 ) {
     va_list ap2;
+    int result;
     size_t len;
-    size_t slen = string->len;
-
-    string = separate_string(string);
+    size_t new_length;
+    char * formatted;
 
     // Calculate size
     va_copy(ap2, ap);
-    len = vsnprintf(NULL, 0, fmt, ap2);
+    result = vsnprintf(NULL, 0, fmt, ap2);
     va_end(ap2);
 
     // Nothing to do
-    if( len <= 0 ) {
+    if( result <= 0 ) {
+        return string;
+    }
+    len = (size_t) result;
+    new_length = string_length_add(context, string->len, len);
+
+    // Keep the destination unchanged while formatting because the format or
+    // any of its arguments may point into it.
+    formatted = handlebars_talloc_size(context, len + 1);
+    HANDLEBARS_MEMCHECK(formatted, context);
+
+    va_copy(ap2, ap);
+    result = vsnprintf(formatted, len + 1, fmt, ap2);
+    va_end(ap2);
+    if( result <= 0 || (size_t) result > len ) {
+        handlebars_talloc_free(formatted);
         return string;
     }
 
-    // Resize
-    string = handlebars_string_extend(context, string, slen + len);
-
-    // Print
-    va_copy(ap2, ap);
-    vsnprintf(string->val + slen, len + 1, fmt, ap2);
-    va_end(ap2);
-
-    string->len += len;
-    string->hash = 0;
-
+    string = string_reserve_for_write(context, string, new_length);
+    string = handlebars_string_append_unsafe(string, formatted, (size_t) result);
+    handlebars_talloc_free(formatted);
     return string;
 }
 
@@ -672,7 +845,7 @@ struct handlebars_string * handlebars_string_htmlspecialchars(
     struct handlebars_context * context,
     const char * str, size_t len
 ) {
-    struct handlebars_string * string = handlebars_string_init(context, len * 4);
+    struct handlebars_string * string = handlebars_string_init(context, len);
     string = handlebars_string_htmlspecialchars_append(context, string, str, len);
     return handlebars_string_compact(string);
 }
@@ -683,6 +856,9 @@ struct handlebars_string * handlebars_string_htmlspecialchars_append(
     const char * str, size_t len
 ) {
     size_t new_len = len;
+    size_t new_total;
+    size_t source_offset = 0;
+    bool source_is_internal;
     const char * p;
     const char * end;
     const struct htmlspecialchars_pair * pair;
@@ -691,13 +867,13 @@ struct handlebars_string * handlebars_string_htmlspecialchars_append(
         return string;
     }
 
-    string = separate_string(string);
+    source_is_internal = string_source_offset(string, str, len, &source_offset);
 
     // Calculate new size
-    for( p = str + len - 1; p >= str; p-- ) {
+    for( p = str, end = str + len; p < end; p++ ) {
         pair = &htmlspecialchars[(unsigned char) *p];
         if( pair->len ) {
-            new_len += pair->len - 1;
+            new_len = string_length_add(context, new_len, pair->len - 1);
         }
     }
 
@@ -707,7 +883,11 @@ struct handlebars_string * handlebars_string_htmlspecialchars_append(
     }
 
     // Realloc original buffer
-    string = handlebars_string_extend(context, string, string->len + new_len);
+    new_total = string_length_add(context, string->len, new_len);
+    string = string_reserve_for_write(context, string, new_total);
+    if( source_is_internal ) {
+        str = string->val + source_offset;
+    }
 
     // Copy
     for( p = str, end = str + len; p < end; p++ ) {
@@ -731,14 +911,17 @@ struct handlebars_string * handlebars_string_implode(
     struct handlebars_string * string;
     /*const*/ struct handlebars_string** ptr;
     size_t len = 0;
+    bool first = true;
 
     // Calc new size
     for( ptr = parts; *ptr; ptr++ ) {
-        len += (*ptr)->len + sep_len;
+        if( !first ) {
+            len = string_length_add(context, len, sep_len);
+        }
+        len = string_length_add(context, len, (*ptr)->len);
+        first = false;
     }
-    if( len > 0 ) {
-        len -= sep_len;
-    } else {
+    if( first ) {
         return handlebars_string_init(context, 0);
     }
 
@@ -776,11 +959,20 @@ struct handlebars_string * handlebars_string_indent_append(
     struct handlebars_string * input_string,
     const struct handlebars_string * indent_str
 ) {
-    const char * str = input_string->val;
-    size_t str_len = input_string->len;
-    bool endsInLine = str_len > 0 && (str[str_len - 1] == '\n');
+    bool copied_input = append_to_string == input_string;
+    const char * str;
+    size_t str_len;
+    bool endsInLine;
     size_t i;
     char tmp[2] = "\0";
+
+    if( copied_input ) {
+        input_string = handlebars_string_copy_ctor(context, input_string);
+    }
+
+    str = input_string->val;
+    str_len = input_string->len;
+    endsInLine = str_len > 0 && (str[str_len - 1] == '\n');
 
     if( endsInLine ) {
         str_len--;
@@ -802,7 +994,11 @@ struct handlebars_string * handlebars_string_indent_append(
         append_to_string = handlebars_string_append(context, append_to_string, HBS_STRL("\n"));
     }
 
-    handlebars_string_delref(input_string);
+    if( copied_input ) {
+        handlebars_talloc_free(input_string);
+    } else {
+        handlebars_string_delref(input_string);
+    }
 
     return append_to_string;
 }

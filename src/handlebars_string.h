@@ -28,9 +28,16 @@ HBS_EXTERN_C_START
 struct handlebars_string;
 
 #define HBS_STR_STRL(string) hbs_str_val(string), hbs_str_len(string)
-#define HBS_STR_SIZE(length) ((HANDLEBARS_STRING_SIZE) + (length) + (1))
+#define HBS_STR_SIZE(length) handlebars_string_size(length)
 
 extern const size_t HANDLEBARS_STRING_SIZE;
+
+/**
+ * @brief Calculate the allocation size for a string capacity
+ * @param[in] length The desired string capacity
+ * @return The allocation size in bytes, or zero if it cannot be represented
+ */
+size_t handlebars_string_size(size_t length);
 
 // {{{ Accessors
 char * hbs_str_val(struct handlebars_string * str)
