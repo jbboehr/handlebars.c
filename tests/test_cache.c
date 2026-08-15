@@ -24,6 +24,10 @@
 #include <stdio.h>
 #include <talloc.h>
 
+#ifdef HANDLEBARS_HAVE_PTHREAD
+#include <pthread.h>
+#endif
+
 #ifndef YY_NO_UNISTD_H
 #include <unistd.h>
 #endif
@@ -633,8 +637,127 @@ END_TEST
 START_TEST(test_mmap_cache_reset)
 {
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
-    execute_gc_test(cache);
+    execute_reset_test(cache);
     handlebars_cache_dtor(cache);
+}
+END_TEST
+
+struct mmap_cache_stress_context {
+    struct handlebars_cache * cache;
+    struct handlebars_string * key;
+    struct handlebars_module * modules[2];
+    size_t module_sizes[2];
+    uint32_t module_checksums[2];
+    pthread_mutex_t start_lock;
+    pthread_cond_t start_cond;
+    size_t ready;
+    bool start;
+    size_t invalid_modules;
+};
+
+static void mmap_cache_stress_wait(struct mmap_cache_stress_context * ctx)
+{
+    pthread_mutex_lock(&ctx->start_lock);
+    ctx->ready++;
+    pthread_cond_broadcast(&ctx->start_cond);
+    while( !ctx->start ) {
+        pthread_cond_wait(&ctx->start_cond, &ctx->start_lock);
+    }
+    pthread_mutex_unlock(&ctx->start_lock);
+}
+
+static void * mmap_cache_find_stress(void * arg)
+{
+    struct mmap_cache_stress_context * ctx = arg;
+
+    mmap_cache_stress_wait(ctx);
+    for( size_t i = 0; i < 20000; i++ ) {
+        struct handlebars_module * module = handlebars_cache_find(ctx->cache, ctx->key);
+        if( module ) {
+            size_t size = module->size;
+            bool valid = module->addr == module;
+            if( size == ctx->module_sizes[0] ) {
+                valid = valid && adler32((unsigned char *) module, size) == ctx->module_checksums[0];
+            } else if( size == ctx->module_sizes[1] ) {
+                valid = valid && adler32((unsigned char *) module, size) == ctx->module_checksums[1];
+            } else {
+                valid = false;
+            }
+            if( !valid ) {
+                ctx->invalid_modules++;
+            }
+            handlebars_cache_release(ctx->cache, ctx->key, module);
+        }
+    }
+    return NULL;
+}
+
+static void * mmap_cache_reset_stress(void * arg)
+{
+    struct mmap_cache_stress_context * ctx = arg;
+
+    mmap_cache_stress_wait(ctx);
+    for( size_t i = 0; i < 2000; i++ ) {
+        handlebars_cache_reset(ctx->cache);
+        handlebars_cache_add(ctx->cache, ctx->key, ctx->modules[i % 2]);
+    }
+    return NULL;
+}
+
+START_TEST(test_mmap_cache_concurrent_reset_and_find)
+{
+    struct mmap_cache_stress_context ctx = {0};
+    pthread_t find_thread;
+    pthread_t reset_thread;
+    struct handlebars_module * found;
+
+    ctx.cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
+    ctx.key = handlebars_string_ctor(context, HBS_STRL("mmap-concurrent"));
+    ctx.modules[0] = serialize_template("{{foo}}");
+    ctx.modules[1] = serialize_template("{{#if foo}}a longer replacement template{{/if}}");
+    ck_assert_int_eq(pthread_mutex_init(&ctx.start_lock, NULL), 0);
+    ck_assert_int_eq(pthread_cond_init(&ctx.start_cond, NULL), 0);
+    for( size_t i = 0; i < 2; i++ ) {
+        handlebars_cache_reset(ctx.cache);
+        handlebars_cache_add(ctx.cache, ctx.key, ctx.modules[i]);
+        found = handlebars_cache_find(ctx.cache, ctx.key);
+        ck_assert_ptr_nonnull(found);
+        ctx.module_sizes[i] = found->size;
+        ctx.module_checksums[i] = adler32((unsigned char *) found, found->size);
+        handlebars_cache_release(ctx.cache, ctx.key, found);
+    }
+    handlebars_cache_reset(ctx.cache);
+    handlebars_cache_add(ctx.cache, ctx.key, ctx.modules[0]);
+
+    ck_assert_int_eq(pthread_create(&find_thread, NULL, mmap_cache_find_stress, &ctx), 0);
+    ck_assert_int_eq(pthread_create(&reset_thread, NULL, mmap_cache_reset_stress, &ctx), 0);
+
+    ck_assert_int_eq(pthread_mutex_lock(&ctx.start_lock), 0);
+    while( ctx.ready < 2 ) {
+        ck_assert_int_eq(pthread_cond_wait(&ctx.start_cond, &ctx.start_lock), 0);
+    }
+    ctx.start = true;
+    ck_assert_int_eq(pthread_cond_broadcast(&ctx.start_cond), 0);
+    ck_assert_int_eq(pthread_mutex_unlock(&ctx.start_lock), 0);
+
+    ck_assert_int_eq(pthread_join(find_thread, NULL), 0);
+    ck_assert_int_eq(pthread_join(reset_thread, NULL), 0);
+    ck_assert_uint_eq(ctx.invalid_modules, 0);
+    ck_assert_int_eq(handlebars_cache_stat(ctx.cache).refcount, 0);
+
+    handlebars_cache_reset(ctx.cache);
+    handlebars_cache_add(ctx.cache, ctx.key, ctx.modules[0]);
+    found = handlebars_cache_find(ctx.cache, ctx.key);
+    ck_assert_ptr_nonnull(found);
+    ck_assert_uint_eq(
+        adler32((unsigned char *) found, found->size),
+        ctx.module_checksums[0]
+    );
+    handlebars_cache_release(ctx.cache, ctx.key, found);
+
+    ck_assert_int_eq(pthread_cond_destroy(&ctx.start_cond), 0);
+    ck_assert_int_eq(pthread_mutex_destroy(&ctx.start_lock), 0);
+    handlebars_cache_dtor(ctx.cache);
 }
 END_TEST
 
@@ -820,6 +943,7 @@ static Suite * suite(void)
 #ifdef HANDLEBARS_HAVE_PTHREAD
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache_concurrent_reset_and_find, "MMAP concurrent reset and find");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_expired_find_is_a_miss, "MMAP expired find is a miss");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_hash_collision_is_a_miss, "MMAP hash collision is a miss");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_rejects_invalid_geometry, "MMAP rejects invalid geometry");

@@ -59,19 +59,8 @@
 #define USE_SPINLOCK 1
 #endif
 
-#ifdef HAVE_ATOMIC_BUILTINS
-#define INCR(var) __atomic_add_fetch(&var, 1, __ATOMIC_SEQ_CST)
-#define DECR(var) __atomic_sub_fetch(&var, 1, __ATOMIC_SEQ_CST)
-#else
-#define INCR(var) lock(cache); var++; unlock(cache)
-#define DECR(var) lock(cache); var--; unlock(cache)
-#endif
-
-
-
 static const char head[] = "handlebars shared opcode cache";
 static const size_t PADDING = 1;
-static size_t page_size;
 
 struct handlebars_cache_mmap {
     //! Header
@@ -194,6 +183,38 @@ static inline void unlock(struct handlebars_cache * cache)
     }
 }
 
+static inline long refcount_load(struct handlebars_cache_mmap * intern)
+{
+#ifdef HAVE_ATOMIC_BUILTINS
+    return __atomic_load_n(&intern->refcount, __ATOMIC_SEQ_CST);
+#else
+    return intern->refcount;
+#endif
+}
+
+static inline void refcount_increment(struct handlebars_cache_mmap * intern)
+{
+#ifdef HAVE_ATOMIC_BUILTINS
+    __atomic_add_fetch(&intern->refcount, 1, __ATOMIC_SEQ_CST);
+#else
+    /* The caller holds the cache lock. */
+    intern->refcount++;
+#endif
+}
+
+static inline void refcount_decrement(struct handlebars_cache * cache)
+{
+    struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+
+#ifdef HAVE_ATOMIC_BUILTINS
+    __atomic_sub_fetch(&intern->refcount, 1, __ATOMIC_SEQ_CST);
+#else
+    lock(cache);
+    intern->refcount--;
+    unlock(cache);
+#endif
+}
+
 static inline struct table_entry * table_find(struct handlebars_cache_mmap * intern, struct handlebars_string * string)
 {
     uint32_t offset = hbs_str_hash(string) % intern->table_count;
@@ -230,21 +251,36 @@ static void cache_reset(struct handlebars_cache * cache)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
 
-    // Lock
+    /* Block new readers before checking the active-reader count. A lookup
+     * takes the same lock while publishing its reference, so reset cannot
+     * recycle the data segment in between lookup and refcount increment. */
+    lock(cache);
+    if( intern->in_reset ) {
+        unlock(cache);
+        return;
+    }
     intern->in_reset = true;
+
+#ifndef HAVE_ATOMIC_BUILTINS
+    if( intern->refcount > 0 ) {
+        intern->in_reset = false;
+        unlock(cache);
+        return;
+    }
+#endif
+    unlock(cache);
 
     // Try to wait for refcount to empty
 #ifdef HAVE_ATOMIC_BUILTINS
     int counter = 0;
-    while( __atomic_load_n(&intern->refcount, __ATOMIC_SEQ_CST) > 0 && ++counter <= 100 ) {
+    while( refcount_load(intern) > 0 && ++counter <= 100 ) {
         usleep(5000);
     }
-    if( __atomic_load_n(&intern->refcount, __ATOMIC_SEQ_CST) > 0 ) {
-        goto error;
-    }
-#else
-    if (intern->refcount > 0) {
-        goto error;
+    if( refcount_load(intern) > 0 ) {
+        lock(cache);
+        intern->in_reset = false;
+        unlock(cache);
+        return;
     }
 #endif
 
@@ -255,17 +291,17 @@ static void cache_reset(struct handlebars_cache * cache)
     // Initialize header
     intern->table_entries = 0;
     intern->data_length = 0;
+    intern->hits = 0;
+    intern->misses = 0;
+    intern->collisions = 0;
 
     // Zero out the hash table
     memset(intern->table, 0, intern->table_size);
 
     // Protect/Unlock
     protect(cache, true);
-    unlock(cache);
-
-error:
-    // Unlock
     intern->in_reset = false;
+    unlock(cache);
 }
 
 static int cache_gc(struct handlebars_cache * cache)
@@ -278,27 +314,29 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct handlebars_module * module = NULL;
+    struct table_entry * entry;
     time_t now;
+
+    lock(cache);
 
     // Currently resetting
     if( intern->in_reset ) {
-        return NULL;
+        goto done;
     }
 
     // Find entry
-    struct table_entry * entry = table_find(intern, key);
+    entry = table_find(intern, key);
 
     if( !entry ) {
         // Not found, or not ready
-        INCR(intern->misses);
-        goto error;
+        intern->misses++;
+        goto done;
     }
 
     // Compare key
     if( !handlebars_string_eq(key, entry->key) ) {
-        INCR(intern->misses);
-        //INCR(intern->collisions);
-        goto error;
+        intern->misses++;
+        goto done;
     }
 
     // Get data
@@ -307,26 +345,28 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Check if it's too old or wrong version
     time(&now);
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
-        lock(cache);
         protect(cache, false);
         table_unset(intern, key);
         intern->misses++;
         intern->table_entries--;
         protect(cache, true);
-        unlock(cache);
         module = NULL;
-        goto error;
+        goto done;
     }
 
     // Check for pointer mismatch
     if( unlikely((void *) module != module->addr) ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Shared memory pointer mismatch: %p != %p", module, module->addr);
+        void * module_addr = module->addr;
+        unlock(cache);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Shared memory pointer mismatch: %p != %p", module, module_addr);
+        return NULL;
     }
 
-    INCR(intern->hits);
-    INCR(intern->refcount);
+    intern->hits++;
+    refcount_increment(intern);
 
-error:
+done:
+    unlock(cache);
     return module;
 }
 
@@ -338,14 +378,14 @@ static void cache_add(
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct table_entry entry;
 
-    // Currently resetting
-    if( intern->in_reset ) {
-        return;
-    }
-
     // Lock
     lock(cache);
-    protect(cache, false);
+
+    // Currently resetting
+    if( intern->in_reset ) {
+        unlock(cache);
+        return;
+    }
 
     assert(module == module->addr);
 
@@ -353,10 +393,13 @@ static void cache_add(
     struct table_entry * found = table_find(intern, key);
     if( found ) {
         if( !handlebars_string_eq(found->key, key) ) {
-            INCR(intern->collisions);
+            intern->collisions++;
         }
-        goto error;
+        unlock(cache);
+        return;
     }
+
+    protect(cache, false);
 
     // Copy key
     entry.key = append(intern, (void *) key, HBS_STR_SIZE(hbs_str_len(key)));
@@ -384,7 +427,6 @@ static void cache_add(
     }
     intern->table_entries++;
 
-error:
     // Unlock
     protect(cache, true);
     unlock(cache);
@@ -392,14 +434,15 @@ error:
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
 {
-    struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
-    DECR(intern->refcount);
+    refcount_decrement(cache);
 }
 
 static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct handlebars_cache_stat stat = {0};
+
+    lock(cache);
     stat.name = "mmap";
     stat.total_size = intern->size;
     stat.total_table_size = intern->table_size;
@@ -411,8 +454,9 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
     stat.current_size = stat.current_table_size + stat.current_data_size;
     stat.hits = intern->hits;
     stat.misses = intern->misses;
-    stat.refcount = intern->refcount;
+    stat.refcount = refcount_load(intern);
     stat.collisions = intern->collisions;
+    unlock(cache);
     return stat;
 }
 
@@ -434,6 +478,7 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     size_t entries
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
+    size_t page_size;
     handlebars_context_bind(context, HBSCTX(cache));
 
     cache->max_age = -1;
