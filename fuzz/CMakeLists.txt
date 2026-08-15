@@ -24,3 +24,10 @@ if(LIBJSONC_LIBRARY)
     set_target_properties(fuzz_json PROPERTIES
         LINK_FLAGS "-fsanitize=fuzzer,address,undefined")
 endif()
+
+if(LMDB_LIBRARIES)
+    add_executable(fuzz_lmdb fuzz_lmdb.c)
+    target_link_libraries(fuzz_lmdb handlebars_static ${LIBS})
+    set_target_properties(fuzz_lmdb PROPERTIES
+        LINK_FLAGS "-fsanitize=fuzzer,address,undefined")
+endif()

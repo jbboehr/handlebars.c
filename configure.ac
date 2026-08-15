@@ -110,7 +110,7 @@ AC_MSG_RESULT([$CLANG])
 
 # fuzzing
 AC_ARG_ENABLE([fuzzing],
-	[AS_HELP_STRING([--enable-fuzzing], [build the libFuzzer template target (requires clang)])], [])
+	[AS_HELP_STRING([--enable-fuzzing], [build the libFuzzer targets (requires clang)])], [])
 
 FUZZING_CFLAGS=
 FUZZING_LDFLAGS=

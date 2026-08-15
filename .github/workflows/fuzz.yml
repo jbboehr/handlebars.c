@@ -26,10 +26,16 @@ jobs:
                 include:
                     - target: template
                       dictionary: handlebars.dict
+                      corpora: fuzz/corpus/template
                     - target: json
                       dictionary: json.dict
+                      corpora: fuzz/corpus/json
                     - target: module
                       dictionary: module.dict
+                      corpora: fuzz/corpus/module
+                    - target: lmdb
+                      dictionary: lmdb.dict
+                      corpora: fuzz/corpus/lmdb fuzz/corpus/module
         env:
             FUZZ_SECONDS: ${{ github.event_name == 'schedule' && '900' || '60' }}
         steps:
@@ -38,7 +44,7 @@ jobs:
             - name: Install packages
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y autoconf automake clang-18 libclang-rt-18-dev libjson-c-dev libtalloc-dev libtool m4 make pkg-config
+                  sudo apt-get install -y autoconf automake clang-18 libclang-rt-18-dev libjson-c-dev liblmdb-dev libtalloc-dev libtool m4 make pkg-config
 
             - name: Restore generated corpus
               uses: actions/cache@v5
@@ -64,7 +70,6 @@ jobs:
                   --disable-flex
                   --disable-gperf
                   --disable-hardening
-                  --disable-lmdb
                   --disable-pcre
                   --disable-pthread
                   --disable-shared
@@ -86,7 +91,7 @@ jobs:
                   mkdir -p fuzz-artifacts fuzz-corpus/${{ matrix.target }}
                   ./fuzz/fuzz_${{ matrix.target }} \
                       fuzz-corpus/${{ matrix.target }} \
-                      fuzz/corpus/${{ matrix.target }} \
+                      ${{ matrix.corpora }} \
                       -artifact_prefix=fuzz-artifacts/ \
                       -dict=fuzz/${{ matrix.dictionary }} \
                       -max_len=65536 \

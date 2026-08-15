@@ -104,8 +104,10 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @FUZZING_TRUE@noinst_PROGRAMS = fuzz_template$(EXEEXT) \
-@FUZZING_TRUE@	fuzz_module$(EXEEXT) $(am__EXEEXT_1)
+@FUZZING_TRUE@	fuzz_module$(EXEEXT) $(am__EXEEXT_1) \
+@FUZZING_TRUE@	$(am__EXEEXT_2)
 @FUZZING_TRUE@@JSON_TRUE@am__append_1 = fuzz_json
+@FUZZING_TRUE@@LMDB_TRUE@am__append_2 = fuzz_lmdb
 subdir = fuzz
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_ac_append_to_file.m4 \
@@ -157,12 +159,24 @@ CONFIG_HEADER = $(top_builddir)/config.h \
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 @FUZZING_TRUE@@JSON_TRUE@am__EXEEXT_1 = fuzz_json$(EXEEXT)
+@FUZZING_TRUE@@LMDB_TRUE@am__EXEEXT_2 = fuzz_lmdb$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am_fuzz_json_OBJECTS = fuzz_json.$(OBJEXT)
 fuzz_json_OBJECTS = $(am_fuzz_json_OBJECTS)
 fuzz_json_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
 fuzz_json_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
+AM_V_lt = $(am__v_lt_@AM_V@)
+am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
+am__v_lt_0 = --silent
+am__v_lt_1 =
+am_fuzz_lmdb_OBJECTS = fuzz_lmdb.$(OBJEXT)
+fuzz_lmdb_OBJECTS = $(am_fuzz_lmdb_OBJECTS)
+fuzz_lmdb_LDADD = $(LDADD)
+fuzz_lmdb_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1)
@@ -173,10 +187,6 @@ fuzz_module_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1)
-AM_V_lt = $(am__v_lt_@AM_V@)
-am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
-am__v_lt_0 = --silent
-am__v_lt_1 = 
 am_fuzz_template_OBJECTS = fuzz_template.$(OBJEXT)
 fuzz_template_OBJECTS = $(am_fuzz_template_OBJECTS)
 fuzz_template_LDADD = $(LDADD)
@@ -200,7 +210,7 @@ DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir) -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/build/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/fuzz_json.Po \
-	./$(DEPDIR)/fuzz_module.Po \
+	./$(DEPDIR)/fuzz_lmdb.Po ./$(DEPDIR)/fuzz_module.Po \
 	./$(DEPDIR)/fuzz_template.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -221,10 +231,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(fuzz_json_SOURCES) $(fuzz_module_SOURCES) \
-	$(fuzz_template_SOURCES)
-DIST_SOURCES = $(fuzz_json_SOURCES) $(fuzz_module_SOURCES) \
-	$(fuzz_template_SOURCES)
+SOURCES = $(fuzz_json_SOURCES) $(fuzz_lmdb_SOURCES) \
+	$(fuzz_module_SOURCES) $(fuzz_template_SOURCES)
+DIST_SOURCES = $(fuzz_json_SOURCES) $(fuzz_lmdb_SOURCES) \
+	$(fuzz_module_SOURCES) $(fuzz_template_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -453,9 +463,10 @@ AM_CPPFLAGS = -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(FUZZING_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS)
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(FUZZER_LDFLAGS)
 LDADD = $(top_builddir)/src/libhandlebars.la $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS)
-EXTRA_DIST = README.md handlebars.dict json.dict module.dict corpus/template corpus/json corpus/module
+EXTRA_DIST = README.md handlebars.dict json.dict lmdb.dict module.dict corpus/template corpus/json corpus/lmdb corpus/module
 fuzz_template_SOURCES = fuzz_template.c
 fuzz_json_SOURCES = fuzz_json.c
+fuzz_lmdb_SOURCES = fuzz_lmdb.c
 fuzz_module_SOURCES = fuzz_module.c
 all: all-am
 
@@ -504,6 +515,10 @@ fuzz_json$(EXEEXT): $(fuzz_json_OBJECTS) $(fuzz_json_DEPENDENCIES) $(EXTRA_fuzz_
 	@rm -f fuzz_json$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(fuzz_json_OBJECTS) $(fuzz_json_LDADD) $(LIBS)
 
+fuzz_lmdb$(EXEEXT): $(fuzz_lmdb_OBJECTS) $(fuzz_lmdb_DEPENDENCIES) $(EXTRA_fuzz_lmdb_DEPENDENCIES)
+	@rm -f fuzz_lmdb$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(fuzz_lmdb_OBJECTS) $(fuzz_lmdb_LDADD) $(LIBS)
+
 fuzz_module$(EXEEXT): $(fuzz_module_OBJECTS) $(fuzz_module_DEPENDENCIES) $(EXTRA_fuzz_module_DEPENDENCIES)
 	@rm -f fuzz_module$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(fuzz_module_OBJECTS) $(fuzz_module_LDADD) $(LIBS)
@@ -519,6 +534,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fuzz_json.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fuzz_lmdb.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fuzz_module.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fuzz_template.Po@am__quote@ # am--include-marker
 
@@ -708,6 +724,7 @@ clean-am: clean-generic clean-libtool clean-noinstPROGRAMS \
 
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/fuzz_json.Po
+	-rm -f ./$(DEPDIR)/fuzz_lmdb.Po
 	-rm -f ./$(DEPDIR)/fuzz_module.Po
 	-rm -f ./$(DEPDIR)/fuzz_template.Po
 	-rm -f Makefile
@@ -756,6 +773,7 @@ installcheck-am:
 
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/fuzz_json.Po
+	-rm -f ./$(DEPDIR)/fuzz_lmdb.Po
 	-rm -f ./$(DEPDIR)/fuzz_module.Po
 	-rm -f ./$(DEPDIR)/fuzz_template.Po
 	-rm -f Makefile
