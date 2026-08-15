@@ -236,6 +236,145 @@ START_TEST(test_serialize_rejects_invalid_child_program)
 }
 END_TEST
 
+static void assert_serialize_rejects_invalid_array(
+    struct handlebars_program * program,
+    const char * expected_error
+)
+{
+    struct handlebars_module * module;
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_str_eq(handlebars_error_msg(context), expected_error);
+        return;
+    }
+
+    module = handlebars_program_serialize(context, program);
+    (void) module;
+    context->e->jmp = prev;
+    ck_abort_msg("Expected invalid program array to be rejected");
+}
+
+START_TEST(test_serialize_rejects_invalid_child_array_length)
+{
+    struct handlebars_program program = {0};
+    struct handlebars_program child = {0};
+    struct handlebars_program * children[] = {&child};
+
+    program.children = children;
+    program.children_length = 2;
+    program.children_size = 1;
+
+    assert_serialize_rejects_invalid_array(&program, "Invalid child program array");
+}
+END_TEST
+
+START_TEST(test_serialize_rejects_invalid_opcode_array_length)
+{
+    struct handlebars_program program = {0};
+    struct handlebars_opcode opcode = {0};
+    struct handlebars_opcode * opcodes[] = {&opcode};
+
+    program.opcodes = opcodes;
+    program.opcodes_length = 2;
+    program.opcodes_size = 1;
+
+    assert_serialize_rejects_invalid_array(&program, "Invalid opcode array");
+}
+END_TEST
+
+static void assert_serialize_rejects_operand_count(size_t count)
+{
+    struct handlebars_program program = {0};
+    struct handlebars_opcode opcode = {0};
+    struct handlebars_opcode * opcodes[] = {&opcode};
+    struct handlebars_operand_string item = {0};
+    struct handlebars_module * module;
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    program.opcodes = opcodes;
+    program.opcodes_length = 1;
+    program.opcodes_size = 1;
+    opcode.type = handlebars_opcode_type_lookup_on_context;
+    opcode.op1.type = handlebars_operand_type_array;
+    opcode.op1.data.array.count = count;
+    opcode.op1.data.array.array = &item;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = prev;
+        ck_assert_str_eq(handlebars_error_msg(context), "Serialized module is too large");
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        return;
+    }
+
+    module = handlebars_program_serialize(context, &program);
+    (void) module;
+    context->e->jmp = prev;
+    ck_abort_msg("Expected oversized operand array to be rejected");
+}
+
+START_TEST(test_serialize_rejects_operand_size_multiplication_overflow)
+{
+    assert_serialize_rejects_operand_count(
+        SIZE_MAX / sizeof(struct handlebars_operand_string) + 1
+    );
+}
+END_TEST
+
+START_TEST(test_serialize_rejects_aggregate_size_overflow)
+{
+    assert_serialize_rejects_operand_count(
+        SIZE_MAX / sizeof(struct handlebars_operand_string)
+    );
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+static void assert_serialize_allocation_failure(
+    struct handlebars_program * program,
+    int fail_at
+)
+{
+    struct handlebars_module * module;
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(fail_at);
+    module = handlebars_program_serialize(context, program);
+    (void) module;
+    handlebars_memory_fail_disable();
+    context->e->jmp = prev;
+    ck_abort_msg("Expected serialized module allocation %d to fail", fail_at);
+}
+
+START_TEST(test_serialize_allocation_failures)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#if foo}}bar{{/if}}")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
+
+    assert_serialize_allocation_failure(program, 1);
+    assert_serialize_allocation_failure(program, 2);
+    assert_serialize_allocation_failure(program, 3);
+}
+END_TEST
+#endif
+
 static struct handlebars_module * serialize_for_verification_flags(
     const char * source,
     unsigned long flags
@@ -605,6 +744,13 @@ static Suite * suite(void)
 #endif
 	REGISTER_TEST_FIXTURE(s, test_delimiter_change_requires_close_delimiter, "Delimiter change requires close delimiter");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_program, "Reject invalid child program index");
+	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_array_length, "Reject invalid child array length");
+	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_opcode_array_length, "Reject invalid opcode array length");
+	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_operand_size_multiplication_overflow, "Reject overflowing operand array size");
+	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_aggregate_size_overflow, "Reject overflowing serialized module size");
+#ifdef HANDLEBARS_MEMORY
+	REGISTER_TEST_FIXTURE(s, test_serialize_allocation_failures, "Serialized module allocation failures");
+#endif
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_verification, "Verify serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");
