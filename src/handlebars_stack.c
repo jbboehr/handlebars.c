@@ -20,6 +20,7 @@
 #endif
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <talloc.h>
 
@@ -60,8 +61,15 @@ struct handlebars_stack {
 };
 
 void * HANDLEBARS_STACK_ALLOC_PTR = NULL;
+size_t HANDLEBARS_STACK_ALLOC_CAPACITY = 0;
 
 size_t handlebars_stack_size(size_t capacity) {
+    const size_t max_values = (SIZE_MAX - sizeof(struct handlebars_stack)) / sizeof(struct handlebars_value);
+
+    if( capacity >= max_values ) {
+        return 0;
+    }
+
     return (sizeof(struct handlebars_stack) + sizeof(struct handlebars_value) * (capacity + 1));
 }
 
@@ -112,6 +120,10 @@ static inline struct handlebars_stack * stack_separate(struct handlebars_stack *
 
 struct handlebars_stack * handlebars_stack_init(struct handlebars_context * ctx, struct handlebars_stack * stack, size_t elem)
 {
+    if( handlebars_stack_size(elem) == 0 ) {
+        handlebars_throw(ctx, HANDLEBARS_STACK_OVERFLOW, "Stack capacity is too large: %zu", elem);
+    }
+
     memset(stack, 0, sizeof(struct handlebars_stack));
     stack->ctx = ctx;
     stack->capacity = elem;
@@ -123,7 +135,14 @@ struct handlebars_stack * handlebars_stack_init(struct handlebars_context * ctx,
 
 struct handlebars_stack * handlebars_stack_ctor(struct handlebars_context * ctx, size_t capacity)
 {
-    struct handlebars_stack * stack = handlebars_talloc_size(ctx, handlebars_stack_size(capacity));
+    size_t size = handlebars_stack_size(capacity);
+    struct handlebars_stack * stack;
+
+    if( size == 0 ) {
+        handlebars_throw(ctx, HANDLEBARS_STACK_OVERFLOW, "Stack capacity is too large: %zu", capacity);
+    }
+
+    stack = handlebars_talloc_size(ctx, size);
     HANDLEBARS_MEMCHECK(stack, ctx);
     talloc_set_type(stack, struct handlebars_stack);
     memset(stack, 0, sizeof(struct handlebars_stack));
@@ -148,6 +167,7 @@ struct handlebars_stack * handlebars_stack_copy_ctor(struct handlebars_stack * p
         handlebars_value_value(&stack->v[i], &prev_stack->v[i]);
     }
     stack->i = prev_stack->i;
+    stack->protect = prev_stack->protect;
     return stack;
 }
 
@@ -202,7 +222,14 @@ struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack,
             handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Stack overflow");
         }
 
-        size_t capacity = (stack->capacity | 3) * 3 / 2;
+        size_t capacity = stack->capacity | 3;
+        if( capacity > SIZE_MAX / 3 ) {
+            handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Stack capacity is too large: %zu", stack->capacity);
+        }
+        capacity = capacity * 3 / 2;
+        if( capacity <= stack->capacity || handlebars_stack_size(capacity) == 0 ) {
+            handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Stack capacity is too large: %zu", stack->capacity);
+        }
         struct handlebars_stack * prev_stack = stack;
         stack = handlebars_stack_copy_ctor(prev_stack, capacity);
         handlebars_stack_delref(prev_stack);
@@ -267,9 +294,6 @@ struct handlebars_stack * handlebars_stack_set(struct handlebars_stack * stack, 
         return handlebars_stack_push(stack, value);
     }
 
-    // Separate if refcount > 1
-    stack = stack_separate(stack);
-
     // Out-of-bounds
     if( offset >= stack->i ) {
         handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Out-of-bounds %zu/%zu", offset, stack->i);
@@ -284,6 +308,9 @@ struct handlebars_stack * handlebars_stack_set(struct handlebars_stack * stack, 
     if( value == &stack->v[offset] ) {
         return stack;
     }
+
+    // Separate if refcount > 1
+    stack = stack_separate(stack);
 
     handlebars_value_value(&stack->v[offset], value);
 

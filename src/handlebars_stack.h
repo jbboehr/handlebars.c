@@ -37,16 +37,24 @@ struct handlebars_stack_save_buf {
 
 #ifdef HANDLEBARS_HAVE_STATEMENT_EXPRESSIONS
 #define handlebars_stack_alloca(ctx, capacity) ({ \
-        void * HANDLEBARS_STACK_ALLOC_PTR = alloca(handlebars_stack_size(capacity)); \
-        handlebars_stack_init(ctx, HANDLEBARS_STACK_ALLOC_PTR, capacity); \
+        size_t HANDLEBARS_STACK_ALLOC_CAPACITY = (capacity); \
+        size_t HANDLEBARS_STACK_ALLOC_SIZE = handlebars_stack_size(HANDLEBARS_STACK_ALLOC_CAPACITY); \
+        void * HANDLEBARS_STACK_ALLOC_PTR = alloca(HANDLEBARS_STACK_ALLOC_SIZE ? HANDLEBARS_STACK_ALLOC_SIZE : 1); \
+        handlebars_stack_init(ctx, HANDLEBARS_STACK_ALLOC_PTR, HANDLEBARS_STACK_ALLOC_CAPACITY); \
         HANDLEBARS_STACK_ALLOC_PTR; \
     })
 #else
 // @TODO can we do better than this?
 extern void *HANDLEBARS_STACK_ALLOC_PTR;
+extern size_t HANDLEBARS_STACK_ALLOC_CAPACITY;
 #define handlebars_stack_alloca(ctx, capacity) ( \
-        HANDLEBARS_STACK_ALLOC_PTR = alloca(handlebars_stack_size(capacity)), \
-        handlebars_stack_init(ctx, HANDLEBARS_STACK_ALLOC_PTR, capacity), \
+        HANDLEBARS_STACK_ALLOC_CAPACITY = (capacity), \
+        HANDLEBARS_STACK_ALLOC_PTR = alloca( \
+            handlebars_stack_size(HANDLEBARS_STACK_ALLOC_CAPACITY) \
+                ? handlebars_stack_size(HANDLEBARS_STACK_ALLOC_CAPACITY) \
+                : 1 \
+        ), \
+        handlebars_stack_init(ctx, HANDLEBARS_STACK_ALLOC_PTR, HANDLEBARS_STACK_ALLOC_CAPACITY), \
         HANDLEBARS_STACK_ALLOC_PTR \
     )
 #endif
@@ -54,7 +62,7 @@ extern void *HANDLEBARS_STACK_ALLOC_PTR;
 /**
  * @brief Calculate the size of a stack for a given #capacity
  * @param[in] capacity The number of desired elements
- * @return The size in bytes
+ * @return The size in bytes, or zero if the capacity cannot be represented
  */
 size_t handlebars_stack_size(size_t capacity)
     HBS_ATTR_CONST;
