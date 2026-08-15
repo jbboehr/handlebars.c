@@ -210,6 +210,7 @@ START_TEST(test_operand_set_arrayval)
     for( ptr1 = strs, ptr2 = op.data.array.array; *ptr1 /*|| *ptr2*/; ptr1++, ptr2++ ) {
         ck_assert_hbs_str_eq_cstr(ptr2->string, *ptr1);
     }
+    ck_assert_ptr_null(ptr2->string);
 }
 END_TEST
 
@@ -236,8 +237,73 @@ START_TEST(test_operand_set_arrayval_string)
     for( ptr1 = strings, ptr2 = opcode->op1.data.array.array; *ptr1 /* || *ptr2*/; ptr1++, ptr2++ ) {
         ck_assert_hbs_str_eq(*ptr1, ptr2->string);
     }
+    ck_assert_ptr_null(ptr2->string);
 }
 END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+START_TEST(test_operand_set_arrayval_failure_leaves_operand_null)
+{
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
+    const char * strings[] = { "foo", "bar", NULL };
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_int_eq(opcode->op1.type, handlebars_operand_type_null);
+        ck_assert_ptr_null(opcode->op1.data.array.array);
+        handlebars_talloc_free(opcode);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(2);
+    handlebars_operand_set_arrayval(context, opcode, &opcode->op1, strings);
+    handlebars_memory_fail_disable();
+    context->e->jmp = prev;
+    handlebars_talloc_free(opcode);
+    ck_abort_msg("Expected operand string allocation to fail");
+}
+END_TEST
+
+START_TEST(test_operand_set_arrayval_string_failure_leaves_operand_null)
+{
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(context, handlebars_opcode_type_nil);
+    struct handlebars_string * strings[] = {
+        handlebars_string_ctor(context, HBS_STRL("foo")),
+        handlebars_string_ctor(context, HBS_STRL("bar")),
+        NULL
+    };
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_int_eq(opcode->op1.type, handlebars_operand_type_null);
+        ck_assert_ptr_null(opcode->op1.data.array.array);
+        handlebars_talloc_free(opcode);
+        handlebars_talloc_free(strings[0]);
+        handlebars_talloc_free(strings[1]);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(2);
+    handlebars_operand_set_arrayval_string(context, opcode, &opcode->op1, strings);
+    handlebars_memory_fail_disable();
+    context->e->jmp = prev;
+    handlebars_talloc_free(opcode);
+    handlebars_talloc_free(strings[0]);
+    handlebars_talloc_free(strings[1]);
+    ck_abort_msg("Expected operand string copy allocation to fail");
+}
+END_TEST
+#endif
 
 static Suite * suite(void);
 static Suite * suite(void)
@@ -255,6 +321,10 @@ static Suite * suite(void)
 	//REGISTER_TEST_FIXTURE(s, test_operand_set_stringval_failed_alloc, "Set operand stringval (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval, "Set operand arrayval");
     REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval_string, "operand_set_arrayval_string");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval_failure_leaves_operand_null, "Set operand arrayval allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval_string_failure_leaves_operand_null, "Set operand arrayval string allocation failure");
+#endif
 
 
     return s;

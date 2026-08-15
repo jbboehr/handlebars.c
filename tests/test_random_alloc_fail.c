@@ -21,6 +21,7 @@
 
 #include <check.h>
 #include <stdio.h>
+#include <string.h>
 #include <talloc.h>
 
 #include "handlebars.h"
@@ -42,7 +43,7 @@
 static const char * tmpl = "{{#if foo}} {{bar}} {{/if}}  {{{blah}}} {{{{raw}}}} {{{{/raw}}}}"
         "{{#a}}{{^}}{{/a}} {{bar baz=foo}} {{> partial}} {{../depth}} {{this}} "
         "{{#unless}}{{else}}{{/unless}} {{&unescaped}} {{~strip~}}  "
-        "{{!-- comment --}} {{! coment }} {{blah (a (b)}}";
+        "{{!-- comment --}} {{! coment }} {{blah (a (b))}}";
 
 START_TEST(test_random_alloc_fail_tokenizer)
 {
@@ -53,7 +54,7 @@ START_TEST(test_random_alloc_fail_tokenizer)
     // for( i = 1; i < 300; i++ ) {
     //     struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
     //     struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
-        struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
+        struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), tmpl, strlen(tmpl));
 
         // For now, don't do yy alloc
         handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
@@ -76,7 +77,7 @@ START_TEST(test_random_alloc_fail_parser)
     // for( i = 1; i < 300; i++ ) {
     //     struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
     //     struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
-        struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
+        struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), tmpl, strlen(tmpl));
         struct handlebars_ast_node * ast;
 
         // For now, don't do yy alloc
@@ -101,8 +102,9 @@ START_TEST(test_random_alloc_fail_compiler)
         //     struct handlebars_context * ctx = handlebars_context_ctor_ex(root);
         //     struct handlebars_parser * parser = handlebars_parser_ctor(ctx);
         //     struct handlebars_compiler * compiler = handlebars_compiler_ctor(ctx);
-            struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
+            struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), tmpl, strlen(tmpl));
             struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl_str, 0);
+            ck_assert_msg(ast != NULL, "Failed to parse compiler allocation-failure fixture: %s", handlebars_error_msg(context));
 
             // For now, don't do yy alloc
             handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
@@ -130,8 +132,9 @@ START_TEST(test_random_alloc_fail_vm)
             handlebars_value_init_json_string(context, value, "{\"foo\": {\"bar\": 2}}");
             handlebars_value_convert(value);
 
-            struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), HBS_STRL(tmpl));
+            struct handlebars_string * tmpl_str = handlebars_string_ctor(HBSCTX(parser), tmpl, strlen(tmpl));
             struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl_str, 0);
+            ck_assert_msg(ast != NULL, "Failed to parse VM allocation-failure fixture: %s", handlebars_error_msg(context));
             struct handlebars_program * program = handlebars_compiler_compile_ex(compiler, ast);
             struct handlebars_module * module = handlebars_program_serialize(context, program);
 

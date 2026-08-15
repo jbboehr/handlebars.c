@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <limits.h>
 #include <string.h>
 #include <talloc.h>
 
@@ -55,15 +56,28 @@ START_TEST(test_compiler_ctor)
 }
 END_TEST
 
-START_TEST(test_compiler_nested_program_stack_limit)
+START_TEST(test_program_size_constant)
+{
+    ck_assert_uint_eq(HANDLEBARS_PROGRAM_SIZE, sizeof(struct handlebars_program));
+}
+END_TEST
+
+static struct handlebars_string * compiler_nested_template(size_t levels)
 {
     struct handlebars_string * tmpl = handlebars_string_init(context, 1024);
-    for( int i = 0; i < HANDLEBARS_COMPILER_STACK_SIZE + 1; i++ ) {
+
+    for( size_t i = 0; i < levels; i++ ) {
         tmpl = handlebars_string_append(context, tmpl, HBS_STRL("{{#if a}}"));
     }
-    for( int i = 0; i < HANDLEBARS_COMPILER_STACK_SIZE + 1; i++ ) {
+    for( size_t i = 0; i < levels; i++ ) {
         tmpl = handlebars_string_append(context, tmpl, HBS_STRL("{{/if}}"));
     }
+    return tmpl;
+}
+
+START_TEST(test_compiler_nested_program_stack_limit)
+{
+    struct handlebars_string * tmpl = compiler_nested_template(HANDLEBARS_COMPILER_STACK_SIZE + 1);
 
     jmp_buf buf;
     if( handlebars_setjmp_ex(context, &buf) ) {
@@ -77,6 +91,112 @@ START_TEST(test_compiler_nested_program_stack_limit)
     ck_abort_msg("Expected deeply nested programs to hit the compiler stack limit");
 }
 END_TEST
+
+START_TEST(test_compiler_reusable_after_escaped_error)
+{
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_string * deep_tmpl = compiler_nested_template(HANDLEBARS_COMPILER_STACK_SIZE + 1);
+    struct handlebars_ast_node * deep_ast = handlebars_parse_ex(parser, deep_tmpl, 0);
+    struct handlebars_parser * local_parser;
+    struct handlebars_string * simple_tmpl;
+    struct handlebars_ast_node * simple_ast;
+    struct handlebars_program * program;
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf first;
+    jmp_buf second;
+
+    if( handlebars_setjmp_ex(context, &first) ) {
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_STACK_OVERFLOW);
+    } else {
+        program = handlebars_compiler_compile_ex(local_compiler, deep_ast);
+        (void) program;
+        context->e->jmp = prev;
+        ck_abort_msg("Expected deeply nested compilation to fail");
+    }
+
+    local_parser = handlebars_parser_ctor(context);
+    simple_tmpl = handlebars_string_ctor(context, HBS_STRL("text"));
+    simple_ast = handlebars_parse_ex(local_parser, simple_tmpl, 0);
+    ck_assert_ptr_nonnull(simple_ast);
+
+    if( handlebars_setjmp_ex(context, &second) ) {
+        context->e->jmp = prev;
+        ck_abort_msg("Compiler reuse failed after an escaped error: %s", handlebars_error_msg(context));
+    }
+
+    program = handlebars_compiler_compile_ex(local_compiler, simple_ast);
+    context->e->jmp = prev;
+    ck_assert_ptr_nonnull(program);
+    ck_assert_int_gt(program->opcodes_length, 0);
+    handlebars_parser_dtor(local_parser);
+    handlebars_compiler_dtor(local_compiler);
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+static void assert_program_storage_consistent(struct handlebars_program * program)
+{
+    ck_assert_uint_le(program->opcodes_length, program->opcodes_size);
+    ck_assert_uint_le(program->children_length, program->children_size);
+    ck_assert_uint_le(program->decorators_length, program->decorators_size);
+
+    if( program->opcodes_size > 0 ) {
+        ck_assert_ptr_nonnull(program->opcodes);
+        ck_assert_uint_le(
+            program->opcodes_size,
+            talloc_get_size(program->opcodes) / sizeof(*program->opcodes)
+        );
+    }
+    if( program->children_size > 0 ) {
+        ck_assert_ptr_nonnull(program->children);
+        ck_assert_uint_le(
+            program->children_size,
+            talloc_get_size(program->children) / sizeof(*program->children)
+        );
+    }
+    if( program->decorators_size > 0 ) {
+        ck_assert_ptr_nonnull(program->decorators);
+        ck_assert_uint_le(
+            program->decorators_size,
+            talloc_get_size(program->decorators) / sizeof(*program->decorators)
+        );
+    }
+
+    for( size_t i = 0; i < program->children_length; i++ ) {
+        assert_program_storage_consistent(program->children[i]);
+    }
+    for( size_t i = 0; i < program->decorators_length; i++ ) {
+        assert_program_storage_consistent(program->decorators[i]);
+    }
+}
+
+START_TEST(test_compiler_allocation_failure_preserves_array_capacity)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#if foo}}bar{{/if}}{{*decorator foo}}")
+    );
+
+    for( int fail_at = 1; fail_at <= 100; fail_at++ ) {
+        struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+        struct handlebars_ast_node * ast = handlebars_parse_ex(local_parser, tmpl, 0);
+        struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+        struct handlebars_program * program;
+
+        handlebars_compiler_set_flags(local_compiler, handlebars_compiler_flag_alternate_decorators);
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        program = handlebars_compiler_compile_ex(local_compiler, ast);
+        handlebars_memory_fail_disable();
+
+        assert_program_storage_consistent(program);
+        handlebars_compiler_dtor(local_compiler);
+        handlebars_parser_dtor(local_parser);
+    }
+}
+END_TEST
+#endif
 
 START_TEST(test_delimiter_change_requires_close_delimiter)
 {
@@ -438,6 +558,33 @@ START_TEST(test_compiler_opcode)
     ck_assert_ptr_eq(op2, *(program->opcodes + 1));
 }
 END_TEST
+
+START_TEST(test_compiler_opcode_rejects_capacity_overflow)
+{
+    struct handlebars_program * program = handlebars_compiler_get_program(compiler);
+    struct handlebars_opcode * opcode = handlebars_opcode_ctor(
+        HBSCTX(compiler),
+        handlebars_opcode_type_append
+    );
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    program->opcodes_size = UINT_MAX;
+    program->opcodes_length = UINT_MAX;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        program->opcodes_size = 0;
+        program->opcodes_length = 0;
+        return;
+    }
+
+    handlebars_compiler_opcode(compiler, opcode);
+    context->e->jmp = prev;
+    ck_abort_msg("Expected overflowing opcode capacity to be rejected");
+}
+END_TEST
 #endif
 
 static Suite * suite(void);
@@ -446,11 +593,16 @@ static Suite * suite(void)
     Suite * s = suite_create("Compiler");
 
 	REGISTER_TEST_FIXTURE(s, test_compiler_ctor, "Constructor");
+	REGISTER_TEST_FIXTURE(s, test_program_size_constant, "Program size constant");
 	REGISTER_TEST_FIXTURE(s, test_compiler_ctor_failed_alloc, "Constructor (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_compiler_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_nested_program_stack_limit, "Nested program stack limit");
+	REGISTER_TEST_FIXTURE(s, test_compiler_reusable_after_escaped_error, "Compiler reuse after escaped error");
+#ifdef HANDLEBARS_MEMORY
+	REGISTER_TEST_FIXTURE(s, test_compiler_allocation_failure_preserves_array_capacity, "Compiler allocation failure preserves array capacity");
+#endif
 	REGISTER_TEST_FIXTURE(s, test_delimiter_change_requires_close_delimiter, "Delimiter change requires close delimiter");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_program, "Reject invalid child program index");
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_verification, "Verify serialized module layout");
@@ -461,6 +613,7 @@ static Suite * suite(void)
 #ifdef HANDLEBARS_TESTING_EXPORTS
 	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");
 	REGISTER_TEST_FIXTURE(s, test_compiler_opcode, "Push opcode");
+	REGISTER_TEST_FIXTURE(s, test_compiler_opcode_rejects_capacity_overflow, "Reject overflowing opcode capacity");
 #endif
 
     return s;

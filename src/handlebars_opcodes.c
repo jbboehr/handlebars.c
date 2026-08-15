@@ -20,6 +20,7 @@
 #endif
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #define HANDLEBARS_OPCODES_PRIVATE
@@ -87,26 +88,38 @@ void handlebars_operand_set_arrayval(
     struct handlebars_operand * operand,
     const char ** arg
 ) {
+    struct handlebars_operand_string * array;
     struct handlebars_operand_string * arrptr;
     const char ** ptr;
     size_t num = 0;
+    size_t allocation_count;
 
     assert(operand != NULL);
+    handlebars_operand_set_null(operand);
 
     // Get number of items
-    for( ptr = arg; *ptr; ++ptr, ++num );
+    for( ptr = arg; *ptr; ++ptr ) {
+        if( unlikely(num >= (size_t) UINT_MAX - 1) ) {
+            handlebars_throw(context, HANDLEBARS_NOMEM, "Operand array is too large");
+        }
+        num++;
+    }
+    allocation_count = num + 1;
 
     // Allocate
-    operand->data.array.array = MC(handlebars_talloc_array(opcode, struct handlebars_operand_string, num + 1));
-    operand->type = handlebars_operand_type_array;
-    operand->data.array.count = num;
+    array = MC(handlebars_talloc_array(opcode, struct handlebars_operand_string, allocation_count));
 
     // Copy each item
     ptr = arg;
-    arrptr = operand->data.array.array;
+    arrptr = array;
     for( ; *ptr; ++ptr, ++arrptr ) {
-        arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_ctor(context, *ptr, strlen(*ptr)));
+        arrptr->string = talloc_steal(array, handlebars_string_ctor(context, *ptr, strlen(*ptr)));
     }
+    arrptr->string = NULL;
+
+    operand->data.array.array = array;
+    operand->data.array.count = num;
+    operand->type = handlebars_operand_type_array;
 }
 
 void handlebars_operand_set_arrayval_string(
@@ -115,25 +128,38 @@ void handlebars_operand_set_arrayval_string(
     struct handlebars_operand * operand,
     struct handlebars_string ** arg
 ) {
+    struct handlebars_operand_string * array;
     struct handlebars_operand_string * arrptr;
     struct handlebars_string ** ptr;
     size_t num = 0;
+    size_t allocation_count;
+
+    assert(operand != NULL);
+    handlebars_operand_set_null(operand);
 
     // Get number of items
-    for( ptr = arg; *ptr; ++ptr, ++num );
+    for( ptr = arg; *ptr; ++ptr ) {
+        if( unlikely(num >= (size_t) UINT_MAX - 1) ) {
+            handlebars_throw(context, HANDLEBARS_NOMEM, "Operand array is too large");
+        }
+        num++;
+    }
+    allocation_count = num + 1;
 
     // Allocate
-    operand->data.array.array = MC(handlebars_talloc_array(opcode, struct handlebars_operand_string, num + 1));
-    operand->type = handlebars_operand_type_array;
-    operand->data.array.count = num;
+    array = MC(handlebars_talloc_array(opcode, struct handlebars_operand_string, allocation_count));
 
     // Copy each item
     ptr = arg;
-    arrptr = operand->data.array.array;
+    arrptr = array;
     for( ; *ptr; ++ptr, ++arrptr ) {
-        // arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_ctor(context, (*ptr)->val, (*ptr)->len));
-        arrptr->string = talloc_steal(operand->data.array.array, handlebars_string_copy_ctor(context, *ptr));
+        arrptr->string = talloc_steal(array, handlebars_string_copy_ctor(context, *ptr));
     }
+    arrptr->string = NULL;
+
+    operand->data.array.array = array;
+    operand->data.array.count = num;
+    operand->type = handlebars_operand_type_array;
 }
 
 const char * handlebars_opcode_readable_type(enum handlebars_opcode_type type)
