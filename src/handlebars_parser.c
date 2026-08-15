@@ -157,16 +157,30 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
 struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * parser, struct handlebars_string * tmpl, unsigned flags)
 {
     struct handlebars_error * e = HBSCTX(parser)->e;
-    jmp_buf * prev = e->jmp;
+    jmp_buf * volatile prev = e->jmp;
     jmp_buf buf;
 
-    // Save jump buffer
-    if( !prev ) {
-        if( handlebars_setjmp_ex(parser, &buf) ) {
-            e->jmp = prev;
-            return NULL;
-        }
+    if( parser->bison_stack != NULL ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Parser is already in use");
     }
+
+    // Always install a local jump buffer so the Bison stack can be released
+    // before propagating an error to the caller's jump buffer.
+    if( handlebars_setjmp_ex(parser, &buf) ) {
+        if( parser->bison_stack ) {
+            handlebars_talloc_free(parser->bison_stack);
+            parser->bison_stack = NULL;
+        }
+        e->jmp = prev;
+        if( prev ) {
+            longjmp(*prev, e->num);
+        }
+        return NULL;
+    }
+
+    assert(parser->bison_stack == NULL);
+    parser->bison_stack = handlebars_talloc_size(parser, 0);
+    HANDLEBARS_MEMCHECK(parser->bison_stack, HBSCTX(parser));
 
     handlebars_parser_validate_template(parser, tmpl);
 
@@ -175,6 +189,8 @@ struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * pars
 
     handlebars_yy_parse(parser);
 
+    handlebars_talloc_free(parser->bison_stack);
+    parser->bison_stack = NULL;
     e->jmp = prev;
     return parser->program;
 }

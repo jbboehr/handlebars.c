@@ -296,6 +296,30 @@ load "../vendor/bats-assert/assert"
     assert_output --partial '"foo" not defined in object'
 }
 
+@test "--execute bare @partial-block" {
+    run bash -c "printf '%s' '{{@partial-block}}' | $HANDLEBARSC --execute -"
+    assert_success
+    assert_output ""
+}
+
+@test "--execute bare @partial-block (strict)" {
+    run bash -c "printf '%s' '{{@partial-block}}' | $HANDLEBARSC --execute --flags strict -"
+    assert_failure
+    assert_output --partial '"partial-block" not defined in object'
+}
+
+@test "--execute empty trimmed block preserves whitespace semantics" {
+    run bash -c "printf '%s' 'A  {{~#each x~}}{{/each}}  B' | $HANDLEBARSC --execute -"
+    assert_success
+    assert_output "A  B"
+}
+
+@test "--execute empty right-trimmed block preserves whitespace semantics" {
+    run bash -c "printf '%s' 'A  {{#each x~}}{{/each}}  B' | $HANDLEBARSC --execute -"
+    assert_success
+    assert_output "A    B"
+}
+
 @test "--execute -n" {
     skip_if_no_json
     # wc on OSX outputs leading whitespace

@@ -1007,7 +1007,11 @@ ACCEPT_FUNCTION(lookup_data)
     } else if (hbs_str_eq_strl(first->string, HBS_STRL("root"))) {
         handlebars_value_value(val, TOP(vm->contextStack));
     } else if (hbs_str_eq_strl(first->string, HBS_STRL("partial-block"))) {
-        handlebars_value_value(val, TOP(vm->partialBlockStack));
+        tmp = TOP(vm->partialBlockStack);
+        if( tmp == NULL ) {
+            goto done_and_null;
+        }
+        handlebars_value_value(val, tmp);
     } else if( vm->flags & handlebars_compiler_flag_assume_objects ) {
         goto done_and_err;
     } else {

@@ -246,7 +246,7 @@ am__define_uniq_tagged_files = \
   unique=`for i in $$list; do \
     if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
   done | $(am__uniquify_input)`
-DIST_SUBDIRS = src . bin doc tests bench
+DIST_SUBDIRS = src . bin doc tests bench fuzz
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(srcdir)/handlebars.pc.in \
 	$(top_srcdir)/build/aminclude_static.am \
@@ -256,7 +256,7 @@ am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(top_srcdir)/build/ltmain.sh $(top_srcdir)/build/missing \
 	$(top_srcdir)/build/tap-driver.sh README.md build/ar-lib \
 	build/compile build/config.guess build/config.sub \
-	build/install-sh build/ltmain.sh build/missing
+	build/depcomp build/install-sh build/ltmain.sh build/missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -350,6 +350,9 @@ FILECMD = @FILECMD@
 FLEX = @FLEX@
 FLEXFLAGS = @FLEXFLAGS@
 FLEX_VERSION = @FLEX_VERSION@
+FUZZER_LDFLAGS = @FUZZER_LDFLAGS@
+FUZZING_CFLAGS = @FUZZING_CFLAGS@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GCOV = @GCOV@
 GENHTML = @GENHTML@
 GENHTML_IGNORE_ERRORS_UNMAPPED = @GENHTML_IGNORE_ERRORS_UNMAPPED@
@@ -493,7 +496,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 valgrind_enabled_tools = @valgrind_enabled_tools@
 valgrind_tools = @valgrind_tools@
-SUBDIRS = src . bin $(am__append_1) $(am__append_2) bench
+SUBDIRS = src . bin $(am__append_1) $(am__append_2) bench fuzz
 EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor
 ACLOCAL_AMFLAGS = -I m4 --install
 pkgconfigdir = $(libdir)/pkgconfig

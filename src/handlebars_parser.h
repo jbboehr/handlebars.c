@@ -59,6 +59,14 @@ struct handlebars_token ** handlebars_lex(
     struct handlebars_parser * parser
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Parse a template with the supplied compiler flags.
+ * @param[in] parser The parser; it must not already be parsing, and must not be
+ *                   used concurrently by another thread
+ * @param[in] tmpl The template to parse
+ * @param[in] flags Compiler flags
+ * @return The parsed AST, or NULL on failure when no outer error handler exists
+ */
 struct handlebars_ast_node * handlebars_parse_ex(
     struct handlebars_parser * parser,
     struct handlebars_string * tmpl,

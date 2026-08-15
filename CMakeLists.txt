@@ -35,6 +35,17 @@ add_definitions(-DHANDLEBARS_TESTING_EXPORTS="1")
 
 option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
+option(HANDLEBARS_ENABLE_FUZZING
+        "Build the libFuzzer template target" OFF)
+
+if(HANDLEBARS_ENABLE_FUZZING)
+    if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "HANDLEBARS_ENABLE_FUZZING requires Clang")
+    endif()
+    add_compile_options(-fno-omit-frame-pointer -fsanitize=fuzzer-no-link,address,undefined)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address,undefined")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address,undefined")
+endif()
 
 if(WIN32)
     add_definitions(-DYY_NO_UNISTD_H=1)
@@ -44,9 +55,11 @@ if(WIN32)
     set(LIBS ${LIBS} ${LIBCOMPAT_LIBRARIES})
 ENDIF(WIN32)
 
-find_package(Check REQUIRED)
-include_directories(${CHECK_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${CHECK_LIBRARIES})
+if(HANDLEBARS_ENABLE_TESTS)
+    find_package(Check REQUIRED)
+    include_directories(${CHECK_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${CHECK_LIBRARIES})
+endif()
 
 find_package(Libjsonc)
 include_directories(${LIBJSONC_INCLUDE_DIR} ${LIBJSONC_INCLUDE_DIR}/json-c ${LIBJSONC_INCLUDE_DIR}/json)
@@ -62,9 +75,11 @@ if(LMDB_LIBRARIES)
     add_definitions(-DHANDLEBARS_HAVE_LMDB)
 endif()
 
-find_package(PCRE REQUIRED)
-include_directories(${PCRE_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${PCRE_LIBRARIES})
+if(HANDLEBARS_ENABLE_TESTS)
+    find_package(PCRE REQUIRED)
+    include_directories(${PCRE_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${PCRE_LIBRARIES})
+endif()
 
 find_package(Talloc REQUIRED)
 include_directories(${TALLOC_INCLUDE_DIRS})
@@ -102,6 +117,9 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/handlebars_config.h.in ${CMAKE_
 
 add_subdirectory(src)
 add_subdirectory(bin)
+if(HANDLEBARS_ENABLE_FUZZING)
+    add_subdirectory(fuzz)
+endif()
 
 # Unit tests
 if (HANDLEBARS_ENABLE_TESTS)

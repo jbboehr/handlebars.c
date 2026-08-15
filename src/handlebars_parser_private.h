@@ -43,10 +43,24 @@ struct handlebars_parser
 
     int tmplReadOffset;
     void * scanner;
+    void * bison_stack;
     struct handlebars_ast_node * program;
     bool whitespace_root_seen;
     unsigned flags;
 };
+
+// Tie Bison's growable stacks to the current parse so errors can release them
+// even though the parser reports failures with longjmp. YYBISON is defined by
+// the generated parser before it includes this header, keeping these parser-
+// local macros out of the lexer and other users of this private header.
+#if defined(YYBISON)
+#ifndef YYMALLOC
+#define YYMALLOC(Size) handlebars_talloc_size(parser->bison_stack, (Size))
+#endif
+#ifndef YYFREE
+#define YYFREE(Ptr) handlebars_talloc_free(Ptr)
+#endif
+#endif
 
 #ifdef TLS
 #define HBS_PARSER_TLS TLS

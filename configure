@@ -792,6 +792,11 @@ NM
 RANLIB
 AR
 LD
+FUZZING_FALSE
+FUZZING_TRUE
+FUZZER_LDFLAGS
+FUZZING_LDFLAGS
+FUZZING_CFLAGS
 GCC_FALSE
 GCC_TRUE
 RE2CFLAGS
@@ -897,6 +902,7 @@ enable_debug
 enable_dependency_tracking
 enable_compile_warnings
 enable_Werror
+enable_fuzzing
 enable_lto
 enable_shared
 enable_static
@@ -1604,6 +1610,7 @@ Optional Features:
   --enable-compile-warnings=[no/yes/error]
                           Enable compiler warnings and errors
   --disable-Werror        Unconditionally make all compiler warnings non-fatal
+  --enable-fuzzing        build the libFuzzer template target (requires clang)
   --enable-lto            enable support for Link Time Optimization
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
@@ -8097,6 +8104,162 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $CLANG" >&5
 printf "%s\n" "$CLANG" >&6; }
+
+# fuzzing
+# Check whether --enable-fuzzing was given.
+if test ${enable_fuzzing+y}
+then :
+  enableval=$enable_fuzzing;
+fi
+
+
+FUZZING_CFLAGS=
+FUZZING_LDFLAGS=
+FUZZER_LDFLAGS=
+if test "x$enable_fuzzing" = "xyes"
+then :
+
+	if test "x$CLANG" != "xyes"
+then :
+
+		as_fn_error $? "--enable-fuzzing requires clang" "$LINENO" 5
+
+fi
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -fsanitize=fuzzer-no-link" >&5
+printf %s "checking whether C compiler accepts -fsanitize=fuzzer-no-link... " >&6; }
+if test ${ax_cv_check_cflags___fsanitize_fuzzer_no_link+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e)
+  ax_check_save_flags=$CFLAGS
+  CFLAGS="$CFLAGS  -fsanitize=fuzzer-no-link"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  ax_cv_check_cflags___fsanitize_fuzzer_no_link=yes
+else case e in #(
+  e) ax_cv_check_cflags___fsanitize_fuzzer_no_link=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  CFLAGS=$ax_check_save_flags ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_check_cflags___fsanitize_fuzzer_no_link" >&5
+printf "%s\n" "$ax_cv_check_cflags___fsanitize_fuzzer_no_link" >&6; }
+if test "x$ax_cv_check_cflags___fsanitize_fuzzer_no_link" = xyes
+then :
+  :
+else case e in #(
+  e)
+		as_fn_error $? "clang does not support -fsanitize=fuzzer-no-link" "$LINENO" 5
+	 ;;
+esac
+fi
+
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether the linker accepts -fsanitize=address,undefined" >&5
+printf %s "checking whether the linker accepts -fsanitize=address,undefined... " >&6; }
+if test ${ax_cv_check_ldflags___fsanitize_address_undefined+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e)
+  ax_check_save_flags=$LDFLAGS
+  LDFLAGS="$LDFLAGS  -fsanitize=address,undefined"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ax_cv_check_ldflags___fsanitize_address_undefined=yes
+else case e in #(
+  e) ax_cv_check_ldflags___fsanitize_address_undefined=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+  LDFLAGS=$ax_check_save_flags ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_check_ldflags___fsanitize_address_undefined" >&5
+printf "%s\n" "$ax_cv_check_ldflags___fsanitize_address_undefined" >&6; }
+if test "x$ax_cv_check_ldflags___fsanitize_address_undefined" = xyes
+then :
+  :
+else case e in #(
+  e)
+		as_fn_error $? "clang does not support the address and undefined behavior sanitizers" "$LINENO" 5
+	 ;;
+esac
+fi
+
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether clang can link libFuzzer with the sanitizers" >&5
+printf %s "checking whether clang can link libFuzzer with the sanitizers... " >&6; }
+	handlebars_save_LDFLAGS=$LDFLAGS
+	LDFLAGS="$LDFLAGS -fsanitize=fuzzer,address,undefined"
+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stddef.h>
+#include <stdint.h>
+
+int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
+{
+	(void) data;
+	(void) size;
+	return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+else case e in #(
+  e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+		 as_fn_error $? "clang cannot link libFuzzer with the address and undefined behavior sanitizers" "$LINENO" 5
+	 ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+	LDFLAGS=$handlebars_save_LDFLAGS
+	FUZZING_CFLAGS="-fno-omit-frame-pointer -fsanitize=fuzzer-no-link,address,undefined"
+	FUZZING_LDFLAGS="-fsanitize=address,undefined"
+	FUZZER_LDFLAGS="-fsanitize=fuzzer,address,undefined"
+
+fi
+
+
+
+ if test "x$enable_fuzzing" = "xyes"; then
+  FUZZING_TRUE=
+  FUZZING_FALSE='#'
+else
+  FUZZING_TRUE='#'
+  FUZZING_FALSE=
+fi
+
 
 # This has to come before AC_PROG_LIBTOOL I think
 # Check whether --enable-lto was given.
@@ -24394,7 +24557,7 @@ fi
 
 
 # Define Makefiles.
-ac_config_files="$ac_config_files handlebars.pc src/Makefile Makefile bin/Makefile doc/Doxyfile doc/Makefile tests/Makefile bench/Makefile"
+ac_config_files="$ac_config_files handlebars.pc src/Makefile Makefile bin/Makefile doc/Doxyfile doc/Makefile tests/Makefile bench/Makefile fuzz/Makefile"
 
 
 # Generate the "configure" script.
@@ -24537,6 +24700,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${GCC_TRUE}" && test -z "${GCC_FALSE}"; then
   as_fn_error $? "conditional \"GCC\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${FUZZING_TRUE}" && test -z "${FUZZING_FALSE}"; then
+  as_fn_error $? "conditional \"FUZZING\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${LCOV_TRUE}" && test -z "${LCOV_FALSE}"; then
@@ -25507,6 +25674,7 @@ do
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "tests/Makefile") CONFIG_FILES="$CONFIG_FILES tests/Makefile" ;;
     "bench/Makefile") CONFIG_FILES="$CONFIG_FILES bench/Makefile" ;;
+    "fuzz/Makefile") CONFIG_FILES="$CONFIG_FILES fuzz/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: '$ac_config_target'" "$LINENO" 5;;
   esac

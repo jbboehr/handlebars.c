@@ -108,6 +108,52 @@ AC_COMPILE_IFELSE(
 [CLANG=yes], [CLANG=no])
 AC_MSG_RESULT([$CLANG])
 
+# fuzzing
+AC_ARG_ENABLE([fuzzing],
+	[AS_HELP_STRING([--enable-fuzzing], [build the libFuzzer template target (requires clang)])], [])
+
+FUZZING_CFLAGS=
+FUZZING_LDFLAGS=
+FUZZER_LDFLAGS=
+AS_IF([test "x$enable_fuzzing" = "xyes"], [
+	AS_IF([test "x$CLANG" != "xyes"], [
+		AC_MSG_ERROR([--enable-fuzzing requires clang])
+	])
+	AX_CHECK_COMPILE_FLAG([-fsanitize=fuzzer-no-link], [], [
+		AC_MSG_ERROR([clang does not support -fsanitize=fuzzer-no-link])
+	])
+	AX_CHECK_LINK_FLAG([-fsanitize=address,undefined], [], [
+		AC_MSG_ERROR([clang does not support the address and undefined behavior sanitizers])
+	])
+	AC_MSG_CHECKING([whether clang can link libFuzzer with the sanitizers])
+	handlebars_save_LDFLAGS=$LDFLAGS
+	LDFLAGS="$LDFLAGS -fsanitize=fuzzer,address,undefined"
+	AC_LINK_IFELSE(
+		[AC_LANG_SOURCE([[
+#include <stddef.h>
+#include <stdint.h>
+
+int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
+{
+	(void) data;
+	(void) size;
+	return 0;
+}
+		]])],
+		[AC_MSG_RESULT([yes])],
+		[AC_MSG_RESULT([no])
+		 AC_MSG_ERROR([clang cannot link libFuzzer with the address and undefined behavior sanitizers])]
+	)
+	LDFLAGS=$handlebars_save_LDFLAGS
+	FUZZING_CFLAGS="-fno-omit-frame-pointer -fsanitize=fuzzer-no-link,address,undefined"
+	FUZZING_LDFLAGS="-fsanitize=address,undefined"
+	FUZZER_LDFLAGS="-fsanitize=fuzzer,address,undefined"
+])
+AC_SUBST([FUZZING_CFLAGS])
+AC_SUBST([FUZZING_LDFLAGS])
+AC_SUBST([FUZZER_LDFLAGS])
+AM_CONDITIONAL([FUZZING], [test "x$enable_fuzzing" = "xyes"])
+
 # This has to come before AC_PROG_LIBTOOL I think
 AC_ARG_ENABLE([lto],
 	[AS_HELP_STRING([--enable-lto], [enable support for Link Time Optimization])], [])
@@ -441,6 +487,7 @@ AC_CONFIG_FILES([
   doc/Makefile
   tests/Makefile
   bench/Makefile
+  fuzz/Makefile
 ])
 
 # Generate the "configure" script.

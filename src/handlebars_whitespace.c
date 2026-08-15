@@ -113,6 +113,10 @@ bool handlebars_whitespace_omit_left(struct handlebars_ast_list * statements,
     struct handlebars_ast_list_item * item;
     size_t original_length;
 
+    if( !statements ) {
+        return false;
+    }
+
     if( statement == NULL ) {
         current = statements->last ? statements->last->data : NULL;
     } else {
@@ -149,6 +153,10 @@ bool handlebars_whitespace_omit_right(struct handlebars_ast_list * statements,
     struct handlebars_ast_node * current;
     struct handlebars_ast_list_item * item;
     size_t original_length;
+
+    if( !statements ) {
+        return false;
+    }
 
     if( statement == NULL ) {
         current = statements->first ? statements->first->data : NULL;

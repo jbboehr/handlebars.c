@@ -49,13 +49,13 @@ bool handlebars_whitespace_omit_left(
     struct handlebars_ast_list * statements,
     struct handlebars_ast_node * statement,
     bool multiple
-) HBS_LOCAL HBS_ATTR_NONNULL(1);
+) HBS_LOCAL;
 
 bool handlebars_whitespace_omit_right(
     struct handlebars_ast_list * statements,
     struct handlebars_ast_node * statement,
     bool multiple
-) HBS_LOCAL HBS_ATTR_NONNULL(1);
+) HBS_LOCAL;
 
 void handlebars_whitespace_accept(
     struct handlebars_parser * parser,

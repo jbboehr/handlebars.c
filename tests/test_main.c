@@ -104,6 +104,36 @@ START_TEST(test_parse_rejects_embedded_nul)
 }
 END_TEST
 
+START_TEST(test_parse_handles_empty_trimmed_block)
+{
+    struct handlebars_ast_node * ast;
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("  {{~#each his}}{{~/each~}}\n")),
+        0
+    );
+
+    ck_assert_ptr_ne(NULL, ast);
+    ck_assert_int_eq(HANDLEBARS_SUCCESS, handlebars_error_num(HBSCTX(parser)));
+}
+END_TEST
+
+START_TEST(test_parse_handles_empty_right_trimmed_block)
+{
+    struct handlebars_ast_node * ast;
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("{{#each x~}}{{/each}}")),
+        0
+    );
+
+    ck_assert_ptr_ne(NULL, ast);
+    ck_assert_int_eq(HANDLEBARS_SUCCESS, handlebars_error_num(HBSCTX(parser)));
+}
+END_TEST
+
 START_TEST(test_context_ctor_dtor)
 {
     struct handlebars_context * mycontext = handlebars_context_ctor();
@@ -262,6 +292,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_mustache_spec_version_string, "Mustache Spec Version String");
     REGISTER_TEST_FIXTURE(s, test_lex, "Lex Convenience Function");
     REGISTER_TEST_FIXTURE(s, test_parse_rejects_embedded_nul, "Reject Embedded NUL");
+    REGISTER_TEST_FIXTURE(s, test_parse_handles_empty_trimmed_block, "Parse Empty Trimmed Block");
+    REGISTER_TEST_FIXTURE(s, test_parse_handles_empty_right_trimmed_block, "Parse Empty Right-Trimmed Block");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_dtor, "Constructor/Destructor");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_failed_alloc, "Constructor (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_ex_failed_alloc, "Constructor ex (failed alloc)");
