@@ -41,9 +41,44 @@ jobs:
             - name: dump logs
               if: ${{ failure() }}
               run: |
-                  for i in `find tests -name "*.log" 2>/dev/null`; do
-                      echo "-- START ${i}";
-                      cat "${i}";
+                  find tests -name "*.log" -print0 2>/dev/null |
+                  while IFS= read -r -d '' log; do
+                      echo "-- START ${log}";
+                      cat "${log}";
+                      echo "-- END";
+                  done
+
+    linux_sanitizers:
+        name: linux (clang sanitizers)
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        env:
+            CC: clang-18
+            CFLAGS: "-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined"
+            LDFLAGS: "-fsanitize=address,undefined"
+            # Check forks after allocating suite state, which looks leaked in each child.
+            # LeakSanitizer remains enabled in the dedicated fuzz workflow.
+            ASAN_OPTIONS: detect_leaks=0:halt_on_error=1:strict_string_checks=1
+            UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  submodules: recursive
+            - name: Install packages
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y autotools-dev autoconf automake bats check clang-18 libclang-rt-18-dev libjson-c-dev liblmdb-dev libpcre3-dev libsubunit-dev libtalloc-dev libtool libyaml-dev m4 make pkg-config
+            - run: autoreconf -i
+            - run: ./configure --disable-hardening --disable-valgrind
+            - run: make -j2
+            - run: make check
+            - name: dump logs
+              if: ${{ failure() }}
+              run: |
+                  find tests -name "*.log" -print0 2>/dev/null |
+                  while IFS= read -r -d '' log; do
+                      echo "-- START ${log}";
+                      cat "${log}";
                       echo "-- END";
                   done
 
@@ -83,9 +118,10 @@ jobs:
             - name: dump logs
               if: ${{ failure() }}
               run: |
-                  for i in `find tests -name "*.log" 2>/dev/null`; do
-                      echo "-- START ${i}";
-                      cat "${i}";
+                  find tests -name "*.log" -print0 2>/dev/null |
+                  while IFS= read -r -d '' log; do
+                      echo "-- START ${log}";
+                      cat "${log}";
                       echo "-- END";
                   done
 
@@ -113,7 +149,7 @@ jobs:
               run: |
                   if [ -n "$(find scan-build -name '*.html')" ]; then
                     echo "scan-build found potential issues"
-                    find scan-build -name 'index.html' -print -exec html2text \{} \;
+                    find scan-build -name 'index.html' -print -exec html2text '{}' ';'
                     exit 1
                   fi
             - uses: actions/upload-artifact@v7
@@ -144,9 +180,10 @@ jobs:
             - name: dump logs
               if: ${{ failure() }}
               run: |
-                  for i in `find tests -name "*.log" 2>/dev/null`; do
-                      echo "-- START ${i}";
-                      cat "${i}";
+                  find tests -name "*.log" -print0 2>/dev/null |
+                  while IFS= read -r -d '' log; do
+                      echo "-- START ${log}";
+                      cat "${log}";
                       echo "-- END";
                   done
 

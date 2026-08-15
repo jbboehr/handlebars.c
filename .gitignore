@@ -60,6 +60,10 @@ stamp-h2
 *.info
 *-coverage
 
+# fuzzing runtime output
+/fuzz-artifacts/
+/fuzz-corpus/
+
 # distros
 *.tar.gz
 *.tgz
