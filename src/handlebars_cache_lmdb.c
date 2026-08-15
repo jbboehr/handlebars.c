@@ -280,8 +280,21 @@ static void cache_add(
         return;
     }
 
+    // Normalize a private copy before taking the LMDB write lock.
+    module_copy = handlebars_talloc_size(CONTEXT, module->size);
+    HANDLEBARS_MEMCHECK(module_copy, CONTEXT);
+    talloc_set_type(module_copy, struct handlebars_module);
+    memcpy(module_copy, module, module->size);
+    handlebars_module_patch_pointers(module_copy);
+    handlebars_module_normalize_pointers(module_copy, (void *) 0);
+    handlebars_module_generate_hash(module_copy);
+
     err = mdb_txn_begin(intern->env, NULL, 0, &txn);
-    HANDLE_RC(err);
+    if( err != 0 ) {
+        handlebars_talloc_free(module_copy);
+        HANDLE_RC(err);
+        return;
+    }
 
     err = mdb_dbi_open(txn, NULL, MDB_CREATE, &dbi);
     if( err != 0 ) goto error;
@@ -290,30 +303,23 @@ static void cache_add(
     key.mv_size = hbs_str_len(tmpl) + 1;
     key.mv_data = hbs_str_val(tmpl);
 
-    // Normalize pointers
-    module_copy = handlebars_talloc_size(CONTEXT, module->size);
-    talloc_set_type(module_copy, struct handlebars_module);
-    memcpy(module_copy, module, module->size);
-    handlebars_module_patch_pointers(module_copy);
-    handlebars_module_normalize_pointers(module_copy, (void *) 0);
-    handlebars_module_generate_hash(module_copy);
-
     // Make data
     data.mv_size = module_copy->size;
     data.mv_data = module_copy;
 
     // Store
     err = mdb_put(txn, dbi, &key, &data, 0);
-    handlebars_talloc_free(module_copy);
     if( err != 0 ) goto error;
+    handlebars_talloc_free(module_copy);
 
     // Commit
     err = mdb_txn_commit(txn);
-    if( err != 0 ) goto error;
+    HANDLE_RC(err);
 
     return;
 
 error:
+    handlebars_talloc_free(module_copy);
     mdb_txn_abort(txn);
     HANDLE_RC(err);
 }
@@ -365,7 +371,12 @@ static void cache_reset(struct handlebars_cache * cache)
     err = mdb_drop(txn, dbi, 0);
     if( err != 0 ) goto error;
 
-    error:
+    err = mdb_txn_commit(txn);
+    HANDLE_RC(err);
+    memset(&intern->stat, 0, sizeof(intern->stat));
+    return;
+
+error:
     mdb_txn_abort(txn);
     HANDLE_RC(err);
 }

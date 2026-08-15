@@ -409,6 +409,26 @@ START_TEST(test_lmdb_cache_reset)
 }
 END_TEST
 
+START_TEST(test_lmdb_cache_reset_removes_entries)
+{
+    struct handlebars_cache * cache;
+    struct handlebars_module * module = serialize_template("reset");
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("lmdb-reset"));
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    handlebars_cache_add(cache, key, module);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+
+    handlebars_cache_reset(cache);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+    ck_assert_int_eq(handlebars_cache_stat(cache).hits, 0);
+    ck_assert_int_eq(handlebars_cache_stat(cache).misses, 0);
+
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
 START_TEST(test_lmdb_cache_does_not_hash_oversized_keys)
 {
     struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
@@ -484,6 +504,39 @@ START_TEST(test_lmdb_cache_gc_expires_zero_age_records)
 END_TEST
 
 #ifdef HANDLEBARS_MEMORY
+START_TEST(test_lmdb_cache_add_nomem_leaves_cache_usable)
+{
+    struct handlebars_cache * cache;
+    struct handlebars_module * module = serialize_template("add nomem");
+    struct handlebars_module * found;
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("lmdb-add-nomem"));
+    jmp_buf buf;
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+
+        handlebars_cache_add(cache, key, module);
+        ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+        found = handlebars_cache_find(cache, key);
+        ck_assert_ptr_nonnull(found);
+        handlebars_cache_release(cache, key, found);
+        handlebars_cache_dtor(cache);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_enable();
+    handlebars_cache_add(cache, key, module);
+    handlebars_memory_fail_disable();
+    ck_abort_msg("Expected LMDB cache add allocation to fail");
+}
+END_TEST
+
 START_TEST(test_lmdb_cache_find_nomem_closes_transaction)
 {
     struct handlebars_cache * cache;
@@ -753,10 +806,12 @@ static Suite * suite(void)
 #ifdef HANDLEBARS_HAVE_LMDB
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset_removes_entries, "LMDB reset removes entries");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_does_not_hash_oversized_keys, "LMDB skips oversized keys");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_rejects_invalid_records, "LMDB rejects invalid records");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc_expires_zero_age_records, "LMDB GC expires zero-age records");
 #ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_add_nomem_leaves_cache_usable, "LMDB add remains usable after allocation failure");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_find_nomem_closes_transaction, "LMDB find cleans up after allocation failure");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc_nomem_closes_transaction, "LMDB GC cleans up after allocation failure");
 #endif
