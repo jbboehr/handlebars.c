@@ -26,6 +26,7 @@
 
 #include "handlebars_memory.h"
 #include "handlebars_stack.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "utils.h"
 
@@ -62,6 +63,29 @@ START_TEST(test_stack_copy_ctor)
     handlebars_stack_delref(stack_copy);
     HANDLEBARS_VALUE_UNDECL(tmp);
 
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_stack_push_preserves_aliased_value_during_resize)
+{
+    struct handlebars_stack * stack = handlebars_stack_ctor(context, 1);
+    struct handlebars_value * source;
+    HANDLEBARS_VALUE_DECL(tmp);
+
+    handlebars_value_str(tmp, handlebars_string_ctor(context, HBS_STRL("source")));
+    stack = handlebars_stack_push(stack, tmp);
+    source = handlebars_stack_get(stack, 0);
+    ck_assert_ptr_nonnull(source);
+
+    stack = handlebars_stack_push(stack, source);
+
+    ck_assert_uint_eq(handlebars_stack_count(stack), 2);
+    ck_assert_hbs_str_eq_cstr(handlebars_value_get_string(handlebars_stack_get(stack, 0)), "source");
+    ck_assert_hbs_str_eq_cstr(handlebars_value_get_string(handlebars_stack_get(stack, 1)), "source");
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    handlebars_stack_delref(stack);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -129,6 +153,7 @@ static Suite * suite(void)
     Suite * s = suite_create("Stack");
 
     REGISTER_TEST_FIXTURE(s, test_stack_copy_ctor, "Stack copy constructor");
+    REGISTER_TEST_FIXTURE(s, test_stack_push_preserves_aliased_value_during_resize, "Stack push preserves aliased values during resize");
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_stack_push_with_separation, "Stack push with separation");
 #endif

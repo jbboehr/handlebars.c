@@ -516,6 +516,10 @@ void handlebars_value_closure(struct handlebars_value * value, struct handlebars
 
 void handlebars_value_value(struct handlebars_value * dest, struct handlebars_value * src)
 {
+    if( dest == src ) {
+        return;
+    }
+
     handlebars_value_null(dest);
     *dest = *src;
     switch( dest->type ) {

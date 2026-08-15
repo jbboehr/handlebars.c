@@ -181,8 +181,15 @@ static void handlebars_stack_dump(struct handlebars_stack * stack) {
 
 struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack, struct handlebars_value * value)
 {
+    struct handlebars_value value_copy;
+
     assert(stack != NULL);
     assert(value != NULL);
+
+    /* The source may point into this stack. Preserve its bytes before a
+     * resize replaces the stack; copied elements keep referenced payloads
+     * alive. */
+    value_copy = *value;
 
     if( stack->capacity > stack->i ) {
         // Separate if refcount > 1
@@ -203,7 +210,7 @@ struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack,
     }
 
     handlebars_value_init(&stack->v[stack->i]);
-    handlebars_value_value(&stack->v[stack->i], value);
+    handlebars_value_value(&stack->v[stack->i], &value_copy);
     stack->i++;
 
     return stack;

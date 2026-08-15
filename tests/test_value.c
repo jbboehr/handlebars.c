@@ -97,6 +97,20 @@ START_TEST(test_string)
 }
 END_TEST
 
+START_TEST(test_value_self_assignment)
+{
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("self")));
+    handlebars_value_value(value, value);
+
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_STRING);
+    ck_assert_hbs_str_eq_cstr(handlebars_value_get_string(value), "self");
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_array_iterator)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -466,6 +480,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_int, "Integer");
     REGISTER_TEST_FIXTURE(s, test_float, "Float");
     REGISTER_TEST_FIXTURE(s, test_string, "String");
+    REGISTER_TEST_FIXTURE(s, test_value_self_assignment, "Value self-assignment");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");
     REGISTER_TEST_FIXTURE(s, test_map_iterator_sparse, "Map iterator (sparse)");

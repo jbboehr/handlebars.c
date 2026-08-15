@@ -38,6 +38,21 @@ char mkchar(unsigned long i) {
     return (char) (32 + (i % (126 - 32)));
 }
 
+static struct handlebars_map * make_full_map(void)
+{
+    struct handlebars_map * map = handlebars_map_ctor(context, 4);
+    HANDLEBARS_VALUE_DECL(value);
+
+    for( long i = 0; i < 4; i++ ) {
+        char key[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(value, i + 1);
+        map = handlebars_map_str_add(map, key, 1, value);
+    }
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    return map;
+}
+
 START_TEST(test_map)
 {
 #define STRSIZE 128
@@ -341,6 +356,147 @@ START_TEST(test_map_remove_nonexist)
 }
 END_TEST
 
+START_TEST(test_map_duplicate_after_rehash_preserves_original)
+{
+    struct handlebars_map * map = make_full_map();
+    HANDLEBARS_VALUE_DECL(value);
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_value_integer(value, 5);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_uint_eq(handlebars_map_count(map), 4);
+        ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
+        HANDLEBARS_VALUE_UNDECL(value);
+        handlebars_map_delref(map);
+        return;
+    }
+
+    ck_assert_ptr_nonnull(handlebars_map_str_add(map, HBS_STRL("a"), value));
+    context->e->jmp = prev;
+    ck_abort_msg("Expected duplicate map key to be rejected");
+}
+END_TEST
+
+START_TEST(test_map_add_while_iterating_full_map_preserves_original)
+{
+    struct handlebars_map * map = make_full_map();
+    HANDLEBARS_VALUE_DECL(value);
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_value_integer(value, 5);
+    handlebars_map_set_is_in_iteration(map, true);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_map_set_is_in_iteration(map, false);
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_uint_eq(handlebars_map_count(map), 4);
+        ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
+        HANDLEBARS_VALUE_UNDECL(value);
+        handlebars_map_delref(map);
+        return;
+    }
+
+    ck_assert_ptr_nonnull(handlebars_map_str_add(map, HBS_STRL("e"), value));
+    handlebars_map_set_is_in_iteration(map, false);
+    context->e->jmp = prev;
+    ck_abort_msg("Expected insertion into an iteration-locked full map to fail");
+}
+END_TEST
+
+START_TEST(test_map_add_preserves_aliased_value_during_rehash)
+{
+    struct handlebars_map * map = make_full_map();
+    struct handlebars_value * source = handlebars_map_str_find(map, HBS_STRL("a"));
+
+    ck_assert_ptr_nonnull(source);
+    map = handlebars_map_str_add(map, HBS_STRL("e"), source);
+
+    ck_assert_uint_eq(handlebars_map_count(map), 5);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("e"))), 1);
+    handlebars_map_delref(map);
+}
+END_TEST
+
+START_TEST(test_map_update_preserves_aliased_value_during_rehash)
+{
+    struct handlebars_map * map = make_full_map();
+    struct handlebars_value * source = handlebars_map_str_find(map, HBS_STRL("a"));
+
+    ck_assert_ptr_nonnull(source);
+    map = handlebars_map_str_update(map, HBS_STRL("e"), source);
+
+    ck_assert_uint_eq(handlebars_map_count(map), 5);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("e"))), 1);
+    handlebars_map_delref(map);
+}
+END_TEST
+
+START_TEST(test_map_rehash_preserves_aliased_reference_value)
+{
+    struct handlebars_map * map = handlebars_map_ctor(context, 4);
+    struct handlebars_value * source;
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("source")));
+    map = handlebars_map_str_add(map, HBS_STRL("a"), value);
+    for( long i = 0; i < 3; i++ ) {
+        char key[2] = {(char) ('b' + i), '\0'};
+        handlebars_value_integer(value, i + 2);
+        map = handlebars_map_str_add(map, key, 1, value);
+    }
+
+    source = handlebars_map_str_find(map, HBS_STRL("a"));
+    ck_assert_ptr_nonnull(source);
+    map = handlebars_map_str_add(map, HBS_STRL("e"), source);
+
+    ck_assert_hbs_str_eq_cstr(handlebars_value_get_string(handlebars_map_str_find(map, HBS_STRL("a"))), "source");
+    ck_assert_hbs_str_eq_cstr(handlebars_value_get_string(handlebars_map_str_find(map, HBS_STRL("e"))), "source");
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_map_delref(map);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+START_TEST(test_map_rehash_nomem_preserves_original)
+{
+    struct handlebars_map * map = make_full_map();
+    HANDLEBARS_VALUE_DECL(value);
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_value_integer(value, 5);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_uint_eq(handlebars_map_count(map), 4);
+        ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
+
+        map = handlebars_map_str_add(map, HBS_STRL("e"), value);
+        ck_assert_uint_eq(handlebars_map_count(map), 5);
+        HANDLEBARS_VALUE_UNDECL(value);
+        handlebars_map_delref(map);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(2);
+    ck_assert_ptr_nonnull(handlebars_map_str_add(map, HBS_STRL("e"), value));
+    handlebars_memory_fail_disable();
+    context->e->jmp = prev;
+    ck_abort_msg("Expected map rehash allocation to fail");
+}
+END_TEST
+#endif
+
 START_TEST(test_map_sparse_array_compact_multiple_tombstones)
 {
     struct handlebars_map * map = handlebars_map_ctor(context, 8);
@@ -402,6 +558,14 @@ static Suite * suite(void)
 #endif
     REGISTER_TEST_FIXTURE(s, test_map_sizeof, "Map sizeof");
     REGISTER_TEST_FIXTURE(s, test_map_remove_nonexist, "Map remove noexistent key");
+    REGISTER_TEST_FIXTURE(s, test_map_duplicate_after_rehash_preserves_original, "Duplicate insertion preserves map after rehash");
+    REGISTER_TEST_FIXTURE(s, test_map_add_while_iterating_full_map_preserves_original, "Insertion into an iteration-locked full map preserves the map");
+    REGISTER_TEST_FIXTURE(s, test_map_add_preserves_aliased_value_during_rehash, "Map add preserves aliased values during rehash");
+    REGISTER_TEST_FIXTURE(s, test_map_update_preserves_aliased_value_during_rehash, "Map update preserves aliased values during rehash");
+    REGISTER_TEST_FIXTURE(s, test_map_rehash_preserves_aliased_reference_value, "Map rehash preserves aliased reference values");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_map_rehash_nomem_preserves_original, "Map remains usable after rehash allocation failure");
+#endif
     REGISTER_TEST_FIXTURE(s, test_map_sparse_array_compact_multiple_tombstones, "Compact multiple sparse map entries");
     REGISTER_TEST_FIXTURE(s, test_map_distinguishes_hash_collisions, "Map distinguishes hash collisions");
 

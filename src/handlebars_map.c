@@ -227,6 +227,10 @@ static inline void map_add_at_table_offset(
     struct handlebars_value * value,
     size_t offset
 ) {
+    if( map->vec_offset >= map->vec_capacity ) {
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to add to full hash table");
+    }
+
     struct handlebars_map_entry * vec = map_vec(map);
     struct handlebars_map_entry ** table = map_table(map);
     struct handlebars_map_entry * entry = &vec[map->vec_offset];
@@ -422,17 +426,30 @@ void handlebars_map_dtor(struct handlebars_map * map)
 
 struct handlebars_map * handlebars_map_add(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
+    struct ht_find_result o = map_find_entry(map, key);
+    struct handlebars_value value_copy;
+
+    /* Reject duplicates before rehashing. If the error is caught by the
+     * caller, its map pointer must still refer to the original live map. */
+    if( o.entry_found ) {
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to add to hash table");
+    }
+
+    /* The source may point into this map. Preserve its bytes before a rehash
+     * replaces the map; copied entries keep referenced payloads alive. */
+    value_copy = *value;
+
     // Rehash
     map = handlebars_map_rehash(map, false);
 
     // Add
-    struct ht_find_result o = map_find_entry(map, key);
+    o = map_find_entry(map, key);
     if (o.entry_found || !o.empty_found) {
         // this should never happen - unless rehash locked due to iteration
         handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to add to hash table");
     }
 
-    map_add_at_table_offset(map, key, value, o.empty_offset);
+    map_add_at_table_offset(map, key, &value_copy, o.empty_offset);
 
     return map;
 }
@@ -477,14 +494,24 @@ struct handlebars_value * handlebars_map_find(struct handlebars_map * map, struc
 
 struct handlebars_map * handlebars_map_update(struct handlebars_map * map, struct handlebars_string * key, struct handlebars_value * value)
 {
+    struct ht_find_result o = map_find_entry(map, key);
+    struct handlebars_value value_copy;
+
+    if( o.entry && &o.entry->value == value ) {
+        return map;
+    }
+
+    /* The source value may be owned by the map that rehash replaces. */
+    value_copy = *value;
+
     // Rehash
     map = handlebars_map_rehash(map, false);
 
     // Update
-    struct ht_find_result o = map_find_entry(map, key);
+    o = map_find_entry(map, key);
     struct handlebars_map_entry * entry = o.entry;
     if (entry) {
-        handlebars_value_value(&entry->value, value);
+        handlebars_value_value(&entry->value, &value_copy);
         return map;
     }
 
@@ -493,7 +520,7 @@ struct handlebars_map * handlebars_map_update(struct handlebars_map * map, struc
         handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to update to hash table");
     }
 
-    map_add_at_table_offset(map, key, value, o.empty_offset);
+    map_add_at_table_offset(map, key, &value_copy, o.empty_offset);
 
     return map;
 }
@@ -545,7 +572,7 @@ struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool 
 #endif
 
     if (force || map->vec_offset == map->vec_capacity || handlebars_map_load_factor(map) > HANDLEBARS_MAP_MAX_LOAD_FACTOR) {
-        size_t vec_capacity = 1 << map_choose_vec_capacity_log2(map->i + 1);
+        size_t vec_capacity = (size_t) 1 << map_choose_vec_capacity_log2(map->i + 1);
         struct handlebars_map * prev_map = map;
         map = handlebars_map_copy_ctor(prev_map, vec_capacity);
 #ifndef HANDLEBARS_NO_REFCOUNT
