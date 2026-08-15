@@ -43,6 +43,7 @@ handlebars_talloc_asprintf_append_buffer_func _handlebars_talloc_asprintf_append
 handlebars_talloc_free_func _handlebars_talloc_free = &_talloc_free;
 handlebars_talloc_named_const_func _handlebars_talloc_named_const = &talloc_named_const;
 handlebars_talloc_realloc_array_func _handlebars_talloc_realloc_array = &_talloc_realloc_array;
+handlebars_talloc_realloc_size_func _handlebars_talloc_realloc_size = &_talloc_realloc;
 handlebars_talloc_strdup_func _handlebars_talloc_strdup = &talloc_strdup;
 handlebars_talloc_strdup_append_func _handlebars_talloc_strdup_append = &talloc_strdup_append;
 handlebars_talloc_strdup_append_buffer_func _handlebars_talloc_strdup_append_buffer = &talloc_strdup_append_buffer;
@@ -52,7 +53,7 @@ handlebars_talloc_zero_func _handlebars_talloc_zero = &_talloc_zero;
 
 // Setup memory function pointers for scanner
 handlebars_talloc_named_const_func _handlebars_yy_alloc = &talloc_named_const;
-handlebars_talloc_realloc_array_func _handlebars_yy_realloc = &_talloc_realloc_array;
+handlebars_talloc_realloc_size_func _handlebars_yy_realloc = &_talloc_realloc;
 handlebars_talloc_free_func _handlebars_yy_free = &_talloc_free;
 
 // Setup other function pointers
@@ -212,6 +213,24 @@ static void * _handlebars_memfail_talloc_realloc_array(const void *ctx, void *pt
     return NULL;
 }
 
+static void * _handlebars_memfail_talloc_realloc_size(const void *ctx, void *ptr, size_t size, const char *name)
+{
+    // Increment call counter
+    _handlebars_memory_call_counter++;
+
+    // Do counter, succeed unless last count
+    if( _handlebars_memory_fail_counter > -1 ) {
+        if( --_handlebars_memory_fail_counter == 0 ) {
+            handlebars_memory_fail_disable();
+            // fall through
+        } else {
+            return _talloc_realloc(ctx, ptr, size, name);
+        }
+    }
+
+    return NULL;
+}
+
 static char * _handlebars_memfail_talloc_strdup(const void *t, const char *p)
 {
     // Increment call counter
@@ -345,6 +364,7 @@ void handlebars_memory_fail_enable(void)
         _handlebars_talloc_asprintf_append_buffer = &_handlebars_memfail_talloc_asprintf_append_buffer;
         _handlebars_talloc_named_const = &_handlebars_memfail_talloc_named_const;
         _handlebars_talloc_realloc_array = &_handlebars_memfail_talloc_realloc_array;
+        _handlebars_talloc_realloc_size = &_handlebars_memfail_talloc_realloc_size;
         _handlebars_talloc_strdup = &_handlebars_memfail_talloc_strdup;
         _handlebars_talloc_strdup_append = &_handlebars_memfail_talloc_strdup_append;
         _handlebars_talloc_strdup_append_buffer = &_handlebars_memfail_talloc_strdup_append_buffer;
@@ -357,7 +377,7 @@ void handlebars_memory_fail_enable(void)
     }
     if( _handlebars_memory_fail_flags & handlebars_memory_fail_flag_yy ) {
         _handlebars_yy_alloc = &_handlebars_memfail_talloc_named_const;
-        _handlebars_yy_realloc = &_handlebars_memfail_talloc_realloc_array;
+        _handlebars_yy_realloc = &_handlebars_memfail_talloc_realloc_size;
         _handlebars_yy_free = &_handlebars_memfail_talloc_free;
     }
 }
@@ -380,6 +400,7 @@ void handlebars_memory_fail_disable(void)
     _handlebars_talloc_free = &_talloc_free;
     _handlebars_talloc_named_const = &talloc_named_const;
     _handlebars_talloc_realloc_array = &_talloc_realloc_array;
+    _handlebars_talloc_realloc_size = &_talloc_realloc;
     _handlebars_talloc_strdup = &talloc_strdup;
     _handlebars_talloc_strdup_append = &talloc_strdup_append;
     _handlebars_talloc_strdup_append_buffer = &talloc_strdup_append_buffer;
@@ -387,7 +408,7 @@ void handlebars_memory_fail_disable(void)
     _handlebars_talloc_strndup_append_buffer = &talloc_strndup_append_buffer;
     _handlebars_talloc_zero = &_talloc_zero;
     _handlebars_yy_alloc = &talloc_named_const;
-    _handlebars_yy_realloc = &_talloc_realloc_array;
+    _handlebars_yy_realloc = &_talloc_realloc;
     _handlebars_yy_free = &_talloc_free;
     handlebars_exit = &_handlebars_exit;
 }

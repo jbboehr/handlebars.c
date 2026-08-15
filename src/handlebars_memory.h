@@ -23,6 +23,7 @@
 #ifndef HANDLEBARS_MEMORY_H
 #define HANDLEBARS_MEMORY_H
 
+#include <limits.h>
 #include <talloc.h>
 #include "handlebars.h"
 
@@ -31,13 +32,11 @@ HBS_EXTERN_C_START
 #ifndef HANDLEBARS_MEMORY
 
 #define handlebars_talloc talloc
-#define handlebars_talloc_array talloc_array
 #define handlebars_talloc_asprintf talloc_asprintf
 #define handlebars_talloc_asprintf_append talloc_asprintf_append
 #define handlebars_talloc_asprintf_append_buffer talloc_asprintf_append_buffer
 #define handlebars_talloc_free talloc_free
 #define handlebars_talloc_named_const talloc_named_const
-#define handlebars_talloc_realloc talloc_realloc
 #define handlebars_talloc_realloc_size talloc_realloc_size
 #define handlebars_talloc_size talloc_size
 #define handlebars_talloc_strdup talloc_strdup
@@ -56,9 +55,6 @@ HBS_EXTERN_C_START
 #define handlebars_talloc(ctx, type) \
     (type *) handlebars_talloc_named_const(ctx, sizeof(type), #type)
 
-#define handlebars_talloc_array(ctx, type, count) \
-    (type *) _handlebars_talloc_array(ctx, sizeof(type), count, #type)
-
 #define handlebars_talloc_asprintf _handlebars_talloc_asprintf
 #define handlebars_talloc_asprintf_append _handlebars_talloc_asprintf_append
 #define handlebars_talloc_asprintf_append_buffer _handlebars_talloc_asprintf_append_buffer
@@ -68,11 +64,8 @@ HBS_EXTERN_C_START
 
 #define handlebars_talloc_named_const _handlebars_talloc_named_const
 
-#define handlebars_talloc_realloc(ctx, p, type, count) \
-    (type *) _handlebars_talloc_realloc_array(ctx, p, sizeof(type), count, #type)
-
 #define handlebars_talloc_realloc_size(ctx, p, s) \
-    _handlebars_talloc_realloc_array(ctx, p, 1, s, __location__)
+    _handlebars_talloc_realloc_size(ctx, p, s, __location__)
 
 #define handlebars_talloc_size(ctx, size) \
     handlebars_talloc_named_const(ctx, size, __location__)
@@ -97,6 +90,7 @@ typedef char * (*handlebars_talloc_asprintf_append_buffer_func)(char *s, const c
 typedef int    (*handlebars_talloc_free_func)(void *ptr, const char *location);
 typedef void * (*handlebars_talloc_named_const_func)(const void * context, size_t size, const char * name);
 typedef void * (*handlebars_talloc_realloc_array_func)(const void *ctx, void *ptr, size_t el_size, unsigned count, const char *name);
+typedef void * (*handlebars_talloc_realloc_size_func)(const void *ctx, void *ptr, size_t size, const char *name);
 typedef char * (*handlebars_talloc_strdup_func)(const void *t, const char *p);
 typedef char * (*handlebars_talloc_strdup_append_func)(char *s, const char *a);
 typedef char * (*handlebars_talloc_strdup_append_buffer_func)(char *s, const char *a);
@@ -115,6 +109,7 @@ extern handlebars_talloc_asprintf_append_buffer_func _handlebars_talloc_asprintf
 extern handlebars_talloc_free_func _handlebars_talloc_free;
 extern handlebars_talloc_named_const_func _handlebars_talloc_named_const;
 extern handlebars_talloc_realloc_array_func _handlebars_talloc_realloc_array;
+extern handlebars_talloc_realloc_size_func _handlebars_talloc_realloc_size;
 extern handlebars_talloc_strdup_func _handlebars_talloc_strdup;
 extern handlebars_talloc_strdup_append_func _handlebars_talloc_strdup_append;
 extern handlebars_talloc_strdup_append_buffer_func _handlebars_talloc_strdup_append_buffer;
@@ -192,6 +187,49 @@ int handlebars_memory_get_last_exit_code(void);
 int handlebars_memory_get_call_counter(void);
 
 #endif /* HANDLEBARS_MEMORY */
+
+static inline void * handlebars_talloc_array_checked(
+    const void * ctx,
+    size_t element_size,
+    size_t count,
+    const char * name
+) {
+    if( handlebars_unlikely(count > UINT_MAX
+            || (count != 0 && element_size > SIZE_MAX / count)) ) {
+        return NULL;
+    }
+
+#ifdef HANDLEBARS_MEMORY
+    return _handlebars_talloc_array(ctx, element_size, (unsigned) count, name);
+#else
+    return _talloc_array(ctx, element_size, (unsigned) count, name);
+#endif
+}
+
+static inline void * handlebars_talloc_realloc_array_checked(
+    const void * ctx,
+    void * ptr,
+    size_t element_size,
+    size_t count,
+    const char * name
+) {
+    if( handlebars_unlikely(count > UINT_MAX
+            || (count != 0 && element_size > SIZE_MAX / count)) ) {
+        return NULL;
+    }
+
+#ifdef HANDLEBARS_MEMORY
+    return _handlebars_talloc_realloc_array(ctx, ptr, element_size, (unsigned) count, name);
+#else
+    return _talloc_realloc_array(ctx, ptr, element_size, (unsigned) count, name);
+#endif
+}
+
+#define handlebars_talloc_array(ctx, type, count) \
+    (type *) handlebars_talloc_array_checked(ctx, sizeof(type), count, #type)
+
+#define handlebars_talloc_realloc(ctx, p, type, count) \
+    (type *) handlebars_talloc_realloc_array_checked(ctx, p, sizeof(type), count, #type)
 
 HBS_EXTERN_C_END
 

@@ -338,7 +338,7 @@ static char * file_get_contents(char * filename)
         exit(1);
     }
 
-    buf = talloc_array(root, char, (size_t) size + 1);
+    buf = handlebars_talloc_array(root, char, (size_t) size + 1);
     if( buf == NULL ) {
         fprintf(stderr, "Failed to allocate input buffer: %s\n", filename);
         fclose(f);

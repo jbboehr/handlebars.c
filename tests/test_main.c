@@ -33,11 +33,70 @@
 
 
 
+#ifdef HANDLEBARS_MEMORY
+static size_t realloc_size_received;
+
+static void * capture_realloc_size(
+    const void * ctx,
+    void * ptr,
+    size_t size,
+    const char * name
+) {
+    (void) ctx;
+    (void) name;
+    realloc_size_received = size;
+    return ptr;
+}
+#endif
+
 START_TEST(test_version)
 {
     ck_assert_int_eq(handlebars_version(), HANDLEBARS_VERSION_PATCH
             + (HANDLEBARS_VERSION_MINOR * 100)
             + (HANDLEBARS_VERSION_MAJOR * 10000));
+}
+END_TEST
+
+START_TEST(test_talloc_array_rejects_unrepresentable_count)
+{
+    char * original = handlebars_talloc_array(context, char, 1);
+
+    ck_assert_ptr_ne(NULL, original);
+    original[0] = 'x';
+
+#if SIZE_MAX > UINT_MAX
+    size_t count = (size_t) UINT_MAX + 1;
+
+    ck_assert_ptr_eq(NULL, handlebars_talloc_array(context, char, count));
+    ck_assert_ptr_eq(NULL, handlebars_talloc_realloc(context, original, char, count));
+    ck_assert_int_eq('x', original[0]);
+#else
+    fprintf(stderr, "Skipped unrepresentable talloc count test on 32-bit size_t\n");
+#endif
+
+    ck_assert_ptr_eq(NULL, handlebars_talloc_array_checked(context, SIZE_MAX, 2, "overflow"));
+    ck_assert_ptr_eq(NULL, handlebars_talloc_realloc_array_checked(context, original, SIZE_MAX, 2, "overflow"));
+    ck_assert_int_eq('x', original[0]);
+}
+END_TEST
+
+START_TEST(test_talloc_realloc_size_preserves_size_t)
+{
+#ifdef HANDLEBARS_MEMORY
+    handlebars_talloc_realloc_size_func previous = _handlebars_talloc_realloc_size;
+    char marker;
+    void * result;
+
+    realloc_size_received = 0;
+    _handlebars_talloc_realloc_size = &capture_realloc_size;
+    result = handlebars_talloc_realloc_size(context, &marker, SIZE_MAX);
+    _handlebars_talloc_realloc_size = previous;
+
+    ck_assert_ptr_eq(&marker, result);
+    ck_assert_uint_eq(SIZE_MAX, realloc_size_received);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
 }
 END_TEST
 
@@ -287,6 +346,8 @@ static Suite * suite(void)
     Suite * s = suite_create("Handlebars");
 
     REGISTER_TEST_FIXTURE(s, test_version, "Version");
+    REGISTER_TEST_FIXTURE(s, test_talloc_array_rejects_unrepresentable_count, "Talloc Array Count Bounds");
+    REGISTER_TEST_FIXTURE(s, test_talloc_realloc_size_preserves_size_t, "Talloc Realloc Size Width");
     REGISTER_TEST_FIXTURE(s, test_version_string, "Version String");
     REGISTER_TEST_FIXTURE(s, test_handlebars_spec_version_string, "Handlebars Spec Version String");
     REGISTER_TEST_FIXTURE(s, test_mustache_spec_version_string, "Mustache Spec Version String");
