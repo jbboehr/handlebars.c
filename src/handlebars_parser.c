@@ -89,7 +89,7 @@ static void handlebars_parser_validate_template(
     struct handlebars_parser * parser,
     struct handlebars_string * tmpl
 ) {
-    if( memchr(hbs_str_val(tmpl), '\0', hbs_str_len(tmpl)) != NULL ) {
+    if( unlikely(memchr(hbs_str_val(tmpl), '\0', hbs_str_len(tmpl)) != NULL) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_PARSEERR, "Template contains an embedded NUL byte");
     }
 }
@@ -160,7 +160,7 @@ struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * pars
     jmp_buf * volatile prev = e->jmp;
     jmp_buf buf;
 
-    if( parser->bison_stack != NULL ) {
+    if( unlikely(parser->bison_stack != NULL) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Parser is already in use");
     }
 

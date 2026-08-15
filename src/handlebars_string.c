@@ -79,7 +79,7 @@ const unsigned HANDLEBARS_XXHASH_VERSION_ID = (XXH_VERSION_MAJOR * 100 * 100) + 
 
 size_t handlebars_string_size(size_t length)
 {
-    if( length > SIZE_MAX - HANDLEBARS_STRING_SIZE - 1 ) {
+    if( unlikely(length > SIZE_MAX - HANDLEBARS_STRING_SIZE - 1) ) {
         return 0;
     }
 
@@ -90,7 +90,7 @@ static size_t string_size_or_throw(struct handlebars_context * context, size_t l
 {
     size_t size = handlebars_string_size(length);
 
-    if( size == 0 ) {
+    if( unlikely(size == 0) ) {
         handlebars_throw(context, HANDLEBARS_NOMEM, "String capacity is too large: %zu", length);
     }
 
@@ -102,7 +102,7 @@ static size_t string_length_add(
     size_t left,
     size_t right
 ) {
-    if( right > SIZE_MAX - left ) {
+    if( unlikely(right > SIZE_MAX - left) ) {
         handlebars_throw(context, HANDLEBARS_NOMEM, "String length is too large");
     }
 

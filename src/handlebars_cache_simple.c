@@ -181,7 +181,7 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
     HANDLEBARS_VALUE_DECL(value);
 
     /* Reject duplicates before changing ownership or evicting another entry. */
-    if( handlebars_map_find(intern->map, tmpl) ) {
+    if( unlikely(handlebars_map_find(intern->map, tmpl)) ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "Duplicate cache key");
     }
 

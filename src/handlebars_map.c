@@ -150,7 +150,7 @@ static inline size_t ht_choose_table_capacity(size_t elements) {
     const size_t max_table_capacity = HANDLEBARS_MAP_CAPACITY_TABLE[capacity_count - 1];
     const size_t max_elements = (max_table_capacity / 100) * HANDLEBARS_MAP_MAX_LOAD_FACTOR
         + ((max_table_capacity % 100) * HANDLEBARS_MAP_MAX_LOAD_FACTOR) / 100;
-    if( elements > max_elements ) {
+    if( unlikely(elements > max_elements) ) {
         // LCOV_EXCL_START
         fprintf(stderr, "Failed to obtain hash table capacity for minimum elements %zu\n", elements);
         abort();
@@ -227,7 +227,7 @@ static inline void map_add_at_table_offset(
     struct handlebars_value * value,
     size_t offset
 ) {
-    if( map->vec_offset >= map->vec_capacity ) {
+    if( unlikely(map->vec_offset >= map->vec_capacity) ) {
         handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to add to full hash table");
     }
 
@@ -341,15 +341,15 @@ const size_t HANDLEBARS_MAP_SIZE = sizeof(struct handlebars_map);
     size_t vec_capacity = capacity; \
     size_t table_capacity = ht_choose_table_capacity(vec_capacity); \
     size_t size = sizeof(struct handlebars_map); \
-    if( vec_capacity > UINT32_MAX || vec_capacity > SIZE_MAX / sizeof(struct handlebars_map_entry) \
-            || table_capacity > SIZE_MAX / sizeof(struct handlebars_map_entry *) ) { \
+    if( unlikely(vec_capacity > UINT32_MAX || vec_capacity > SIZE_MAX / sizeof(struct handlebars_map_entry) \
+            || table_capacity > SIZE_MAX / sizeof(struct handlebars_map_entry *)) ) { \
         fprintf(stderr, "Map capacity is too large: %zu\n", vec_capacity); \
         abort(); \
     } \
     size_t vec_size = vec_capacity * sizeof(struct handlebars_map_entry); \
     size_t table_size = table_capacity * sizeof(struct handlebars_map_entry *); \
-    if( vec_size > SIZE_MAX - size - HT_BOUNDARY_SIZE * 3 \
-            || table_size > SIZE_MAX - size - HT_BOUNDARY_SIZE * 3 - vec_size ) { \
+    if( unlikely(vec_size > SIZE_MAX - size - HT_BOUNDARY_SIZE * 3 \
+            || table_size > SIZE_MAX - size - HT_BOUNDARY_SIZE * 3 - vec_size) ) { \
         fprintf(stderr, "Map allocation size is too large: %zu\n", vec_capacity); \
         abort(); \
     } \
@@ -431,7 +431,7 @@ struct handlebars_map * handlebars_map_add(struct handlebars_map * map, struct h
 
     /* Reject duplicates before rehashing. If the error is caught by the
      * caller, its map pointer must still refer to the original live map. */
-    if( o.entry_found ) {
+    if( unlikely(o.entry_found) ) {
         handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to add to hash table");
     }
 
@@ -444,7 +444,7 @@ struct handlebars_map * handlebars_map_add(struct handlebars_map * map, struct h
 
     // Add
     o = map_find_entry(map, key);
-    if (o.entry_found || !o.empty_found) {
+    if( unlikely(o.entry_found || !o.empty_found) ) {
         // this should never happen - unless rehash locked due to iteration
         handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to add to hash table");
     }
@@ -515,7 +515,7 @@ struct handlebars_map * handlebars_map_update(struct handlebars_map * map, struc
         return map;
     }
 
-    if (!o.empty_found) {
+    if( unlikely(!o.empty_found) ) {
         // This should never happen
         handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to update to hash table");
     }
@@ -535,7 +535,7 @@ extern inline short handlebars_map_load_factor(struct handlebars_map * map) {
 
 struct handlebars_string * handlebars_map_get_key_at_index(struct handlebars_map * map, size_t index)
 {
-    if (index >= map->vec_offset) {
+    if( unlikely(index >= map->vec_offset) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Out of bounds");
     }
 
@@ -545,7 +545,7 @@ struct handlebars_string * handlebars_map_get_key_at_index(struct handlebars_map
 
 void handlebars_map_get_kv_at_index(struct handlebars_map * map, size_t index, struct handlebars_string ** key, struct handlebars_value ** value)
 {
-    if (index >= map->vec_offset) {
+    if( unlikely(index >= map->vec_offset) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Out of bounds");
     }
 

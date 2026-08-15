@@ -123,7 +123,7 @@ struct table_entry {
 
 static inline void * append(struct handlebars_cache_mmap * intern, void * source, size_t size)
 {
-    if( size > SIZE_MAX - PADDING - (sizeof(void *) - 1) ) {
+    if( unlikely(size > SIZE_MAX - PADDING - (sizeof(void *) - 1)) ) {
         return NULL;
     }
     size_t aligned_size = handlebars_align_size(size + PADDING, sizeof(void *));
@@ -145,7 +145,7 @@ static inline void protect(struct handlebars_cache * cache, bool on)
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     int prot = on ? PROT_READ : PROT_READ | PROT_WRITE;
     int rc = mprotect(intern->table, intern->table_size + intern->data_size, prot);
-    if( rc != 0 ) {
+    if( unlikely(rc != 0) ) {
         int error = errno;
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "mprotect error: %s (%d)", strerror(error), error);
     }
@@ -162,7 +162,7 @@ static inline void lock(struct handlebars_cache * cache)
 #else
     rc = pthread_mutex_lock(&intern->write_lock);
 #endif
-    if( rc != 0 ) {
+    if( unlikely(rc != 0) ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "pthread lock error: %s (%d)", strerror(rc), rc);
     }
 }
@@ -178,7 +178,7 @@ static inline void unlock(struct handlebars_cache * cache)
 #else
     rc = pthread_mutex_unlock(&intern->write_lock);
 #endif
-    if( rc != 0 ) {
+    if( unlikely(rc != 0) ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "pthread unlock error: %s (%d)", strerror(rc), rc);
     }
 }
@@ -320,7 +320,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     lock(cache);
 
     // Currently resetting
-    if( intern->in_reset ) {
+    if( unlikely(intern->in_reset) ) {
         goto done;
     }
 
@@ -382,7 +382,7 @@ static void cache_add(
     lock(cache);
 
     // Currently resetting
-    if( intern->in_reset ) {
+    if( unlikely(intern->in_reset) ) {
         unlock(cache);
         return;
     }

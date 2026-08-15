@@ -50,7 +50,7 @@ inline void handlebars_rc_init(struct handlebars_rc * rc)
 HBS_ATTR_NONNULL_ALL HBS_ATTR_ALWAYS_INLINE
 inline void handlebars_rc_addref(struct handlebars_rc * rc)
 {
-    if (rc->refcount < UINT32_MAX) {
+    if (handlebars_likely(rc->refcount < UINT32_MAX)) {
         rc->refcount++;
     }
 }
@@ -58,7 +58,7 @@ inline void handlebars_rc_addref(struct handlebars_rc * rc)
 HBS_ATTR_NONNULL_ALL HBS_ATTR_ALWAYS_INLINE
 inline void handlebars_rc_delref(struct handlebars_rc * rc, handlebars_rc_dtor_func dtor)
 {
-    if (rc->refcount == UINT32_MAX) {
+    if (handlebars_unlikely(rc->refcount == UINT32_MAX)) {
         // immortal
     } else if (rc->refcount <= 1) {
         rc->refcount = 0;

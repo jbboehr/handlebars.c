@@ -426,7 +426,7 @@ static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE
     // Push partial block
     if (partial_block_depth > 0) {
         struct handlebars_value * partial_block = handlebars_stack_get(vm->partialBlockStack, partial_block_depth - 1);
-        if( partial_block == NULL ) {
+        if( unlikely(partial_block == NULL) ) {
             handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid partial block depth: %ld", partial_block_depth);
         }
         pushed_partial_block = true;
@@ -918,11 +918,11 @@ ACCEPT_FUNCTION(lookup_block_param)
     HANDLEBARS_VALUE_DECL(value);
     struct handlebars_value * v2 = NULL;
 
-    if( opcode->op1.type != handlebars_operand_type_array
+    if( unlikely(opcode->op1.type != handlebars_operand_type_array
             || opcode->op2.type != handlebars_operand_type_array
             || opcode->op1.data.array.count < 2
             || opcode->op1.data.array.array == NULL
-            || (opcode->op2.data.array.count > 0 && opcode->op2.data.array.array == NULL) ) {
+            || (opcode->op2.data.array.count > 0 && opcode->op2.data.array.array == NULL)) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid lookup_block_param operands");
     }
 
@@ -974,11 +974,11 @@ ACCEPT_FUNCTION(lookup_data)
     HANDLEBARS_VALUE_DECL(val);
     struct handlebars_value * tmp;
 
-    if( opcode->op1.type != handlebars_operand_type_long
+    if( unlikely(opcode->op1.type != handlebars_operand_type_long
             || opcode->op2.type != handlebars_operand_type_array
             || opcode->op2.data.array.count == 0
             || opcode->op2.data.array.array == NULL
-            || (opcode->op3.type != handlebars_operand_type_boolean && opcode->op3.type != handlebars_operand_type_null) ) {
+            || (opcode->op3.type != handlebars_operand_type_boolean && opcode->op3.type != handlebars_operand_type_null)) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid lookup_data operands");
     }
 
@@ -1056,12 +1056,12 @@ ACCEPT_FUNCTION(lookup_on_context)
     HANDLEBARS_VALUE_DECL(rv2);
     struct handlebars_value * value;
 
-    if( opcode->op1.type != handlebars_operand_type_array
+    if( unlikely(opcode->op1.type != handlebars_operand_type_array
             || opcode->op1.data.array.count == 0
             || opcode->op1.data.array.array == NULL
             || (opcode->op2.type != handlebars_operand_type_boolean && opcode->op2.type != handlebars_operand_type_null)
             || (opcode->op3.type != handlebars_operand_type_boolean && opcode->op3.type != handlebars_operand_type_null)
-            || (opcode->op4.type != handlebars_operand_type_boolean && opcode->op4.type != handlebars_operand_type_null) ) {
+            || (opcode->op4.type != handlebars_operand_type_boolean && opcode->op4.type != handlebars_operand_type_null)) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid lookup_on_context operands");
     }
 
@@ -1322,16 +1322,16 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
 ) {
     if( program_num < 0 ) {
         return handlebars_string_init(CONTEXT, 0);
-    } else if( program_num >= (long) vm->module->program_count ) {
+    } else if( unlikely(program_num >= (long) vm->module->program_count) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program: %ld", program_num);
     }
 
     // Get program
 	struct handlebars_module_table_entry * entry = &vm->module->programs[program_num];
-    if( entry->guid != (size_t) program_num
+    if( unlikely(entry->guid != (size_t) program_num
             || entry->opcode_count == 0
             || entry->opcode_offset > vm->module->opcode_count
-            || entry->opcode_count > vm->module->opcode_count - entry->opcode_offset ) {
+            || entry->opcode_count > vm->module->opcode_count - entry->opcode_offset) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid opcode range for program: %ld", program_num);
     }
 

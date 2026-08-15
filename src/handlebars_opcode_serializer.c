@@ -192,10 +192,10 @@ static void serialize_opcode(
     if( new_opcode->type == handlebars_opcode_type_push_program ) {
         if( new_opcode->op1.type == handlebars_operand_type_long && !new_opcode->op4.data.boolval ) {
             long child_index = new_opcode->op1.data.longval;
-            if( child_index < 0
+            if( unlikely(child_index < 0
                     || table == NULL
                     || (size_t) child_index >= table_count
-                    || table[child_index] == NULL ) {
+                    || table[child_index] == NULL) ) {
                 handlebars_throw(context, HANDLEBARS_ERROR, "Invalid child program index: %ld", child_index);
             }
             new_opcode->op1.data.longval = table[child_index]->guid;
@@ -466,7 +466,7 @@ static bool module_advance(
     size_t item_size,
     size_t limit
 ) {
-    if( *offset > limit || (item_size != 0 && count > (limit - *offset) / item_size) ) {
+    if( unlikely(*offset > limit || (item_size != 0 && count > (limit - *offset) / item_size)) ) {
         return false;
     }
     *offset += count * item_size;
@@ -478,7 +478,7 @@ static bool module_advance_aligned(
     size_t size,
     size_t limit
 ) {
-    if( size > SIZE_MAX - (sizeof(void *) - 1) ) {
+    if( unlikely(size > SIZE_MAX - (sizeof(void *) - 1)) ) {
         return false;
     }
     return module_advance(offset, 1, align_size(size), limit);
@@ -492,20 +492,20 @@ static bool module_verify_string(
     size_t string_size;
     size_t length;
 
-    if( !module_pointer_matches_offset(state->module, serialized_string, state->data_offset)
+    if( unlikely(!module_pointer_matches_offset(state->module, serialized_string, state->data_offset)
             || state->data_offset > state->size
-            || HANDLEBARS_STRING_SIZE > state->size - state->data_offset ) {
+            || HANDLEBARS_STRING_SIZE > state->size - state->data_offset) ) {
         return false;
     }
 
     string = (void *) ((unsigned char *) state->module + state->data_offset);
     length = hbs_str_len(string);
-    if( length > SIZE_MAX - HANDLEBARS_STRING_SIZE - 1 ) {
+    if( unlikely(length > SIZE_MAX - HANDLEBARS_STRING_SIZE - 1) ) {
         return false;
     }
     string_size = HBS_STR_SIZE(length);
-    if( string_size > state->size - state->data_offset
-            || hbs_str_val(string)[length] != '\0' ) {
+    if( unlikely(string_size > state->size - state->data_offset
+            || hbs_str_val(string)[length] != '\0') ) {
         return false;
     }
 
@@ -548,18 +548,18 @@ static bool module_verify_operand(
 
         case handlebars_operand_type_array:
             array_offset = state->data_offset;
-            if( operand->data.array.count > SIZE_MAX / sizeof(struct handlebars_operand_string)
+            if( unlikely(operand->data.array.count > SIZE_MAX / sizeof(struct handlebars_operand_string)
                     || !module_pointer_matches_offset(state->module, operand->data.array.array, array_offset)
                     || !module_advance_aligned(
                         &state->data_offset,
                         operand->data.array.count * sizeof(struct handlebars_operand_string),
                         state->size
-                    ) ) {
+                    )) ) {
                 return false;
             }
             array = (void *) ((unsigned char *) state->module + array_offset);
             for( size_t i = 0; i < operand->data.array.count; i++ ) {
-                if( !module_verify_string(state, array[i].string) ) {
+                if( unlikely(!module_verify_string(state, array[i].string)) ) {
                     return false;
                 }
             }
@@ -691,7 +691,7 @@ static bool module_verify_opcode_shape(
     }
 
     for( size_t i = 0; i < 4; i++ ) {
-        if( !module_operand_type_is(operands[i], allowed[i]) ) {
+        if( unlikely(!module_operand_type_is(operands[i], allowed[i])) ) {
             return false;
         }
     }
@@ -701,7 +701,7 @@ static bool module_verify_opcode_shape(
             return opcode->op1.data.longval >= 0;
 
         case handlebars_opcode_type_push_program:
-            if( !module_verify_boolean(&opcode->op4.data.boolval) ) {
+            if( unlikely(!module_verify_boolean(&opcode->op4.data.boolval)) ) {
                 return false;
             }
             if( opcode->op1.type == handlebars_operand_type_null ) {
@@ -750,25 +750,25 @@ static bool module_verify_structure(struct handlebars_module * module, size_t si
     size_t opcodes_offset;
     size_t covered_opcode_count = 0;
 
-    if( module->program_count == 0 || module->opcode_count == 0
+    if( unlikely(module->program_count == 0 || module->opcode_count == 0
             || !module_advance(
                 &state.data_offset,
                 module->program_count,
                 sizeof(struct handlebars_module_table_entry),
                 size
             )
-            || !module_pointer_matches_offset(module, module->programs, programs_offset) ) {
+            || !module_pointer_matches_offset(module, module->programs, programs_offset)) ) {
         return false;
     }
 
     opcodes_offset = state.data_offset;
-    if( !module_advance(
+    if( unlikely(!module_advance(
             &state.data_offset,
             module->opcode_count,
             sizeof(struct handlebars_opcode),
             size
         )
-            || !module_pointer_matches_offset(module, module->opcodes, opcodes_offset) ) {
+            || !module_pointer_matches_offset(module, module->opcodes, opcodes_offset)) ) {
         return false;
     }
 
@@ -776,22 +776,22 @@ static bool module_verify_structure(struct handlebars_module * module, size_t si
     opcodes = (void *) ((unsigned char *) module + opcodes_offset);
 
     for( size_t i = 0; i < module->opcode_count; i++ ) {
-        if( !module_verify_operand(&state, &opcodes[i].op1)
+        if( unlikely(!module_verify_operand(&state, &opcodes[i].op1)
                 || !module_verify_operand(&state, &opcodes[i].op2)
                 || !module_verify_operand(&state, &opcodes[i].op3)
                 || !module_verify_operand(&state, &opcodes[i].op4)
-                || !module_verify_opcode_shape(module, &opcodes[i]) ) {
+                || !module_verify_opcode_shape(module, &opcodes[i])) ) {
             return false;
         }
     }
 
-    if( state.data_offset != size
-            || module->data_offset != size - sizeof(struct handlebars_module) ) {
+    if( unlikely(state.data_offset != size
+            || module->data_offset != size - sizeof(struct handlebars_module)) ) {
         return false;
     }
 
     opcode_owners = calloc(module->opcode_count, sizeof(*opcode_owners));
-    if( opcode_owners == NULL ) {
+    if( unlikely(opcode_owners == NULL) ) {
         return false;
     }
 
@@ -799,24 +799,24 @@ static bool module_verify_structure(struct handlebars_module * module, size_t si
         struct handlebars_module_table_entry * program = &programs[i];
         size_t program_end;
 
-        if( program->guid != i
+        if( unlikely(program->guid != i
                 || program->opcode_count == 0
                 || program->opcode_offset > module->opcode_count
-                || program->opcode_count > module->opcode_count - program->opcode_offset ) {
+                || program->opcode_count > module->opcode_count - program->opcode_offset) ) {
             free(opcode_owners);
             return false;
         }
         program_end = program->opcode_offset + program->opcode_count;
         for( size_t j = program->opcode_offset; j < program_end; j++ ) {
-            if( opcode_owners[j]
+            if( unlikely(opcode_owners[j]
                     || (j + 1 < program_end
-                        && opcodes[j].type == handlebars_opcode_type_return) ) {
+                        && opcodes[j].type == handlebars_opcode_type_return)) ) {
                 free(opcode_owners);
                 return false;
             }
             opcode_owners[j] = 1;
         }
-        if( opcodes[program_end - 1].type != handlebars_opcode_type_return ) {
+        if( unlikely(opcodes[program_end - 1].type != handlebars_opcode_type_return) ) {
             free(opcode_owners);
             return false;
         }
@@ -832,15 +832,15 @@ bool handlebars_module_verify_ex(
     size_t size,
     struct handlebars_context * ctx
 ) {
-    if( size < sizeof(struct handlebars_module) ) {
+    if( unlikely(size < sizeof(struct handlebars_module)) ) {
         return module_verify_error(ctx, "Invalid module buffer size");
     }
-    if( module->size != size
-            || memcmp(module->header, HANDLEBARS_MODULE_HEADER, sizeof(module->header)) != 0 ) {
+    if( unlikely(module->size != size
+            || memcmp(module->header, HANDLEBARS_MODULE_HEADER, sizeof(module->header)) != 0) ) {
         return module_verify_error(ctx, "Invalid module header or size");
     }
     uint64_t hash = calculate_hash(module);
-    if (hash != module->hash) {
+    if( unlikely(hash != module->hash) ) {
         if (ctx != NULL) {
             handlebars_throw(
                 ctx,
@@ -852,7 +852,7 @@ bool handlebars_module_verify_ex(
         }
         return false;
     }
-    if (handlebars_version() != module->version) {
+    if( unlikely(handlebars_version() != module->version) ) {
         if (ctx != NULL) {
             handlebars_throw(
                 ctx,
@@ -864,7 +864,7 @@ bool handlebars_module_verify_ex(
         }
         return false;
     }
-    if( !module_verify_structure(module, size) ) {
+    if( unlikely(!module_verify_structure(module, size)) ) {
         return module_verify_error(ctx, "Invalid module structure");
     }
     return true;
