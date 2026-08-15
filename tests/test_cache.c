@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <talloc.h>
 
@@ -49,6 +50,10 @@
 #include "utils.h"
 
 #include "handlebars_cache_private.h"
+
+#ifdef HANDLEBARS_HAVE_LMDB
+#include <lmdb.h>
+#endif
 
 
 
@@ -89,6 +94,113 @@ static struct handlebars_module * serialize_template(const char * tmpl)
     struct handlebars_program * program = handlebars_compiler_compile_ex(local_compiler, ast);
     return handlebars_program_serialize(context, program);
 }
+
+#ifdef HANDLEBARS_HAVE_LMDB
+static void reset_lmdb_test_files(void)
+{
+    unlink(lmdb_db_file);
+    unlink(lmdb_db_lock_file);
+}
+
+static struct handlebars_module * serialize_template_for_lmdb(const char * tmpl)
+{
+    struct handlebars_module * module = serialize_template(tmpl);
+    struct handlebars_module * copy = handlebars_talloc_size(context, module->size);
+
+    ck_assert_ptr_nonnull(copy);
+    memcpy(copy, module, module->size);
+    handlebars_module_patch_pointers(copy);
+    handlebars_module_normalize_pointers(copy, NULL);
+    handlebars_module_generate_hash(copy);
+    return copy;
+}
+
+static void lmdb_put_raw(const char * key_string, const void * bytes, size_t size)
+{
+    MDB_env * env;
+    MDB_txn * txn;
+    MDB_dbi dbi;
+    MDB_val key;
+    MDB_val data;
+    int err;
+
+    err = mdb_env_create(&env);
+    ck_assert_int_eq(err, 0);
+    err = mdb_env_open(env, lmdb_db_file, MDB_WRITEMAP | MDB_MAPASYNC | MDB_NOSUBDIR, 0644);
+    ck_assert_int_eq(err, 0);
+    err = mdb_txn_begin(env, NULL, 0, &txn);
+    ck_assert_int_eq(err, 0);
+    err = mdb_dbi_open(txn, NULL, MDB_CREATE, &dbi);
+    ck_assert_int_eq(err, 0);
+
+    key.mv_size = strlen(key_string) + 1;
+    key.mv_data = (void *) key_string;
+    data.mv_size = size;
+    data.mv_data = (void *) bytes;
+    err = mdb_put(txn, dbi, &key, &data, 0);
+    ck_assert_int_eq(err, 0);
+    err = mdb_txn_commit(txn);
+    ck_assert_int_eq(err, 0);
+    mdb_env_close(env);
+}
+
+static void lmdb_put_misaligned_module(
+    struct handlebars_module * module,
+    char * selected_key,
+    size_t selected_key_size
+) {
+    MDB_env * env;
+    MDB_txn * txn;
+    MDB_dbi dbi;
+    MDB_val key;
+    MDB_val data;
+    char candidate[32];
+    bool found = false;
+    int err;
+
+    err = mdb_env_create(&env);
+    ck_assert_int_eq(err, 0);
+    err = mdb_env_open(env, lmdb_db_file, MDB_WRITEMAP | MDB_MAPASYNC | MDB_NOSUBDIR, 0644);
+    ck_assert_int_eq(err, 0);
+    err = mdb_txn_begin(env, NULL, 0, &txn);
+    ck_assert_int_eq(err, 0);
+    err = mdb_dbi_open(txn, NULL, MDB_CREATE, &dbi);
+    ck_assert_int_eq(err, 0);
+
+    data.mv_size = module->size;
+    data.mv_data = module;
+    for( size_t length = 1; length < sizeof(candidate); length++ ) {
+        memset(candidate, 'm', length);
+        candidate[length] = '\0';
+        key.mv_size = length + 1;
+        key.mv_data = candidate;
+        err = mdb_put(txn, dbi, &key, &data, 0);
+        ck_assert_int_eq(err, 0);
+    }
+    err = mdb_txn_commit(txn);
+    ck_assert_int_eq(err, 0);
+
+    err = mdb_txn_begin(env, NULL, MDB_RDONLY, &txn);
+    ck_assert_int_eq(err, 0);
+    for( size_t length = 1; length < sizeof(candidate); length++ ) {
+        memset(candidate, 'm', length);
+        candidate[length] = '\0';
+        key.mv_size = length + 1;
+        key.mv_data = candidate;
+        err = mdb_get(txn, dbi, &key, &data);
+        ck_assert_int_eq(err, 0);
+        if( (uintptr_t) data.mv_data % sizeof(void *) != 0 ) {
+            ck_assert_uint_lt(length, selected_key_size);
+            memcpy(selected_key, candidate, length + 1);
+            found = true;
+            break;
+        }
+    }
+    ck_assert_msg(found, "Expected LMDB to expose at least one unaligned value");
+    mdb_txn_abort(txn);
+    mdb_env_close(env);
+}
+#endif
 
 
 
@@ -311,6 +423,149 @@ START_TEST(test_lmdb_cache_does_not_hash_oversized_keys)
     handlebars_cache_dtor(cache);
 }
 END_TEST
+
+START_TEST(test_lmdb_cache_rejects_invalid_records)
+{
+    static const char truncated_key[] = "lmdb-truncated";
+    static const char corrupt_key[] = "lmdb-corrupt";
+    static const char malformed_key[] = "lmdb-malformed";
+    struct handlebars_module * truncated = serialize_template_for_lmdb("truncated");
+    struct handlebars_module * corrupt = serialize_template_for_lmdb("corrupt");
+    struct handlebars_module * malformed = serialize_template_for_lmdb("malformed");
+    struct handlebars_cache * cache;
+    struct handlebars_string * key;
+
+    reset_lmdb_test_files();
+    corrupt->hash ^= 1;
+    handlebars_module_patch_pointers(malformed);
+    malformed->programs[0].opcode_count = 0;
+    handlebars_module_normalize_pointers(malformed, NULL);
+    handlebars_module_generate_hash(malformed);
+
+    lmdb_put_raw(truncated_key, truncated, truncated->size - 1);
+    lmdb_put_raw(corrupt_key, corrupt, corrupt->size);
+    lmdb_put_raw(malformed_key, malformed, malformed->size);
+
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+
+    key = handlebars_string_ctor(context, HBS_STRL(truncated_key));
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    key = handlebars_string_ctor(context, HBS_STRL(corrupt_key));
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    key = handlebars_string_ctor(context, HBS_STRL(malformed_key));
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    ck_assert_int_eq(handlebars_cache_stat(cache).misses, 3);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 3);
+
+    ck_assert_int_eq(handlebars_cache_gc(cache), 3);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
+START_TEST(test_lmdb_cache_gc_expires_zero_age_records)
+{
+    struct handlebars_cache * cache;
+    struct handlebars_module * module = serialize_template("expired");
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("lmdb-expired"));
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    handlebars_cache_add(cache, key, module);
+    cache->max_age = 0;
+
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    ck_assert_int_eq(handlebars_cache_gc(cache), 1);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+START_TEST(test_lmdb_cache_find_nomem_closes_transaction)
+{
+    struct handlebars_cache * cache;
+    struct handlebars_module * module = serialize_template("find nomem");
+    struct handlebars_module * found;
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("lmdb-find-nomem"));
+    jmp_buf buf;
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    handlebars_cache_add(cache, key, module);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        found = handlebars_cache_find(cache, key);
+        ck_assert_ptr_nonnull(found);
+        handlebars_cache_release(cache, key, found);
+        handlebars_cache_dtor(cache);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_enable();
+    found = handlebars_cache_find(cache, key);
+    (void) found;
+    handlebars_memory_fail_disable();
+    ck_abort_msg("Expected LMDB cache lookup allocation to fail");
+}
+END_TEST
+
+START_TEST(test_lmdb_cache_gc_nomem_closes_transaction)
+{
+    struct handlebars_cache * cache;
+    struct handlebars_module * module = serialize_template("gc nomem");
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("lmdb-gc-nomem"));
+    jmp_buf buf;
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    handlebars_cache_add(cache, key, module);
+    cache->max_age = 0;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+        ck_assert_int_eq(handlebars_cache_gc(cache), 1);
+        handlebars_cache_dtor(cache);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_enable();
+    (void) handlebars_cache_gc(cache);
+    handlebars_memory_fail_disable();
+    ck_abort_msg("Expected LMDB cache GC allocation to fail");
+}
+END_TEST
+#endif
+
+START_TEST(test_lmdb_cache_copies_unaligned_records)
+{
+    struct handlebars_module * module = serialize_template_for_lmdb("unaligned");
+    struct handlebars_cache * cache;
+    struct handlebars_module * found;
+    struct handlebars_string * key;
+    char selected_key[32];
+
+    reset_lmdb_test_files();
+    lmdb_put_misaligned_module(module, selected_key, sizeof(selected_key));
+
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    key = handlebars_string_ctor(context, selected_key, strlen(selected_key));
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_nonnull(found);
+    ck_assert_uint_eq((uintptr_t) found % sizeof(void *), 0);
+
+    handlebars_cache_release(cache, key, found);
+    handlebars_cache_dtor(cache);
+}
+END_TEST
 #endif
 
 #ifdef HANDLEBARS_HAVE_PTHREAD
@@ -499,6 +754,13 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_does_not_hash_oversized_keys, "LMDB skips oversized keys");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_rejects_invalid_records, "LMDB rejects invalid records");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc_expires_zero_age_records, "LMDB GC expires zero-age records");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_find_nomem_closes_transaction, "LMDB find cleans up after allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc_nomem_closes_transaction, "LMDB GC cleans up after allocation failure");
+#endif
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_copies_unaligned_records, "LMDB copies unaligned records");
 #endif
 #ifdef HANDLEBARS_HAVE_PTHREAD
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
