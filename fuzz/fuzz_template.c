@@ -216,6 +216,10 @@ int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
         handlebars_context_dtor(context);
         return 0;
     }
+    handlebars_module_generate_hash(module);
+    if( !handlebars_module_verify_ex(module, handlebars_module_get_size(module), NULL) ) {
+        __builtin_trap();
+    }
     handlebars_vm_set_flags(vm, flags);
 
     {

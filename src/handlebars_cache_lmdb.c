@@ -154,10 +154,10 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
 #if defined(HANDLEBARS_ENABLE_DEBUG)
     // In debug mode, throw
-    handlebars_module_verify(module, CONTEXT);
+    handlebars_module_verify_ex(module, data.mv_size, CONTEXT);
 #else
     // In release mode, consider a failed hash/version match a miss
-    if (!handlebars_module_verify(module, NULL)) {
+    if (!handlebars_module_verify_ex(module, data.mv_size, NULL)) {
         intern->stat.misses++;
         goto error;
     }

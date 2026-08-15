@@ -3,9 +3,11 @@
 The `fuzz_template` target sends arbitrary templates through parsing,
 compilation, serialization, and VM execution. The `fuzz_json` target parses
 arbitrary JSON, exercises lazy and converted value traversal, and renders the
-values through a fixed template. Both require Clang with libFuzzer,
-AddressSanitizer, and UndefinedBehaviorSanitizer support. `fuzz_json` also
-requires json-c.
+values through a fixed template. The `fuzz_module` target verifies serialized
+modules, reconstructs and normalizes their pointers, prints valid structures,
+and executes unmodified valid corpus entries. All targets require Clang with
+libFuzzer, AddressSanitizer, and UndefinedBehaviorSanitizer support.
+`fuzz_json` also requires json-c.
 
 Build and run it with Autotools:
 
@@ -13,11 +15,13 @@ Build and run it with Autotools:
 autoreconf -i
 CC=clang ./configure --enable-fuzzing --disable-shared
 make -j2
-mkdir -p fuzz-corpus/template fuzz-corpus/json
+mkdir -p fuzz-corpus/template fuzz-corpus/json fuzz-corpus/module
 ./fuzz/fuzz_template fuzz-corpus/template fuzz/corpus/template \
     -dict=fuzz/handlebars.dict -max_len=65536
 ./fuzz/fuzz_json fuzz-corpus/json fuzz/corpus/json \
     -dict=fuzz/json.dict -max_len=65536
+./fuzz/fuzz_module fuzz-corpus/module fuzz/corpus/module \
+    -dict=fuzz/module.dict -max_len=65536
 ```
 
 Or with CMake:
@@ -27,11 +31,13 @@ CC=clang cmake -S . -B cmake-build-fuzz \
     -DHANDLEBARS_ENABLE_FUZZING=ON \
     -DHANDLEBARS_ENABLE_TESTS=OFF
 cmake --build cmake-build-fuzz -j2
-mkdir -p fuzz-corpus/template fuzz-corpus/json
+mkdir -p fuzz-corpus/template fuzz-corpus/json fuzz-corpus/module
 ./cmake-build-fuzz/fuzz/fuzz_template fuzz-corpus/template fuzz/corpus/template \
     -dict=fuzz/handlebars.dict -max_len=65536
 ./cmake-build-fuzz/fuzz/fuzz_json fuzz-corpus/json fuzz/corpus/json \
     -dict=fuzz/json.dict -max_len=65536
+./cmake-build-fuzz/fuzz/fuzz_module fuzz-corpus/module fuzz/corpus/module \
+    -dict=fuzz/module.dict -max_len=65536
 ```
 
 The first corpus directory passed to each target is writable and collects
@@ -44,3 +50,8 @@ optional header selects compiler flags, masked by
 without a valid header use no compiler flags.
 
 JSON corpus inputs are passed directly to json-c and have no header.
+
+Module corpus inputs use the native serialized-module representation for the
+build architecture. The harness independently exercises the original envelope
+and a canonicalized envelope so mutations can reach structural validation
+without having to reproduce the 64-bit module hash.

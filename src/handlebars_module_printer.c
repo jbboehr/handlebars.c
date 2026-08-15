@@ -45,8 +45,10 @@ struct handlebars_string * handlebars_module_print(
     struct handlebars_module * module
 ) {
     struct handlebars_string * buffer = handlebars_string_init(ctx, 1024);
-    size_t program_guid = 0;
-    size_t local_opcode_id = 0;
+    const char * timestamp = ctime(&module->ts);
+    if( timestamp == NULL ) {
+        timestamp = "(invalid)\n";
+    }
     buffer = handlebars_string_asprintf_append(
         ctx,
         buffer,
@@ -65,7 +67,7 @@ struct handlebars_string * handlebars_module_print(
         module->addr,
         module->size,
         module->data_offset,
-        ctime(&module->ts),
+        timestamp,
         module->flags,
         module->program_count,
         module->opcode_count
@@ -83,29 +85,37 @@ struct handlebars_string * handlebars_module_print(
             module->programs[i].opcode_offset
         );
     }
-    buffer = handlebars_string_asprintf_append(ctx, buffer, "PROGRAM: %zu\n", program_guid);
-    for  (size_t i = 0; i < module->opcode_count; i++) {
-        // Make sure the program_guid is correct
-#ifndef NDEBUG
-        struct handlebars_module_table_entry * entry = &module->programs[program_guid];
-        assert(i >= entry->opcode_offset);
-        assert(i < entry->opcode_offset + entry->opcode_count);
-#endif
+    for( size_t i = 0; i < module->opcode_count; ) {
+        struct handlebars_module_table_entry * entry = NULL;
 
-        struct handlebars_opcode * opcode = &module->opcodes[i];
-        buffer = handlebars_string_asprintf_append(ctx, buffer, "OP[%03zu,%03zu]: ", local_opcode_id, i);
-        buffer = handlebars_opcode_print_append(ctx, buffer, &module->opcodes[i], 0);
-        buffer = handlebars_string_asprintf_append(ctx, buffer, "\n");
-        if (opcode->type == handlebars_opcode_type_return) {
-            program_guid++;
-            if (program_guid < module->program_count) {
-                buffer = handlebars_string_asprintf_append(ctx, buffer, "\nPROGRAM: %zu\n", program_guid);
+        for( size_t j = 0; j < module->program_count; j++ ) {
+            if( module->programs[j].opcode_offset == i ) {
+                entry = &module->programs[j];
+                break;
             }
-            local_opcode_id = 0;
-        } else {
-            local_opcode_id++;
+        }
+
+        assert(entry != NULL);
+        if( entry == NULL
+                || entry->opcode_count == 0
+                || entry->opcode_count > module->opcode_count - i ) {
+            break;
+        }
+
+        buffer = handlebars_string_asprintf_append(
+            ctx,
+            buffer,
+            "%sPROGRAM: %zu\n",
+            i == 0 ? "" : "\n",
+            entry->guid
+        );
+        for( size_t local_opcode_id = 0;
+                local_opcode_id < entry->opcode_count;
+                local_opcode_id++, i++ ) {
+            buffer = handlebars_string_asprintf_append(ctx, buffer, "OP[%03zu,%03zu]: ", local_opcode_id, i);
+            buffer = handlebars_opcode_print_append(ctx, buffer, &module->opcodes[i], 0);
+            buffer = handlebars_string_asprintf_append(ctx, buffer, "\n");
         }
     }
-    assert(program_guid == module->program_count);
     return buffer;
 }

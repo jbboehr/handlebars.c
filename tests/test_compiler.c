@@ -25,12 +25,15 @@
 
 #define HANDLEBARS_AST_PRIVATE
 #define HANDLEBARS_COMPILER_PRIVATE
+#define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
+#define HANDLEBARS_OPCODES_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
+#include "handlebars_module_printer.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_parser.h"
@@ -110,6 +113,164 @@ START_TEST(test_serialize_rejects_invalid_child_program)
     struct handlebars_module * module = handlebars_program_serialize(context, program);
     (void) module;
     ck_abort_msg("Expected invalid child program index to be rejected");
+}
+END_TEST
+
+static struct handlebars_module * serialize_for_verification_flags(
+    const char * source,
+    unsigned long flags
+)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_string * tmpl = handlebars_string_ctor(context, source, strlen(source));
+    struct handlebars_ast_node * ast;
+    struct handlebars_program * program;
+    struct handlebars_module * module;
+
+    handlebars_compiler_set_flags(local_compiler, flags);
+    ast = handlebars_parse_ex(local_parser, tmpl, 0);
+    program = handlebars_compiler_compile_ex(local_compiler, ast);
+    module = handlebars_program_serialize(context, program);
+
+    handlebars_compiler_dtor(local_compiler);
+    handlebars_parser_dtor(local_parser);
+    return module;
+}
+
+static struct handlebars_module * serialize_for_verification(const char * source)
+{
+    return serialize_for_verification_flags(source, 0);
+}
+
+START_TEST(test_serialized_module_verification)
+{
+    struct handlebars_module * module = serialize_for_verification(
+        "{{#if foo}}{{foo.bar}}{{else}}empty{{/if}}"
+    );
+    struct handlebars_module * copy;
+    struct handlebars_string * printed;
+    size_t size = module->size;
+
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+    ck_assert(handlebars_module_verify_ex(module, size, NULL));
+    ck_assert(!handlebars_module_verify_ex(module, size - 1, NULL));
+
+    copy = handlebars_talloc_size(context, size);
+    memcpy(copy, module, size);
+    handlebars_module_patch_pointers(copy);
+    handlebars_module_patch_pointers(copy);
+    handlebars_module_normalize_pointers(copy, NULL);
+    handlebars_module_generate_hash(copy);
+    ck_assert(handlebars_module_verify_ex(copy, size, NULL));
+
+    module = serialize_for_verification_flags(
+        "{{foo}}",
+        handlebars_compiler_flag_mustache_style_lambdas
+    );
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification(
+        "{{#if a}}{{#if b}}x{{/if}}{{/if}}{{#if c}}y{{/if}}"
+    );
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+    printed = handlebars_module_print(context, module);
+    {
+        const char * program1 = strstr(hbs_str_val(printed), "\nPROGRAM: 1\nOP[");
+        const char * program2 = strstr(hbs_str_val(printed), "\nPROGRAM: 2\nOP[");
+        const char * program3 = strstr(hbs_str_val(printed), "\nPROGRAM: 3\nOP[");
+
+        ck_assert_ptr_nonnull(program1);
+        ck_assert_ptr_nonnull(program2);
+        ck_assert_ptr_nonnull(program3);
+        ck_assert(program1 < program3);
+        ck_assert(program3 < program2);
+    }
+
+    module = serialize_for_verification("{{#if foo}}x{{/if}}");
+    {
+        size_t opcode_count = module->programs[0].opcode_count;
+        size_t opcode_offset = module->programs[0].opcode_offset;
+
+        module->programs[0].opcode_count = module->programs[1].opcode_count;
+        module->programs[0].opcode_offset = module->programs[1].opcode_offset;
+        module->programs[1].opcode_count = opcode_count;
+        module->programs[1].opcode_offset = opcode_offset;
+    }
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+    printed = handlebars_module_print(context, module);
+    {
+        const char * program0 = strstr(hbs_str_val(printed), "\nPROGRAM: 0\nOP[");
+        const char * program1 = strstr(hbs_str_val(printed), "\nPROGRAM: 1\nOP[");
+
+        ck_assert_ptr_nonnull(program0);
+        ck_assert_ptr_nonnull(program1);
+        ck_assert(program1 < program0);
+    }
+}
+END_TEST
+
+START_TEST(test_serialized_module_rejects_invalid_layout)
+{
+    struct handlebars_module * module = serialize_for_verification("{{foo.bar}}");
+    struct handlebars_operand * operands;
+    bool found_array = false;
+    bool found_optional_boolean = false;
+
+    module->programs = (void *) ((unsigned char *) module->programs + sizeof(void *));
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification("{{foo.bar}}");
+    module->programs[0].opcode_count++;
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification("{{foo.bar}}");
+    module->opcodes[0].type = handlebars_opcode_type_invalid;
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification("{{foo.bar}}");
+    for( size_t i = 0; i < module->opcode_count && !found_array; i++ ) {
+        operands = &module->opcodes[i].op1;
+        for( size_t j = 0; j < 4; j++ ) {
+            if( operands[j].type == handlebars_operand_type_array ) {
+                operands[j].data.array.count = SIZE_MAX;
+                found_array = true;
+                break;
+            }
+        }
+    }
+    ck_assert(found_array);
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification("text");
+    ck_assert_int_eq(module->opcodes[0].type, handlebars_opcode_type_append_content);
+    ck_assert_int_eq(module->opcodes[0].op1.type, handlebars_operand_type_string);
+    module->opcodes[0].op1.data.string.string = (void *) (
+        (unsigned char *) module->opcodes[0].op1.data.string.string + sizeof(void *)
+    );
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification("{{foo.bar}}");
+    for( size_t i = 0; i < module->opcode_count; i++ ) {
+        if( module->opcodes[i].type == handlebars_opcode_type_lookup_on_context
+                && module->opcodes[i].op2.type == handlebars_operand_type_null ) {
+            module->opcodes[i].op2.data.boolval = true;
+            found_optional_boolean = true;
+            break;
+        }
+    }
+    ck_assert(found_optional_boolean);
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
 }
 END_TEST
 
@@ -292,6 +453,8 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_nested_program_stack_limit, "Nested program stack limit");
 	REGISTER_TEST_FIXTURE(s, test_delimiter_change_requires_close_delimiter, "Delimiter change requires close delimiter");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_program, "Reject invalid child program index");
+	REGISTER_TEST_FIXTURE(s, test_serialized_module_verification, "Verify serialized module layout");
+	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");
 	REGISTER_TEST_FIXTURE(s, test_string_params_supports_implicit_partial_context, "String params with implicit partial context");
 	REGISTER_TEST_FIXTURE(s, test_alternate_decorator_compiler_inherits_state, "Alternate decorator compiler state");

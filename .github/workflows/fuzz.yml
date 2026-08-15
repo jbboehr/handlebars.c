@@ -28,6 +28,8 @@ jobs:
                       dictionary: handlebars.dict
                     - target: json
                       dictionary: json.dict
+                    - target: module
+                      dictionary: module.dict
         env:
             FUZZ_SECONDS: ${{ github.event_name == 'schedule' && '900' || '60' }}
         steps:

@@ -72,13 +72,26 @@ uint64_t handlebars_module_generate_hash(
 ) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Verify the module matches its hash and the current handlebars.c version
- * @param[in] ctx
+ * @brief Verify the module matches its hash, layout, and the current handlebars.c version
  * @param[in] module
+ * @param[in] ctx
  * @return Whether it matches, unless ctx is set in which it will throw if it does not match
  */
 bool handlebars_module_verify(
     struct handlebars_module * module,
+    struct handlebars_context * ctx
+) HBS_ATTR_NONNULL(1);
+
+/**
+ * @brief Verify a module stored in a buffer of the specified size
+ * @param[in] module
+ * @param[in] size Size of the backing buffer containing module
+ * @param[in] ctx
+ * @return Whether it is valid, unless ctx is set in which it will throw if it is not
+ */
+bool handlebars_module_verify_ex(
+    struct handlebars_module * module,
+    size_t size,
     struct handlebars_context * ctx
 ) HBS_ATTR_NONNULL(1);
 
