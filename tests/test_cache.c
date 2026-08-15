@@ -99,6 +99,15 @@ static struct handlebars_module * serialize_template(const char * tmpl)
     return handlebars_program_serialize(context, program);
 }
 
+static bool simple_cache_module_destroyed;
+
+static int simple_cache_module_dtor(struct handlebars_module * module)
+{
+    (void) module;
+    simple_cache_module_destroyed = true;
+    return 0;
+}
+
 #ifdef HANDLEBARS_HAVE_LMDB
 static void reset_lmdb_test_files(void)
 {
@@ -254,6 +263,250 @@ START_TEST(test_simple_cache_owns_key)
 }
 END_TEST
 
+START_TEST(test_simple_cache_refuses_entry_over_capacity)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key1 = handlebars_string_ctor(context, HBS_STRL("simple-limit-one"));
+    struct handlebars_string * key2 = handlebars_string_ctor(context, HBS_STRL("simple-limit-two"));
+    struct handlebars_module * module1 = serialize_template("one");
+    struct handlebars_module * module2 = serialize_template("two");
+    void * module2_parent = talloc_parent(module2);
+
+    cache->max_entries = 1;
+    handlebars_cache_add(cache, key1, module1);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+
+    handlebars_cache_add(cache, key2, module2);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    ck_assert_ptr_eq(handlebars_cache_find(cache, key1), module1);
+    ck_assert_ptr_null(handlebars_cache_find(cache, key2));
+    ck_assert_ptr_eq(talloc_parent(module2), module2_parent);
+
+    handlebars_cache_dtor(cache);
+    ck_assert_ptr_eq(talloc_parent(module2), module2_parent);
+}
+END_TEST
+
+START_TEST(test_simple_cache_does_not_evict_executing_module)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * parent_key = handlebars_string_ctor(context, HBS_STRL("simple-active-parent"));
+    struct handlebars_string * partial_key = handlebars_string_ctor(context, HBS_STRL("Y"));
+    struct handlebars_module * parent = serialize_template("foo={{>bar}}X");
+    struct handlebars_module * cached_parent;
+    struct handlebars_string * output;
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+
+    handlebars_value_str(partial, handlebars_string_ctor(context, HBS_STRL("Y")));
+    do {
+        struct handlebars_map * map = handlebars_map_ctor(context, 0);
+        map = handlebars_map_str_add(map, HBS_STRL("bar"), partial);
+        handlebars_value_map(partials, map);
+    } while( 0 );
+
+    cache->max_entries = 1;
+    handlebars_cache_add(cache, parent_key, parent);
+    handlebars_vm_set_cache(vm, cache);
+    handlebars_vm_set_partials(vm, partials);
+
+    cached_parent = handlebars_cache_find(cache, parent_key);
+    ck_assert_ptr_eq(cached_parent, parent);
+    output = handlebars_vm_execute(vm, cached_parent, input);
+
+    ck_assert_hbs_str_eq_cstr(output, "foo=YX");
+    ck_assert_ptr_eq(handlebars_cache_find(cache, parent_key), parent);
+    ck_assert_ptr_null(handlebars_cache_find(cache, partial_key));
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
+START_TEST(test_simple_cache_rejects_oversized_module_without_taking_ownership)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-oversized"));
+    struct handlebars_module * module = serialize_template("oversized");
+    void * parent = talloc_parent(module);
+
+    cache->max_size = module->size - 1;
+    handlebars_cache_add(cache, key, module);
+
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    ck_assert_ptr_eq(talloc_parent(module), parent);
+
+    handlebars_cache_dtor(cache);
+    ck_assert_ptr_eq(talloc_parent(module), parent);
+}
+END_TEST
+
+START_TEST(test_simple_cache_duplicate_preserves_module_ownership)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-duplicate"));
+    struct handlebars_module * original = serialize_template("original");
+    struct handlebars_module * duplicate = serialize_template("duplicate");
+    void * duplicate_parent = talloc_parent(duplicate);
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_cache_add(cache, key, original);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
+        ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+        ck_assert_ptr_eq(handlebars_cache_find(cache, key), original);
+        handlebars_cache_dtor(cache);
+        ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
+        return;
+    }
+
+    handlebars_cache_add(cache, key, duplicate);
+    context->e->jmp = prev;
+    ck_abort_msg("Expected duplicate simple-cache key to be rejected");
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+START_TEST(test_simple_cache_add_nomem_preserves_module_ownership)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-add-nomem"));
+    struct handlebars_module * module = serialize_template("add nomem");
+    void * module_parent = talloc_parent(module);
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_ptr_eq(talloc_parent(module), module_parent);
+        ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+
+        handlebars_cache_add(cache, key, module);
+        ck_assert_ptr_eq(handlebars_cache_find(cache, key), module);
+        handlebars_cache_dtor(cache);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_enable();
+    handlebars_cache_add(cache, key, module);
+    handlebars_memory_fail_disable();
+    context->e->jmp = prev;
+    ck_abort_msg("Expected simple-cache allocation to fail");
+}
+END_TEST
+
+static void assert_simple_cache_consistent(
+    struct handlebars_cache * cache,
+    struct handlebars_string ** keys,
+    size_t key_count
+) {
+    struct handlebars_cache_stat stat = handlebars_cache_stat(cache);
+    size_t current_entries = 0;
+    size_t current_size = 0;
+
+    for( size_t i = 0; i < key_count; i++ ) {
+        struct handlebars_module * module = handlebars_cache_find(cache, keys[i]);
+        if( module ) {
+            current_entries++;
+            current_size += module->size;
+        }
+    }
+
+    ck_assert_uint_eq(stat.current_entries, current_entries);
+    ck_assert_uint_eq(stat.current_size, current_size);
+}
+
+static void execute_simple_cache_gc_nomem_test(int fail_at)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * keys[20];
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    for( size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++ ) {
+        char name[32];
+        snprintf(name, sizeof(name), "simple-gc-%zu", i);
+        keys[i] = handlebars_string_ctor(context, name, strlen(name));
+        struct handlebars_module * module = serialize_template(name);
+        handlebars_cache_add(cache, keys[i], module);
+        module->ts = (time_t) i;
+    }
+    cache->max_entries = 1;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        assert_simple_cache_consistent(cache, keys, sizeof(keys) / sizeof(keys[0]));
+        handlebars_cache_gc(cache);
+        ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+        handlebars_cache_dtor(cache);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(fail_at);
+    (void) handlebars_cache_gc(cache);
+    handlebars_memory_fail_disable();
+    context->e->jmp = prev;
+
+    assert_simple_cache_consistent(cache, keys, sizeof(keys) / sizeof(keys[0]));
+    handlebars_cache_gc(cache);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    handlebars_cache_dtor(cache);
+}
+
+START_TEST(test_simple_cache_gc_nomem_keeps_cache_consistent)
+{
+    for( int fail_at = 1; fail_at <= 3; fail_at++ ) {
+        execute_simple_cache_gc_nomem_test(fail_at);
+    }
+}
+END_TEST
+
+START_TEST(test_simple_cache_reset_nomem_preserves_entries)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-reset-nomem"));
+    struct handlebars_module * module = serialize_template("reset nomem");
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_cache_add(cache, key, module);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+        ck_assert_ptr_eq(handlebars_cache_find(cache, key), module);
+
+        handlebars_cache_reset(cache);
+        ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+        handlebars_cache_dtor(cache);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_enable();
+    handlebars_cache_reset(cache);
+    handlebars_memory_fail_disable();
+    context->e->jmp = prev;
+    ck_abort_msg("Expected simple-cache reset allocation to fail");
+}
+END_TEST
+#endif
+
 static void execute_gc_test(struct handlebars_cache * cache)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -392,6 +645,25 @@ START_TEST(test_simple_cache_reset)
 {
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
     execute_reset_test(cache);
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
+START_TEST(test_simple_cache_reset_releases_entries)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-reset-release"));
+    struct handlebars_module * module = serialize_template("reset release");
+
+    simple_cache_module_destroyed = false;
+    talloc_set_destructor(module, simple_cache_module_dtor);
+    handlebars_cache_add(cache, key, module);
+    ck_assert(!simple_cache_module_destroyed);
+
+    handlebars_cache_reset(cache);
+    ck_assert(simple_cache_module_destroyed);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+
     handlebars_cache_dtor(cache);
 }
 END_TEST
@@ -924,8 +1196,18 @@ static Suite * suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_owns_key, "Simple cache owns key");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_refuses_entry_over_capacity, "Simple cache refuses entries over capacity");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_does_not_evict_executing_module, "Simple cache keeps executing modules alive");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_rejects_oversized_module_without_taking_ownership, "Simple cache rejects oversized modules");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_duplicate_preserves_module_ownership, "Simple cache duplicate preserves ownership");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_add_nomem_preserves_module_ownership, "Simple cache add preserves ownership after allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_gc_nomem_keeps_cache_consistent, "Simple cache GC remains consistent after allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_reset_nomem_preserves_entries, "Simple cache reset preserves entries after allocation failure");
+#endif
     REGISTER_TEST_FIXTURE(s, test_simple_cache_gc, "Simple Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset, "Simple Cache (Reset)");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_reset_releases_entries, "Simple cache reset releases entries");
 #ifdef HANDLEBARS_HAVE_LMDB
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
