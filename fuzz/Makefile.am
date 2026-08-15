@@ -18,10 +18,14 @@ AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(FUZZING_CFLAGS) $(JSON_CFLA
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(FUZZER_LDFLAGS)
 LDADD = $(top_builddir)/src/libhandlebars.la $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS)
 
-EXTRA_DIST = README.md handlebars.dict corpus/template
+EXTRA_DIST = README.md handlebars.dict json.dict corpus/template corpus/json
 
 if FUZZING
 noinst_PROGRAMS = fuzz_template
+if JSON
+noinst_PROGRAMS += fuzz_json
+endif
 endif
 
 fuzz_template_SOURCES = fuzz_template.c
+fuzz_json_SOURCES = fuzz_json.c

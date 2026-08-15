@@ -224,11 +224,10 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
     switch( json_object_get_type(intern->object) ) {
         case json_type_object: {
             entry = json_object_get_object(intern->object)->head;
-            if (unlikely(entry == NULL)) { // LCOV_EXCL_START
-                assert(entry != NULL);
+            if (unlikely(entry == NULL)) {
                 it->next = &hbs_json_iterator_next_void;
                 return false;
-            } // LCOV_EXCL_STOP
+            }
             char * tmp = (char *) entry->k;
             it->usr = (void *) entry;
             it->key = handlebars_string_ctor(intern->user.ctx, tmp, strlen(tmp));
@@ -239,6 +238,10 @@ static bool hbs_json_iterator_init(struct handlebars_value_iterator * it, struct
         }
 
         case json_type_array:
+            if( unlikely(json_object_array_length(intern->object) == 0) ) {
+                it->next = &hbs_json_iterator_next_void;
+                return false;
+            }
             it->index = 0;
             handlebars_value_init_json_object(intern->user.ctx, it->cur, json_object_array_get_idx(intern->object, (int) it->index));
             it->next = &hbs_json_iterator_next_array;

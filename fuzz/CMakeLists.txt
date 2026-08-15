@@ -12,3 +12,10 @@ add_executable(fuzz_template fuzz_template.c)
 target_link_libraries(fuzz_template handlebars_static ${LIBS})
 set_target_properties(fuzz_template PROPERTIES
     LINK_FLAGS "-fsanitize=fuzzer,address,undefined")
+
+if(LIBJSONC_LIBRARY)
+    add_executable(fuzz_json fuzz_json.c)
+    target_link_libraries(fuzz_json handlebars_static ${LIBS})
+    set_target_properties(fuzz_json PROPERTIES
+        LINK_FLAGS "-fsanitize=fuzzer,address,undefined")
+endif()

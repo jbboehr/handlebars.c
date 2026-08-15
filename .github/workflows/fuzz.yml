@@ -16,9 +16,18 @@ concurrency:
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-    template:
+    fuzz:
+        name: ${{ matrix.target }}
         runs-on: ubuntu-24.04
         timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - target: template
+                      dictionary: handlebars.dict
+                    - target: json
+                      dictionary: json.dict
         env:
             FUZZ_SECONDS: ${{ github.event_name == 'schedule' && '900' || '60' }}
         steps:
@@ -27,15 +36,15 @@ jobs:
             - name: Install packages
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y autoconf automake clang-18 libclang-rt-18-dev libtalloc-dev libtool m4 make pkg-config
+                  sudo apt-get install -y autoconf automake clang-18 libclang-rt-18-dev libjson-c-dev libtalloc-dev libtool m4 make pkg-config
 
             - name: Restore generated corpus
               uses: actions/cache@v5
               with:
-                  path: fuzz-corpus
-                  key: fuzz-template-${{ runner.os }}-${{ github.run_id }}
+                  path: fuzz-corpus/${{ matrix.target }}
+                  key: fuzz-${{ matrix.target }}-${{ runner.os }}-${{ github.run_id }}
                   restore-keys: |
-                      fuzz-template-${{ runner.os }}-
+                      fuzz-${{ matrix.target }}-${{ runner.os }}-
 
             - name: Create configure
               run: autoreconf -i
@@ -53,7 +62,6 @@ jobs:
                   --disable-flex
                   --disable-gperf
                   --disable-hardening
-                  --disable-json
                   --disable-lmdb
                   --disable-pcre
                   --disable-pthread
@@ -68,17 +76,17 @@ jobs:
             - name: Build fuzz target
               run: make -j2
 
-            - name: Run template fuzzer
+            - name: Run ${{ matrix.target }} fuzzer
               env:
                   ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:strict_string_checks=1
                   UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
               run: |
-                  mkdir -p fuzz-artifacts fuzz-corpus
-                  ./fuzz/fuzz_template \
-                      fuzz-corpus \
-                      fuzz/corpus/template \
+                  mkdir -p fuzz-artifacts fuzz-corpus/${{ matrix.target }}
+                  ./fuzz/fuzz_${{ matrix.target }} \
+                      fuzz-corpus/${{ matrix.target }} \
+                      fuzz/corpus/${{ matrix.target }} \
                       -artifact_prefix=fuzz-artifacts/ \
-                      -dict=fuzz/handlebars.dict \
+                      -dict=fuzz/${{ matrix.dictionary }} \
                       -max_len=65536 \
                       -max_total_time="$FUZZ_SECONDS" \
                       -timeout=10
@@ -87,6 +95,6 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v7
               with:
-                  name: fuzz-artifacts-${{ github.run_id }}
+                  name: fuzz-artifacts-${{ matrix.target }}-${{ github.run_id }}
                   path: fuzz-artifacts/
                   if-no-files-found: ignore

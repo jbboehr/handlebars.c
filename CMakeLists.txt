@@ -36,7 +36,7 @@ add_definitions(-DHANDLEBARS_TESTING_EXPORTS="1")
 option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
 option(HANDLEBARS_ENABLE_FUZZING
-        "Build the libFuzzer template target" OFF)
+        "Build the libFuzzer targets" OFF)
 
 if(HANDLEBARS_ENABLE_FUZZING)
     if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
