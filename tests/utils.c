@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <pcre.h>
+#include <pcre2.h>
 #include <talloc.h>
 
 #include <errno.h>
@@ -187,33 +187,33 @@ int scan_directory_callback(char * dirname, scan_directory_cb cb)
 
 int regex_compare(const char * regex, const char * string, char ** error)
 {
-    pcre * re;
-    const char * errmsg = NULL;
-    int erroffset;
-    int ovector[30];
+    pcre2_code *re;
+    int errorcode = 0;
+    PCRE2_UCHAR errmsg[128];
+    PCRE2_SIZE erroffset;
+    pcre2_match_data *ovector;
     int rc, ret;
 
-    re = pcre_compile(regex, 0, &errmsg, &erroffset, NULL);
+    re = pcre2_compile((PCRE2_SPTR)regex, PCRE2_ZERO_TERMINATED, 0, &errorcode, &erroffset, NULL);
 
-    if( !re ) {
-        *error = talloc_asprintf(NULL, "Regex '%s' compilation failed at offset %d: %s\n", regex, erroffset, errmsg);
+    if (!re) {
+        pcre2_get_error_message(errorcode, errmsg, sizeof(errmsg));
+        *error = talloc_asprintf(NULL, "Regex '%s' compilation failed at offset %ld: %s\n", regex, erroffset, errmsg);
         return 1;
-    } else if( errmsg ) {
-        *error = talloc_strdup(NULL, errmsg);
-        ret = 2;
-        goto error;
     }
 
-    rc = pcre_exec(re, NULL, string, (int) strlen(string), 0, 0, ovector, 30);
-    if( rc <= 0 ) {
+    ovector = pcre2_match_data_create_from_pattern(re, NULL);
+    rc = pcre2_match(re, (PCRE2_SPTR)string, (PCRE2_SIZE)strlen(string), 0, 0, ovector, NULL);
+    if (rc <= 0) {
         ret = 2;
         *error = talloc_asprintf(NULL, "Regex '%s' didn't match string '%s'", regex, string);
     } else {
         ret = 0;
     }
 
-error:
-    pcre_free(re);
+    pcre2_match_data_free(ovector);
+    pcre2_code_free(re);
+
     return ret;
 }
 
