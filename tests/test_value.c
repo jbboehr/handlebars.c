@@ -21,17 +21,224 @@
 
 #include <check.h>
 #include <stdio.h>
+#include <string.h>
 #include <talloc.h>
 
 #include "handlebars.h"
+#include "handlebars_value_private.h"
+#include "handlebars_closure.h"
+#include "handlebars_compiler.h"
+#include "handlebars_helpers.h"
 #include "handlebars_memory.h"
 
 #include "handlebars_map.h"
+#include "handlebars_opcode_serializer.h"
+#include "handlebars_parser.h"
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
+#include "handlebars_value_handlers.h"
+#include "handlebars_vm.h"
+#include "handlebars_vm_private.h"
 
 #include "utils.h"
+
+
+static struct handlebars_value * test_closure_callback(
+    int localc,
+    struct handlebars_value * localv,
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) localc;
+    (void) localv;
+    (void) argc;
+    (void) argv;
+    (void) options;
+    (void) callback_vm;
+    return rv;
+}
+
+static struct handlebars_value * test_throwing_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) argc;
+    (void) argv;
+    (void) options;
+    (void) rv;
+    handlebars_throw(HBSCTX(callback_vm), HANDLEBARS_ERROR, "Intentional helper failure");
+}
+
+static struct handlebars_module * test_compile_template(const char * tmpl)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(
+        local_parser,
+        handlebars_string_ctor(context, tmpl, strlen(tmpl)),
+        0
+    );
+    struct handlebars_program * program;
+    struct handlebars_module * module;
+
+    ck_assert_msg(
+        ast != NULL,
+        "Template parse failed for '%s': %s",
+        tmpl,
+        handlebars_error_msg(context)
+    );
+    program = handlebars_compiler_compile_ex(local_compiler, ast);
+    ck_assert_ptr_nonnull(program);
+    module = handlebars_program_serialize(context, program);
+    handlebars_compiler_dtor(local_compiler);
+    handlebars_parser_dtor(local_parser);
+    return module;
+}
+
+
+START_TEST(test_closure_rejects_negative_local_count)
+{
+    struct handlebars_closure * closure;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        return;
+    }
+
+    closure = handlebars_closure_ctor(vm, test_closure_callback, -1, NULL);
+    context->e->jmp = previous;
+    (void) closure;
+    ck_abort_msg("Expected a negative closure local count to be rejected");
+}
+END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+static const struct handlebars_value_handlers test_user_without_dtor_handlers = {
+    .name = "test-user-without-dtor"
+};
+
+START_TEST(test_user_value_allows_optional_destructor)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_user * user = handlebars_talloc_zero(
+        context,
+        struct handlebars_user
+    );
+
+    ck_assert_ptr_nonnull(user);
+    handlebars_user_init(user, context, &test_user_without_dtor_handlers);
+    handlebars_value_user(value, user);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_delimiter_replacement_releases_old_values)
+{
+    struct handlebars_value * result;
+    struct handlebars_options options = {0};
+    size_t first_blocks;
+    HANDLEBARS_VALUE_DECL(rv);
+    HANDLEBARS_VALUE_ARRAY_DECL(argv, 2);
+
+    handlebars_value_str(&argv[0], handlebars_string_ctor(context, HBS_STRL("<%")));
+    handlebars_value_str(&argv[1], handlebars_string_ctor(context, HBS_STRL("%>")));
+    result = handlebars_builtin_hbsc_set_delimiters(2, argv, &options, vm, rv);
+    ck_assert_ptr_eq(result, rv);
+    HANDLEBARS_VALUE_ARRAY_UNDECL(argv, 2);
+    first_blocks = talloc_total_blocks(context);
+
+    {
+        HANDLEBARS_VALUE_ARRAY_DECL(replacement, 2);
+
+        handlebars_value_str(
+            &replacement[0],
+            handlebars_string_ctor(context, HBS_STRL("[["))
+        );
+        handlebars_value_str(
+            &replacement[1],
+            handlebars_string_ctor(context, HBS_STRL("]]"))
+        );
+        result = handlebars_builtin_hbsc_set_delimiters(
+            2,
+            replacement,
+            &options,
+            vm,
+            rv
+        );
+        ck_assert_ptr_eq(result, rv);
+        HANDLEBARS_VALUE_ARRAY_UNDECL(replacement, 2);
+    }
+
+    ck_assert_uint_eq(talloc_total_blocks(context), first_blocks);
+    HANDLEBARS_VALUE_UNDECL(rv);
+}
+END_TEST
+#endif
+
+START_TEST(test_vm_reusable_after_helper_error)
+{
+    HANDLEBARS_VALUE_DECL(helper);
+    HANDLEBARS_VALUE_DECL(helpers);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * helper_map = handlebars_map_ctor(context, 1);
+    struct handlebars_module * failing = test_compile_template("{{boom}}");
+    struct handlebars_module * succeeding = test_compile_template("ok");
+    struct handlebars_string * output;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_value_helper(helper, test_throwing_helper);
+    helper_map = handlebars_map_str_update(
+        helper_map,
+        HBS_STRL("boom"),
+        helper
+    );
+    handlebars_value_map(helpers, helper_map);
+    handlebars_vm_set_helpers(vm, helpers);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+    } else {
+        (void) handlebars_vm_execute(vm, failing, input);
+        context->e->jmp = previous;
+        ck_abort_msg("Expected the helper to throw");
+    }
+
+    ck_assert_ptr_null(vm->stack);
+    ck_assert_ptr_null(vm->contextStack);
+    ck_assert_ptr_null(vm->hashStack);
+    ck_assert_ptr_null(vm->blockParamStack);
+    ck_assert_ptr_null(vm->partialBlockStack);
+    ck_assert_ptr_null(vm->last_context);
+    ck_assert_ptr_null(vm->module);
+    ck_assert_ptr_null(vm->buffer);
+
+    output = handlebars_vm_execute(vm, succeeding, input);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "ok");
+    handlebars_string_delref(output);
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(helpers);
+    HANDLEBARS_VALUE_UNDECL(helper);
+}
+END_TEST
 
 
 START_TEST(test_boolean_true)
@@ -481,6 +688,14 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_float, "Float");
     REGISTER_TEST_FIXTURE(s, test_string, "String");
     REGISTER_TEST_FIXTURE(s, test_value_self_assignment, "Value self-assignment");
+    REGISTER_TEST_FIXTURE(s, test_closure_rejects_negative_local_count, "Closure local count bounds");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_user_value_allows_optional_destructor, "Optional user destructor");
+#endif
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_delimiter_replacement_releases_old_values, "Delimiter replacement ownership");
+#endif
+    REGISTER_TEST_FIXTURE(s, test_vm_reusable_after_helper_error, "VM reuse after helper error");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");
     REGISTER_TEST_FIXTURE(s, test_map_iterator_sparse, "Map iterator (sparse)");

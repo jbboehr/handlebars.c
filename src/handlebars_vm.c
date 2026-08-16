@@ -657,6 +657,9 @@ ACCEPT_FUNCTION(invoke_ambiguous)
 
     VM_SETUP_OPTIONS(argc);
     options.name = opcode->op1.data.string.string;
+    if( vm->last_helper != NULL ) {
+        handlebars_string_delref(vm->last_helper);
+    }
     vm->last_helper = NULL;
 
     if (vm->flags & handlebars_compiler_flag_mustache_style_lambdas && is_callable) {
@@ -1412,25 +1415,43 @@ struct handlebars_string * handlebars_vm_execute_ex(
     struct handlebars_value * data,
     struct handlebars_value * block_params
 ) {
-    jmp_buf * prev = HBSCTX(vm)->e->jmp;
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile prev = error->jmp;
     struct handlebars_module * prev_module = vm->module;
+    struct handlebars_string * prev_buffer = vm->buffer;
+    struct handlebars_string * prev_last_helper = vm->last_helper;
     unsigned long prev_flags = vm->flags;
     struct handlebars_value * prev_last_context = vm->last_context;
     struct handlebars_string * prev_delim_open = vm->delim_open;
     struct handlebars_string * prev_delim_close = vm->delim_close;
+    long prev_depth = vm->depth;
+    struct handlebars_stack_save_buf st;
+    struct handlebars_stack_save_buf hst;
+    struct handlebars_stack_save_buf cst;
+    struct handlebars_stack_save_buf bst;
+    struct handlebars_stack_save_buf pst;
+    HANDLEBARS_VALUE_DECL(prev_data);
+    HANDLEBARS_VALUE_DECL(prev_last_context_value);
 
     struct handlebars_string * volatile buffer = NULL;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    bool volatile setup_last_context = false;
     bool volatile setup_stacks = false;
     jmp_buf buf;
 
-    // Save jump buffer
-    if( !prev ) {
-        if( handlebars_setjmp_ex(vm, &buf) ) {
-            goto done;
-        }
+    handlebars_value_value(prev_data, &vm->data);
+    if( prev_delim_open != NULL ) {
+        handlebars_string_addref(prev_delim_open);
+    }
+    if( prev_delim_close != NULL ) {
+        handlebars_string_addref(prev_delim_close);
+    }
+    if( prev_last_helper != NULL ) {
+        handlebars_string_addref(prev_last_helper);
     }
 
-    // Setup stacks
+    // Allocate alloca-backed state before setjmp so it remains valid while
+    // cleaning up after a longjmp from a helper or closure.
     if (vm->stack == NULL) {
         vm->stack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
         vm->contextStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
@@ -1440,9 +1461,26 @@ struct handlebars_string * handlebars_vm_execute_ex(
         setup_stacks = true;
     }
 
+    st = handlebars_stack_save(vm->stack);
+    hst = handlebars_stack_save(vm->hashStack);
+    cst = handlebars_stack_save(vm->contextStack);
+    bst = handlebars_stack_save(vm->blockParamStack);
+    pst = handlebars_stack_save(vm->partialBlockStack);
+
     if (vm->last_context == NULL) {
         vm->last_context = alloca(HANDLEBARS_VALUE_SIZE);
         handlebars_value_init(vm->last_context);
+        setup_last_context = true;
+    } else {
+        handlebars_value_value(prev_last_context_value, vm->last_context);
+    }
+
+    // Always install a local boundary. Callers may catch the rethrown error,
+    // so VM state must no longer refer to this frame's alloca-backed stacks.
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        buffer = NULL;
+        goto done;
     }
 
     vm->module = module;
@@ -1452,7 +1490,41 @@ struct handlebars_string * handlebars_vm_execute_ex(
     buffer = handlebars_vm_execute_program_ex(vm, program, context, data, block_params);
 
 done:
-    HBSCTX(vm)->e->jmp = prev;
+    error->jmp = prev;
+
+    handlebars_stack_restore(vm->stack, st);
+    handlebars_stack_restore(vm->hashStack, hst);
+    handlebars_stack_restore(vm->contextStack, cst);
+    handlebars_stack_restore(vm->blockParamStack, bst);
+    handlebars_stack_restore(vm->partialBlockStack, pst);
+
+    if( vm->buffer != prev_buffer ) {
+        if( vm->buffer != NULL ) {
+            handlebars_string_delref(vm->buffer);
+        }
+        vm->buffer = prev_buffer;
+    }
+
+    handlebars_value_value(&vm->data, prev_data);
+
+    if( setup_last_context ) {
+        handlebars_value_dtor(vm->last_context);
+    } else {
+        handlebars_value_value(prev_last_context, prev_last_context_value);
+    }
+
+    if( vm->delim_open != NULL ) {
+        handlebars_string_delref(vm->delim_open);
+    }
+    if( vm->delim_close != NULL ) {
+        handlebars_string_delref(vm->delim_close);
+    }
+    if( vm->last_helper != NULL ) {
+        handlebars_string_delref(vm->last_helper);
+    }
+    vm->delim_open = prev_delim_open;
+    vm->delim_close = prev_delim_close;
+    vm->last_helper = prev_last_helper;
 
     // Reset stacks
     if (setup_stacks) {
@@ -1464,11 +1536,17 @@ done:
     }
 
     // Reset
-    vm->delim_open = prev_delim_open;
-    vm->delim_close = prev_delim_close;
     vm->last_context = prev_last_context;
     vm->module = prev_module;
     vm->flags = prev_flags;
+    vm->depth = prev_depth;
+
+    HANDLEBARS_VALUE_UNDECL(prev_last_context_value);
+    HANDLEBARS_VALUE_UNDECL(prev_data);
+
+    if( caught != HANDLEBARS_SUCCESS && prev != NULL ) {
+        longjmp(*prev, caught);
+    }
 
     return (struct handlebars_string *) buffer;
 }

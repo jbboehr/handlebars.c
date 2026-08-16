@@ -82,7 +82,23 @@ struct handlebars_closure * handlebars_closure_ctor(
     int localc,
     struct handlebars_value * localv
 ) {
-    struct handlebars_closure * closure = handlebars_talloc_zero_size(vm, sizeof(struct handlebars_closure) + (sizeof(struct handlebars_value) * localc));
+    size_t local_count;
+    size_t size;
+    struct handlebars_closure * closure;
+
+    if( unlikely(localc < 0 || (localc > 0 && localv == NULL)) ) {
+        handlebars_throw(HBSCTX(vm), HANDLEBARS_ERROR, "Invalid closure local values");
+    }
+
+    local_count = (size_t) localc;
+    if( unlikely(local_count > (SIZE_MAX - sizeof(struct handlebars_closure))
+            / sizeof(struct handlebars_value)) ) {
+        handlebars_throw(HBSCTX(vm), HANDLEBARS_NOMEM, "Closure local values are too large");
+    }
+    size = sizeof(struct handlebars_closure)
+        + sizeof(struct handlebars_value) * local_count;
+    closure = handlebars_talloc_zero_size(vm, size);
+    HANDLEBARS_MEMCHECK(closure, HBSCTX(vm));
     talloc_set_type(closure, struct handlebars_closure);
 #ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_rc_init(&closure->rc);

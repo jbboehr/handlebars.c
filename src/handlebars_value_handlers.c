@@ -37,7 +37,9 @@
 static void user_rc_dtor(struct handlebars_rc * rc)
 {
     struct handlebars_user * user = /*talloc_get_type_abort(*/hbs_container_of(rc, struct handlebars_user, rc)/*, struct handlebars_user)*/;
-    user->handlers->dtor(user);
+    if( user->handlers->dtor != NULL ) {
+        user->handlers->dtor(user);
+    }
     handlebars_talloc_free(user);
 }
 #endif
