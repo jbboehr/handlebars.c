@@ -31,3 +31,10 @@ if(LMDB_LIBRARIES)
     set_target_properties(fuzz_lmdb PROPERTIES
         LINK_FLAGS "-fsanitize=fuzzer,address,undefined")
 endif()
+
+if(LIBYAML_LIBRARIES)
+    add_executable(fuzz_yaml fuzz_yaml.c)
+    target_link_libraries(fuzz_yaml handlebars_static ${LIBS})
+    set_target_properties(fuzz_yaml PROPERTIES
+        LINK_FLAGS "-fsanitize=fuzzer,address,undefined")
+endif()

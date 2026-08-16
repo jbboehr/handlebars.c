@@ -36,6 +36,9 @@ jobs:
                     - target: lmdb
                       dictionary: lmdb.dict
                       corpora: fuzz/corpus/lmdb fuzz/corpus/module
+                    - target: yaml
+                      dictionary: yaml.dict
+                      corpora: fuzz/corpus/yaml
         env:
             FUZZ_SECONDS: ${{ github.event_name == 'schedule' && '900' || '60' }}
         steps:
@@ -44,7 +47,7 @@ jobs:
             - name: Install packages
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y autoconf automake clang-18 libclang-rt-18-dev libjson-c-dev liblmdb-dev libtalloc-dev libtool m4 make pkg-config
+                  sudo apt-get install -y autoconf automake clang-18 libclang-rt-18-dev libjson-c-dev liblmdb-dev libtalloc-dev libtool libyaml-dev m4 make pkg-config
 
             - name: Restore generated corpus
               uses: actions/cache@v5
@@ -76,7 +79,7 @@ jobs:
                   --disable-subunit
                   --disable-testing-exports
                   --disable-valgrind
-                  --disable-yaml
+                  --enable-yaml
                   --without-handlebars-spec
                   --without-mustache-spec
 

@@ -1,0 +1,7 @@
+---
+a: 1
+foo:
+  bar: true
+items:
+  - name: first
+    value: 2.5

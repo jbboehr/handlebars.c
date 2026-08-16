@@ -1,0 +1,4 @@
+---
+base: &base
+  name: test
+copy: *base

@@ -53,6 +53,21 @@ void handlebars_value_init_yaml_string(
     const char * yaml
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Initialize a value from a length-delimited YAML string
+ * @param[in] ctx
+ * @param[in] value
+ * @param[in] yaml
+ * @param[in] length
+ * @return void
+ */
+void handlebars_value_init_yaml_stringl(
+    struct handlebars_context * ctx,
+    struct handlebars_value * value,
+    const char * yaml,
+    size_t length
+) HBS_ATTR_NONNULL_ALL;
+
 HBS_EXTERN_C_END
 
 #endif /* HANDLEBARS_YAML_H */
