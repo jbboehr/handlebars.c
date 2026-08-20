@@ -341,6 +341,36 @@ START_TEST(test_map_sizeof)
 }
 END_TEST
 
+START_TEST(test_map_string_apis_release_temporary_keys)
+{
+    size_t outer_blocks = talloc_total_blocks(context);
+    struct handlebars_context * owner = handlebars_context_ctor_ex(context);
+    struct handlebars_map * map = handlebars_map_ctor(owner, 8);
+    HANDLEBARS_VALUE_DECL(value);
+
+    size_t map_blocks = talloc_total_blocks(owner);
+    handlebars_value_integer(value, 1);
+    map = handlebars_map_str_add(map, HBS_STRL("present"), value);
+    map = handlebars_map_str_add(map, HBS_STRL("second"), value);
+    map = handlebars_map_str_add(map, HBS_STRL("third"), value);
+    ck_assert_uint_eq(talloc_total_blocks(owner), map_blocks + 3);
+
+    map_blocks = talloc_total_blocks(owner);
+    for( size_t i = 0; i < 100; i++ ) {
+        ck_assert_ptr_nonnull(handlebars_map_str_find(map, HBS_STRL("present")));
+        ck_assert_ptr_null(handlebars_map_str_find(map, HBS_STRL("missing")));
+        map = handlebars_map_str_update(map, HBS_STRL("present"), value);
+        map = handlebars_map_str_remove(map, HBS_STRL("missing"));
+    }
+    ck_assert_uint_eq(talloc_total_blocks(owner), map_blocks);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_map_dtor(map);
+    handlebars_context_dtor(owner);
+    ck_assert_uint_eq(talloc_total_blocks(context), outer_blocks);
+}
+END_TEST
+
 START_TEST(test_map_remove_nonexist)
 {
     struct handlebars_map * map;
@@ -557,6 +587,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_add_with_separation, "Map add with separation");
 #endif
     REGISTER_TEST_FIXTURE(s, test_map_sizeof, "Map sizeof");
+    REGISTER_TEST_FIXTURE(s, test_map_string_apis_release_temporary_keys, "Map string APIs release temporary keys");
     REGISTER_TEST_FIXTURE(s, test_map_remove_nonexist, "Map remove noexistent key");
     REGISTER_TEST_FIXTURE(s, test_map_duplicate_after_rehash_preserves_original, "Duplicate insertion preserves map after rehash");
     REGISTER_TEST_FIXTURE(s, test_map_add_while_iterating_full_map_preserves_original, "Insertion into an iteration-locked full map preserves the map");

@@ -783,8 +783,18 @@ static int do_execute(void)
     return 0;
 }
 
+static void cleanup_root(void)
+{
+    if( root != NULL ) {
+        talloc_free(root);
+        root = NULL;
+    }
+}
+
 int main(int argc, char * argv[])
 {
+    int rc;
+
 #ifdef HANDLEBARS_HAVE_VALGRIND
     if (RUNNING_ON_VALGRIND) {
         pool_size = 0;
@@ -792,10 +802,12 @@ int main(int argc, char * argv[])
 #endif
 
     root = talloc_new(NULL);
+    atexit(cleanup_root);
 
     if( argc <= 1 ) {
         do_usage();
-        return 1;
+        rc = 1;
+        goto done;
     }
 
     readOpts(argc, argv);
@@ -814,20 +826,25 @@ int main(int argc, char * argv[])
     }
 
     switch( mode ) {
-        case handlebarsc_mode_version: return do_version();
-        case handlebarsc_mode_lex: return do_lex();
-        case handlebarsc_mode_parse: return do_parse();
-        case handlebarsc_mode_compile: return do_compile();
-        case handlebarsc_mode_module: return do_module();
-        case handlebarsc_mode_execute: return do_execute();
-        case handlebarsc_mode_debuginfo: return do_debuginfo();
-        case handlebarsc_mode_usage: return do_usage();
+        case handlebarsc_mode_version: rc = do_version(); break;
+        case handlebarsc_mode_lex: rc = do_lex(); break;
+        case handlebarsc_mode_parse: rc = do_parse(); break;
+        case handlebarsc_mode_compile: rc = do_compile(); break;
+        case handlebarsc_mode_module: rc = do_module(); break;
+        case handlebarsc_mode_execute: rc = do_execute(); break;
+        case handlebarsc_mode_debuginfo: rc = do_debuginfo(); break;
+        case handlebarsc_mode_usage: rc = do_usage(); break;
 
         // LCOV_EXCL_START
         default:
             assert(0);
             do_usage();
-            return 1;
+            rc = 1;
+            break;
         // LCOV_EXCL_STOP
     }
+
+done:
+    cleanup_root();
+    return rc;
 }

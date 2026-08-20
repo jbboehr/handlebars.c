@@ -56,9 +56,9 @@ jobs:
             CC: clang-18
             CFLAGS: "-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined"
             LDFLAGS: "-fsanitize=address,undefined"
-            # Check forks after allocating suite state, which looks leaked in each child.
-            # LeakSanitizer remains enabled in the dedicated fuzz workflow.
-            ASAN_OPTIONS: detect_leaks=0:halt_on_error=1:strict_string_checks=1
+            # Keep Check in-process so LeakSanitizer sees fixture cleanup.
+            CK_FORK: "no"
+            ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:strict_string_checks=1
             UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         steps:
             - uses: actions/checkout@v6

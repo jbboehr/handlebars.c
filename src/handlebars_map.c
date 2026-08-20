@@ -707,12 +707,21 @@ struct handlebars_map * handlebars_map_sort_r(
 
 // compat
 
+static void map_release_temporary_string(struct handlebars_string * string)
+{
+#ifdef HANDLEBARS_NO_REFCOUNT
+    handlebars_talloc_free(string);
+#else
+    handlebars_string_delref(string);
+#endif
+}
+
 struct handlebars_map * handlebars_map_str_remove(struct handlebars_map * map, const char * key, size_t len)
 {
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
     handlebars_string_addref(string);
     map = handlebars_map_remove(map, string);
-    handlebars_string_delref(string);
+    map_release_temporary_string(string);
     return map;
 }
 
@@ -721,7 +730,7 @@ struct handlebars_map * handlebars_map_str_add(struct handlebars_map * map, cons
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
     handlebars_string_addref(string);
     map = handlebars_map_add(map, string, value);
-    handlebars_string_delref(string);
+    map_release_temporary_string(string);
     return map;
 }
 
@@ -730,7 +739,7 @@ struct handlebars_value * handlebars_map_str_find(struct handlebars_map * map, c
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
     handlebars_string_addref(string);
     struct handlebars_value * value = handlebars_map_find(map, string);
-    handlebars_string_delref(string);
+    map_release_temporary_string(string);
     return value;
 }
 
@@ -739,6 +748,6 @@ struct handlebars_map * handlebars_map_str_update(struct handlebars_map * map, c
     struct handlebars_string * string = handlebars_string_ctor(CONTEXT, key, len);
     handlebars_string_addref(string);
     map = handlebars_map_update(map, string, value);
-    handlebars_string_delref(string);
+    map_release_temporary_string(string);
     return map;
 }

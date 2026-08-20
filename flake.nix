@@ -128,10 +128,10 @@
             attr = "handlebars-c-cmake";
             cmakeSupport = true;
           }
-          #{
-          #  attr = "handlebars-c-norc";
-          #  noRefcountingSupport = true;
-          #}
+          {
+            attr = "handlebars-c-norc";
+            noRefcountingSupport = true;
+          }
           {
             attr = "handlebars-c-debug";
             debugSupport = true;

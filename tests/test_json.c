@@ -239,6 +239,12 @@ START_TEST(test_map_find_json)
 	value2 = handlebars_value_map_str_find(value, HBS_STRL("c"), rv);
 	ck_assert_ptr_eq(value2, NULL);
 
+    size_t blocks = talloc_total_blocks(context);
+    for( size_t i = 0; i < 100; i++ ) {
+        ck_assert_ptr_null(handlebars_value_map_str_find(value, HBS_STRL("missing"), rv));
+    }
+    ck_assert_uint_eq(talloc_total_blocks(context), blocks);
+
     HANDLEBARS_VALUE_UNDECL(value);
     HANDLEBARS_VALUE_UNDECL(rv);
     ASSERT_INIT_BLOCKS();

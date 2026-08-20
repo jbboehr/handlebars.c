@@ -667,7 +667,11 @@ struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value 
             struct handlebars_string * str = handlebars_string_ctor(value->v.user->ctx, key, len);
             handlebars_string_addref(str);
 			result = handlebars_value_get_handlers(value)->map_find(value, str, rv);
+#ifdef HANDLEBARS_NO_REFCOUNT
+            handlebars_talloc_free(str);
+#else
             handlebars_string_delref(str);
+#endif
 		}
 	} else if( value->type == HANDLEBARS_VALUE_TYPE_MAP ) {
         struct handlebars_value * tmp = handlebars_map_str_find(value->v.map, key, len);
