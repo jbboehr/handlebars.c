@@ -443,7 +443,7 @@ AM_CONDITIONAL([PTHREAD], [test "x$enable_pthread" == "xyes"])
 
 # refcounting
 AC_ARG_ENABLE([refcounting],
-	[AS_HELP_STRING([--disable-refcounting], [disable refcounting of handlebars values])], [])
+	[AS_HELP_STRING([--disable-refcounting], [use experimental bounded-context arena ownership])], [])
 
 AS_IF([test "x$enable_refcounting" == "xno"], [
     AC_DEFINE([HANDLEBARS_NO_REFCOUNT], [1], [Disable refcounting of handlebars values])

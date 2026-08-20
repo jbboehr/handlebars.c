@@ -394,12 +394,11 @@ struct handlebars_map * handlebars_map_ctor(struct handlebars_context * ctx, siz
     return map;
 }
 
-struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_map, size_t new_capacity)
+static struct handlebars_map * map_copy_ctor_with_capacity(
+    struct handlebars_map * prev_map,
+    size_t new_capacity
+)
 {
-    if (new_capacity < prev_map->vec_capacity) {
-        new_capacity = prev_map->vec_capacity;
-    }
-
     struct handlebars_map * map = handlebars_map_ctor(prev_map->ctx, new_capacity);
 
     handlebars_map_foreach(prev_map, index, key, value) {
@@ -407,6 +406,15 @@ struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_ma
     } handlebars_map_foreach_end(prev_map);
 
     return map;
+}
+
+struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_map, size_t new_capacity)
+{
+    if (new_capacity < prev_map->vec_capacity) {
+        new_capacity = prev_map->vec_capacity;
+    }
+
+    return map_copy_ctor_with_capacity(prev_map, new_capacity);
 }
 
 
@@ -456,14 +464,22 @@ struct handlebars_map * handlebars_map_add(struct handlebars_map * map, struct h
 
 struct handlebars_map * handlebars_map_remove(struct handlebars_map * map, struct handlebars_string * key)
 {
+    struct ht_find_result o = map_find_entry(map, key);
+
+    /* Removing a missing key is a no-op. In particular, do not allocate a
+     * replacement merely because an otherwise unchanged map has low load. */
+    if (!o.entry) {
+        return map;
+    }
+
     // Rehash
     map = handlebars_map_rehash(map, handlebars_map_load_factor(map) < HANDLEBARS_MAP_MIN_LOAD_FACTOR);
 
     // Remove
-    struct ht_find_result o = map_find_entry(map, key);
+    o = map_find_entry(map, key);
     struct handlebars_map_entry * entry = o.entry;
-    if (!entry) {
-        return map;
+    if( unlikely(entry == NULL) ) {
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Failed to find map entry after rehash");
     }
 
     handlebars_string_delref(entry->key);
@@ -574,7 +590,7 @@ struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool 
     if (force || map->vec_offset == map->vec_capacity || handlebars_map_load_factor(map) > HANDLEBARS_MAP_MAX_LOAD_FACTOR) {
         size_t vec_capacity = (size_t) 1 << map_choose_vec_capacity_log2(map->i + 1);
         struct handlebars_map * prev_map = map;
-        map = handlebars_map_copy_ctor(prev_map, vec_capacity);
+        map = map_copy_ctor_with_capacity(prev_map, vec_capacity);
 #ifndef HANDLEBARS_NO_REFCOUNT
         if (handlebars_rc_refcount(&prev_map->rc) >= 1) { // ugh
             handlebars_map_addref(map);

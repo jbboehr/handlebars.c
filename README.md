@@ -86,6 +86,19 @@ docker pull jbboehr/handlebars.c:latest
 docker pull docker.pkg.github.com/jbboehr/handlebars.c/handlebarsc:latest
 ```
 
+### Experimental no-refcount mode
+
+Configuring with `--disable-refcounting` replaces per-object reference counting
+with bounded-context arena ownership. This mode does not reclaim aliased or
+cyclic values individually and is intended for experimentation and build
+coverage, not as a drop-in ownership model.
+
+Use a dedicated talloc context for each VM or request and destroy that context
+after the work completes. Cache and partial-loader allocations follow their
+cache or loader context instead of a VM context, so applications using this
+mode must also bound those contexts rather than keep them for the lifetime of
+the process.
+
 ## Usage
 
 ```console

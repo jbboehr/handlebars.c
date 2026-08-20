@@ -124,6 +124,13 @@ START_TEST(test_closure_rejects_negative_local_count)
 }
 END_TEST
 
+START_TEST(test_vm_owns_default_maps)
+{
+    ck_assert_ptr_eq(talloc_parent(handlebars_value_get_map(&vm->helpers)), vm);
+    ck_assert_ptr_eq(talloc_parent(handlebars_value_get_map(&vm->partials)), vm);
+}
+END_TEST
+
 #ifndef HANDLEBARS_NO_REFCOUNT
 static const struct handlebars_value_handlers test_user_without_dtor_handlers = {
     .name = "test-user-without-dtor"
@@ -689,6 +696,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_string, "String");
     REGISTER_TEST_FIXTURE(s, test_value_self_assignment, "Value self-assignment");
     REGISTER_TEST_FIXTURE(s, test_closure_rejects_negative_local_count, "Closure local count bounds");
+    REGISTER_TEST_FIXTURE(s, test_vm_owns_default_maps, "VM owns its default maps");
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_user_value_allows_optional_destructor, "Optional user destructor");
 #endif

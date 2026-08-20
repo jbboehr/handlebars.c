@@ -374,14 +374,48 @@ END_TEST
 START_TEST(test_map_remove_nonexist)
 {
     struct handlebars_map * map;
+    struct handlebars_map * original;
     struct handlebars_string * str1;
+    size_t blocks;
 
-    map = handlebars_map_ctor(context, 3);
+    map = handlebars_map_ctor(context, 64);
     str1 = handlebars_string_ctor(context, HBS_STRL("a"));
+    original = map;
+    blocks = talloc_total_blocks(context);
     map = handlebars_map_remove(map, str1);
+    ck_assert_ptr_eq(map, original);
+    ck_assert_uint_eq(talloc_total_blocks(context), blocks);
     handlebars_string_delref(str1);
     handlebars_map_delref(map);
 
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_map_remove_shrinks_low_load_map)
+{
+    struct handlebars_map * map = handlebars_map_ctor(context, 64);
+    HANDLEBARS_VALUE_DECL(value);
+    size_t old_size;
+
+    for( long i = 0; i < 4; i++ ) {
+        char key[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(value, i + 1);
+        map = handlebars_map_str_add(map, key, 1, value);
+    }
+
+    old_size = talloc_get_size(map);
+    map = handlebars_map_str_remove(map, HBS_STRL("a"));
+
+    ck_assert_uint_eq(handlebars_map_count(map), 3);
+    ck_assert_uint_lt(talloc_get_size(map), old_size);
+    ck_assert_ptr_null(handlebars_map_str_find(map, HBS_STRL("a")));
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("b"))), 2);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("c"))), 3);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("d"))), 4);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_map_delref(map);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -588,7 +622,8 @@ static Suite * suite(void)
 #endif
     REGISTER_TEST_FIXTURE(s, test_map_sizeof, "Map sizeof");
     REGISTER_TEST_FIXTURE(s, test_map_string_apis_release_temporary_keys, "Map string APIs release temporary keys");
-    REGISTER_TEST_FIXTURE(s, test_map_remove_nonexist, "Map remove noexistent key");
+    REGISTER_TEST_FIXTURE(s, test_map_remove_nonexist, "Map remove nonexistent key");
+    REGISTER_TEST_FIXTURE(s, test_map_remove_shrinks_low_load_map, "Map removal shrinks a low-load map");
     REGISTER_TEST_FIXTURE(s, test_map_duplicate_after_rehash_preserves_original, "Duplicate insertion preserves map after rehash");
     REGISTER_TEST_FIXTURE(s, test_map_add_while_iterating_full_map_preserves_original, "Insertion into an iteration-locked full map preserves the map");
     REGISTER_TEST_FIXTURE(s, test_map_add_preserves_aliased_value_during_rehash, "Map add preserves aliased values during rehash");

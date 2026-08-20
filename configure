@@ -1634,7 +1634,7 @@ Optional Features:
                           enable handlebars memory testing functions
   --disable-pcre          disable support for PCRE2
   --disable-pthread       disable support for pthread
-  --disable-refcounting   disable refcounting of handlebars values
+  --disable-refcounting   use experimental bounded-context arena ownership
   --disable-subunit       disable support for subunit
   --enable-valgrind       Whether to enable Valgrind on the unit tests
   --disable-valgrind-memcheck
@@ -26956,5 +26956,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 printf "%s\n" "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

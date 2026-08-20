@@ -330,6 +330,7 @@ struct handlebars_string * handlebars_string_copy_ctor(
     return st;
 }
 
+#ifndef HANDLEBARS_NO_REFCOUNT
 static struct handlebars_string * string_copy_for_capacity(
     struct handlebars_context * context,
     const struct handlebars_string * string,
@@ -349,9 +350,7 @@ static struct handlebars_string * string_copy_for_capacity(
     HANDLEBARS_MEMCHECK(copy, context);
     talloc_set_type(copy, struct handlebars_string);
     memcpy(copy, string, used_size);
-#ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_rc_init(&copy->rc);
-#endif
     return copy;
 }
 
@@ -359,16 +358,13 @@ static struct handlebars_string * string_take_copy(
     struct handlebars_string * string,
     struct handlebars_string * copy
 ) {
-#ifndef HANDLEBARS_NO_REFCOUNT
     if( handlebars_rc_refcount(&string->rc) >= 1 ) {
         handlebars_string_addref(copy);
     }
     handlebars_string_delref(string);
-#else
-    handlebars_talloc_free(string);
-#endif
     return copy;
 }
+#endif
 
 static struct handlebars_string * string_reserve_for_write(
     struct handlebars_context * context,

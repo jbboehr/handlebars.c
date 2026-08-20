@@ -117,8 +117,8 @@ struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
     struct handlebars_vm * vm = handlebars_talloc_zero(ctx, struct handlebars_vm);
     HANDLEBARS_MEMCHECK(vm, ctx);
     handlebars_context_bind(ctx, HBSCTX(vm));
-    handlebars_value_map(&vm->helpers, handlebars_map_ctor(ctx, 0));
-    handlebars_value_map(&vm->partials, handlebars_map_ctor(ctx, 0));
+    handlebars_value_map(&vm->helpers, handlebars_map_ctor(HBSCTX(vm), 0));
+    handlebars_value_map(&vm->partials, handlebars_map_ctor(HBSCTX(vm), 0));
     return vm;
 }
 
