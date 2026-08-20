@@ -191,27 +191,47 @@ int regex_compare(const char * regex, const char * string, char ** error)
     int errorcode = 0;
     PCRE2_UCHAR errmsg[128];
     PCRE2_SIZE erroffset;
-    pcre2_match_data *ovector;
+    pcre2_match_data *match_data;
     int rc, ret;
 
     re = pcre2_compile((PCRE2_SPTR)regex, PCRE2_ZERO_TERMINATED, 0, &errorcode, &erroffset, NULL);
 
     if (!re) {
-        pcre2_get_error_message(errorcode, errmsg, sizeof(errmsg));
-        *error = talloc_asprintf(NULL, "Regex '%s' compilation failed at offset %ld: %s\n", regex, erroffset, errmsg);
+        if( pcre2_get_error_message(errorcode, errmsg, sizeof(errmsg)) < 0 ) {
+            snprintf((char *) errmsg, sizeof(errmsg), "PCRE2 error %d", errorcode);
+        }
+        *error = talloc_asprintf(
+            NULL,
+            "Regex '%s' compilation failed at offset %zu: %s",
+            regex,
+            erroffset,
+            (const char *) errmsg
+        );
         return 1;
     }
 
-    ovector = pcre2_match_data_create_from_pattern(re, NULL);
-    rc = pcre2_match(re, (PCRE2_SPTR)string, (PCRE2_SIZE)strlen(string), 0, 0, ovector, NULL);
-    if (rc <= 0) {
+    match_data = pcre2_match_data_create_from_pattern(re, NULL);
+    if( !match_data ) {
+        *error = talloc_strdup(NULL, "Failed to allocate PCRE2 match data");
+        pcre2_code_free(re);
+        return 1;
+    }
+
+    rc = pcre2_match(re, (PCRE2_SPTR)string, (PCRE2_SIZE)strlen(string), 0, 0, match_data, NULL);
+    if( rc == PCRE2_ERROR_NOMATCH ) {
         ret = 2;
         *error = talloc_asprintf(NULL, "Regex '%s' didn't match string '%s'", regex, string);
+    } else if( rc < 0 ) {
+        if( pcre2_get_error_message(rc, errmsg, sizeof(errmsg)) < 0 ) {
+            snprintf((char *) errmsg, sizeof(errmsg), "PCRE2 error %d", rc);
+        }
+        ret = 2;
+        *error = talloc_asprintf(NULL, "Regex '%s' match failed: %s", regex, (const char *) errmsg);
     } else {
         ret = 0;
     }
 
-    pcre2_match_data_free(ovector);
+    pcre2_match_data_free(match_data);
     pcre2_code_free(re);
 
     return ret;

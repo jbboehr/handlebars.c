@@ -49,7 +49,7 @@ endif()
 
 if(WIN32)
     add_definitions(-DYY_NO_UNISTD_H=1)
-    add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE_STATIC=1)
+    add_definitions(-DYAML_DECLARE_STATIC=1 -DPCRE2_STATIC=1)
 
     find_package(Libcompat REQUIRED)
     set(LIBS ${LIBS} ${LIBCOMPAT_LIBRARIES})
@@ -76,9 +76,10 @@ if(LMDB_LIBRARIES)
 endif()
 
 if(HANDLEBARS_ENABLE_TESTS)
-    find_package(PCRE REQUIRED)
-    include_directories(${PCRE_INCLUDE_DIRS})
-    set(LIBS ${LIBS} ${PCRE_LIBRARIES})
+    find_package(PCRE2 REQUIRED)
+    include_directories(${PCRE2_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${PCRE2_LIBRARIES})
+    add_definitions(-DPCRE2_CODE_UNIT_WIDTH=8)
 endif()
 
 find_package(Talloc REQUIRED)

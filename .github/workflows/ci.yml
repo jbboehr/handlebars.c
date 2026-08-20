@@ -27,7 +27,7 @@ jobs:
               with:
                   submodules: recursive
             - name: Install packages
-              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev ${{ matrix.CC }}
+              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre2-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev ${{ matrix.CC }}
             - run: autoreconf -i
             - run: ./configure
               env:
@@ -67,7 +67,7 @@ jobs:
             - name: Install packages
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y autotools-dev autoconf automake bats check clang-18 libclang-rt-18-dev libjson-c-dev liblmdb-dev libpcre3-dev libsubunit-dev libtalloc-dev libtool libyaml-dev m4 make pkg-config
+                  sudo apt-get install -y autotools-dev autoconf automake bats check clang-18 libclang-rt-18-dev libjson-c-dev liblmdb-dev libpcre2-dev libsubunit-dev libtalloc-dev libtool libyaml-dev m4 make pkg-config
             - run: autoreconf -i
             - run: ./configure --disable-hardening --disable-valgrind
             - run: make -j2
@@ -98,7 +98,7 @@ jobs:
               with:
                   submodules: recursive
             - name: Install packages
-              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev lcov ${{ matrix.CC }}
+              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre2-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev lcov ${{ matrix.CC }}
             - run: autoreconf -i
             - run: ./configure --enable-code-coverage
               env:
@@ -137,7 +137,7 @@ jobs:
               with:
                   submodules: recursive
             - name: Install packages
-              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre3-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev clang-tools html2text
+              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre2-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev clang-tools html2text
             - run: autoreconf -i
             - run: scan-build ./configure
               env:
@@ -165,7 +165,7 @@ jobs:
               with:
                   submodules: recursive
             - name: Install packages
-              run: brew install autoconf automake bats-core json-c libtool libyaml lmdb pkg-config talloc check lcov pcre
+              run: brew install autoconf automake bats-core json-c libtool libyaml lmdb pkg-config talloc check lcov pcre2
             - name: create configure
               run: autoreconf -i
             - name: configure

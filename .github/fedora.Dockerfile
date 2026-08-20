@@ -16,7 +16,7 @@ RUN dnf install \
     libyaml-devel \
     json-c-devel \
     libtalloc-devel \
-    pcre-devel \
+    pcre2-devel \
     check-devel \
     bats \
     -y

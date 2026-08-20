@@ -58,7 +58,7 @@
 #undef HANDLEBARS_HAVE_LMDB
 #endif
 
-/* Enable PCRE support */
+/* Enable PCRE2 support */
 #ifndef HANDLEBARS_HAVE_PCRE
 #undef HANDLEBARS_HAVE_PCRE
 #endif

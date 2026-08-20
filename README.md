@@ -48,7 +48,7 @@ sudo apt-get install autoconf automake bison flex gcc libjson-c-dev liblmdb-dev 
                      libtalloc-dev libyaml-dev libtool m4 make pkg-config
 
 # Install testing dependencies
-sudo apt-get install check gdb lcov libpcre3-dev bats
+sudo apt-get install check gdb lcov libpcre2-dev bats
 
 # Compile
 git clone https://github.com/jbboehr/handlebars.c.git --recursive
@@ -66,7 +66,7 @@ sudo ldconfig
 brew install autoconf automake bison flex gcc json-c libtool libyaml lmdb pkg-config talloc
 
 # Install testing dependencies
-brew install check lcov pcre bats
+brew install check lcov pcre2 bats
 
 # Compile
 git clone https://github.com/jbboehr/handlebars.c.git --recursive

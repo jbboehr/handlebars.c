@@ -15,7 +15,7 @@
 /* Use LMDB */
 #undef HANDLEBARS_HAVE_LMDB
 
-/* Use PCRE */
+/* Use PCRE2 */
 #undef HANDLEBARS_HAVE_PCRE
 
 /* Use pthread */
@@ -164,6 +164,9 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
+
+/* Use the 8-bit PCRE2 library */
+#undef PCRE2_CODE_UNIT_WIDTH
 
 /* Define to necessary symbol if this constant uses a non-standard name on
    your system. */

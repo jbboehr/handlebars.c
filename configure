@@ -1632,7 +1632,7 @@ Optional Features:
   --disable-lmdb          disable support for LMDB
   --enable-handlebars-memory
                           enable handlebars memory testing functions
-  --disable-pcre          disable support for pcre
+  --disable-pcre          disable support for PCRE2
   --disable-pthread       disable support for pthread
   --disable-refcounting   disable refcounting of handlebars values
   --disable-subunit       disable support for subunit
@@ -22582,7 +22582,7 @@ fi
 
 fi
 
-# pcre
+# pcre2
 # Check whether --enable-pcre was given.
 if test ${enable_pcre+y}
 then :
@@ -22594,19 +22594,19 @@ then :
 
 
 pkg_failed=no
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libpcre" >&5
-printf %s "checking for libpcre... " >&6; }
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libpcre2-8" >&5
+printf %s "checking for libpcre2-8... " >&6; }
 
 if test -n "$PCRE_CFLAGS"; then
     pkg_cv_PCRE_CFLAGS="$PCRE_CFLAGS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpcre\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libpcre") 2>&5
+    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpcre2-8\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpcre2-8") 2>&5
   ac_status=$?
   printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_PCRE_CFLAGS=`$PKG_CONFIG --cflags "libpcre" 2>/dev/null`
+  pkg_cv_PCRE_CFLAGS=`$PKG_CONFIG --cflags "libpcre2-8" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -22618,12 +22618,12 @@ if test -n "$PCRE_LIBS"; then
     pkg_cv_PCRE_LIBS="$PCRE_LIBS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpcre\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libpcre") 2>&5
+    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpcre2-8\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpcre2-8") 2>&5
   ac_status=$?
   printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_PCRE_LIBS=`$PKG_CONFIG --libs "libpcre" 2>/dev/null`
+  pkg_cv_PCRE_LIBS=`$PKG_CONFIG --libs "libpcre2-8" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -22644,20 +22644,20 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        PCRE_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpcre" 2>&1`
+	        PCRE_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpcre2-8" 2>&1`
         else
-	        PCRE_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpcre" 2>&1`
+	        PCRE_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpcre2-8" 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$PCRE_PKG_ERRORS" >&5
 
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: libpcre not found" >&5
-printf "%s\n" "$as_me: WARNING: libpcre not found" >&2;}
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: libpcre2-8 not found" >&5
+printf "%s\n" "$as_me: WARNING: libpcre2-8 not found" >&2;}
 elif test $pkg_failed = untried; then
         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: libpcre not found" >&5
-printf "%s\n" "$as_me: WARNING: libpcre not found" >&2;}
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: libpcre2-8 not found" >&5
+printf "%s\n" "$as_me: WARNING: libpcre2-8 not found" >&2;}
 else
 	PCRE_CFLAGS=$pkg_cv_PCRE_CFLAGS
 	PCRE_LIBS=$pkg_cv_PCRE_LIBS
@@ -22669,6 +22669,9 @@ fi
 fi
 if test "x$enable_pcre" == "xyes"
 then :
+
+
+printf "%s\n" "#define PCRE2_CODE_UNIT_WIDTH 8" >>confdefs.h
 
 
 printf "%s\n" "#define HANDLEBARS_HAVE_PCRE 1" >>confdefs.h

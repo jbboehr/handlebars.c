@@ -420,14 +420,14 @@ AS_IF([test "x$with_mustache_spec" != "xno"], [
 	])
 ])
 
-# pcre
-AC_ARG_ENABLE([pcre], [AS_HELP_STRING([--disable-pcre], [disable support for pcre])], [])
+# pcre2
+AC_ARG_ENABLE([pcre], [AS_HELP_STRING([--disable-pcre], [disable support for PCRE2])], [])
 AS_IF([test "x$enable_pcre" != "xno"], [
 	PKG_CHECK_MODULES(PCRE, [libpcre2-8], [enable_pcre=yes], [AC_MSG_WARN([libpcre2-8 not found])])
-	AC_DEFINE(PCRE2_CODE_UNIT_WIDTH, 8, [ ])
 ])
 AS_IF([test "x$enable_pcre" == "xyes"], [
-	AC_DEFINE([HANDLEBARS_HAVE_PCRE], [1], [Use PCRE])
+	AC_DEFINE([PCRE2_CODE_UNIT_WIDTH], [8], [Use the 8-bit PCRE2 library])
+	AC_DEFINE([HANDLEBARS_HAVE_PCRE], [1], [Use PCRE2])
 ])
 AM_CONDITIONAL([PCRE], [test "x$enable_pcre" == "xyes"])
 

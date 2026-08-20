@@ -23,7 +23,7 @@
   check,
   subunit,
   bats,
-  pcre,
+  pcre2,
   # testing deps
   autoconf-archive,
   bison,
@@ -94,7 +94,7 @@ stdenv.mkDerivation rec {
 
   buildInputs =
     [glib]
-    ++ lib.optional checkSupport pcre
+    ++ lib.optional checkSupport pcre2
     ++ lib.optional jsonSupport json_c
     ++ lib.optional lmdbSupport lmdb
     ++ lib.optional yamlSupport libyaml;

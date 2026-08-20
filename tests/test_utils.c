@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <string.h>
 #include <talloc.h>
 
 #include "handlebars.h"
@@ -193,6 +194,26 @@ START_TEST(test_yy_realloc_failed_alloc)
 }
 END_TEST
 
+START_TEST(test_regex_compare)
+{
+    char * error = NULL;
+
+    ck_assert_int_eq(regex_compare("^foo$", "foo", &error), 0);
+    ck_assert_ptr_null(error);
+
+    ck_assert_int_eq(regex_compare("^foo$", "bar", &error), 2);
+    ck_assert_ptr_nonnull(error);
+    ck_assert_ptr_nonnull(strstr(error, "didn't match"));
+    talloc_free(error);
+    error = NULL;
+
+    ck_assert_int_eq(regex_compare("(", "foo", &error), 1);
+    ck_assert_ptr_nonnull(error);
+    ck_assert_ptr_nonnull(strstr(error, "compilation failed"));
+    talloc_free(error);
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -206,6 +227,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_yy_realloc, "yy_realloc");
     REGISTER_TEST_FIXTURE(s, test_yy_alloc_failed_alloc, "yy_alloc (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_yy_realloc_failed_alloc, "yy_realloc (failed alloc)");
+    REGISTER_TEST_FIXTURE(s, test_regex_compare, "PCRE2 regex comparison");
 
     return s;
 }
