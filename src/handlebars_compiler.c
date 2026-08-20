@@ -663,7 +663,7 @@ static inline void handlebars_compiler_transform_literal_to_path(
 		    // Re-jigger node
 		    memset(path, 0, sizeof(struct handlebars_ast_node));
 			path->type = HANDLEBARS_AST_NODE_PATH;
-			path->node.path.original = talloc_steal(part, handlebars_string_copy_ctor(CONTEXT, val));
+			path->node.path.original = talloc_steal(path, handlebars_string_copy_ctor(CONTEXT, val));
 			path->node.path.parts = talloc_steal(path, parts);
 			break;
         default:

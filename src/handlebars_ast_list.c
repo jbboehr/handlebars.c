@@ -39,12 +39,12 @@
 struct handlebars_ast_list * handlebars_ast_list_ctor(struct handlebars_context * context)
 {
     struct handlebars_ast_list * list = MC(handlebars_talloc_zero(CONTEXT, struct handlebars_ast_list));
-    list->ctx = CONTEXT;
+    handlebars_context_bind(CONTEXT, &list->ctx);
     return list;
 }
 
 #undef CONTEXT
-#define CONTEXT HBSCTX(list->ctx)
+#define CONTEXT (&list->ctx)
 
 void handlebars_ast_list_append(struct handlebars_ast_list * list, struct handlebars_ast_node * ast_node)
 {
@@ -55,7 +55,7 @@ void handlebars_ast_list_append(struct handlebars_ast_list * list, struct handle
 
     // Initialize list item
     item = MC(handlebars_talloc_zero(list, struct handlebars_ast_list_item));
-    item->data = ast_node;
+    item->data = talloc_steal(list, ast_node);
 
     // Append item
     if( list->last == NULL ) {
@@ -159,6 +159,7 @@ bool handlebars_ast_list_remove(struct handlebars_ast_list * list, struct handle
     }
     list->count--;
 
+    talloc_steal(talloc_parent(list), found->data);
     handlebars_talloc_free(found);
 
     return true;
@@ -173,7 +174,7 @@ void handlebars_ast_list_prepend(struct handlebars_ast_list * list, struct handl
 
     // Initialize list item
     item = MC(handlebars_talloc_zero(list, struct handlebars_ast_list_item));
-    item->data = ast_node;
+    item->data = talloc_steal(list, ast_node);
 
     // Prepend item
     if( list->first == NULL ) {

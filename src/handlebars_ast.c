@@ -232,10 +232,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_block(
         ast_node->node.block.params = talloc_steal(ast_node, intermediate->node.intermediate.params);
         ast_node->node.block.hash = talloc_steal(ast_node, intermediate->node.intermediate.hash);
 
-        // We can free the intermediate
-        talloc_steal(ast_node, intermediate);
-        // Not sure why this isn't working
-        // handlebars_talloc_free(intermediate);
+        // The wrapper is no longer needed after its children are transferred.
+        handlebars_talloc_free(intermediate);
     }
 
     ast_node->node.block.program = talloc_steal(ast_node, program);
@@ -447,6 +445,7 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_path_segment(
     ast_node->node.path_segment.original = talloc_steal(ast_node, handlebars_string_copy_ctor(HBSCTX(parser), part));
     ast_node->node.path_segment.part = handlebars_string_copy_ctor(HBSCTX(parser), part);
     ast_node->node.path_segment.part = handlebars_ast_helper_strip_id_literal(ast_node->node.path_segment.part);
+    ast_node->node.path_segment.part = talloc_steal(ast_node, ast_node->node.path_segment.part);
 
     if( separator != NULL ) {
         ast_node->node.path_segment.separator = talloc_steal(ast_node, handlebars_string_copy_ctor(HBSCTX(parser), separator));
@@ -487,13 +486,15 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_raw_block(
     statements = talloc_steal(program, handlebars_ast_list_ctor(HBSCTX(parser)));
     program->node.program.statements = statements;
     handlebars_ast_list_append(statements, talloc_steal(program, content));
-    ast_node->node.raw_block.program = program;
+    ast_node->node.raw_block.program = talloc_steal(ast_node, program);
     //ast_node->node.raw_block.program = talloc_steal(ast_node, content);
 
     // Assign the other nodes
     ast_node->node.raw_block.path = talloc_steal(ast_node, path);
     ast_node->node.raw_block.params = talloc_steal(ast_node, params);
     ast_node->node.raw_block.hash = talloc_steal(ast_node, hash);
+
+    handlebars_talloc_free(intermediate);
 
     return ast_node;
 }
@@ -512,6 +513,8 @@ struct handlebars_ast_node * handlebars_ast_node_ctor_sexpr(
     ast_node->node.sexpr.path = talloc_steal(ast_node, intermediate->node.intermediate.path);
     ast_node->node.sexpr.params = talloc_steal(ast_node, intermediate->node.intermediate.params);
     ast_node->node.sexpr.hash = talloc_steal(ast_node, intermediate->node.intermediate.hash);
+
+    handlebars_talloc_free(intermediate);
 
     return ast_node;
 }

@@ -29,6 +29,7 @@
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_memory.h"
+#include "handlebars_parser.h"
 #include "utils.h"
 
 
@@ -46,6 +47,8 @@ START_TEST(test_ast_list_append)
     ck_assert_ptr_eq(list->last->data, node2);
     ck_assert_ptr_eq(list->last->prev->data, node1);
     ck_assert_int_eq(list->count, 2);
+    ck_assert_ptr_eq(talloc_parent(node1), list);
+    ck_assert_ptr_eq(talloc_parent(node2), list);
 
     handlebars_ast_list_dtor(list);
 }
@@ -126,6 +129,8 @@ START_TEST(test_ast_list_prepend)
     ck_assert_ptr_eq(list->last->data, node1);
     ck_assert_ptr_eq(list->last->prev->data, node2);
     ck_assert_int_eq(list->count, 2);
+    ck_assert_ptr_eq(talloc_parent(node1), list);
+    ck_assert_ptr_eq(talloc_parent(node2), list);
 
     handlebars_ast_list_dtor(list);
 }
@@ -252,6 +257,42 @@ START_TEST(test_ast_list_remove_empty)
 }
 END_TEST
 
+START_TEST(test_ast_list_remove_releases_node_ownership)
+{
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(parser));
+    void * parent = talloc_parent(list);
+    struct handlebars_ast_node * node = handlebars_talloc(parser, struct handlebars_ast_node);
+
+    handlebars_ast_list_append(list, node);
+    ck_assert_ptr_eq(talloc_parent(node), list);
+
+    ck_assert(handlebars_ast_list_remove(list, node));
+    ck_assert_ptr_eq(talloc_parent(node), parent);
+
+    handlebars_ast_list_dtor(list);
+}
+END_TEST
+
+START_TEST(test_ast_list_outlives_originating_parser)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_ast_list * list = handlebars_ast_list_ctor(HBSCTX(local_parser));
+    struct handlebars_ast_node * node;
+
+    talloc_steal(context, list);
+    handlebars_parser_dtor(local_parser);
+
+    node = handlebars_ast_node_ctor(context, HANDLEBARS_AST_NODE_CONTENT);
+    handlebars_ast_list_append(list, node);
+
+    ck_assert_uint_eq(handlebars_ast_list_count(list), 1);
+    ck_assert_ptr_eq(list->first->data, node);
+    ck_assert_ptr_eq(talloc_parent(node), list);
+
+    handlebars_ast_list_dtor(list);
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -270,6 +311,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_middle, "Remove (middle)");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_last, "Remove (last)");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_empty, "Remove (empty)");
+    REGISTER_TEST_FIXTURE(s, test_ast_list_remove_releases_node_ownership, "Remove releases node ownership");
+    REGISTER_TEST_FIXTURE(s, test_ast_list_outlives_originating_parser, "List outlives originating parser");
 
     return s;
 }

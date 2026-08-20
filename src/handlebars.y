@@ -451,8 +451,8 @@ sexpr
 intermediate4
   : intermediate3 block_params {
       $$ = $1;
-      $$->node.intermediate.block_param1 = $2.block_param1;
-      $$->node.intermediate.block_param2 = $2.block_param2;
+      $$->node.intermediate.block_param1 = talloc_steal($$, $2.block_param1);
+      $$->node.intermediate.block_param2 = talloc_steal($$, $2.block_param2);
     }
   | intermediate3
   ;
@@ -475,7 +475,7 @@ intermediate3
 hash
   : hash_pairs {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_HASH);
-      ast_node->node.hash.pairs = $1;
+      ast_node->node.hash.pairs = talloc_steal(ast_node, $1);
       $$ = ast_node;
     }
   ;

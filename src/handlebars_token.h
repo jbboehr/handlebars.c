@@ -51,7 +51,7 @@ enum handlebars_token_print_flags
  *
  * @param[in] context The handlebars context
  * @param[in] token_int Token type
- * @param[in] string Token text
+ * @param[in] string Token text; ownership is transferred to the token
  * @return the new token object
  */
 struct handlebars_token * handlebars_token_ctor(

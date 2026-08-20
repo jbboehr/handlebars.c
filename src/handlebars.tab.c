@@ -2164,8 +2164,8 @@ yyreduce:
 #line 452 "handlebars.y"
                                {
       (yyval.ast_node) = (yyvsp[-1].ast_node);
-      (yyval.ast_node)->node.intermediate.block_param1 = (yyvsp[0].block_params).block_param1;
-      (yyval.ast_node)->node.intermediate.block_param2 = (yyvsp[0].block_params).block_param2;
+      (yyval.ast_node)->node.intermediate.block_param1 = talloc_steal((yyval.ast_node), (yyvsp[0].block_params).block_param1);
+      (yyval.ast_node)->node.intermediate.block_param2 = talloc_steal((yyval.ast_node), (yyvsp[0].block_params).block_param2);
     }
 #line 2171 "handlebars.tab.c"
     break;
@@ -2206,7 +2206,7 @@ yyreduce:
 #line 476 "handlebars.y"
                {
       struct handlebars_ast_node * ast_node = handlebars_ast_node_ctor(CONTEXT, HANDLEBARS_AST_NODE_HASH);
-      ast_node->node.hash.pairs = (yyvsp[0].ast_list);
+      ast_node->node.hash.pairs = talloc_steal(ast_node, (yyvsp[0].ast_list));
       (yyval.ast_node) = ast_node;
     }
 #line 2213 "handlebars.tab.c"

@@ -254,7 +254,10 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
                         }
                     }
                     if( match ) {
-                        current->node.partial.indent = handlebars_string_ctor(CONTEXT, match, strlen(match));
+                        current->node.partial.indent = talloc_steal(
+                            current,
+                            handlebars_string_ctor(CONTEXT, match, strlen(match))
+                        );
                     }
                 }
             }

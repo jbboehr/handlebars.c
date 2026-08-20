@@ -84,8 +84,8 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     if( !program ) {
         program = handlebars_ast_node_ctor(HBSCTX(parser), HANDLEBARS_AST_NODE_PROGRAM);
     }
-    program->node.program.block_param1 = open_block->node.intermediate.block_param1;
-    program->node.program.block_param2 = open_block->node.intermediate.block_param2;
+    program->node.program.block_param1 = talloc_steal(program, open_block->node.intermediate.block_param1);
+    program->node.program.block_param2 = talloc_steal(program, open_block->node.intermediate.block_param2);
 
     if( inverse_and_program ) {
         assert(inverse_and_program->type == HANDLEBARS_AST_NODE_INVERSE);
@@ -130,6 +130,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     ast_node = handlebars_ast_node_ctor_block(parser, open_block, program, inverse,
                 open_block->strip, inverse_strip, close ? close->strip : 0, locinfo);
 
+    if( inverse_and_program ) {
+        handlebars_talloc_free(inverse_and_program);
+    }
+    if( close && close != inverse_and_program ) {
+        handlebars_talloc_free(close);
+    }
+
     ast_node->node.block.is_decorator = is_decorator;
     return ast_node;
 }
@@ -143,13 +150,13 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_inverse_chain(
     struct handlebars_ast_list * statements;
     struct handlebars_ast_node * program_node;
     struct handlebars_ast_node * ast_node;
+    unsigned strip = open_inverse_chain ? open_inverse_chain->strip : 0;
 
     block_node = handlebars_ast_helper_prepare_block(parser, open_inverse_chain, program, inverse_chain, inverse_chain, 0, locinfo);
     statements = handlebars_ast_list_ctor(HBSCTX(parser));
     handlebars_ast_list_append(statements, block_node);
     program_node = handlebars_ast_node_ctor_program(parser, statements, NULL, NULL, 0, 1, locinfo);
-    ast_node = handlebars_ast_node_ctor_inverse(parser, program_node, 1,
-                    (open_inverse_chain ? open_inverse_chain->strip : 0), locinfo);
+    ast_node = handlebars_ast_node_ctor_inverse(parser, program_node, 1, strip, locinfo);
 
     return ast_node;
 }
@@ -239,6 +246,8 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
     struct handlebars_string * part;
     struct handlebars_string * separator;
     struct handlebars_string * original;
+    struct handlebars_ast_node * path;
+    struct handlebars_ast_node * removed;
     bool is_literal;
     int depth = 0;
     int count = 0;
@@ -277,13 +286,17 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_path(
                 depth++;
             }
             // Instead of adding it below, remove it here
-            handlebars_ast_list_remove(parts, item->data);
+            removed = item->data;
+            handlebars_ast_list_remove(parts, removed);
+            handlebars_ast_node_dtor(removed);
         } else {
             count++;
         }
     }
 
-    return handlebars_ast_node_ctor_path(parser, parts, original, depth, data, locinfo);
+    path = handlebars_ast_node_ctor_path(parser, parts, original, depth, data, locinfo);
+    handlebars_talloc_free(original);
+    return path;
 }
 
 struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(

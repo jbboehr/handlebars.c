@@ -24,6 +24,7 @@
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
+#include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_token.h"
 #include "handlebars.tab.h"
@@ -41,6 +42,7 @@ START_TEST(test_token_ctor)
     ck_assert_int_eq(OPEN, handlebars_token_get_type(token));
     ck_assert_hbs_str_eq_cstr(handlebars_token_get_text(token), "{{");
     ck_assert_uint_eq(sizeof("{{") - 1, hbs_str_len(handlebars_token_get_text(token)));
+    ck_assert_ptr_eq(talloc_parent(handlebars_token_get_text(token)), token);
 
     handlebars_token_dtor(token);
 }
@@ -100,6 +102,24 @@ START_TEST(test_token_get_text)
     ck_assert_uint_eq(sizeof("{{") - 1, hbs_str_len(handlebars_token_get_text(token)));
 
     handlebars_token_dtor(token);
+}
+END_TEST
+
+START_TEST(test_token_list_outlives_parser_when_reparented)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL("{{name}}"));
+    struct handlebars_token ** tokens = handlebars_lex_ex(local_parser, tmpl);
+
+    ck_assert_ptr_nonnull(tokens);
+    talloc_steal(context, tokens);
+    handlebars_parser_dtor(local_parser);
+
+    ck_assert_ptr_nonnull(tokens[0]);
+    ck_assert_int_eq(handlebars_token_get_type(tokens[0]), OPEN);
+    ck_assert_hbs_str_eq_cstr(handlebars_token_get_text(tokens[0]), "{{");
+    ck_assert_ptr_eq(talloc_parent(tokens[0]), tokens);
+    ck_assert_ptr_eq(talloc_parent(handlebars_token_get_text(tokens[0])), tokens[0]);
 }
 END_TEST
 
@@ -271,6 +291,7 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_token_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_token_get_type, "Get type");
 	REGISTER_TEST_FIXTURE(s, test_token_get_text, "Get text");
+	REGISTER_TEST_FIXTURE(s, test_token_list_outlives_parser_when_reparented, "Reparented token list outlives parser");
 	REGISTER_TEST_FIXTURE(s, test_token_readable_type, "Readable Type");
 	REGISTER_TEST_FIXTURE(s, test_token_reverse_readable_type, "Reverse Readable Type");
 	REGISTER_TEST_FIXTURE(s, test_token_print, "Print Token");

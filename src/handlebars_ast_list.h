@@ -37,7 +37,7 @@ struct handlebars_ast_list;
  * @brief Append an AST node to a list
  *
  * @param[in] list The list to which to append
- * @param[in] ast_node The AST node to append
+ * @param[in] ast_node The AST node to append; ownership is transferred to the list
  */
 void handlebars_ast_list_append(
     struct handlebars_ast_list * list,
@@ -130,7 +130,7 @@ bool handlebars_ast_list_remove(
  * @brief Prepend an AST node to a list
  *
  * @param[in] list The list to which to prepend
- * @param[in] ast_node The node to prepend
+ * @param[in] ast_node The node to prepend; ownership is transferred to the list
  * @return A return code from the handlebars_error_type enum. Success is zero.
  */
 void handlebars_ast_list_prepend(
@@ -153,7 +153,7 @@ struct handlebars_ast_list_item {
  * @brief AST node linked list root
  */
 struct handlebars_ast_list {
-    struct handlebars_context * ctx;
+    struct handlebars_context ctx;
     struct handlebars_ast_list_item * first;
     struct handlebars_ast_list_item * last;
     size_t count;

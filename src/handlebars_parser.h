@@ -65,7 +65,9 @@ struct handlebars_token ** handlebars_lex(
  *                   used concurrently by another thread
  * @param[in] tmpl The template to parse
  * @param[in] flags Compiler flags
- * @return The parsed AST, or NULL on failure when no outer error handler exists
+ * @return The parsed AST, owned by the parser. The complete AST may be
+ *         reparented with talloc before destroying the parser. Returns NULL on
+ *         failure when no outer error handler exists.
  */
 struct handlebars_ast_node * handlebars_parse_ex(
     struct handlebars_parser * parser,
