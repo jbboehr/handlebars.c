@@ -481,3 +481,19 @@ BLOCKPARAM [\x7C]
 									}
 
 %%
+
+void handlebars_yy_reset(struct handlebars_parser * parser)
+{
+    yyscan_t yyscanner = parser->scanner;
+    struct yyguts_t * yyg = (struct yyguts_t *) yyscanner;
+
+    parser->tmplReadOffset = 0;
+    BEGIN(INITIAL);
+    yyg->yy_start_stack_ptr = 0;
+
+    if( YY_CURRENT_BUFFER != NULL ) {
+        yy_flush_buffer(YY_CURRENT_BUFFER, yyscanner);
+        yylineno = 1;
+        yycolumn = 0;
+    }
+}

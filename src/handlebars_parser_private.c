@@ -55,18 +55,25 @@ void handlebars_yy_input(char * buffer, int *numBytesRead, int maxBytesToRead, s
 {
     struct handlebars_string * tmpl = parser->tmpl;
     const char * val = (const char *) hbs_str_val(tmpl);
+    size_t bytes_remaining;
+    size_t bytes_to_read;
 
-    int numBytesToRead = maxBytesToRead;
-    int bytesRemaining = hbs_str_len(tmpl) - parser->tmplReadOffset;
-    int i;
-    if( numBytesToRead > bytesRemaining ) {
-        numBytesToRead = bytesRemaining;
+    assert(parser->tmplReadOffset <= hbs_str_len(tmpl));
+    assert(maxBytesToRead >= 0);
+
+    if( parser->tmplReadOffset >= hbs_str_len(tmpl) || maxBytesToRead <= 0 ) {
+        *numBytesRead = 0;
+        return;
     }
-    for( i = 0; i < numBytesToRead; i++ ) {
-        buffer[i] = val[parser->tmplReadOffset+i];
+
+    bytes_remaining = hbs_str_len(tmpl) - parser->tmplReadOffset;
+    bytes_to_read = (size_t) maxBytesToRead;
+    if( bytes_to_read > bytes_remaining ) {
+        bytes_to_read = bytes_remaining;
     }
-    *numBytesRead = numBytesToRead;
-    parser->tmplReadOffset += numBytesToRead;
+    memcpy(buffer, val + parser->tmplReadOffset, bytes_to_read);
+    *numBytesRead = (int) bytes_to_read;
+    parser->tmplReadOffset += bytes_to_read;
 }
 
 void handlebars_yy_error(struct handlebars_locinfo * lloc, struct handlebars_parser * parser, const char * err)

@@ -117,6 +117,7 @@ struct handlebars_token ** handlebars_lex(struct handlebars_parser * parser)
         }
     }
 
+    handlebars_yy_reset(parser);
     handlebars_parser_validate_template(parser, parser->tmpl);
 
     YYSTYPE yylval_param;
@@ -182,6 +183,9 @@ struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * pars
     parser->bison_stack = handlebars_talloc_size(parser, 0);
     HANDLEBARS_MEMCHECK(parser->bison_stack, HBSCTX(parser));
 
+    parser->program = NULL;
+    parser->whitespace_root_seen = false;
+    handlebars_yy_reset(parser);
     handlebars_parser_validate_template(parser, tmpl);
 
     parser->tmpl = tmpl;

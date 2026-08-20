@@ -22,7 +22,11 @@
 #include <check.h>
 #include <talloc.h>
 
+#define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_AST_LIST_PRIVATE
 #include "handlebars.h"
+#include "handlebars_ast.h"
+#include "handlebars_ast_list.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
 #include "handlebars_string.h"
@@ -143,6 +147,109 @@ START_TEST(test_lex)
     ck_assert_str_eq("}}", hbs_str_val(handlebars_token_get_text(tokens[2])));
 
     ck_assert_ptr_eq(NULL, tokens[3]);
+}
+END_TEST
+
+START_TEST(test_lex_reuse)
+{
+    struct handlebars_token ** tokens;
+
+    tokens = handlebars_lex_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{longer}}")));
+    ck_assert_ptr_nonnull(tokens);
+    ck_assert_ptr_nonnull(tokens[0]);
+
+    tokens = handlebars_lex_ex(parser, handlebars_string_ctor(context, HBS_STRL("ok")));
+    ck_assert_ptr_nonnull(tokens);
+    ck_assert_ptr_nonnull(tokens[0]);
+    ck_assert_int_eq(CONTENT, handlebars_token_get_type(tokens[0]));
+    ck_assert_str_eq("ok", hbs_str_val(handlebars_token_get_text(tokens[0])));
+    ck_assert_ptr_null(tokens[1]);
+}
+END_TEST
+
+START_TEST(test_lex_then_parse_reuse)
+{
+    struct handlebars_token ** tokens;
+    struct handlebars_ast_node * ast;
+
+    tokens = handlebars_lex_ex(parser, handlebars_string_ctor(context, HBS_STRL("{{longer}}")));
+    ck_assert_ptr_nonnull(tokens);
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("ok")),
+        0
+    );
+    ck_assert_ptr_nonnull(ast);
+}
+END_TEST
+
+START_TEST(test_parser_reuse)
+{
+    struct handlebars_ast_node * ast;
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("{{longer}}")),
+        0
+    );
+    ck_assert_ptr_nonnull(ast);
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("ok")),
+        0
+    );
+    ck_assert_ptr_nonnull(ast);
+}
+END_TEST
+
+START_TEST(test_parser_reuse_after_error)
+{
+    struct handlebars_ast_node * ast;
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("{{unclosed")),
+        0
+    );
+    ck_assert_ptr_null(ast);
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("ok")),
+        0
+    );
+    ck_assert_ptr_nonnull(ast);
+}
+END_TEST
+
+START_TEST(test_parser_reuse_resets_whitespace_state)
+{
+    struct handlebars_ast_node * ast;
+    struct handlebars_ast_list * statements;
+    struct handlebars_ast_node * content;
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("first")),
+        0
+    );
+    ck_assert_ptr_nonnull(ast);
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("{{! comment}}\nok")),
+        0
+    );
+    ck_assert_ptr_nonnull(ast);
+
+    statements = ast->node.program.statements;
+    ck_assert_ptr_nonnull(statements);
+    ck_assert_ptr_nonnull(statements->last);
+    content = statements->last->data;
+    ck_assert_int_eq(content->type, HANDLEBARS_AST_NODE_CONTENT);
+    ck_assert_hbs_str_eq_cstr(content->node.content.value, "ok");
 }
 END_TEST
 
@@ -352,6 +459,11 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_spec_version_string, "Handlebars Spec Version String");
     REGISTER_TEST_FIXTURE(s, test_mustache_spec_version_string, "Mustache Spec Version String");
     REGISTER_TEST_FIXTURE(s, test_lex, "Lex Convenience Function");
+    REGISTER_TEST_FIXTURE(s, test_lex_reuse, "Lexer reuse");
+    REGISTER_TEST_FIXTURE(s, test_lex_then_parse_reuse, "Lexer then parser reuse");
+    REGISTER_TEST_FIXTURE(s, test_parser_reuse, "Parser reuse");
+    REGISTER_TEST_FIXTURE(s, test_parser_reuse_after_error, "Parser reuse after error");
+    REGISTER_TEST_FIXTURE(s, test_parser_reuse_resets_whitespace_state, "Parser reuse resets whitespace state");
     REGISTER_TEST_FIXTURE(s, test_parse_rejects_embedded_nul, "Reject Embedded NUL");
     REGISTER_TEST_FIXTURE(s, test_parse_handles_empty_trimmed_block, "Parse Empty Trimmed Block");
     REGISTER_TEST_FIXTURE(s, test_parse_handles_empty_right_trimmed_block, "Parse Empty Right-Trimmed Block");

@@ -28,6 +28,7 @@
 #include "handlebars_helpers.h"
 #include "handlebars_json.h"
 #include "handlebars_map.h"
+#include "handlebars_memory.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_parser.h"
 #include "handlebars_partial_loader.h"
@@ -144,6 +145,158 @@ START_TEST(test_partial_loader_error)
 }
 END_TEST
 
+static void expect_partial_loader_error(
+    struct handlebars_value * partials,
+    struct handlebars_string * key
+) {
+    jmp_buf * volatile previous = context->e->jmp;
+    HANDLEBARS_VALUE_DECL(rv);
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_ptr_nonnull(handlebars_error_msg(context));
+        ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "File to open partial"));
+        HANDLEBARS_VALUE_UNDECL(rv);
+        return;
+    }
+
+    (void) handlebars_value_map_find(partials, key, rv);
+    context->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(rv);
+    ck_abort_msg("Expected partial loading to fail");
+}
+
+START_TEST(test_partial_loader_recovers_after_error)
+{
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(rv);
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    struct handlebars_string * missing = handlebars_string_ctor(context, HBS_STRL("nonexist-recovery"));
+    struct handlebars_string * present = handlebars_string_ctor(context, HBS_STRL("fixture1"));
+    size_t blocks_before;
+    size_t blocks_after_first_error;
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    handlebars_value_partial_loader_init(context, path, extension, partials);
+
+    blocks_before = talloc_total_blocks(context);
+    expect_partial_loader_error(partials, missing);
+    blocks_after_first_error = talloc_total_blocks(context);
+    // The shared error message may retain one context-owned allocation.
+    ck_assert_uint_le(blocks_after_first_error, blocks_before + 1);
+
+    expect_partial_loader_error(partials, missing);
+    ck_assert_uint_le(talloc_total_blocks(context), blocks_after_first_error + 1);
+
+    ck_assert_ptr_nonnull(handlebars_value_map_find(partials, present, rv));
+    ck_assert_str_eq(handlebars_value_get_strval(rv), "|{{foo}}|");
+    ck_assert_int_eq(handlebars_value_count(partials), 1);
+
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(partials);
+}
+END_TEST
+
+START_TEST(test_partial_loader_result_outlives_loader)
+{
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(rv);
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    struct handlebars_string * present = handlebars_string_ctor(context, HBS_STRL("fixture1"));
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    handlebars_value_partial_loader_init(context, path, extension, partials);
+
+    ck_assert_ptr_nonnull(handlebars_value_map_find(partials, present, rv));
+    HANDLEBARS_VALUE_UNDECL(partials);
+
+    ck_assert_str_eq(handlebars_value_get_strval(rv), "|{{foo}}|");
+    HANDLEBARS_VALUE_UNDECL(rv);
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+static bool partial_loader_find_with_alloc_failure(
+    struct handlebars_value * partials,
+    struct handlebars_string * key,
+    int fail_at
+) {
+    jmp_buf * volatile previous = context->e->jmp;
+    HANDLEBARS_VALUE_DECL(rv);
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_ptr_nonnull(handlebars_error_msg(context));
+        ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Out of memory"));
+        HANDLEBARS_VALUE_UNDECL(rv);
+        return true;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(fail_at);
+    (void) handlebars_value_map_find(partials, key, rv);
+    handlebars_memory_fail_disable();
+    context->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(rv);
+    return false;
+}
+#endif
+
+START_TEST(test_partial_loader_recovers_after_alloc_error)
+{
+#ifdef HANDLEBARS_MEMORY
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(rv);
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    struct handlebars_string * present = handlebars_string_ctor(context, HBS_STRL("fixture1"));
+    int fail_at;
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    handlebars_value_partial_loader_init(context, path, extension, partials);
+
+    for( fail_at = 1; fail_at < 32; fail_at++ ) {
+        size_t blocks_before = talloc_total_blocks(context);
+        if( !partial_loader_find_with_alloc_failure(partials, present, fail_at) ) {
+            break;
+        }
+        ck_assert_uint_le(talloc_total_blocks(context), blocks_before + 1);
+    }
+
+    ck_assert_int_lt(fail_at, 32);
+    ck_assert_ptr_nonnull(handlebars_value_map_find(partials, present, rv));
+    ck_assert_str_eq(handlebars_value_get_strval(rv), "|{{foo}}|");
+    ck_assert_int_eq(handlebars_value_count(partials), 1);
+
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(partials);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
+}
+END_TEST
+
 START_TEST(test_partial_loader_empty)
 {
     struct handlebars_string *rv = execute_template("{{> fixture4}}", "fixture4", "");
@@ -182,6 +335,9 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_1, "Partial loader 1");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_2, "Partial loader 2");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_error, "Partial loader error");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_recovers_after_error, "Partial loader recovers after error");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_result_outlives_loader, "Partial loader result outlives loader");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_recovers_after_alloc_error, "Partial loader recovers after allocation error");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_empty, "Partial loader empty file");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_rejects_traversal, "Partial loader rejects traversal");
 

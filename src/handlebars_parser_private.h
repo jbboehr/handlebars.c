@@ -41,7 +41,7 @@ struct handlebars_parser
     //! The template to parse
     struct handlebars_string * tmpl;
 
-    int tmplReadOffset;
+    size_t tmplReadOffset;
     void * scanner;
     void * bison_stack;
     struct handlebars_ast_node * program;
@@ -113,6 +113,16 @@ void handlebars_yy_input(
     int maxBytesToRead,
     struct handlebars_parser * parser
 ) HBS_TEST_PUBLIC;
+
+/**
+ * @brief Reset the scanner before lexing a new template.
+ *
+ * @param[in] parser The handlebars parser
+ * @return void
+ */
+void handlebars_yy_reset(
+    struct handlebars_parser * parser
+) HBS_TEST_PUBLIC HBS_ATTR_NONNULL_ALL;
 
 /**
  * @brief Print a parser value

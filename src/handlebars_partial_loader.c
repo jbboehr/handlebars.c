@@ -51,6 +51,12 @@ struct handlebars_partial_loader {
     struct handlebars_map * map;
 };
 
+struct handlebars_partial_loader_load_state {
+    FILE * file;
+    struct handlebars_value value;
+    struct handlebars_string * key;
+};
+
 static bool partial_name_is_safe(struct handlebars_string * key)
 {
     const char * name = hbs_str_val(key);
@@ -91,6 +97,27 @@ static int partial_loader_dtor(struct handlebars_partial_loader * intern)
     return 0;
 }
 
+static int partial_loader_load_state_dtor(struct handlebars_partial_loader_load_state * state)
+{
+    if( state->file != NULL ) {
+        fclose(state->file);
+        state->file = NULL;
+    }
+    handlebars_value_dtor(&state->value);
+    return 0;
+}
+
+static HBS_ATTR_NORETURN void partial_loader_rethrow(
+    struct handlebars_context * context,
+    jmp_buf * previous
+) {
+    if( previous != NULL ) {
+        longjmp(*previous, context->e->num);
+    }
+    fprintf(stderr, "Throw with invalid jmp_buf: %s\n", handlebars_error_msg(context));
+    abort();
+}
+
 static struct handlebars_value * hbs_partial_loader_copy(struct handlebars_value * value)
 {
     return NULL;
@@ -114,6 +141,18 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
 {
     struct handlebars_partial_loader * intern = GET_INTERN_V(value);
     struct handlebars_value *retval = handlebars_map_find(intern->map, key);
+    struct handlebars_partial_loader_load_state * state;
+    struct handlebars_error * error;
+    struct handlebars_string * filename;
+    struct stat file_stat;
+    char * buf;
+    long size;
+    size_t read_size;
+    bool read_failed;
+    jmp_buf * volatile previous;
+    volatile bool caught = false;
+    struct handlebars_value * volatile result = NULL;
+    jmp_buf jump;
 
     if (retval) {
         handlebars_value_value(rv, retval);
@@ -124,63 +163,75 @@ static struct handlebars_value * hbs_partial_loader_map_find(struct handlebars_v
         handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Invalid partial name");
     }
 
-    struct handlebars_string *filename = handlebars_string_copy_ctor(intern->user.ctx, intern->base_path);
-    filename = handlebars_string_append(intern->user.ctx, filename, HBS_STRL("/"));
-    filename = handlebars_string_append_str(intern->user.ctx, filename, key);
-    if (intern->extension) {
-        filename = handlebars_string_append_str(intern->user.ctx, filename, intern->extension);
+    state = handlebars_talloc_zero(intern->user.ctx, struct handlebars_partial_loader_load_state);
+    HANDLEBARS_MEMCHECK(state, intern->user.ctx);
+    talloc_set_destructor(state, partial_loader_load_state_dtor);
+
+    error = intern->user.ctx->e;
+    previous = error->jmp;
+    if( handlebars_setjmp_ex(intern->user.ctx, &jump) ) {
+        caught = true;
+        goto done;
     }
 
-    FILE * f;
-    long size;
+    filename = talloc_steal(state, handlebars_string_copy_ctor(intern->user.ctx, intern->base_path));
+    filename = talloc_steal(state, handlebars_string_append(intern->user.ctx, filename, HBS_STRL("/")));
+    filename = talloc_steal(state, handlebars_string_append_str(intern->user.ctx, filename, key));
+    if (intern->extension) {
+        filename = talloc_steal(state, handlebars_string_append_str(intern->user.ctx, filename, intern->extension));
+    }
 
-    f = fopen(hbs_str_val(filename), "rb");
-    if( !f ) {
+    state->file = fopen(hbs_str_val(filename), "rb");
+    if( !state->file ) {
         handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "File to open partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
-    struct stat file_stat;
-    if( fstat(fileno(f), &file_stat) != 0 || !S_ISREG(file_stat.st_mode) ) {
-        fclose(f);
+    if( fstat(fileno(state->file), &file_stat) != 0 || !S_ISREG(file_stat.st_mode) ) {
         handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Partial is not a regular file: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
-    if( fseek(f, 0, SEEK_END) != 0 ) {
-        fclose(f);
+    if( fseek(state->file, 0, SEEK_END) != 0 ) {
         handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Failed to seek partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
-    size = ftell(f);
-    if( size < 0 || fseek(f, 0, SEEK_SET) != 0 ) {
-        fclose(f);
+    size = ftell(state->file);
+    if( size < 0 || fseek(state->file, 0, SEEK_SET) != 0 ) {
         handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Failed to determine partial size: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
-    char * buf = handlebars_talloc_size(intern->user.ctx, (size_t) size + 1);
-    if( buf == NULL ) {
-        fclose(f);
-        handlebars_throw(intern->user.ctx, HANDLEBARS_NOMEM, "%s", HANDLEBARS_MEMCHECK_MSG);
-    }
-    size_t read = fread(buf, 1, (size_t) size, f);
-    bool read_failed = read != (size_t) size || ferror(f);
-    fclose(f);
+    buf = handlebars_talloc_size(state, (size_t) size + 1);
+    HANDLEBARS_MEMCHECK(buf, intern->user.ctx);
+    read_size = fread(buf, 1, (size_t) size, state->file);
+    read_failed = read_size != (size_t) size || ferror(state->file);
+    fclose(state->file);
+    state->file = NULL;
 
     if (read_failed) {
-        handlebars_talloc_free(buf);
         handlebars_throw(intern->user.ctx, HANDLEBARS_ERROR, "Failed to read partial: %.*s", (int) hbs_str_len(filename), hbs_str_val(filename));
     }
 
     buf[size] = 0;
 
     // Need to duplicate the key because it may be owned by a child VM
-    key = handlebars_string_copy_ctor(intern->user.ctx, key);
+    state->key = talloc_steal(state, handlebars_string_copy_ctor(intern->user.ctx, key));
 
-    handlebars_value_str(rv, handlebars_string_ctor(intern->user.ctx, buf, (size_t) size));
-    handlebars_talloc_free(buf);
+    handlebars_value_str(
+        &state->value,
+        talloc_steal(state, handlebars_string_ctor(intern->user.ctx, buf, (size_t) size))
+    );
 
-    intern->map = handlebars_map_add(intern->map, key, rv);
+    intern->map = handlebars_map_add(intern->map, state->key, &state->value);
+    talloc_steal(intern->user.ctx, state->key);
+    talloc_steal(intern->user.ctx, handlebars_value_get_string(&state->value));
+    handlebars_value_value(rv, &state->value);
+    result = rv;
 
-    handlebars_talloc_free(filename);
-    return rv;
+done:
+    error->jmp = previous;
+    handlebars_talloc_free(state);
+    if( caught ) {
+        partial_loader_rethrow(intern->user.ctx, previous);
+    }
+    return (struct handlebars_value *) result;
 }
 
 static bool hbs_partial_loader_iterator_next_void(struct handlebars_value_iterator * it)
