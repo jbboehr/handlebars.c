@@ -49,7 +49,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_locinfo * locinfo)
 {
     struct handlebars_ast_node * ast_node;
-    struct handlebars_ast_node * open_block_path = open_block->node.intermediate.path;
+    struct handlebars_ast_node * open_block_path;
     struct handlebars_ast_node * close_block_path;
     struct handlebars_ast_node * inverse = NULL;
     long inverse_strip = 0;
@@ -57,7 +57,10 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_block(
     struct handlebars_string * close_str;
     bool is_decorator = false;
 
-    assert(open_block != NULL && open_block->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
+    if( unlikely(open_block == NULL || open_block->type != HANDLEBARS_AST_NODE_INTERMEDIATE) ) {
+        handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "Invalid open block");
+    }
+    open_block_path = open_block->node.intermediate.path;
     assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
 
     if( close && close->type == HANDLEBARS_AST_NODE_INTERMEDIATE ) {
@@ -208,12 +211,15 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_partial_block(
     struct handlebars_ast_node * program, struct handlebars_ast_node * close,
     struct handlebars_locinfo * locinfo)
 {
-    struct handlebars_ast_node * open_block_path = open->node.intermediate.path;
+    struct handlebars_ast_node * open_block_path;
     struct handlebars_ast_node * close_block_path;
     struct handlebars_string * open_str;
     struct handlebars_string * close_str;
 
-    assert(open != NULL && open->type == HANDLEBARS_AST_NODE_INTERMEDIATE);
+    if( unlikely(open == NULL || open->type != HANDLEBARS_AST_NODE_INTERMEDIATE) ) {
+        handlebars_throw_ex(CONTEXT, HANDLEBARS_PARSEERR, locinfo, "Invalid partial block");
+    }
+    open_block_path = open->node.intermediate.path;
     assert(close == NULL || close->type == HANDLEBARS_AST_NODE_INTERMEDIATE || close->type == HANDLEBARS_AST_NODE_INVERSE);
 
     if( close && close->type == HANDLEBARS_AST_NODE_INTERMEDIATE ) {

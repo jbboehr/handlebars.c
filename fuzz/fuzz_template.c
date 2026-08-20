@@ -24,8 +24,10 @@
 #include <stdint.h>
 
 #include "handlebars.h"
+#include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_map.h"
+#include "handlebars_memory.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_parser.h"
 #include "handlebars_stack.h"
@@ -201,6 +203,13 @@ int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
         handlebars_parser_dtor(parser);
         handlebars_context_dtor(context);
         return 0;
+    }
+
+    {
+        struct handlebars_string * printed = handlebars_ast_print(context, ast);
+        struct handlebars_string * reconstructed = handlebars_ast_to_string(context, ast);
+        handlebars_talloc_free(printed);
+        handlebars_talloc_free(reconstructed);
     }
 
     handlebars_compiler_set_flags(compiler, flags);

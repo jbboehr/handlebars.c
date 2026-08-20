@@ -129,6 +129,45 @@ START_TEST(test_ast_helper_strip_id_literal)
 }
 END_TEST
 
+static void assert_missing_open_block_is_rejected(bool partial)
+{
+    struct handlebars_locinfo locinfo = {0};
+    jmp_buf * volatile previous = context->e->jmp;
+    struct handlebars_ast_node * result;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_PARSEERR);
+        ck_assert_str_eq(
+            handlebars_error_msg(context),
+            partial ? "Invalid partial block" : "Invalid open block"
+        );
+        return;
+    }
+
+    if( partial ) {
+        result = handlebars_ast_helper_prepare_partial_block(parser, NULL, NULL, NULL, &locinfo);
+    } else {
+        result = handlebars_ast_helper_prepare_block(parser, NULL, NULL, NULL, NULL, 0, &locinfo);
+    }
+    (void) result;
+    context->e->jmp = previous;
+    ck_abort_msg("Expected a missing open block to be rejected");
+}
+
+START_TEST(test_ast_helper_prepare_block_rejects_missing_open)
+{
+    assert_missing_open_block_is_rejected(false);
+}
+END_TEST
+
+START_TEST(test_ast_helper_prepare_partial_block_rejects_missing_open)
+{
+    assert_missing_open_block_is_rejected(true);
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -137,6 +176,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_ast_helper_set_strip_flags, "Set strip flags");
     REGISTER_TEST_FIXTURE(s, test_ast_helper_strip_comment, "Strip comment");
     REGISTER_TEST_FIXTURE(s, test_ast_helper_strip_id_literal, "Strip ID literal");
+    REGISTER_TEST_FIXTURE(s, test_ast_helper_prepare_block_rejects_missing_open, "Prepare block rejects missing open");
+    REGISTER_TEST_FIXTURE(s, test_ast_helper_prepare_partial_block_rejects_missing_open, "Prepare partial block rejects missing open");
 
     return s;
 }

@@ -20,6 +20,8 @@
 #endif
 
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define HANDLEBARS_AST_PRIVATE
@@ -103,6 +105,7 @@ struct handlebars_ast_printer_context {
     int padding;
     int error;
     struct handlebars_string * output;
+    size_t depth;
     bool in_partial;
     bool in_raw_block;
 };
@@ -433,7 +436,11 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
     if( unlikely(ast_node == NULL) ) {
         return;
     }
+    if( unlikely(ctx->depth >= HANDLEBARS_AST_PRINTER_STACK_SIZE) ) {
+        handlebars_throw(ctx->ctx, HANDLEBARS_STACK_OVERFLOW, "AST printer stack overflow");
+    }
 
+    ctx->depth++;
     switch( ast_node->type ) {
         case HANDLEBARS_AST_NODE_BOOLEAN:
             _handlebars_ast_print_boolean(ast_node, ctx);
@@ -496,21 +503,46 @@ static void _handlebars_ast_print(struct handlebars_ast_node * ast_node, struct 
             break;
         // LCOV_EXCL_STOP
     }
+    ctx->depth--;
 }
 
 #undef CONTEXT
 #define CONTEXT context
 
+static HBS_ATTR_NORETURN void handlebars_ast_printer_rethrow(
+    struct handlebars_context * context,
+    jmp_buf * previous
+) {
+    if( previous != NULL ) {
+        longjmp(*previous, context->e->num);
+    }
+    fprintf(stderr, "Throw with invalid jmp_buf: %s\n", handlebars_error_msg(context));
+    abort();
+}
+
 struct handlebars_string * handlebars_ast_print(struct handlebars_context * context, struct handlebars_ast_node * ast_node)
 {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
     struct handlebars_string * output;
     struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(context, struct handlebars_ast_printer_context));
+    jmp_buf buf;
+
     ctx->ctx = context;
-    ctx->output = handlebars_string_ctor(context, "", 0);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        error->jmp = previous;
+        handlebars_talloc_free(ctx);
+        handlebars_ast_printer_rethrow(context, previous);
+    }
+
+    ctx->output = talloc_steal(ctx, handlebars_string_ctor(context, "", 0));
     _handlebars_ast_print(ast_node, ctx);
+    ctx->output = handlebars_string_rtrim(ctx->output, HBS_STRL(" \t\r\n"));
     output = talloc_steal(context, ctx->output);
+    error->jmp = previous;
     handlebars_talloc_free(ctx);
-    return handlebars_string_rtrim(output, HBS_STRL(" \t\r\n"));
+    return output;
 }
 
 
@@ -673,7 +705,7 @@ static void _handlebars_ast_to_string_block(struct handlebars_ast_node * ast_nod
 
     if (ast_node->node.block.program) {
         if( ast_node->node.block.program->node.program.block_param1 ) {
-            __APPENDS("as |");
+            __APPENDS(" as |");
             __APPEND_STR(ast_node->node.block.program->node.program.block_param1);
             if( ast_node->node.block.program->node.program.block_param2 ) {
                 __APPENDS(" ");
@@ -755,7 +787,13 @@ static void _handlebars_ast_to_string_partial_block(struct handlebars_ast_node *
     __APPENDS("{{#> ");
     _handlebars_ast_to_string(ast_node->node.partial_block.path, ctx);
     if( ast_node->node.partial_block.params ) {
-        _handlebars_ast_to_string_list(ast_node->node.partial_block.params, ctx);
+        struct handlebars_ast_list_item * item;
+        struct handlebars_ast_list_item * tmp;
+
+        handlebars_ast_list_foreach(ast_node->node.partial_block.params, item, tmp) {
+            __APPENDS(" ");
+            __PRINT(item->data);
+        }
     }
     if( ast_node->node.partial_block.hash ) {
     	__APPENDS(" ");
@@ -783,8 +821,13 @@ static void _handlebars_ast_to_string_content(struct handlebars_ast_node * ast_n
         __APPEND_STR(ast_node->node.content.original);
     } else {
         struct handlebars_string *escaped = handlebars_str_replace(CONTEXT, ast_node->node.content.original, HBS_STRL("{{"), HBS_STRL("\\{{"));
+        if( escaped != ast_node->node.content.original ) {
+            talloc_steal(ctx, escaped);
+        }
         __APPEND_STR(escaped);
-        handlebars_string_delref(escaped);
+        if( escaped != ast_node->node.content.original ) {
+            handlebars_talloc_free(escaped);
+        }
     }
 }
 
@@ -821,6 +864,7 @@ static void _handlebars_ast_to_string_string(struct handlebars_ast_node * ast_no
     }
     __APPEND(quote);
     struct handlebars_string *tmp = handlebars_string_addcslashes(ctx->ctx, ast_node->node.string.value, quote, 1);
+    talloc_steal(ctx, tmp);
     __APPEND_STR(tmp);
     handlebars_talloc_free(tmp);
     __APPEND(quote);
@@ -906,7 +950,11 @@ static void _handlebars_ast_to_string(struct handlebars_ast_node * ast_node, str
     if( unlikely(ast_node == NULL) ) {
         return;
     }
+    if( unlikely(ctx->depth >= HANDLEBARS_AST_PRINTER_STACK_SIZE) ) {
+        handlebars_throw(ctx->ctx, HANDLEBARS_STACK_OVERFLOW, "AST printer stack overflow");
+    }
 
+    ctx->depth++;
     switch( ast_node->type ) {
         case HANDLEBARS_AST_NODE_BOOLEAN:
             _handlebars_ast_to_string_boolean(ast_node, ctx);
@@ -969,6 +1017,7 @@ static void _handlebars_ast_to_string(struct handlebars_ast_node * ast_node, str
             break;
         // LCOV_EXCL_STOP
     }
+    ctx->depth--;
 }
 
 #undef CONTEXT
@@ -978,14 +1027,24 @@ struct handlebars_string * handlebars_ast_to_string(
     struct handlebars_context * context,
     struct handlebars_ast_node * ast_node
 ) {
-    // return handlebars_string_ctor(context, "", 0);
-    // return handlebars_ast_print(context, ast_node);
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
     struct handlebars_string * output;
     struct handlebars_ast_printer_context * ctx = MC(handlebars_talloc_zero(context, struct handlebars_ast_printer_context));
+    jmp_buf buf;
+
     ctx->ctx = context;
-    ctx->output = handlebars_string_ctor(context, "", 0);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        error->jmp = previous;
+        handlebars_talloc_free(ctx);
+        handlebars_ast_printer_rethrow(context, previous);
+    }
+
+    ctx->output = talloc_steal(ctx, handlebars_string_ctor(context, "", 0));
     _handlebars_ast_to_string(ast_node, ctx);
     output = talloc_steal(context, ctx->output);
+    error->jmp = previous;
     handlebars_talloc_free(ctx);
     return output;
 }

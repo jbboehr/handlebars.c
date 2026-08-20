@@ -28,6 +28,7 @@
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
@@ -197,6 +198,144 @@ START_TEST(test_ast_node_readable_type)
 }
 END_TEST
 
+typedef struct handlebars_string * (*ast_printer_func)(
+    struct handlebars_context *,
+    struct handlebars_ast_node *
+);
+
+static struct handlebars_string * ast_printer_nested_template(size_t levels)
+{
+    struct handlebars_string * tmpl = handlebars_string_init(context, levels * 20);
+
+    for( size_t i = 0; i < levels; i++ ) {
+        tmpl = handlebars_string_append(context, tmpl, HBS_STRL("{{#if a}}"));
+    }
+    for( size_t i = 0; i < levels; i++ ) {
+        tmpl = handlebars_string_append(context, tmpl, HBS_STRL("{{/if}}"));
+    }
+    return tmpl;
+}
+
+static void assert_ast_printer_depth_limit(ast_printer_func printer_func)
+{
+    struct handlebars_string * tmpl = ast_printer_nested_template(HANDLEBARS_AST_PRINTER_STACK_SIZE);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    jmp_buf * volatile previous = context->e->jmp;
+    const size_t blocks_before = talloc_total_blocks(context);
+    jmp_buf buf;
+
+    ck_assert_ptr_nonnull(ast);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_STACK_OVERFLOW);
+        ck_assert_str_eq(handlebars_error_msg(context), "AST printer stack overflow");
+        ck_assert_uint_le(talloc_total_blocks(context), blocks_before + 1);
+        return;
+    }
+
+    struct handlebars_string * output = printer_func(context, ast);
+    (void) output;
+    context->e->jmp = previous;
+    ck_abort_msg("Expected deeply nested AST printing to hit the stack limit");
+}
+
+START_TEST(test_ast_print_depth_limit)
+{
+    assert_ast_printer_depth_limit(handlebars_ast_print);
+}
+END_TEST
+
+START_TEST(test_ast_to_string_depth_limit)
+{
+    assert_ast_printer_depth_limit(handlebars_ast_to_string);
+}
+END_TEST
+
+START_TEST(test_ast_to_string_block_parameter_spacing)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#each users as |user index|}}{{user}}{{/each}}")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+
+    ck_assert_ptr_nonnull(ast);
+    struct handlebars_string * output = handlebars_ast_to_string(context, ast);
+
+    ck_assert_hbs_str_eq_cstr(output, "{{#each users as |user index|}}{{user}}{{/each}}");
+}
+END_TEST
+
+START_TEST(test_ast_to_string_partial_block_parameter_spacing)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#> layout foo bar baz=qux}}x{{/layout}}")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+
+    ck_assert_ptr_nonnull(ast);
+    struct handlebars_string * output = handlebars_ast_to_string(context, ast);
+
+    ck_assert_hbs_str_eq_cstr(output, "{{#> layout foo bar baz=qux}}x{{/layout}}");
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+static bool ast_printer_fails_at_allocation(
+    ast_printer_func printer_func,
+    struct handlebars_ast_node * ast,
+    int fail_at
+)
+{
+    jmp_buf * volatile previous = context->e->jmp;
+    const size_t blocks_before = talloc_total_blocks(context);
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_uint_le(talloc_total_blocks(context), blocks_before + 1);
+        return true;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(fail_at);
+    struct handlebars_string * output = printer_func(context, ast);
+    handlebars_memory_fail_disable();
+    context->e->jmp = previous;
+    handlebars_talloc_free(output);
+    return false;
+}
+
+static void assert_ast_printer_allocation_failure_cleanup(ast_printer_func printer_func)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("content {{foo \"bar\"}}")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    int fail_at;
+
+    ck_assert_ptr_nonnull(ast);
+    for( fail_at = 1; fail_at < 32; fail_at++ ) {
+        if( !ast_printer_fails_at_allocation(printer_func, ast, fail_at) ) {
+            break;
+        }
+    }
+
+    ck_assert_int_lt(fail_at, 32);
+}
+
+START_TEST(test_ast_printer_allocation_failure_cleanup)
+{
+    assert_ast_printer_allocation_failure_cleanup(handlebars_ast_print);
+    assert_ast_printer_allocation_failure_cleanup(handlebars_ast_to_string);
+}
+END_TEST
+#endif
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -210,6 +349,13 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_ast_tree_outlives_parser_when_reparented, "Reparented tree outlives parser");
     REGISTER_TEST_FIXTURE(s, test_ast_standalone_partial_indent_outlives_parser, "Standalone partial indent outlives parser");
     REGISTER_TEST_FIXTURE(s, test_ast_node_readable_type, "Readable Type");
+    REGISTER_TEST_FIXTURE(s, test_ast_print_depth_limit, "Printer depth limit");
+    REGISTER_TEST_FIXTURE(s, test_ast_to_string_depth_limit, "Source printer depth limit");
+    REGISTER_TEST_FIXTURE(s, test_ast_to_string_block_parameter_spacing, "Source block parameter spacing");
+    REGISTER_TEST_FIXTURE(s, test_ast_to_string_partial_block_parameter_spacing, "Source partial block parameter spacing");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_ast_printer_allocation_failure_cleanup, "Printer allocation failure cleanup");
+#endif
 
     return s;
 }

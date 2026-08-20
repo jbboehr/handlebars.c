@@ -30,8 +30,16 @@ HBS_EXTERN_C_START
 struct handlebars_ast_node;
 struct handlebars_context;
 
+#ifndef HANDLEBARS_AST_PRINTER_STACK_SIZE
+#define HANDLEBARS_AST_PRINTER_STACK_SIZE 256
+#endif
+
 /**
  * @brief Print an AST into a human-readable string.
+ *
+ * Throws HANDLEBARS_STACK_OVERFLOW if traversal requires more than
+ * HANDLEBARS_AST_PRINTER_STACK_SIZE printer frames. A single source nesting
+ * level may require multiple printer frames.
  *
  * @param[in] context The handlebars context
  * @param[in] ast_node The AST to print
@@ -42,6 +50,17 @@ struct handlebars_string * handlebars_ast_print(
     struct handlebars_ast_node * ast_node
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Reconstruct an AST as a template string.
+ *
+ * Throws HANDLEBARS_STACK_OVERFLOW if traversal requires more than
+ * HANDLEBARS_AST_PRINTER_STACK_SIZE printer frames. A single source nesting
+ * level may require multiple printer frames.
+ *
+ * @param[in] context The handlebars context
+ * @param[in] ast_node The AST to reconstruct
+ * @return The reconstructed template string
+ */
 struct handlebars_string * handlebars_ast_to_string(
     struct handlebars_context * context,
     struct handlebars_ast_node * ast_node
