@@ -128,10 +128,7 @@ char * handlebars_error_message(struct handlebars_context * context)
 
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( unlikely(errmsg == NULL) ) {
-        // this might be a bad idea...
-        // fprintf(stderr, "%s\n", e->msg);
-        // abort();
-        return (char *) e->msg;
+        return NULL;
     }
 
     return errmsg;
@@ -158,10 +155,7 @@ char * handlebars_error_message_js(struct handlebars_context * context)
 
     errmsg = handlebars_talloc_strdup(context, errbuf);
     if( unlikely(errmsg == NULL) ) {
-        // this might be a bad idea...
-        // fprintf(stderr, "%s\n", e->msg);
-        // abort();
-        return (char *) e->msg;
+        return NULL;
     }
 
     return errmsg;
@@ -175,14 +169,24 @@ char * handlebars_error_message_js(struct handlebars_context * context)
 HBS_ATTR_PRINTF(4, 0)
 static void _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
 {
+    static const char nomem_msg[] = HANDLEBARS_MEMCHECK_MSG;
     struct handlebars_error * e = context->e;
+    const char * old_msg = e->msg;
+    char * new_msg;
+
+    // Format before releasing the previous message because it may be one of
+    // the arguments, as it is when rethrowing an existing error.
+    new_msg = talloc_vasprintf(e, msg, ap);
+    if( old_msg != NULL && old_msg != nomem_msg ) {
+        talloc_free((char *) old_msg);
+    }
+
     e->num = num;
-
-    e->msg = talloc_vasprintf(context, msg, ap);
-
-    if( unlikely(e->msg == NULL) ) {
+    if( unlikely(new_msg == NULL) ) {
         e->num = HANDLEBARS_NOMEM;
-        e->msg = HANDLEBARS_MEMCHECK_MSG;
+        e->msg = nomem_msg;
+    } else {
+        e->msg = new_msg;
     }
     if( loc ) {
         e->loc = *loc;

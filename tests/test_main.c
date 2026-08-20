@@ -374,8 +374,7 @@ START_TEST(test_context_get_errmsg_failed_alloc)
     actual = handlebars_error_message(context);
     handlebars_memory_fail_disable();
 
-    //ck_assert_ptr_eq(NULL, actual);
-    ck_assert_ptr_eq(handlebars_error_msg(context), actual);
+    ck_assert_ptr_eq(NULL, actual);
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
@@ -420,11 +419,152 @@ START_TEST(test_context_get_errmsg_js_failed_alloc)
     actual = handlebars_error_message_js(context);
     handlebars_memory_fail_disable();
 
-    //ck_assert_ptr_eq(NULL, actual);
-    ck_assert_ptr_eq(handlebars_error_msg(context), actual);
+    ck_assert_ptr_eq(NULL, actual);
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
 #endif
+}
+END_TEST
+
+static void throw_and_catch(
+    struct handlebars_context * ctx,
+    const char * argument,
+    bool wrap
+) {
+    jmp_buf * volatile previous = ctx->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(ctx, &buf) ) {
+        ctx->e->jmp = previous;
+        return;
+    }
+
+    if( wrap ) {
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "wrapped: %s", argument);
+    } else {
+        handlebars_throw(ctx, HANDLEBARS_ERROR, "%s", argument);
+    }
+    ctx->e->jmp = previous;
+    ck_abort_msg("Expected an error");
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+static int test_set_memlimit(const void * ptr, size_t max_size)
+{
+    return talloc_set_memlimit(ptr, max_size);
+}
+#pragma GCC diagnostic pop
+
+START_TEST(test_error_message_replaces_previous_allocation)
+{
+    size_t blocks_before = talloc_total_blocks(context);
+    size_t blocks_after_first_error;
+
+    throw_and_catch(context, "first error", false);
+    blocks_after_first_error = talloc_total_blocks(context);
+    ck_assert_uint_eq(blocks_after_first_error, blocks_before + 1);
+    ck_assert_ptr_eq(talloc_parent(handlebars_error_msg(context)), context->e);
+    ck_assert_str_eq(handlebars_error_msg(context), "first error");
+
+    throw_and_catch(context, "second error", false);
+    ck_assert_uint_eq(talloc_total_blocks(context), blocks_after_first_error);
+    ck_assert_ptr_eq(talloc_parent(handlebars_error_msg(context)), context->e);
+    ck_assert_str_eq(handlebars_error_msg(context), "second error");
+}
+END_TEST
+
+START_TEST(test_error_message_supports_self_rethrow)
+{
+    throw_and_catch(context, "original error", false);
+    throw_and_catch(context, handlebars_error_msg(context), true);
+
+    ck_assert_str_eq(handlebars_error_msg(context), "wrapped: original error");
+    ck_assert_ptr_eq(talloc_parent(handlebars_error_msg(context)), context->e);
+}
+END_TEST
+
+START_TEST(test_error_message_format_failure_releases_previous)
+{
+    size_t error_size;
+
+    throw_and_catch(context, "original error", false);
+    error_size = talloc_total_size(context->e);
+
+    ck_assert_int_eq(test_set_memlimit(context->e, error_size), 0);
+
+    throw_and_catch(context, "replacement error", false);
+
+    ck_assert_int_eq(test_set_memlimit(context->e, 0), 0);
+
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Out of memory"));
+    ck_assert_uint_eq(talloc_total_blocks(context->e), 1);
+
+    throw_and_catch(context, "recovered error", false);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+    ck_assert_str_eq(handlebars_error_msg(context), "recovered error");
+    ck_assert_ptr_eq(talloc_parent(handlebars_error_msg(context)), context->e);
+    ck_assert_uint_eq(talloc_total_blocks(context->e), 2);
+}
+END_TEST
+
+START_TEST(test_error_message_replacement_preserves_memlimit)
+{
+    size_t size_before = talloc_total_size(context);
+    int i;
+
+    ck_assert_int_eq(test_set_memlimit(context, size_before + 64 * 1024), 0);
+    for( i = 0; i < 5000; i++ ) {
+        throw_and_catch(context, "an error message of some length", false);
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+    }
+    ck_assert_int_eq(test_set_memlimit(context, 0), 0);
+
+    ck_assert_str_eq(handlebars_error_msg(context), "an error message of some length");
+    ck_assert_ptr_eq(talloc_parent(handlebars_error_msg(context)), context->e);
+    ck_assert_uint_eq(talloc_total_blocks(context->e), 2);
+}
+END_TEST
+
+START_TEST(test_error_message_replacement_preserves_other_children)
+{
+    char * child = talloc_strdup(context->e, "unrelated child");
+
+    ck_assert_ptr_nonnull(child);
+    throw_and_catch(context, "first error", false);
+    throw_and_catch(context, "second error", false);
+
+    ck_assert_str_eq(child, "unrelated child");
+    ck_assert_ptr_eq(talloc_parent(child), context->e);
+    ck_assert_str_eq(handlebars_error_msg(context), "second error");
+}
+END_TEST
+
+START_TEST(test_error_message_copy_survives_next_error)
+{
+    char * copy;
+
+    throw_and_catch(context, "first error", false);
+    copy = handlebars_error_message(context);
+    ck_assert_ptr_nonnull(copy);
+
+    throw_and_catch(context, "second error", false);
+
+    ck_assert_ptr_nonnull(strstr(copy, "first error"));
+    ck_assert_str_eq(handlebars_error_msg(context), "second error");
+}
+END_TEST
+
+START_TEST(test_error_message_outlives_bound_context)
+{
+    struct handlebars_parser * child = handlebars_parser_ctor(context);
+
+    throw_and_catch(HBSCTX(child), "temporary context error", false);
+    handlebars_parser_dtor(child);
+
+    ck_assert_str_eq(handlebars_error_msg(context), "temporary context error");
+    ck_assert_ptr_eq(talloc_parent(handlebars_error_msg(context)), context->e);
 }
 END_TEST
 
@@ -474,6 +614,13 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_failed_alloc, "Get error message (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_js, "Get error message (js compat)");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_js_failed_alloc, "Get error message (js compat) (failed alloc)");
+    REGISTER_TEST_FIXTURE(s, test_error_message_replaces_previous_allocation, "Error message replaces previous allocation");
+    REGISTER_TEST_FIXTURE(s, test_error_message_supports_self_rethrow, "Error message supports self-rethrow");
+    REGISTER_TEST_FIXTURE(s, test_error_message_format_failure_releases_previous, "Error message format failure releases previous allocation");
+    REGISTER_TEST_FIXTURE(s, test_error_message_replacement_preserves_memlimit, "Error message replacement preserves memory limit");
+    REGISTER_TEST_FIXTURE(s, test_error_message_replacement_preserves_other_children, "Error message replacement preserves other children");
+    REGISTER_TEST_FIXTURE(s, test_error_message_copy_survives_next_error, "Error message copy survives next error");
+    REGISTER_TEST_FIXTURE(s, test_error_message_outlives_bound_context, "Error message outlives bound context");
     REGISTER_TEST_FIXTURE(s, test_context_bind_failure, "Get context bind (failed)");
 
     return s;

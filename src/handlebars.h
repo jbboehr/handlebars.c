@@ -198,7 +198,9 @@ struct handlebars_error
     //! The type of error that has occurred
     enum handlebars_error_type num;
 
-    //! The message of the error that has occurred
+    //! The message of the error that has occurred; dynamically formatted
+    //! messages are owned by this error object and replaced by the next error.
+    //! Callers must not modify or free this pointer.
     const char * msg;
 
     //! The location of the error that has occurred
@@ -325,25 +327,28 @@ struct handlebars_locinfo handlebars_error_loc(
 /**
  * @brief Get the error message for the specified context
  * @param[in] context The handlebars context
- * @return The error message, or NULL if no error has occurred.
+ * @return A borrowed error message, or NULL if no error has occurred. The
+ *         pointer is invalidated by the next error or context destruction.
  */
 const char * handlebars_error_msg(
     struct handlebars_context * context
 ) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Get a copy the error message from a context, or NULL.
+ * @brief Get a copy of the error message from a context, or NULL.
  * @param[in] context The handlebars context
- * @return The error message
+ * @return A context-owned copy of the error message, or NULL if no error has
+ *         occurred or the copy could not be allocated
  */
 char * handlebars_error_message(
     struct handlebars_context * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
- * @brief Get a copy the error message from a context, or NULL (compatibility for handlebars specification)
+ * @brief Get a copy of the error message from a context, or NULL (compatibility for handlebars specification)
  * @param[in] context
- * @return the error message
+ * @return A context-owned copy of the error message, or NULL if no error has
+ *         occurred or the copy could not be allocated
  */
 char * handlebars_error_message_js(
     struct handlebars_context * context

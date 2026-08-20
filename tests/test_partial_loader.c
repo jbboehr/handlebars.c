@@ -189,11 +189,10 @@ START_TEST(test_partial_loader_recovers_after_error)
     blocks_before = talloc_total_blocks(context);
     expect_partial_loader_error(partials, missing);
     blocks_after_first_error = talloc_total_blocks(context);
-    // The shared error message may retain one context-owned allocation.
-    ck_assert_uint_le(blocks_after_first_error, blocks_before + 1);
+    ck_assert_uint_eq(blocks_after_first_error, blocks_before + 1);
 
     expect_partial_loader_error(partials, missing);
-    ck_assert_uint_le(talloc_total_blocks(context), blocks_after_first_error + 1);
+    ck_assert_uint_eq(talloc_total_blocks(context), blocks_after_first_error);
 
     ck_assert_ptr_nonnull(handlebars_value_map_find(partials, present, rv));
     ck_assert_str_eq(handlebars_value_get_strval(rv), "|{{foo}}|");

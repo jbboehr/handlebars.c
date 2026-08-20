@@ -364,6 +364,14 @@ static void readInput(void)
     input_buf_length = talloc_array_length(input_buf) - 1;
 }
 
+static void print_error(struct handlebars_context * ctx)
+{
+    char * message = handlebars_error_message(ctx);
+    const char * fallback = handlebars_error_msg(ctx);
+
+    fprintf(stderr, "ERROR: %s\n", message ? message : (fallback ? fallback : "Unknown error"));
+}
+
 static int do_usage(void)
 {
     fprintf(stdout,
@@ -480,7 +488,7 @@ static int do_lex(void)
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        print_error(ctx);
         handlebars_context_dtor(ctx);
         return 1;
     }
@@ -523,7 +531,7 @@ static int do_parse(void)
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        print_error(ctx);
         handlebars_context_dtor(ctx);
         return 1;
     }
@@ -564,7 +572,7 @@ static int do_compile(void)
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        print_error(ctx);
         handlebars_context_dtor(ctx);
         return 1;
     }
@@ -613,7 +621,7 @@ static int do_module(void)
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        print_error(ctx);
         handlebars_context_dtor(ctx);
         return 1;
     }
@@ -670,7 +678,7 @@ static int do_execute(void)
 
     // Save jump buffer
     if( handlebars_setjmp_ex(ctx, &jmp) ) {
-        fprintf(stderr, "ERROR: %s\n", handlebars_error_message(ctx));
+        print_error(ctx);
         handlebars_context_dtor(ctx);
         return 1;
     }
