@@ -4,6 +4,17 @@ All Notable changes to `handlebars.c` will be documented in this file.
 
 Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) principles.
 
+## [Unreleased]
+
+### Changed
+- Value iterators now retain their backing storage, support nested map
+  iteration, and are closed when an error unwinds through the library.
+- The public value iterator layout changed and the shared-library ABI is now
+  version 10. Downstream binaries must be rebuilt.
+
+### Fixed
+- JSON `null` elements no longer reuse the preceding iterator value.
+
 ## [1.0.0]
 
 ### Changed

@@ -141,6 +141,47 @@ START_TEST(test_empty_array_iterator_json)
 }
 END_TEST
 
+START_TEST(test_array_iterator_json_replaces_value_with_null)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    size_t count = 0;
+
+    handlebars_value_init_json_string(context, value, "[1, null]");
+    HANDLEBARS_VALUE_FOREACH(value, child) {
+        if( count == 0 ) {
+            ck_assert_int_eq(handlebars_value_get_type(child), HANDLEBARS_VALUE_TYPE_INTEGER);
+            ck_assert_int_eq(handlebars_value_get_intval(child), 1);
+        } else {
+            ck_assert_int_eq(handlebars_value_get_type(child), HANDLEBARS_VALUE_TYPE_NULL);
+        }
+        count++;
+    } HANDLEBARS_VALUE_FOREACH_END();
+
+    ck_assert_uint_eq(count, 2);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_array_iterator_json_retains_owner)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+
+    handlebars_value_init_json_string(context, value, "[1, 2]");
+    ck_assert(handlebars_value_iterator_init(iter, value));
+    handlebars_value_dtor(value);
+
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 1);
+    ck_assert(handlebars_value_iterator_next(iter));
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 2);
+    ck_assert(!handlebars_value_iterator_next(iter));
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_map_iterator_json)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -179,6 +220,46 @@ START_TEST(test_empty_map_iterator_json)
 
     ck_assert_int_eq(count, 0);
     ck_assert_int_eq(handlebars_value_count(value), 0);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_map_iterator_json_break_cleanup)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    int count = 0;
+
+    handlebars_value_init_json_string(context, value, "{\"a\": 1, \"b\": 2}");
+    HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
+        ck_assert_ptr_nonnull(key);
+        ck_assert_ptr_nonnull(child);
+        count++;
+        break;
+    } HANDLEBARS_VALUE_FOREACH_END();
+
+    ck_assert_int_eq(count, 1);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_map_iterator_json_retains_owner)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+
+    handlebars_value_init_json_string(context, value, "{\"a\": 1, \"b\": 2}");
+    ck_assert(handlebars_value_iterator_init(iter, value));
+    handlebars_value_dtor(value);
+
+    ck_assert_hbs_str_eq_cstr(iter->key, "a");
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 1);
+    ck_assert(handlebars_value_iterator_next(iter));
+    ck_assert_hbs_str_eq_cstr(iter->key, "b");
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 2);
+    ck_assert(!handlebars_value_iterator_next(iter));
+
     HANDLEBARS_VALUE_UNDECL(value);
     ASSERT_INIT_BLOCKS();
 }
@@ -355,8 +436,12 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_string_json, "String");
     REGISTER_TEST_FIXTURE(s, test_array_iterator_json, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_empty_array_iterator_json, "Empty array iterator");
+    REGISTER_TEST_FIXTURE(s, test_array_iterator_json_replaces_value_with_null, "Array iterator replaces its current value with null");
+    REGISTER_TEST_FIXTURE(s, test_array_iterator_json_retains_owner, "Array iterator retains its JSON owner");
     REGISTER_TEST_FIXTURE(s, test_map_iterator_json, "Map iterator");
     REGISTER_TEST_FIXTURE(s, test_empty_map_iterator_json, "Empty map iterator");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_json_break_cleanup, "Breaking map iteration cleans up iterator state");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_json_retains_owner, "Map iterator retains its JSON owner");
     REGISTER_TEST_FIXTURE(s, test_array_find_json, "Array Find");
     REGISTER_TEST_FIXTURE(s, test_map_find_json, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex_json, "Complex");

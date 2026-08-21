@@ -195,6 +195,12 @@ static void _set_err(struct handlebars_context * context, enum handlebars_error_
     }
 }
 
+void handlebars_longjmp(struct handlebars_context * context, jmp_buf * target, int num)
+{
+    handlebars_value_iterator_unwind(context->e, target);
+    longjmp(*target, num);
+}
+
 void handlebars_throw(struct handlebars_context * context, enum handlebars_error_type num, const char * msg, ...)
 {
     struct handlebars_error * e = context->e;
@@ -208,7 +214,7 @@ void handlebars_throw(struct handlebars_context * context, enum handlebars_error
     const bool do_throw = true;
 #endif
     if( e->jmp && do_throw ) {
-        longjmp(*e->jmp, num);
+        handlebars_longjmp(context, e->jmp, num);
     } else {
         fprintf(stderr, "Throw with invalid jmp_buf: %s\n", e->msg);
         abort();
@@ -228,7 +234,7 @@ void handlebars_throw_ex(struct handlebars_context * context, enum handlebars_er
     const bool do_throw = true;
 #endif
     if( e->jmp && do_throw ) {
-        longjmp(*e->jmp, num);
+        handlebars_longjmp(context, e->jmp, num);
     } else {
         fprintf(stderr, "Throw with invalid jmp_buf: %s\n", e->msg);
         abort();

@@ -193,6 +193,8 @@ struct handlebars_locinfo
     int last_column;
 };
 
+struct handlebars_value_iterator;
+
 struct handlebars_error
 {
     //! The type of error that has occurred
@@ -209,6 +211,9 @@ struct handlebars_error
     //! On an unrecoverable error, if `jmp` is non-null, `longjmp` will be called with it as an argument,
     //! otherwise `abort`
     jmp_buf * jmp;
+
+    //! Active value iterators that must be closed when unwinding to `jmp`
+    struct handlebars_value_iterator * iterator_cleanup;
 };
 
 /**

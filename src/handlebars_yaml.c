@@ -86,7 +86,7 @@ static HBS_ATTR_NORETURN void handlebars_yaml_rethrow(
 )
 {
     if( previous != NULL ) {
-        longjmp(*previous, context->e->num);
+        handlebars_longjmp(context, previous, context->e->num);
     }
     abort();
 }

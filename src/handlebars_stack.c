@@ -97,6 +97,11 @@ void handlebars_stack_delref(struct handlebars_stack * stack)
 #endif
 }
 
+struct handlebars_context * handlebars_stack_get_context(struct handlebars_stack * stack)
+{
+    return stack->ctx;
+}
+
 static inline struct handlebars_stack * stack_separate(struct handlebars_stack * stack) {
 #ifndef HANDLEBARS_NO_REFCOUNT
     if (handlebars_rc_refcount(&stack->rc) > 1) {

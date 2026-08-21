@@ -63,11 +63,25 @@ struct handlebars_value_iterator
     //! The current child element
     struct handlebars_value * cur;
 
-    //! Opaque pointer for user-defined types
+    //! Opaque backing-state pointer used by the iterator implementation
     void * usr;
+
+    //! Retained user-defined value owner, when applicable
+    struct handlebars_user * user;
 
     //! A function pointer to move to the next child element
     bool (*next)(struct handlebars_value_iterator * it);
+
+    //! A function pointer to release iterator-owned state
+    void (*close)(struct handlebars_value_iterator * it);
+
+    //! Opaque storage position used by native iterators
+    size_t position;
+
+    //! Internal error-unwind linkage
+    struct handlebars_value_iterator * unwind_next;
+    struct handlebars_value_iterator ** unwind_previous;
+    jmp_buf * unwind_target;
 };
 
 #ifndef HANDLEBARS_VALUE_SIZE
@@ -532,20 +546,28 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
 
 // {{{ Iteration
 
+#if defined(HBS_HAVE_ATTR_CLEANUP)
+#define HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP HBS_ATTR_CLEANUP(handlebars_value_iterator_cleanup)
+#else
+#define HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP
+#endif
+
 #if defined(HANDLEBARS_VALUE_ITERATOR_SIZE) && defined(HANDLEBARS_VALUE_SIZE)
 // We know the size at compile-time
 #define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
-    struct { struct handlebars_value_iterator it; struct handlebars_value value; } mem_ ## name; \
-    struct handlebars_value_iterator * name = (void *) &mem_ ## name
+    struct { struct handlebars_value_iterator it; struct handlebars_value value; } mem_ ## name = {0}; \
+    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = (void *) &mem_ ## name
 #elif !defined(__STDC_NO_VLA__)
 // Use a char vla
 #define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
     char mem_ ## name[HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE]; \
-    struct handlebars_value_iterator * name = (void *) mem_ ## name;
+    memset(mem_ ## name, 0, sizeof(mem_ ## name)); \
+    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = (void *) mem_ ## name;
 #else
 // Use alloca
 #define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
-    struct handlebars_value_iterator * name = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE);
+    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE); \
+    memset(name, 0, HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE);
 #endif
 
 #define HANDLEBARS_VALUE_FOREACH(value, v) \
@@ -583,11 +605,15 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
 #define HANDLEBARS_VALUE_FOREACH_END() \
             } while (handlebars_value_iterator_next(iter)); \
         } \
+        handlebars_value_iterator_close(iter); \
     } while(0)
 
 /**
- * @brief Initialize an iterator
- * @param[in] it The iterator to initialize
+ * @brief Initialize an iterator. An initialized iterator retains the backing
+ *        storage and may outlive the source value. It must be advanced to
+ *        completion or closed with #handlebars_value_iterator_close.
+ * @param[in] it A zero-initialized iterator, normally declared with
+ *               #HANDLEBARS_VALUE_ITERATOR_DECL
  * @param[in] value The value for iteration
  * @return true, or false if the value is empty or of an invalid type
  */
@@ -599,6 +625,24 @@ bool handlebars_value_iterator_init(
 bool handlebars_value_iterator_next(
     struct handlebars_value_iterator * it
 ) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Release iterator-owned state. Safe to call more than once after the
+ *        iterator has been zero initialized or passed to
+ *        #handlebars_value_iterator_init. Manually initialized iterators that
+ *        are not advanced to completion must be closed explicitly. The foreach
+ *        macros close their iterator, and supported compilers also arrange
+ *        scope cleanup for iterators declared with
+ *        #HANDLEBARS_VALUE_ITERATOR_DECL.
+ * @param[in] it The initialized or zero-initialized iterator to close
+ */
+void handlebars_value_iterator_close(
+    struct handlebars_value_iterator * it
+) HBS_ATTR_NONNULL_ALL;
+
+void handlebars_value_iterator_cleanup(
+    struct handlebars_value_iterator * const * it
+);
 
 // }}} Iteration
 

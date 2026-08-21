@@ -1545,7 +1545,7 @@ done:
     HANDLEBARS_VALUE_UNDECL(prev_data);
 
     if( caught != HANDLEBARS_SUCCESS && prev != NULL ) {
-        longjmp(*prev, caught);
+        handlebars_longjmp(HBSCTX(vm), prev, caught);
     }
 
     return (struct handlebars_string *) buffer;

@@ -827,44 +827,103 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
 
 static bool handlebars_value_iterator_next_void(struct handlebars_value_iterator * it)
 {
+    (void) it;
     return false;
+}
+
+static void handlebars_value_iterator_close_stack(struct handlebars_value_iterator * it)
+{
+    handlebars_value_dtor(it->cur);
+    if( it->usr != NULL ) {
+        handlebars_stack_delref((struct handlebars_stack *) it->usr);
+        it->usr = NULL;
+    }
 }
 
 static bool handlebars_value_iterator_next_stack(struct handlebars_value_iterator * it)
 {
-    struct handlebars_value * value = it->value;
+    struct handlebars_stack * stack = (struct handlebars_stack *) it->usr;
+    size_t count;
 
-    assert(value != NULL);
-    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
+    assert(stack != NULL);
 
-    if( it->index >= handlebars_stack_count(value->v.stack) - 1 ) {
-        handlebars_value_dtor(it->cur);
+    count = handlebars_stack_count(stack);
+    if( it->index + 1 >= count ) {
         return false;
     }
 
     it->index++;
-    handlebars_value_value(it->cur, handlebars_stack_get(value->v.stack, it->index));
+    handlebars_value_value(it->cur, handlebars_stack_get(stack, it->index));
     return true;
+}
+
+static void handlebars_value_iterator_close_map(struct handlebars_value_iterator * it)
+{
+    handlebars_value_dtor(it->cur);
+    if( it->usr != NULL ) {
+        handlebars_map_iterator_release((struct handlebars_map *) it->usr);
+        it->usr = NULL;
+    }
+    it->key = NULL;
 }
 
 static bool handlebars_value_iterator_next_map(struct handlebars_value_iterator * it)
 {
+    struct handlebars_map * map = (struct handlebars_map *) it->usr;
     struct handlebars_value * tmp;
+    size_t count;
 
-    assert(it->value != NULL);
-    assert(it->value->type == HANDLEBARS_VALUE_TYPE_MAP);
+    assert(map != NULL);
 
+    count = handlebars_map_sparse_array_count(map);
+    for( size_t position = it->position + 1; position < count; position++ ) {
+        handlebars_map_get_kv_at_index(map, position, &it->key, &tmp);
+        if( it->key == NULL ) {
+            continue;
+        }
 
-    if( it->index >= handlebars_map_count(it->value->v.map) - 1 ) {
-        handlebars_value_dtor(it->cur);
-        handlebars_map_set_is_in_iteration(it->value->v.map, false);
-        return false;
+        it->position = position;
+        it->index++;
+        handlebars_value_value(it->cur, tmp);
+        return true;
     }
 
-    it->index++;
-    handlebars_map_get_kv_at_index(it->value->v.map, it->index, &it->key, &tmp);
-    handlebars_value_value(it->cur, tmp);
-    return true;
+    return false;
+}
+
+static void handlebars_value_iterator_register(
+    struct handlebars_value_iterator * it,
+    struct handlebars_context * context
+) {
+    struct handlebars_error * error = context->e;
+
+    /* There is nothing to unwind when the caller has no active boundary. */
+    if( error->jmp == NULL ) {
+        return;
+    }
+
+    assert(it->unwind_previous == NULL);
+    it->unwind_target = error->jmp;
+    it->unwind_next = error->iterator_cleanup;
+    it->unwind_previous = &error->iterator_cleanup;
+    if( it->unwind_next != NULL ) {
+        it->unwind_next->unwind_previous = &it->unwind_next;
+    }
+    error->iterator_cleanup = it;
+}
+
+static void handlebars_value_iterator_unregister(struct handlebars_value_iterator * it)
+{
+    if( it->unwind_previous != NULL ) {
+        *it->unwind_previous = it->unwind_next;
+        if( it->unwind_next != NULL ) {
+            it->unwind_next->unwind_previous = it->unwind_previous;
+        }
+    }
+
+    it->unwind_next = NULL;
+    it->unwind_previous = NULL;
+    it->unwind_target = NULL;
 }
 
 bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
@@ -881,30 +940,55 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
                 return false;
             }
             it->value = value;
+            it->usr = value->v.stack;
+            handlebars_stack_addref(value->v.stack);
             it->index = 0;
             handlebars_value_value(it->cur, handlebars_stack_get(value->v.stack, it->index));
             it->next = &handlebars_value_iterator_next_stack;
+            it->close = &handlebars_value_iterator_close_stack;
+            handlebars_value_iterator_register(it, handlebars_stack_get_context(value->v.stack));
             return true;
 
-        case HANDLEBARS_VALUE_TYPE_MAP:
+        case HANDLEBARS_VALUE_TYPE_MAP: {
+            struct handlebars_map * map = value->v.map;
+
             if (handlebars_map_count(value->v.map) <= 0) {
                 it->next = &handlebars_value_iterator_next_void;
                 return false;
             }
-            handlebars_map_sparse_array_compact(value->v.map); // meh
+
             it->value = value;
             it->index = 0;
-            handlebars_map_get_kv_at_index(value->v.map, it->index, &it->key, &tmp);
-            handlebars_value_value(it->cur, tmp);
+            it->usr = map;
             it->next = &handlebars_value_iterator_next_map;
-            if (handlebars_map_set_is_in_iteration(value->v.map, true)) {
-                fprintf(stderr, "Nested map iteration is not currently supported [%s:%d]", __FILE__, __LINE__);
-                abort();
-            }
-            return true;
+            it->close = &handlebars_value_iterator_close_map;
+            handlebars_map_iterator_acquire(map);
+            handlebars_value_iterator_register(it, handlebars_map_get_context(map));
 
-        case HANDLEBARS_VALUE_TYPE_USER:
-            return handlebars_value_get_handlers(value)->iterator(it, value);
+            for( it->position = 0; it->position < handlebars_map_sparse_array_count(map); it->position++ ) {
+                handlebars_map_get_kv_at_index(map, it->position, &it->key, &tmp);
+                if( it->key != NULL ) {
+                    handlebars_value_value(it->cur, tmp);
+                    return true;
+                }
+            }
+
+            handlebars_value_iterator_close(it);
+            return false;
+        }
+
+        case HANDLEBARS_VALUE_TYPE_USER: {
+            bool result;
+
+            it->user = value->v.user;
+            handlebars_user_addref(it->user);
+            handlebars_value_iterator_register(it, it->user->ctx);
+            result = handlebars_value_get_handlers(value)->iterator(it, value);
+            if( !result ) {
+                handlebars_value_iterator_close(it);
+            }
+            return result;
+        }
 
         default:
             it->next = &handlebars_value_iterator_next_void;
@@ -917,9 +1001,54 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
 bool handlebars_value_iterator_next(
     struct handlebars_value_iterator * it
 ) {
+    bool result;
+
     assert(it->next != NULL);
-    return it->next(it);
+    result = it->next(it);
+    if( !result ) {
+        handlebars_value_iterator_close(it);
+    }
+    return result;
 };
+
+void handlebars_value_iterator_close(struct handlebars_value_iterator * it)
+{
+    void (*close)(struct handlebars_value_iterator * it) = it->close;
+    struct handlebars_user * user;
+
+    handlebars_value_iterator_unregister(it);
+    it->close = NULL;
+    if( close != NULL ) {
+        close(it);
+    }
+    user = it->user;
+    it->user = NULL;
+    if( user != NULL ) {
+        handlebars_user_delref(user);
+    }
+    it->next = &handlebars_value_iterator_next_void;
+}
+
+void handlebars_value_iterator_unwind(struct handlebars_error * error, jmp_buf * target)
+{
+    struct handlebars_value_iterator * it = error->iterator_cleanup;
+
+    while( it != NULL ) {
+        struct handlebars_value_iterator * next = it->unwind_next;
+
+        if( it->unwind_target == target ) {
+            handlebars_value_iterator_close(it);
+        }
+        it = next;
+    }
+}
+
+void handlebars_value_iterator_cleanup(struct handlebars_value_iterator * const * it)
+{
+    if( it != NULL && *it != NULL ) {
+        handlebars_value_iterator_close(*it);
+    }
+}
 
 // }}} Iteration
 

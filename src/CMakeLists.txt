@@ -99,6 +99,7 @@ link_libraries(${LIBS})
 
 add_library(handlebars SHARED ${SOURCE_FILES} ${HEADERS})
 add_library(handlebars_static STATIC ${SOURCE_FILES} ${HEADERS})
+set_target_properties(handlebars PROPERTIES SOVERSION 10)
 
 install(TARGETS handlebars handlebars_static
     EXPORT handlebars

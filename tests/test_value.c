@@ -104,6 +104,13 @@ static struct handlebars_module * test_compile_template(const char * tmpl)
     return module;
 }
 
+static void clear_intentional_error(void)
+{
+    handlebars_talloc_free((char *) context->e->msg);
+    context->e->msg = NULL;
+    context->e->num = HANDLEBARS_SUCCESS;
+}
+
 
 START_TEST(test_closure_rejects_negative_local_count)
 {
@@ -132,6 +139,36 @@ START_TEST(test_vm_owns_default_maps)
 END_TEST
 
 #ifndef HANDLEBARS_NO_REFCOUNT
+static int throwing_iterator_user_dtors;
+
+static void throwing_iterator_user_dtor(struct handlebars_user * user)
+{
+    (void) user;
+    throwing_iterator_user_dtors++;
+}
+
+static bool throwing_iterator_user_next(struct handlebars_value_iterator * it)
+{
+    handlebars_throw(it->user->ctx, HANDLEBARS_ERROR, "Intentional iterator failure");
+    return false;
+}
+
+static bool throwing_iterator_user_init(
+    struct handlebars_value_iterator * it,
+    struct handlebars_value * value
+) {
+    (void) value;
+    handlebars_value_integer(it->cur, 1);
+    it->next = &throwing_iterator_user_next;
+    return true;
+}
+
+static const struct handlebars_value_handlers throwing_iterator_user_handlers = {
+    .name = "throwing-iterator-user",
+    .dtor = &throwing_iterator_user_dtor,
+    .iterator = &throwing_iterator_user_init
+};
+
 static const struct handlebars_value_handlers test_user_without_dtor_handlers = {
     .name = "test-user-without-dtor"
 };
@@ -357,6 +394,32 @@ START_TEST(test_array_iterator)
 }
 END_TEST
 
+START_TEST(test_array_iterator_retains_stack)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 2));
+    handlebars_value_integer(tmp, 1);
+    handlebars_value_array_push(value, tmp);
+    handlebars_value_integer(tmp, 2);
+    handlebars_value_array_push(value, tmp);
+
+    ck_assert(handlebars_value_iterator_init(iter, value));
+    handlebars_value_dtor(value);
+
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 1);
+    ck_assert(handlebars_value_iterator_next(iter));
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 2);
+    ck_assert(!handlebars_value_iterator_next(iter));
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_map_iterator)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -446,6 +509,314 @@ START_TEST(test_map_iterator_sparse)
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
+
+START_TEST(test_map_iterator_nested)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    struct handlebars_map * map = handlebars_map_ctor(context, 3);
+    size_t outer_count = 0;
+    size_t inner_count = 0;
+
+    for( long i = 0; i < 3; i++ ) {
+        char key[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(tmp, i + 1);
+        map = handlebars_map_str_update(map, key, 1, tmp);
+    }
+    handlebars_value_map(value, map);
+
+    HANDLEBARS_VALUE_FOREACH(value, outer) {
+        HANDLEBARS_VALUE_ITERATOR_DECL(inner_iter);
+        size_t current_inner_count = 0;
+        (void) outer;
+        outer_count++;
+
+        if( handlebars_value_iterator_init(inner_iter, value) ) {
+            do {
+                ck_assert_ptr_nonnull(inner_iter->cur);
+                current_inner_count++;
+                inner_count++;
+            } while( handlebars_value_iterator_next(inner_iter) );
+        }
+
+        ck_assert_uint_eq(current_inner_count, 3);
+    } HANDLEBARS_VALUE_FOREACH_END();
+
+    ck_assert_uint_eq(outer_count, 3);
+    ck_assert_uint_eq(inner_count, 9);
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_map_iterator_retains_map)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+    struct handlebars_map * map = handlebars_map_ctor(context, 2);
+
+    handlebars_value_integer(tmp, 1);
+    map = handlebars_map_str_update(map, HBS_STRL("a"), tmp);
+    handlebars_value_integer(tmp, 2);
+    map = handlebars_map_str_update(map, HBS_STRL("b"), tmp);
+    handlebars_value_map(value, map);
+
+    ck_assert(handlebars_value_iterator_init(iter, value));
+    handlebars_value_dtor(value);
+
+    ck_assert_hbs_str_eq_cstr(iter->key, "a");
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 1);
+    ck_assert(handlebars_value_iterator_next(iter));
+    ck_assert_hbs_str_eq_cstr(iter->key, "b");
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 2);
+    ck_assert(!handlebars_value_iterator_next(iter));
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_map_iterator_break_releases_snapshot)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    struct handlebars_map * map = handlebars_map_ctor(context, 3);
+    struct handlebars_map * original;
+
+    handlebars_value_integer(tmp, 1);
+    map = handlebars_map_str_update(map, HBS_STRL("a"), tmp);
+    handlebars_value_map(value, map);
+    original = handlebars_value_get_map(value);
+
+    HANDLEBARS_VALUE_FOREACH(value, child) {
+        (void) child;
+        break;
+    } HANDLEBARS_VALUE_FOREACH_END();
+
+    value->v.map = handlebars_map_rehash(value->v.map, true);
+    ck_assert_ptr_ne(value->v.map, original);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(value->v.map, HBS_STRL("a"))), 1);
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_map_iterator_mutation_uses_snapshot)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    struct handlebars_map * map = handlebars_map_ctor(context, 3);
+    long index = 0;
+
+    for( long i = 0; i < 3; i++ ) {
+        char key[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(tmp, i + 1);
+        map = handlebars_map_str_update(map, key, 1, tmp);
+    }
+    handlebars_value_map(value, map);
+
+    HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
+        index++;
+        ck_assert_int_eq(handlebars_value_get_intval(child), index);
+        handlebars_value_integer(tmp, index + 10);
+        handlebars_value_map_update(value, key, tmp);
+    } HANDLEBARS_VALUE_FOREACH_END();
+
+    ck_assert_int_eq(index, 3);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(value->v.map, HBS_STRL("a"))), 11);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(value->v.map, HBS_STRL("b"))), 12);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(value->v.map, HBS_STRL("c"))), 13);
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_map_iterator_longjmp_releases_snapshot)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    struct handlebars_map * map = handlebars_map_ctor(context, 9);
+    struct handlebars_map * original;
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_value_integer(tmp, 1);
+    map = handlebars_map_str_update(map, HBS_STRL("a"), tmp);
+    handlebars_value_map(value, map);
+    original = value->v.map;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+#ifdef HANDLEBARS_NO_REFCOUNT
+        value->v.map = handlebars_map_rehash(value->v.map, true);
+        ck_assert_ptr_ne(value->v.map, original);
+#else
+        value->v.map = handlebars_map_rehash(value->v.map, false);
+        ck_assert_ptr_eq(value->v.map, original);
+#endif
+        clear_intentional_error();
+        HANDLEBARS_VALUE_UNDECL(tmp);
+        HANDLEBARS_VALUE_UNDECL(value);
+        ASSERT_INIT_BLOCKS();
+        return;
+    }
+
+    HANDLEBARS_VALUE_FOREACH(value, child) {
+        (void) child;
+        handlebars_throw(context, HANDLEBARS_ERROR, "Intentional iterator failure");
+    } HANDLEBARS_VALUE_FOREACH_END();
+    ck_abort_msg("Expected iteration to throw");
+}
+END_TEST
+
+START_TEST(test_array_iterator_longjmp_releases_snapshot)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    struct handlebars_stack * original;
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 4));
+    handlebars_value_integer(tmp, 1);
+    handlebars_value_array_push(value, tmp);
+    original = value->v.stack;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        handlebars_value_integer(tmp, 2);
+        handlebars_value_array_push(value, tmp);
+        ck_assert_ptr_eq(value->v.stack, original);
+        clear_intentional_error();
+        HANDLEBARS_VALUE_UNDECL(tmp);
+        HANDLEBARS_VALUE_UNDECL(value);
+        ASSERT_INIT_BLOCKS();
+        return;
+    }
+
+    HANDLEBARS_VALUE_FOREACH(value, child) {
+        (void) child;
+        handlebars_throw(context, HANDLEBARS_ERROR, "Intentional iterator failure");
+    } HANDLEBARS_VALUE_FOREACH_END();
+    ck_abort_msg("Expected iteration to throw");
+}
+END_TEST
+
+START_TEST(test_nested_error_boundary_preserves_outer_iterator)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf outer;
+    jmp_buf inner;
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 2));
+    handlebars_value_integer(tmp, 1);
+    handlebars_value_array_push(value, tmp);
+    handlebars_value_integer(tmp, 2);
+    handlebars_value_array_push(value, tmp);
+
+    if( handlebars_setjmp_ex(context, &outer) ) {
+        context->e->jmp = previous;
+        ck_abort_msg("The inner error escaped its boundary");
+    }
+    ck_assert(handlebars_value_iterator_init(iter, value));
+
+    if( handlebars_setjmp_ex(context, &inner) ) {
+        context->e->jmp = &outer;
+        ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 1);
+        ck_assert(handlebars_value_iterator_next(iter));
+        ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 2);
+        handlebars_value_iterator_close(iter);
+        context->e->jmp = previous;
+        clear_intentional_error();
+        HANDLEBARS_VALUE_UNDECL(tmp);
+        HANDLEBARS_VALUE_UNDECL(value);
+        ASSERT_INIT_BLOCKS();
+        return;
+    }
+
+    handlebars_throw(context, HANDLEBARS_ERROR, "Intentional nested failure");
+}
+END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_user_iterator_longjmp_releases_owner)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+    struct handlebars_user * user = handlebars_talloc_zero(
+        context,
+        struct handlebars_user
+    );
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    throwing_iterator_user_dtors = 0;
+    ck_assert_ptr_nonnull(user);
+    handlebars_user_init(user, context, &throwing_iterator_user_handlers);
+    handlebars_value_user(value, user);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        handlebars_value_dtor(value);
+        ck_assert_int_eq(throwing_iterator_user_dtors, 1);
+        clear_intentional_error();
+        HANDLEBARS_VALUE_UNDECL(value);
+        ASSERT_INIT_BLOCKS();
+        return;
+    }
+
+    ck_assert(handlebars_value_iterator_init(iter, value));
+    (void) handlebars_value_iterator_next(iter);
+    ck_abort_msg("Expected user iterator to throw");
+}
+END_TEST
+#endif
+
+#ifdef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_map_iterator_no_refcount_guard_is_nested)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    HANDLEBARS_VALUE_ITERATOR_DECL(first);
+    HANDLEBARS_VALUE_ITERATOR_DECL(second);
+    struct handlebars_map * map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * original;
+
+    handlebars_value_integer(tmp, 1);
+    map = handlebars_map_str_update(map, HBS_STRL("a"), tmp);
+    handlebars_value_map(value, map);
+    original = value->v.map;
+
+    ck_assert(handlebars_value_iterator_init(first, value));
+    ck_assert(handlebars_value_iterator_init(second, value));
+
+    value->v.map = handlebars_map_rehash(value->v.map, true);
+    ck_assert_ptr_eq(value->v.map, original);
+
+    handlebars_value_iterator_close(first);
+    value->v.map = handlebars_map_rehash(value->v.map, true);
+    ck_assert_ptr_eq(value->v.map, original);
+
+    handlebars_value_iterator_close(second);
+    value->v.map = handlebars_map_rehash(value->v.map, true);
+    ck_assert_ptr_ne(value->v.map, original);
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
 
 START_TEST(test_array_find)
 {
@@ -705,8 +1076,22 @@ static Suite * suite(void)
 #endif
     REGISTER_TEST_FIXTURE(s, test_vm_reusable_after_helper_error, "VM reuse after helper error");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
+    REGISTER_TEST_FIXTURE(s, test_array_iterator_retains_stack, "Array iterator retains its backing stack");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");
     REGISTER_TEST_FIXTURE(s, test_map_iterator_sparse, "Map iterator (sparse)");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_nested, "Nested map iterators");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_retains_map, "Map iterator retains its backing map");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_break_releases_snapshot, "Breaking map iteration releases its snapshot");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_mutation_uses_snapshot, "Map mutation preserves the active iterator snapshot");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_longjmp_releases_snapshot, "Map iterator releases its snapshot during error unwind");
+    REGISTER_TEST_FIXTURE(s, test_array_iterator_longjmp_releases_snapshot, "Array iterator releases its snapshot during error unwind");
+    REGISTER_TEST_FIXTURE(s, test_nested_error_boundary_preserves_outer_iterator, "Nested error boundaries preserve outer iterators");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_user_iterator_longjmp_releases_owner, "User iterator releases its owner during error unwind");
+#endif
+#ifdef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_no_refcount_guard_is_nested, "No-refcount map iterator guards are nested");
+#endif
     REGISTER_TEST_FIXTURE(s, test_array_find, "Array Find");
     REGISTER_TEST_FIXTURE(s, test_map_find, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_readable_type, "Readable Type");

@@ -67,6 +67,9 @@ struct handlebars_map {
     uint32_t vec_capacity;
 
     bool is_in_iteration;
+#ifdef HANDLEBARS_NO_REFCOUNT
+    size_t active_iterators;
+#endif
 
     struct handlebars_map_entry data[];
 };
@@ -304,6 +307,34 @@ void handlebars_map_delref(struct handlebars_map * map)
 #endif
 }
 
+void handlebars_map_iterator_acquire(struct handlebars_map * map)
+{
+#ifdef HANDLEBARS_NO_REFCOUNT
+    if( unlikely(map->active_iterators == SIZE_MAX) ) {
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Too many active map iterators");
+    }
+    map->active_iterators++;
+#else
+    assert(handlebars_rc_refcount(&map->rc) >= 1);
+    handlebars_map_addref(map);
+#endif
+}
+
+void handlebars_map_iterator_release(struct handlebars_map * map)
+{
+#ifdef HANDLEBARS_NO_REFCOUNT
+    assert(map->active_iterators > 0);
+    map->active_iterators--;
+#else
+    handlebars_map_delref(map);
+#endif
+}
+
+struct handlebars_context * handlebars_map_get_context(struct handlebars_map * map)
+{
+    return map->ctx;
+}
+
 void handlebars_map_addref_ex(struct handlebars_map * map, const char * expr, const char * loc)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -400,10 +431,13 @@ static struct handlebars_map * map_copy_ctor_with_capacity(
 )
 {
     struct handlebars_map * map = handlebars_map_ctor(prev_map->ctx, new_capacity);
+    struct handlebars_map_entry * vec = map_vec(prev_map);
 
-    handlebars_map_foreach(prev_map, index, key, value) {
-        map = handlebars_map_add(map, key, value);
-    } handlebars_map_foreach_end(prev_map);
+    for( size_t index = 0; index < prev_map->vec_offset; index++ ) {
+        if( vec[index].key != NULL ) {
+            map = handlebars_map_add(map, vec[index].key, &vec[index].value);
+        }
+    }
 
     return map;
 }
@@ -424,10 +458,14 @@ struct handlebars_map * handlebars_map_copy_ctor(struct handlebars_map * prev_ma
 
 void handlebars_map_dtor(struct handlebars_map * map)
 {
-    handlebars_map_foreach(map, index, key, value) {
-        handlebars_string_delref(key);
-        handlebars_value_dtor(value);
-    } handlebars_map_foreach_end(map);
+    struct handlebars_map_entry * vec = map_vec(map);
+
+    for( size_t index = 0; index < map->vec_offset; index++ ) {
+        if( vec[index].key != NULL ) {
+            handlebars_string_delref(vec[index].key);
+            handlebars_value_dtor(&vec[index].value);
+        }
+    }
 
     handlebars_talloc_free(map);
 }
@@ -577,7 +615,15 @@ bool handlebars_map_is_sparse(struct handlebars_map * map)
 
 struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool force)
 {
-    if (map->is_in_iteration) { // this go go really wrong
+    /* The low-level foreach macro permits in-place removal by explicitly
+     * locking the backing vector for the duration of its loop. Without
+     * refcounts, value iterators also guard the live backing vector because
+     * they cannot retain an immutable snapshot for copy-on-write updates. */
+    if (map->is_in_iteration
+#ifdef HANDLEBARS_NO_REFCOUNT
+        || map->active_iterators > 0
+#endif
+    ) {
         return map;
     }
 

@@ -112,7 +112,7 @@ static HBS_ATTR_NORETURN void partial_loader_rethrow(
     jmp_buf * previous
 ) {
     if( previous != NULL ) {
-        longjmp(*previous, context->e->num);
+        handlebars_longjmp(context, previous, context->e->num);
     }
     fprintf(stderr, "Throw with invalid jmp_buf: %s\n", handlebars_error_msg(context));
     abort();
@@ -236,28 +236,42 @@ done:
 
 static bool hbs_partial_loader_iterator_next_void(struct handlebars_value_iterator * it)
 {
+    (void) it;
     return false;
+}
+
+static void hbs_partial_loader_iterator_close_map(struct handlebars_value_iterator * it)
+{
+    handlebars_value_dtor(it->cur);
+    if( it->usr != NULL ) {
+        handlebars_map_iterator_release((struct handlebars_map *) it->usr);
+        it->usr = NULL;
+    }
+    it->key = NULL;
 }
 
 static bool hbs_partial_loader_iterator_next_map(struct handlebars_value_iterator * it)
 {
-    struct handlebars_partial_loader * intern = GET_INTERN_V(it->value);
-    struct handlebars_map * map = intern->map;
+    struct handlebars_map * map = (struct handlebars_map *) it->usr;
     struct handlebars_value * tmp;
+    size_t count;
 
-    assert(it->value != NULL);
-    assert(handlebars_value_get_type(it->value) == HANDLEBARS_VALUE_TYPE_MAP);
+    assert(map != NULL);
 
-    if( it->index >= handlebars_map_count(map) - 1 ) {
-        handlebars_value_dtor(it->cur);
-        handlebars_map_set_is_in_iteration(map, false);
-        return false;
+    count = handlebars_map_sparse_array_count(map);
+    for( size_t position = it->position + 1; position < count; position++ ) {
+        handlebars_map_get_kv_at_index(map, position, &it->key, &tmp);
+        if( it->key == NULL ) {
+            continue;
+        }
+
+        it->position = position;
+        it->index++;
+        handlebars_value_value(it->cur, tmp);
+        return true;
     }
 
-    it->index++;
-    handlebars_map_get_kv_at_index(map, it->index, &it->key, &tmp);
-    handlebars_value_value(it->cur, tmp);
-    return true;
+    return false;
 }
 
 static bool hbs_partial_loader_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
@@ -271,18 +285,23 @@ static bool hbs_partial_loader_iterator_init(struct handlebars_value_iterator * 
         return false;
     }
 
-    handlebars_map_sparse_array_compact(map); // meh
     it->value = value;
     it->index = 0;
-    handlebars_map_get_kv_at_index(map, it->index, &it->key, &tmp);
-    handlebars_value_value(it->cur, tmp);
+    it->usr = map;
     it->next = &hbs_partial_loader_iterator_next_map;
-    if (handlebars_map_set_is_in_iteration(map, true)) {
-        fprintf(stderr, "Nested map iteration is not currently supported [%s:%d]", __FILE__, __LINE__);
-        abort();
+    it->close = &hbs_partial_loader_iterator_close_map;
+    handlebars_map_iterator_acquire(map);
+
+    for( it->position = 0; it->position < handlebars_map_sparse_array_count(map); it->position++ ) {
+        handlebars_map_get_kv_at_index(map, it->position, &it->key, &tmp);
+        if( it->key != NULL ) {
+            handlebars_value_value(it->cur, tmp);
+            return true;
+        }
     }
 
-    return true;
+    handlebars_value_iterator_close(it);
+    return false;
 }
 
 static long hbs_partial_loader_count(struct handlebars_value * value)
@@ -315,6 +334,8 @@ struct handlebars_value * handlebars_value_partial_loader_init(
     obj->base_path = talloc_steal(obj, handlebars_string_copy_ctor(context, base_path));
     obj->extension = talloc_steal(obj, handlebars_string_copy_ctor(context, extension));
     obj->map = talloc_steal(obj, handlebars_map_ctor(context, 32));
+    /* The iterator-retention API requires its owner to hold the initial ref. */
+    handlebars_map_addref(obj->map);
     talloc_set_destructor(obj, partial_loader_dtor);
     handlebars_value_user(rv, (struct handlebars_user *) obj);
     return rv;

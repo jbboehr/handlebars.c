@@ -25,6 +25,28 @@
 HBS_EXTERN_C_START
 
 struct handlebars_context;
+struct handlebars_error;
+struct handlebars_map;
+struct handlebars_stack;
+
+HBS_LOCAL struct handlebars_context * handlebars_map_get_context(
+    struct handlebars_map * map
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+HBS_LOCAL struct handlebars_context * handlebars_stack_get_context(
+    struct handlebars_stack * stack
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+HBS_LOCAL void handlebars_value_iterator_unwind(
+    struct handlebars_error * error,
+    jmp_buf * target
+) HBS_ATTR_NONNULL_ALL;
+
+HBS_LOCAL HBS_ATTR_NORETURN void handlebars_longjmp(
+    struct handlebars_context * context,
+    jmp_buf * target,
+    int num
+) HBS_ATTR_NONNULL_ALL;
 
 #define likely handlebars_likely
 #define unlikely handlebars_unlikely

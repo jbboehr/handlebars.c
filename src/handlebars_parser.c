@@ -174,7 +174,7 @@ struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * pars
         }
         e->jmp = prev;
         if( prev ) {
-            longjmp(*prev, e->num);
+            handlebars_longjmp(HBSCTX(parser), prev, e->num);
         }
         return NULL;
     }

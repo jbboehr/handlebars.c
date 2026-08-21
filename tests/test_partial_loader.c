@@ -100,10 +100,21 @@ static struct handlebars_string * execute_template(const char *template, const c
 
     // Test iterator/count
     ck_assert_int_eq(1, handlebars_value_count(partials));
+    size_t nested_count = 0;
     HANDLEBARS_VALUE_FOREACH_KV(partials, key, child) {
+        HANDLEBARS_VALUE_ITERATOR_DECL(nested_iter);
         ck_assert_str_eq(partial_name, hbs_str_val(key));
         ck_assert_str_eq(partial_value, handlebars_value_get_strval(child));
+
+        if( handlebars_value_iterator_init(nested_iter, partials) ) {
+            do {
+                ck_assert_str_eq(partial_name, hbs_str_val(nested_iter->key));
+                ck_assert_str_eq(partial_value, handlebars_value_get_strval(nested_iter->cur));
+                nested_count++;
+            } while( handlebars_value_iterator_next(nested_iter) );
+        }
     } HANDLEBARS_VALUE_FOREACH_END();
+    ck_assert_uint_eq(nested_count, 1);
 
     retval = talloc_steal(NULL, buffer);
 
@@ -227,6 +238,72 @@ START_TEST(test_partial_loader_result_outlives_loader)
 }
 END_TEST
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_partial_loader_iteration_uses_snapshot)
+{
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(rv);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    struct handlebars_string * first = handlebars_string_ctor(context, HBS_STRL("fixture1"));
+    struct handlebars_string * second = handlebars_string_ctor(context, HBS_STRL("fixture4"));
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    handlebars_value_partial_loader_init(context, path, extension, partials);
+
+    ck_assert_ptr_nonnull(handlebars_value_map_find(partials, first, rv));
+    ck_assert(handlebars_value_iterator_init(iter, partials));
+
+    ck_assert_ptr_nonnull(handlebars_value_map_find(partials, second, rv));
+    ck_assert_int_eq(handlebars_value_count(partials), 2);
+
+    ck_assert_str_eq(hbs_str_val(iter->key), "fixture1");
+    ck_assert_str_eq(handlebars_value_get_strval(iter->cur), "|{{foo}}|");
+    ck_assert(!handlebars_value_iterator_next(iter));
+
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(partials);
+}
+END_TEST
+
+
+START_TEST(test_partial_loader_iterator_retains_loader)
+{
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(rv);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("fixture1"));
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    handlebars_value_partial_loader_init(context, path, extension, partials);
+
+    ck_assert_ptr_nonnull(handlebars_value_map_find(partials, key, rv));
+    ck_assert(handlebars_value_iterator_init(iter, partials));
+    handlebars_value_dtor(partials);
+
+    ck_assert_hbs_str_eq_cstr(iter->key, "fixture1");
+    ck_assert_str_eq(handlebars_value_get_strval(iter->cur), "|{{foo}}|");
+    ck_assert(!handlebars_value_iterator_next(iter));
+
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(partials);
+}
+END_TEST
+#endif
+
 #ifdef HANDLEBARS_MEMORY
 static bool partial_loader_find_with_alloc_failure(
     struct handlebars_value * partials,
@@ -336,6 +413,10 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_error, "Partial loader error");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_recovers_after_error, "Partial loader recovers after error");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_result_outlives_loader, "Partial loader result outlives loader");
+#ifndef HANDLEBARS_NO_REFCOUNT
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_iteration_uses_snapshot, "Partial loader iteration uses an immutable snapshot");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_iterator_retains_loader, "Partial loader iterator retains its loader");
+#endif
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_recovers_after_alloc_error, "Partial loader recovers after allocation error");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_empty, "Partial loader empty file");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_rejects_traversal, "Partial loader rejects traversal");

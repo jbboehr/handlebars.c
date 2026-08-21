@@ -95,6 +95,21 @@ void handlebars_map_addref_ex(struct handlebars_map * map, const char * expr, co
 void handlebars_map_delref_ex(struct handlebars_map * map, const char * expr, const char * loc)
     HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Retain the map backing storage for a value iterator. In refcounted
+ *        builds, the caller must already own a reference to the map.
+ * @param[in] map
+ */
+void handlebars_map_iterator_acquire(struct handlebars_map * map)
+    HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Release map backing storage retained by a value iterator.
+ * @param[in] map
+ */
+void handlebars_map_iterator_release(struct handlebars_map * map)
+    HBS_ATTR_NONNULL_ALL;
+
 #ifdef HANDLEBARS_ENABLE_DEBUG
 #define handlebars_map_addref(map) handlebars_map_addref_ex(map, #map, HBS_LOC)
 #define handlebars_map_delref(map) handlebars_map_delref_ex(map, #map, HBS_LOC)

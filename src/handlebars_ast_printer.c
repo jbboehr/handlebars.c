@@ -514,7 +514,7 @@ static HBS_ATTR_NORETURN void handlebars_ast_printer_rethrow(
     jmp_buf * previous
 ) {
     if( previous != NULL ) {
-        longjmp(*previous, context->e->num);
+        handlebars_longjmp(context, previous, context->e->num);
     }
     fprintf(stderr, "Throw with invalid jmp_buf: %s\n", handlebars_error_msg(context));
     abort();

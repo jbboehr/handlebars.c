@@ -19,7 +19,7 @@ m4_define([HANDLEBARS_MINOR], 0)
 m4_define([HANDLEBARS_PATCH], 0)
 
 # Define the libtool version numbers; check the Autobook, Section 11.4.
-m4_define([HANDLEBARS_CURRENT], 9)
+m4_define([HANDLEBARS_CURRENT], 10)
 m4_define([HANDLEBARS_REVISION], 0)
 m4_define([HANDLEBARS_AGE], 0)
 
