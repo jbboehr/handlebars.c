@@ -140,6 +140,10 @@
             # required filename argument; runtime memory checks run separately.
             valgrindSupport = false;
           }
+          {
+            attr = "handlebars-c-memory";
+            memoryTestingSupport = true;
+          }
           #{
           #  attr = "handlebars-c-lto";
           #  ltoSupport = true;

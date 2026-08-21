@@ -53,6 +53,7 @@
   jsonSupport ? true,
   lmdbSupport ? true,
   ltoSupport ? false,
+  memoryTestingSupport ? false,
   noRefcountingSupport ? false,
   pthreadSupport ? true,
   sharedSupport ? true,
@@ -140,6 +141,8 @@ stdenv.mkDerivation rec {
     # not sure if this is a good idea, but I don't think it'll work without it
     ++ lib.optionals ltoSupport ["RANLIB=" "AR=" "NM=" "LD="]
     ++ lib.optional (!ltoSupport) "--disable-lto"
+    ++ lib.optional memoryTestingSupport "--enable-handlebars-memory"
+    ++ lib.optional (!memoryTestingSupport) "--disable-handlebars-memory"
     ++ lib.optional noRefcountingSupport "--disable-refcounting"
     ++ lib.optional pthreadSupport "--enable-pthread"
     ++ lib.optional (!pthreadSupport) "--disable-pthread"
