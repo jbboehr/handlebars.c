@@ -317,7 +317,10 @@ double handlebars_value_get_floatval(
 /**
  * @brief Get the value as a string (primitive types only)
  * @param[in] value The handlebars value
- * @return The value as a string
+ * @param[in] context The handlebars memory context used for converted values
+ * @return For string values, the value's retained string, which the caller must
+ *         release with handlebars_string_delref(). For other primitive types,
+ *         a fresh string owned by @p context, which the caller may free directly.
  */
 struct handlebars_string * handlebars_value_to_string(
     struct handlebars_value * value,

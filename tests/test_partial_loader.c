@@ -381,25 +381,55 @@ START_TEST(test_partial_loader_empty)
 }
 END_TEST
 
-START_TEST(test_partial_loader_rejects_traversal)
+static void expect_partial_name_error(
+    struct handlebars_value * partials,
+    const char * name,
+    size_t length,
+    const char * expected_error
+)
 {
-    HANDLEBARS_VALUE_DECL(partials);
     HANDLEBARS_VALUE_DECL(rv);
-    struct handlebars_string * path = handlebars_string_ctor(context, HBS_STRL("tests"));
-    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
-    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("../fixture1"));
-    handlebars_value_partial_loader_init(context, path, extension, partials);
+    struct handlebars_string * key = handlebars_string_ctor(context, name, length);
+    jmp_buf * volatile previous = context->e->jmp;
     jmp_buf buf;
 
     if( handlebars_setjmp_ex(context, &buf) ) {
-        ck_assert_str_eq(handlebars_error_msg(context), "Invalid partial name");
+        context->e->jmp = previous;
+        ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), expected_error));
+        clear_intentional_error();
         HANDLEBARS_VALUE_UNDECL(rv);
-        HANDLEBARS_VALUE_UNDECL(partials);
         return;
     }
 
     (void) handlebars_value_map_find(partials, key, rv);
-    ck_abort_msg("Expected unsafe partial name to be rejected");
+    context->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(rv);
+    ck_abort_msg("Expected partial loading to fail");
+}
+
+START_TEST(test_partial_loader_rejects_unsafe_names)
+{
+    HANDLEBARS_VALUE_DECL(partials);
+    struct handlebars_string * path = handlebars_string_ctor(context, HBS_STRL("tests"));
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    const char embedded_nul[] = {'f', 'o', 'o', '\0', 'b', 'a', 'r'};
+
+    handlebars_value_partial_loader_init(context, path, extension, partials);
+    expect_partial_name_error(partials, HBS_STRL(""), "Invalid partial name");
+    expect_partial_name_error(partials, HBS_STRL("/fixture1"), "Invalid partial name");
+    expect_partial_name_error(partials, HBS_STRL("\\fixture1"), "Invalid partial name");
+    expect_partial_name_error(partials, HBS_STRL("dir\\fixture1"), "Invalid partial name");
+    expect_partial_name_error(partials, embedded_nul, sizeof(embedded_nul), "Invalid partial name");
+    expect_partial_name_error(partials, HBS_STRL("../fixture1"), "Invalid partial name");
+    expect_partial_name_error(partials, HBS_STRL("dir/../fixture1"), "Invalid partial name");
+
+    expect_partial_name_error(partials, HBS_STRL("..fixture1"), "File to open partial");
+    expect_partial_name_error(partials, HBS_STRL("fixture1.."), "File to open partial");
+    expect_partial_name_error(partials, HBS_STRL("a.b"), "File to open partial");
+    expect_partial_name_error(partials, HBS_STRL("dir/sub"), "File to open partial");
+    ck_assert_int_eq(handlebars_value_count(partials), 0);
+
+    HANDLEBARS_VALUE_UNDECL(partials);
 }
 END_TEST
 
@@ -419,7 +449,7 @@ static Suite * suite(void)
 #endif
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_recovers_after_alloc_error, "Partial loader recovers after allocation error");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_empty, "Partial loader empty file");
-	REGISTER_TEST_FIXTURE(s, test_partial_loader_rejects_traversal, "Partial loader rejects traversal");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_rejects_unsafe_names, "Partial loader rejects unsafe names");
 
     return s;
 }

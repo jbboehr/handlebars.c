@@ -403,6 +403,70 @@ START_TEST(test_convert_json)
 }
 END_TEST
 
+START_TEST(test_json_expression_dispatch)
+{
+    HANDLEBARS_VALUE_DECL(alias);
+    HANDLEBARS_VALUE_DECL(other);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_string * expression;
+    struct handlebars_string * prefix;
+    struct handlebars_string * result;
+    size_t blocks_before;
+#ifdef HANDLEBARS_MEMORY
+    int allocation_calls;
+#endif
+
+    handlebars_value_init_json_string(context, value, "{\"a\": 1}");
+    handlebars_value_value(alias, value);
+    ck_assert(handlebars_value_eq(value, alias));
+    handlebars_value_init_json_string(context, other, "{\"a\": 1}");
+    ck_assert(!handlebars_value_eq(value, other));
+
+    prefix = handlebars_string_ctor(context, HBS_STRL("prefix:"));
+    blocks_before = talloc_total_blocks(context);
+    result = handlebars_value_expression_append(context, value, prefix, false);
+    ck_assert_ptr_eq(result, prefix);
+    ck_assert_hbs_str_eq_cstr(result, "prefix:");
+    ck_assert_uint_eq(talloc_total_blocks(context), blocks_before);
+    handlebars_talloc_free(result);
+
+#ifdef HANDLEBARS_MEMORY
+    prefix = handlebars_string_ctor(context, HBS_STRL("prefix:"));
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(1);
+    result = handlebars_value_expression_append(context, value, prefix, false);
+    allocation_calls = handlebars_memory_get_call_counter();
+    handlebars_memory_fail_disable();
+    ck_assert_ptr_eq(result, prefix);
+    ck_assert_int_eq(allocation_calls, 0);
+    handlebars_talloc_free(result);
+#endif
+
+    expression = handlebars_value_expression(context, value, false);
+    ck_assert_hbs_str_eq_cstr(expression, "");
+    handlebars_talloc_free(expression);
+
+    handlebars_value_init_json_string(context, value, "[1, \"x\", true]");
+    result = handlebars_value_expression_append(
+        context,
+        value,
+        handlebars_string_ctor(context, HBS_STRL("prefix:")),
+        false
+    );
+    ck_assert_hbs_str_eq_cstr(result, "prefix:1,x,true");
+    handlebars_talloc_free(result);
+
+    expression = handlebars_value_expression(context, value, false);
+    ck_assert_hbs_str_eq_cstr(expression, "1,x,true");
+    handlebars_talloc_free(expression);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(other);
+    HANDLEBARS_VALUE_UNDECL(alias);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 static void assert_json_convert_rejected(
     struct handlebars_value * value,
     const char * expected_error
@@ -414,9 +478,7 @@ static void assert_json_convert_rejected(
         context->e->jmp = previous;
         ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
         ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), expected_error));
-        handlebars_talloc_free((char *) context->e->msg);
-        context->e->msg = NULL;
-        context->e->num = HANDLEBARS_SUCCESS;
+        clear_intentional_error();
         return;
     }
 
@@ -514,6 +576,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_find_json, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex_json, "Complex");
     REGISTER_TEST_FIXTURE(s, test_convert_json, "Convert");
+    REGISTER_TEST_FIXTURE(s, test_json_expression_dispatch, "Expression dispatch");
     REGISTER_TEST_FIXTURE(s, test_convert_json_rejects_cycle, "Convert rejects cyclic JSON graphs");
     REGISTER_TEST_FIXTURE(s, test_convert_json_rejects_excessive_depth, "Convert rejects excessively deep JSON graphs");
     REGISTER_TEST_FIXTURE(s, test_parse_error_json, "JSON Parse Error");

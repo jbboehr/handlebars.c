@@ -67,6 +67,13 @@ size_t init_blocks;
 static size_t root_blocks;
 static size_t null_blocks;
 
+void clear_intentional_error(void)
+{
+    handlebars_talloc_free((char *) context->e->msg);
+    context->e->msg = NULL;
+    context->e->num = HANDLEBARS_SUCCESS;
+}
+
 void default_setup(void)
 {
 #ifdef HANDLEBARS_MEMORY

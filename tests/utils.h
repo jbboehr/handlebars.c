@@ -128,6 +128,7 @@ extern struct handlebars_vm * vm;
 extern size_t init_blocks;
 void default_setup(void);
 void default_teardown(void);
+void clear_intentional_error(void);
 typedef Suite * (*suite_ctor_func)(void);
 int default_main(suite_ctor_func suite_ctor);
 

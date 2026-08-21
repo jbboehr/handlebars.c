@@ -34,6 +34,7 @@
 #include "handlebars_map.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_parser.h"
+#include "handlebars_ptr.h"
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -104,11 +105,38 @@ static struct handlebars_module * test_compile_template(const char * tmpl)
     return module;
 }
 
-static void clear_intentional_error(void)
-{
-    handlebars_talloc_free((char *) context->e->msg);
-    context->e->msg = NULL;
-    context->e->num = HANDLEBARS_SUCCESS;
+static void assert_value_expression_result(
+    struct handlebars_value * value,
+    bool escape,
+    const char * expected
+) {
+    struct handlebars_string * expression;
+    struct handlebars_string * appended;
+    char expected_appended[128];
+    int expected_length;
+
+    expression = handlebars_value_expression(context, value, escape);
+    ck_assert_hbs_str_eq_cstr(expression, expected);
+    handlebars_talloc_free(expression);
+
+    expected_length = snprintf(
+        expected_appended,
+        sizeof(expected_appended),
+        "prefix:%s",
+        expected
+    );
+    ck_assert_msg(
+        expected_length >= 0 && (size_t) expected_length < sizeof(expected_appended),
+        "Expected expression is too long"
+    );
+    appended = handlebars_value_expression_append(
+        context,
+        value,
+        handlebars_string_ctor(context, HBS_STRL("prefix:")),
+        escape
+    );
+    ck_assert_hbs_str_eq_cstr(appended, expected_appended);
+    handlebars_talloc_free(appended);
 }
 
 enum value_traversal_operation {
@@ -421,6 +449,132 @@ START_TEST(test_string)
 	ck_assert_int_eq(handlebars_value_get_strlen(value), 4);
     ck_assert(handlebars_value_is_scalar(value));
     HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_getter_defaults)
+{
+    HANDLEBARS_VALUE_DECL(value);
+
+    ck_assert_ptr_null(handlebars_value_get_map(value));
+    ck_assert_ptr_null(handlebars_value_get_stack(value));
+    ck_assert_ptr_null(handlebars_value_get_string(value));
+    ck_assert_ptr_null(handlebars_value_get_user(value));
+    ck_assert_ptr_null(handlebars_value_get_closure(value));
+    ck_assert_ptr_null(handlebars_value_get_strval(value));
+    ck_assert_uint_eq(handlebars_value_get_strlen(value), 0);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 0);
+    ck_assert_double_eq(handlebars_value_get_floatval(value), 0);
+    ck_assert_int_eq(handlebars_value_get_flags(value), 0);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_to_string_and_expression)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_string * converted;
+
+    assert_value_expression_result(value, false, "");
+    /* Non-string conversions return a fresh, unreferenced string. */
+    converted = handlebars_value_to_string(value, context);
+    ck_assert_hbs_str_eq_cstr(converted, "");
+    handlebars_talloc_free(converted);
+
+    handlebars_value_boolean(value, true);
+    assert_value_expression_result(value, false, "true");
+    converted = handlebars_value_to_string(value, context);
+    ck_assert_hbs_str_eq_cstr(converted, "true");
+    handlebars_talloc_free(converted);
+
+    handlebars_value_boolean(value, false);
+    assert_value_expression_result(value, false, "false");
+    converted = handlebars_value_to_string(value, context);
+    ck_assert_hbs_str_eq_cstr(converted, "false");
+    handlebars_talloc_free(converted);
+
+    handlebars_value_integer(value, -42);
+    assert_value_expression_result(value, false, "-42");
+    converted = handlebars_value_to_string(value, context);
+    ck_assert_hbs_str_eq_cstr(converted, "-42");
+    handlebars_talloc_free(converted);
+
+    handlebars_value_float(value, 12.5);
+    assert_value_expression_result(value, false, "12.5");
+    converted = handlebars_value_to_string(value, context);
+    ck_assert_hbs_str_eq_cstr(converted, "12.5");
+    handlebars_talloc_free(converted);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("<&\"")));
+    assert_value_expression_result(value, false, "<&\"");
+    assert_value_expression_result(value, true, "&lt;&amp;&quot;");
+    /* String conversions retain and return the value's existing string. */
+    converted = handlebars_value_to_string(value, context);
+    ck_assert_hbs_str_eq_cstr(converted, "<&\"");
+    handlebars_string_delref(converted);
+
+    handlebars_value_set_flag(value, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
+    assert_value_expression_result(value, true, "<&\"");
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_equality)
+{
+    HANDLEBARS_VALUE_DECL(left);
+    HANDLEBARS_VALUE_DECL(right);
+
+    ck_assert(handlebars_value_eq(left, right));
+    handlebars_value_boolean(left, true);
+    ck_assert(!handlebars_value_eq(left, right));
+    handlebars_value_boolean(right, true);
+    ck_assert(handlebars_value_eq(left, right));
+
+    handlebars_value_float(left, 1.5);
+    handlebars_value_float(right, 1.5);
+    ck_assert(handlebars_value_eq(left, right));
+    handlebars_value_float(right, 2.5);
+    ck_assert(!handlebars_value_eq(left, right));
+
+    handlebars_value_integer(left, 42);
+    handlebars_value_integer(right, 42);
+    ck_assert(handlebars_value_eq(left, right));
+    handlebars_value_integer(right, 43);
+    ck_assert(!handlebars_value_eq(left, right));
+
+    handlebars_value_str(left, handlebars_string_ctor(context, HBS_STRL("same")));
+    handlebars_value_str(right, handlebars_string_ctor(context, HBS_STRL("same")));
+    ck_assert(handlebars_value_eq(left, right));
+    handlebars_value_value(right, left);
+    ck_assert(handlebars_value_eq(left, right));
+    handlebars_value_str(right, handlebars_string_ctor(context, HBS_STRL("different")));
+    ck_assert(!handlebars_value_eq(left, right));
+
+    handlebars_value_array(left, handlebars_stack_ctor(context, 0));
+    handlebars_value_value(right, left);
+    ck_assert(handlebars_value_eq(left, right));
+    handlebars_value_array(right, handlebars_stack_ctor(context, 0));
+    ck_assert(!handlebars_value_eq(left, right));
+
+    handlebars_value_map(left, handlebars_map_ctor(context, 0));
+    handlebars_value_value(right, left);
+    ck_assert(handlebars_value_eq(left, right));
+    handlebars_value_map(right, handlebars_map_ctor(context, 0));
+    ck_assert(!handlebars_value_eq(left, right));
+
+    handlebars_value_helper(left, handlebars_builtin_if);
+    handlebars_value_helper(right, handlebars_builtin_if);
+    ck_assert(handlebars_value_eq(left, right));
+    handlebars_value_helper(right, handlebars_builtin_unless);
+    ck_assert(!handlebars_value_eq(left, right));
+
+    HANDLEBARS_VALUE_UNDECL(right);
+    HANDLEBARS_VALUE_UNDECL(left);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -1190,6 +1344,35 @@ START_TEST(test_dump_float)
 }
 END_TEST
 
+START_TEST(test_dump_string_and_non_scalar_values)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    int payload = 42;
+    char expected[64];
+    char * dumped;
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("test")));
+    dumped = handlebars_value_dump(value, context, 0);
+    ck_assert_str_eq("string(test)", dumped);
+    handlebars_talloc_free(dumped);
+
+    handlebars_value_helper(value, handlebars_builtin_if);
+    dumped = handlebars_value_dump(value, context, 0);
+    snprintf(expected, sizeof(expected), "(function, real type %d)", value->type);
+    ck_assert_str_eq(expected, dumped);
+    handlebars_talloc_free(dumped);
+
+    handlebars_value_ptr(value, handlebars_ptr_ctor(context, int, &payload, true));
+    dumped = handlebars_value_dump(value, context, 0);
+    snprintf(expected, sizeof(expected), "unknown type %d", value->type);
+    ck_assert_str_eq(expected, dumped);
+    handlebars_talloc_free(dumped);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_dump_array)
 {
     HANDLEBARS_VALUE_DECL(tmp);
@@ -1261,6 +1444,9 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_int, "Integer");
     REGISTER_TEST_FIXTURE(s, test_float, "Float");
     REGISTER_TEST_FIXTURE(s, test_string, "String");
+    REGISTER_TEST_FIXTURE(s, test_value_getter_defaults, "Getter defaults");
+    REGISTER_TEST_FIXTURE(s, test_value_to_string_and_expression, "String conversion and expression rendering");
+    REGISTER_TEST_FIXTURE(s, test_value_equality, "Value equality");
     REGISTER_TEST_FIXTURE(s, test_value_self_assignment, "Value self-assignment");
     REGISTER_TEST_FIXTURE(s, test_closure_rejects_negative_local_count, "Closure local count bounds");
     REGISTER_TEST_FIXTURE(s, test_vm_owns_default_maps, "VM owns its default maps");
@@ -1301,6 +1487,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_dump_false, "dump - false");
     REGISTER_TEST_FIXTURE(s, test_dump_integer, "dump - integer");
     REGISTER_TEST_FIXTURE(s, test_dump_float, "dump - float");
+    REGISTER_TEST_FIXTURE(s, test_dump_string_and_non_scalar_values, "dump - string and non-scalar values");
     REGISTER_TEST_FIXTURE(s, test_dump_array, "dump - array");
     REGISTER_TEST_FIXTURE(s, test_dump_map, "dump - map");
 
