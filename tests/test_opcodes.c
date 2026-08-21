@@ -311,7 +311,7 @@ static Suite * suite(void)
     Suite * s = suite_create("Opcodes");
 
 	REGISTER_TEST_FIXTURE(s, test_opcode_ctor, "Constructor");
-	REGISTER_TEST_FIXTURE(s, test_opcode_ctor_failed_alloc, "Constructor (failed alloc)");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_opcode_ctor_failed_alloc, "Constructor (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_opcode_readable_type, "Readable Type");
 
 	REGISTER_TEST_FIXTURE(s, test_operand_set_null, "Set operand null");

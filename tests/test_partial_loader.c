@@ -447,7 +447,7 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_iteration_uses_snapshot, "Partial loader iteration uses an immutable snapshot");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_iterator_retains_loader, "Partial loader iterator retains its loader");
 #endif
-	REGISTER_TEST_FIXTURE(s, test_partial_loader_recovers_after_alloc_error, "Partial loader recovers after allocation error");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_partial_loader_recovers_after_alloc_error, "Partial loader recovers after allocation error");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_empty, "Partial loader empty file");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_rejects_unsafe_names, "Partial loader rejects unsafe names");
 

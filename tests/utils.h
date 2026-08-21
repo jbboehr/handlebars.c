@@ -44,6 +44,17 @@
 	tcase_add_test(tc_ ## name, name); \
 	suite_add_tcase(s, tc_ ## name);
 
+#ifdef HANDLEBARS_MEMORY
+#define REGISTER_MEMORY_TEST_FIXTURE(s, name, title) REGISTER_TEST_FIXTURE(s, name, title)
+#else
+#define REGISTER_MEMORY_TEST_FIXTURE(s, name, title) \
+    do { \
+        (void) (s); \
+        (void) (name); \
+        (void) (title); \
+    } while (0)
+#endif
+
 #define _ck_assert_str_msg(X, OP, Y, msg) do { \
 	const char* _ck_x = (X); \
 	const char* _ck_y = (Y); \

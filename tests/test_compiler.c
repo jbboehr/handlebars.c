@@ -875,7 +875,7 @@ static Suite * suite(void)
 
 	REGISTER_TEST_FIXTURE(s, test_compiler_ctor, "Constructor");
 	REGISTER_TEST_FIXTURE(s, test_program_size_constant, "Program size constant");
-	REGISTER_TEST_FIXTURE(s, test_compiler_ctor_failed_alloc, "Constructor (failed alloc)");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_compiler_ctor_failed_alloc, "Constructor (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_compiler_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");
 	REGISTER_TEST_FIXTURE(s, test_compiler_set_flags, "Set Flags");

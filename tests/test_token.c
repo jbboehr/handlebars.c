@@ -287,7 +287,7 @@ static Suite * suite(void)
 	Suite * s = suite_create("Token");
 
 	REGISTER_TEST_FIXTURE(s, test_token_ctor, "Constructor");
-	REGISTER_TEST_FIXTURE(s, test_token_ctor_failed_alloc, "Constructor (failed alloc)");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_token_ctor_failed_alloc, "Constructor (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_token_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_token_get_type, "Get type");
 	REGISTER_TEST_FIXTURE(s, test_token_get_text, "Get text");
@@ -297,7 +297,7 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_token_print, "Print Token");
 	REGISTER_TEST_FIXTURE(s, test_token_print2, "Print Token (2)");
 	REGISTER_TEST_FIXTURE(s, test_token_print3, "Print Token (3)");
-	REGISTER_TEST_FIXTURE(s, test_token_print_failed_alloc, "Print Token (failed alloc)");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_token_print_failed_alloc, "Print Token (failed alloc)");
 
 	return s;
 }

@@ -331,11 +331,6 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
     const char *actual;
     bool dont_match = false;
 
-    if (test->exception) {
-        fprintf(stderr, "SKIPPED #%d\n", _i);
-        return;
-    }
-
     tmpl = handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl));
     const char *expected = normalize_template_whitespace(parser, tmpl);
 
@@ -417,6 +412,42 @@ static bool should_skip(struct generic_test * test)
 #undef MYCCHECK
 }
 
+enum {
+    EXPECTED_RUNTIME_EXCLUSIONS = 31,
+    EXPECTED_AST_INAPPLICABLE = 40,
+};
+
+START_TEST(test_handlebars_spec_exclusion_budget)
+{
+    size_t runtime_exclusions = 0;
+    size_t ast_inapplicable = 0;
+
+    for (size_t i = 0; i < tests_len; i++) {
+        runtime_exclusions += should_skip(tests[i]);
+        ast_inapplicable += tests[i]->exception != 0;
+    }
+
+    fprintf(
+        stderr,
+        "Handlebars spec exclusions: %zu runtime, %zu AST-inapplicable\n",
+        runtime_exclusions,
+        ast_inapplicable
+    );
+    ck_assert_msg(
+        runtime_exclusions == EXPECTED_RUNTIME_EXCLUSIONS,
+        "Handlebars runtime exclusion count changed: expected %d, got %zu",
+        EXPECTED_RUNTIME_EXCLUSIONS,
+        runtime_exclusions
+    );
+    ck_assert_msg(
+        ast_inapplicable == EXPECTED_AST_INAPPLICABLE,
+        "Handlebars AST-inapplicable count changed: expected %d, got %zu",
+        EXPECTED_AST_INAPPLICABLE,
+        ast_inapplicable
+    );
+}
+END_TEST
+
 static inline void run_test(struct generic_test * test, int _i)
 {
     struct handlebars_module * module;
@@ -429,13 +460,6 @@ static inline void run_test(struct generic_test * test, int _i)
     fprintf(stderr, "FLAGS: %ld\n", test->flags);
     fflush(stderr);
 #endif
-
-    //ck_assert_msg(shouldnt_skip(test), "Skipped");
-    if( should_skip(test) ) {
-        fprintf(stderr, "SKIPPED #%d\n", _i);
-        fflush(stderr);
-        return;
-    }
 
     // Parse
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), test->flags);
@@ -603,6 +627,10 @@ static Suite * suite(void)
     int start = 0;
     int end = tests_len;
 
+    TCase * tc_exclusion_budget = tcase_create("Exclusion budget");
+    tcase_add_test(tc_exclusion_budget, test_handlebars_spec_exclusion_budget);
+    suite_add_tcase(s, tc_exclusion_budget);
+
     if( getenv("TEST_NUM") != NULL ) {
         int num;
         sscanf(getenv("TEST_NUM"), "%d", &num);
@@ -614,11 +642,19 @@ static Suite * suite(void)
 
     TCase * tc_ast_to_string_on_handlebars_spec = tcase_create("AST to string on handlebars spec");
     tcase_add_checked_fixture(tc_ast_to_string_on_handlebars_spec, default_setup, default_teardown);
-    tcase_add_loop_test(tc_ast_to_string_on_handlebars_spec, test_ast_to_string_on_handlebars_spec, start, end);
+    for (int i = start; i < end; i++) {
+        if (!tests[i]->exception) {
+            tcase_add_loop_test(tc_ast_to_string_on_handlebars_spec, test_ast_to_string_on_handlebars_spec, i, i + 1);
+        }
+    }
     suite_add_tcase(s, tc_ast_to_string_on_handlebars_spec);
 
     tcase_add_checked_fixture(tc_handlebars_spec, default_setup, default_teardown);
-    tcase_add_loop_test(tc_handlebars_spec, test_handlebars_spec, start, end);
+    for (int i = start; i < end; i++) {
+        if (!should_skip(tests[i])) {
+            tcase_add_loop_test(tc_handlebars_spec, test_handlebars_spec, i, i + 1);
+        }
+    }
     suite_add_tcase(s, tc_handlebars_spec);
 
     return s;

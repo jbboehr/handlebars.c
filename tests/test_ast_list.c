@@ -299,12 +299,12 @@ static Suite * suite(void)
     Suite * s = suite_create("AST Node List");
 
     REGISTER_TEST_FIXTURE(s, test_ast_list_append, "Append");
-    REGISTER_TEST_FIXTURE(s, test_ast_list_append_failed_alloc, "Append with failed alloc");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_ast_list_append_failed_alloc, "Append with failed alloc");
     //REGISTER_TEST_FIXTURE(s, test_ast_list_append_null, "Append with null argument");
     REGISTER_TEST_FIXTURE(s, test_ast_list_ctor, "Constructor");
-    REGISTER_TEST_FIXTURE(s, test_ast_list_ctor_failed_alloc, "Constructor with failed alloc");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_ast_list_ctor_failed_alloc, "Constructor with failed alloc");
     REGISTER_TEST_FIXTURE(s, test_ast_list_prepend, "Prepend");
-    REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_failed_alloc, "Prepend with failed alloc");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_ast_list_prepend_failed_alloc, "Prepend with failed alloc");
     //REGISTER_TEST_FIXTURE(s, test_ast_list_prepend_null, "Prepend with null argument");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_single, "Remove (single)");
     REGISTER_TEST_FIXTURE(s, test_ast_list_remove_first, "Remove (first)");

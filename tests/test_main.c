@@ -594,7 +594,7 @@ static Suite * suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_version, "Version");
     REGISTER_TEST_FIXTURE(s, test_talloc_array_rejects_unrepresentable_count, "Talloc Array Count Bounds");
-    REGISTER_TEST_FIXTURE(s, test_talloc_realloc_size_preserves_size_t, "Talloc Realloc Size Width");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_talloc_realloc_size_preserves_size_t, "Talloc Realloc Size Width");
     REGISTER_TEST_FIXTURE(s, test_version_string, "Version String");
     REGISTER_TEST_FIXTURE(s, test_handlebars_spec_version_string, "Handlebars Spec Version String");
     REGISTER_TEST_FIXTURE(s, test_mustache_spec_version_string, "Mustache Spec Version String");
@@ -608,12 +608,12 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_parse_handles_empty_trimmed_block, "Parse Empty Trimmed Block");
     REGISTER_TEST_FIXTURE(s, test_parse_handles_empty_right_trimmed_block, "Parse Empty Right-Trimmed Block");
     REGISTER_TEST_FIXTURE(s, test_context_ctor_dtor, "Constructor/Destructor");
-    REGISTER_TEST_FIXTURE(s, test_context_ctor_failed_alloc, "Constructor (failed alloc)");
-    REGISTER_TEST_FIXTURE(s, test_context_ctor_ex_failed_alloc, "Constructor ex (failed alloc)");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_context_ctor_failed_alloc, "Constructor (failed alloc)");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_context_ctor_ex_failed_alloc, "Constructor ex (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg, "Get error message");
-    REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_failed_alloc, "Get error message (failed alloc)");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_context_get_errmsg_failed_alloc, "Get error message (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_js, "Get error message (js compat)");
-    REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_js_failed_alloc, "Get error message (js compat) (failed alloc)");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_context_get_errmsg_js_failed_alloc, "Get error message (js compat) (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_error_message_replaces_previous_allocation, "Error message replaces previous allocation");
     REGISTER_TEST_FIXTURE(s, test_error_message_supports_self_rethrow, "Error message supports self-rethrow");
     REGISTER_TEST_FIXTURE(s, test_error_message_format_failure_releases_previous, "Error message format failure releases previous allocation");

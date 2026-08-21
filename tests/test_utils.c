@@ -221,12 +221,12 @@ static Suite * suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_yy_error, "yy_error");
     REGISTER_TEST_FIXTURE(s, test_yy_fatal_error, "yy_fatal_error");
-    REGISTER_TEST_FIXTURE(s, test_yy_free, "yy_free");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_yy_free, "yy_free");
     REGISTER_TEST_FIXTURE(s, test_yy_print, "yy_print");
     REGISTER_TEST_FIXTURE(s, test_yy_alloc, "yy_alloc");
     REGISTER_TEST_FIXTURE(s, test_yy_realloc, "yy_realloc");
-    REGISTER_TEST_FIXTURE(s, test_yy_alloc_failed_alloc, "yy_alloc (failed alloc)");
-    REGISTER_TEST_FIXTURE(s, test_yy_realloc_failed_alloc, "yy_realloc (failed alloc)");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_yy_alloc_failed_alloc, "yy_alloc (failed alloc)");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_yy_realloc_failed_alloc, "yy_realloc (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_regex_compare, "PCRE2 regex comparison");
 
     return s;

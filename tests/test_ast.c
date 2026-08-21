@@ -342,9 +342,9 @@ static Suite * suite(void)
     Suite * s = suite_create("AST Node");
 
     REGISTER_TEST_FIXTURE(s, test_ast_node_ctor, "Constructor");
-    REGISTER_TEST_FIXTURE(s, test_ast_node_ctor_failed_alloc, "Constructor (failed alloc)");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_ast_node_ctor_failed_alloc, "Constructor (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_ast_node_dtor, "Destructor");
-    REGISTER_TEST_FIXTURE(s, test_ast_node_dtor_failed_alloc, "Destructor (failed alloc)");
+    REGISTER_MEMORY_TEST_FIXTURE(s, test_ast_node_dtor_failed_alloc, "Destructor (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_ast_path_segment_owns_strings, "Path segment owns strings");
     REGISTER_TEST_FIXTURE(s, test_ast_tree_outlives_parser_when_reparented, "Reparented tree outlives parser");
     REGISTER_TEST_FIXTURE(s, test_ast_standalone_partial_indent_outlives_parser, "Standalone partial indent outlives parser");
