@@ -59,6 +59,51 @@ struct handlebars_json {
     struct json_object * object;
 };
 
+struct handlebars_json_traversal {
+    struct handlebars_context * context;
+    struct json_object * active[HANDLEBARS_VALUE_MAX_DEPTH];
+    size_t active_count;
+};
+
+static void hbs_json_validate_traversal(
+    struct json_object * object,
+    struct handlebars_json_traversal * state
+) {
+    enum json_type type = json_object_get_type(object);
+
+    if( type != json_type_object && type != json_type_array ) {
+        return;
+    }
+    for( size_t i = 0; i < state->active_count; i++ ) {
+        if( unlikely(state->active[i] == object) ) {
+            handlebars_throw(state->context, HANDLEBARS_ERROR, "Cyclic JSON value reference");
+        }
+    }
+    if( unlikely(state->active_count >= HANDLEBARS_VALUE_MAX_DEPTH) ) {
+        handlebars_throw(
+            state->context,
+            HANDLEBARS_ERROR,
+            "JSON value nesting exceeds the maximum depth of %d",
+            HANDLEBARS_VALUE_MAX_DEPTH
+        );
+    }
+
+    state->active[state->active_count++] = object;
+    if( type == json_type_object ) {
+        json_object_object_foreach(object, key, child) {
+            (void) key;
+            hbs_json_validate_traversal(child, state);
+        }
+    } else {
+        size_t count = json_object_array_length(object);
+
+        for( size_t i = 0; i < count; i++ ) {
+            hbs_json_validate_traversal(json_object_array_get_idx(object, i), state);
+        }
+    }
+    state->active_count--;
+}
+
 
 static int handlebars_json_dtor(struct handlebars_json * obj)
 {
@@ -87,7 +132,7 @@ static void hbs_json_dtor(struct handlebars_user * user)
     }
 }
 
-static void hbs_json_convert(struct handlebars_value * value, bool recurse)
+static void hbs_json_convert_unchecked(struct handlebars_value * value, bool recurse)
 {
     struct handlebars_json * intern = GET_INTERN_V(value);
 
@@ -98,7 +143,7 @@ static void hbs_json_convert(struct handlebars_value * value, bool recurse)
                 HANDLEBARS_VALUE_DECL(new_value);
                 handlebars_value_init_json_object(intern->user.ctx, new_value, v);
                 if( recurse && handlebars_value_get_real_type(new_value) == HANDLEBARS_VALUE_TYPE_USER ) {
-                    hbs_json_convert(new_value, recurse);
+                    hbs_json_convert_unchecked(new_value, recurse);
                 }
                 map = handlebars_map_str_update(map, k, strlen(k), new_value);
                 HANDLEBARS_VALUE_UNDECL(new_value);
@@ -115,7 +160,7 @@ static void hbs_json_convert(struct handlebars_value * value, bool recurse)
                 HANDLEBARS_VALUE_DECL(new_value);
                 handlebars_value_init_json_object(intern->user.ctx, new_value, json_object_array_get_idx(intern->object, i));
                 if( recurse && handlebars_value_get_real_type(new_value) == HANDLEBARS_VALUE_TYPE_USER ) {
-                    hbs_json_convert(new_value, recurse);
+                    hbs_json_convert_unchecked(new_value, recurse);
                 }
                 stack = handlebars_stack_push(stack, new_value);
                 HANDLEBARS_VALUE_UNDECL(new_value);
@@ -126,6 +171,21 @@ static void hbs_json_convert(struct handlebars_value * value, bool recurse)
 
         default: break; // LCOV_EXCL_LINE
     }
+}
+
+static void hbs_json_convert(struct handlebars_value * value, bool recurse)
+{
+    struct handlebars_json * intern = GET_INTERN_V(value);
+
+    if( recurse ) {
+        struct handlebars_json_traversal state;
+
+        /* Validate API-constructed graphs before conversion mutates the value. */
+        state.context = intern->user.ctx;
+        state.active_count = 0;
+        hbs_json_validate_traversal(intern->object, &state);
+    }
+    hbs_json_convert_unchecked(value, recurse);
 }
 
 static enum handlebars_value_type hbs_json_type(struct handlebars_value * value)

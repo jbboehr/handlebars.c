@@ -14,6 +14,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ### Fixed
 - JSON `null` elements no longer reuse the preceding iterator value.
+- Recursive value conversion, expression rendering, and diagnostic dumping now
+  reject cyclic and excessively deep container graphs.
 
 ## [1.0.0]
 

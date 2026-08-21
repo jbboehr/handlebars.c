@@ -46,6 +46,9 @@ struct json_object;
 struct yaml_document_s;
 struct yaml_node_s;
 
+/** Maximum number of active containers in a recursive value traversal. */
+#define HANDLEBARS_VALUE_MAX_DEPTH 256
+
 /**
  * @brief Value iterator context. Should be stack allocated. Must be initialized with #handlebars_value_iterator_init
  */
@@ -322,7 +325,9 @@ struct handlebars_string * handlebars_value_to_string(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 /**
- * @brief Convert a value to string, following handlebars (javascript) string conversion rules
+ * @brief Convert a value to string, following handlebars (javascript) string conversion rules.
+ *        Cyclic graphs and container nesting beyond #HANDLEBARS_VALUE_MAX_DEPTH
+ *        raise an error.
  * @param[in] context The handlebars memory context
  * @param[in] value The value to convert
  * @param[in] escape Whether or not to escape the value. Overridden by #HANDLEBARS_VALUE_FLAG_SAFE_STRING
@@ -336,7 +341,8 @@ struct handlebars_string * handlebars_value_expression(
 
 /**
  * @brief Convert a value to string and append to the given buffer, following handlebars (javascript)
- *        string conversion rules.
+ *        string conversion rules. Cyclic graphs and container nesting beyond
+ *        #HANDLEBARS_VALUE_MAX_DEPTH raise an error.
  * @param[in] context The handlebars memory context
  * @param[in] value The value to convert
  * @param[in] string The buffer to which the result will be appended
@@ -351,7 +357,10 @@ struct handlebars_string * handlebars_value_expression_append(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
- * @brief Convert a value from a user-defined type to an internal type
+ * @brief Convert a value from a user-defined type to an internal type. Native
+ *        cyclic graphs and container nesting beyond
+ *        #HANDLEBARS_VALUE_MAX_DEPTH raise an error. User-defined conversion
+ *        handlers remain responsible for bounding their own internal traversal.
  * @param[in] value
  * @param[in] recurse
  * @return void
@@ -514,6 +523,10 @@ void handlebars_value_map_update(
 
 // {{{ Misc
 
+/**
+ * @brief Return a diagnostic representation of a value. Cyclic graphs and
+ *        container nesting beyond #HANDLEBARS_VALUE_MAX_DEPTH raise an error.
+ */
 char * handlebars_value_dump(
     struct handlebars_value * value,
     struct handlebars_context * context,

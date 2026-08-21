@@ -49,6 +49,73 @@
 
 // {{{ Prototypes & Variables
 
+struct handlebars_value_traversal {
+    struct handlebars_context * context;
+    const void * active[HANDLEBARS_VALUE_MAX_DEPTH];
+    size_t active_count;
+    char * output;
+};
+
+static bool handlebars_value_iterator_init_ex(
+    struct handlebars_value_iterator * it,
+    struct handlebars_value * value,
+    struct handlebars_context * unwind_context
+);
+
+static const void * handlebars_value_traversal_identity(struct handlebars_value * value)
+{
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            return value->v.stack;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            return value->v.map;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            return value->v.user;
+        default:
+            return NULL;
+    }
+}
+
+static void handlebars_value_traversal_enter(
+    struct handlebars_value_traversal * state,
+    struct handlebars_value * value
+) {
+    const void * identity = handlebars_value_traversal_identity(value);
+
+    assert(identity != NULL);
+    for( size_t i = 0; i < state->active_count; i++ ) {
+        if( unlikely(state->active[i] == identity) ) {
+            handlebars_throw(state->context, HANDLEBARS_ERROR, "Cyclic value reference");
+        }
+    }
+    if( unlikely(state->active_count >= HANDLEBARS_VALUE_MAX_DEPTH) ) {
+        handlebars_throw(
+            state->context,
+            HANDLEBARS_ERROR,
+            "Value nesting exceeds the maximum depth of %d",
+            HANDLEBARS_VALUE_MAX_DEPTH
+        );
+    }
+    state->active[state->active_count++] = identity;
+}
+
+static void handlebars_value_traversal_leave(struct handlebars_value_traversal * state)
+{
+    assert(state->active_count > 0);
+    state->active_count--;
+}
+
+static HBS_ATTR_NORETURN void handlebars_value_rethrow(
+    struct handlebars_context * context,
+    jmp_buf * previous
+) {
+    if( previous != NULL ) {
+        handlebars_longjmp(context, previous, context->e->num);
+    }
+    fprintf(stderr, "Throw with invalid jmp_buf: %s\n", handlebars_error_msg(context));
+    abort();
+}
+
 #undef HANDLEBARS_VALUE_SIZE
 #undef HANDLEBARS_VALUE_INTERNALS_SIZE
 #undef HANDLEBARS_VALUE_ITERATOR_SIZE
@@ -300,24 +367,62 @@ struct handlebars_string * handlebars_value_to_string(
     }
 }
 
-void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
+static void handlebars_value_convert_walk(
+    struct handlebars_value * value,
+    bool recurse,
+    struct handlebars_value_traversal * state
+)
 {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_USER:
             if (handlebars_value_get_handlers(value)->convert) {
+                handlebars_value_traversal_enter(state, value);
                 handlebars_value_get_handlers(value)->convert(value, recurse);
+                handlebars_value_traversal_leave(state);
             }
             break;
         case HANDLEBARS_VALUE_TYPE_MAP:
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            HANDLEBARS_VALUE_FOREACH(value, child) {
-                handlebars_value_convert_ex(child, recurse);
-            } HANDLEBARS_VALUE_FOREACH_END();
+        case HANDLEBARS_VALUE_TYPE_ARRAY: {
+            HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+
+            handlebars_value_traversal_enter(state, value);
+            if( handlebars_value_iterator_init_ex(iter, value, state->context) ) {
+                do {
+                    handlebars_value_convert_walk(iter->cur, recurse, state);
+                } while( handlebars_value_iterator_next(iter) );
+            }
+            handlebars_value_iterator_close(iter);
+            handlebars_value_traversal_leave(state);
             break;
+        }
         default:
             // do nothing
             break;
     }
+}
+
+void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
+{
+    struct handlebars_value_traversal state;
+
+    state.active_count = 0;
+    state.output = NULL;
+
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            state.context = handlebars_stack_get_context(value->v.stack);
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            state.context = handlebars_map_get_context(value->v.map);
+            break;
+        case HANDLEBARS_VALUE_TYPE_USER:
+            state.context = value->v.user->ctx;
+            break;
+        default:
+            return;
+    }
+
+    handlebars_value_convert_walk(value, recurse, &state);
 }
 
 bool handlebars_value_eq(
@@ -363,22 +468,46 @@ bool handlebars_value_eq(
     }
 }
 
-struct handlebars_string * handlebars_value_expression(
-    struct handlebars_context * context,
-    struct handlebars_value * value,
-    bool escape
-) {
-    return handlebars_value_expression_append(context, value, handlebars_string_init(context, 0), escape);
-}
-
-struct handlebars_string * handlebars_value_expression_append(
+static struct handlebars_string * handlebars_value_expression_append_walk(
     struct handlebars_context * context,
     struct handlebars_value * value,
     struct handlebars_string * string,
-    bool escape
-) {
-    bool first;
+    bool escape,
+    struct handlebars_value_traversal * state
+);
 
+static struct handlebars_string * handlebars_value_expression_append_array_walk(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    struct handlebars_string * string,
+    bool escape,
+    struct handlebars_value_traversal * state
+) {
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+    bool first = true;
+
+    handlebars_value_traversal_enter(state, value);
+    if( handlebars_value_iterator_init_ex(iter, value, state->context) ) {
+        do {
+            if( !first ) {
+                string = handlebars_string_append(context, string, HBS_STRL(","));
+            }
+            string = handlebars_value_expression_append_walk(context, iter->cur, string, escape, state);
+            first = false;
+        } while( handlebars_value_iterator_next(iter) );
+    }
+    handlebars_value_iterator_close(iter);
+    handlebars_value_traversal_leave(state);
+    return string;
+}
+
+static struct handlebars_string * handlebars_value_expression_append_walk(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    struct handlebars_string * string,
+    bool escape,
+    struct handlebars_value_traversal * state
+) {
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_TRUE:
             string = handlebars_string_append(context, string, HBS_STRL("true"));
@@ -408,17 +537,10 @@ struct handlebars_string * handlebars_value_expression_append(
             if( handlebars_value_get_type(value) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
                 break;
             }
-            // fallthrough
+            return handlebars_value_expression_append_array_walk(context, value, string, escape, state);
+
         case HANDLEBARS_VALUE_TYPE_ARRAY:
-            first = true;
-            HANDLEBARS_VALUE_FOREACH(value, child) {
-                if( !first ) {
-                    string = handlebars_string_append(context, string, HBS_STRL(","));
-                }
-                string = handlebars_value_expression_append(context, child, string, escape);
-                first = false;
-            } HANDLEBARS_VALUE_FOREACH_END();
-            break;
+            return handlebars_value_expression_append_array_walk(context, value, string, escape, state);
 
         default:
             // nothing
@@ -426,6 +548,85 @@ struct handlebars_string * handlebars_value_expression_append(
     }
 
     return string;
+}
+
+struct handlebars_string * handlebars_value_expression(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    bool escape
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    struct handlebars_value_traversal state;
+    void * owner = handlebars_talloc_zero_size(context, 1);
+    struct handlebars_string * output;
+    jmp_buf buf;
+
+    state.context = context;
+    state.active_count = 0;
+    state.output = NULL;
+    HANDLEBARS_MEMCHECK(owner, context);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        error->jmp = previous;
+        handlebars_talloc_free(owner);
+        handlebars_value_rethrow(context, previous);
+    }
+
+    output = talloc_steal(owner, handlebars_string_init(context, 0));
+    output = handlebars_value_expression_append_walk(context, value, output, escape, &state);
+    output = talloc_steal(context, output);
+    error->jmp = previous;
+    handlebars_talloc_free(owner);
+    return output;
+}
+
+static struct handlebars_string * handlebars_value_expression_append_array(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    struct handlebars_string * string,
+    bool escape
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    struct handlebars_value_traversal state;
+    void * owner = handlebars_talloc_zero_size(context, 1);
+    struct handlebars_string * suffix;
+    jmp_buf buf;
+
+    state.context = context;
+    state.active_count = 0;
+    state.output = NULL;
+    HANDLEBARS_MEMCHECK(owner, context);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        error->jmp = previous;
+        handlebars_talloc_free(owner);
+        handlebars_value_rethrow(context, previous);
+    }
+
+    suffix = talloc_steal(owner, handlebars_string_init(context, 0));
+    suffix = handlebars_value_expression_append_array_walk(context, value, suffix, escape, &state);
+    string = handlebars_string_append_str(context, string, suffix);
+    error->jmp = previous;
+    handlebars_talloc_free(owner);
+    return string;
+}
+
+struct handlebars_string * handlebars_value_expression_append(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    struct handlebars_string * string,
+    bool escape
+) {
+    if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        return handlebars_value_expression_append_array(context, value, string, escape);
+    }
+    if( value->type == HANDLEBARS_VALUE_TYPE_USER ) {
+        if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+            return handlebars_value_expression_append_array(context, value, string, escape);
+        }
+        return string;
+    }
+    return handlebars_value_expression_append_walk(context, value, string, escape, NULL);
 }
 
 // }}} Conversion
@@ -729,71 +930,141 @@ struct handlebars_value * handlebars_value_call(struct handlebars_value * value,
     return rv;
 }
 
-char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_context * context, size_t depth)
+static void handlebars_value_dump_append(
+    struct handlebars_value * value,
+    struct handlebars_value_traversal * state,
+    size_t depth
+)
 {
-    char * buf = handlebars_talloc_strdup(context, "");
-    char indent[0x80];
-    char indent2[0x80];
-    HANDLEBARS_MEMCHECK(buf, context);
+    enum handlebars_value_type type = handlebars_value_get_type(value);
+    long count;
 
-    assert((depth + 1) * 4 < 0x80);
+#define HANDLEBARS_VALUE_DUMP_APPEND(...) \
+    do { \
+        state->output = handlebars_talloc_asprintf_append_buffer(state->output, __VA_ARGS__); \
+        HANDLEBARS_MEMCHECK(state->output, state->context); \
+    } while(0)
 
-    size_t indent_len = (depth * 4) & 0x7F;
-    memset(indent, ' ', indent_len);
-    indent[indent_len] = 0;
-
-    size_t indent2_len = ((depth + 1) * 4) & 0x7F;
-    memset(indent2, ' ', indent2_len);
-    indent2[indent2_len] = 0;
-
-    switch( handlebars_value_get_type(value) ) {
+    switch( type ) {
         case HANDLEBARS_VALUE_TYPE_NULL:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "NULL");
+            HANDLEBARS_VALUE_DUMP_APPEND("NULL");
             break;
         case HANDLEBARS_VALUE_TYPE_TRUE:
-            buf = handlebars_talloc_strndup_append_buffer(buf, HBS_STRL("boolean(true)"));
+            HANDLEBARS_VALUE_DUMP_APPEND("boolean(true)");
             break;
         case HANDLEBARS_VALUE_TYPE_FALSE:
-            buf = handlebars_talloc_strndup_append_buffer(buf, HBS_STRL("boolean(false)"));
+            HANDLEBARS_VALUE_DUMP_APPEND("boolean(false)");
             break;
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "float(%g)", value->v.dval);
+            HANDLEBARS_VALUE_DUMP_APPEND("float(%g)", value->v.dval);
             break;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "integer(%ld)", value->v.lval);
+            HANDLEBARS_VALUE_DUMP_APPEND("integer(%ld)", value->v.lval);
             break;
         case HANDLEBARS_VALUE_TYPE_STRING:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "string(%.*s)", (int) hbs_str_len(value->v.string), hbs_str_val(value->v.string));
+            HANDLEBARS_VALUE_DUMP_APPEND("string(%.*s)", (int) hbs_str_len(value->v.string), hbs_str_val(value->v.string));
             break;
-        case HANDLEBARS_VALUE_TYPE_ARRAY:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "[%s", handlebars_value_count(value) ? "\n" : "");
-            HANDLEBARS_VALUE_FOREACH_IDX(value, index, child) {
-                char * tmp = handlebars_value_dump(child, context, depth + 1);
-                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%zd => %s\n", indent2, index, tmp);
-                handlebars_talloc_free(tmp);
-            } HANDLEBARS_VALUE_FOREACH_END();
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s]", handlebars_value_count(value) ? indent : "");
+        case HANDLEBARS_VALUE_TYPE_ARRAY: {
+            HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+
+            if( unlikely(depth >= HANDLEBARS_VALUE_MAX_DEPTH) ) {
+                handlebars_throw(
+                    state->context,
+                    HANDLEBARS_ERROR,
+                    "Value nesting exceeds the maximum depth of %d",
+                    HANDLEBARS_VALUE_MAX_DEPTH
+                );
+            }
+            handlebars_value_traversal_enter(state, value);
+            count = handlebars_value_count(value);
+            HANDLEBARS_VALUE_DUMP_APPEND("[%s", count ? "\n" : "");
+            if( handlebars_value_iterator_init_ex(iter, value, state->context) ) {
+                do {
+                    HANDLEBARS_VALUE_DUMP_APPEND("%*s%zu => ", (int) ((depth + 1) * 4), "", iter->index);
+                    handlebars_value_dump_append(iter->cur, state, depth + 1);
+                    HANDLEBARS_VALUE_DUMP_APPEND("\n");
+                } while( handlebars_value_iterator_next(iter) );
+            }
+            handlebars_value_iterator_close(iter);
+            if( count ) {
+                HANDLEBARS_VALUE_DUMP_APPEND("%*s", (int) (depth * 4), "");
+            }
+            HANDLEBARS_VALUE_DUMP_APPEND("]");
+            handlebars_value_traversal_leave(state);
             break;
-        case HANDLEBARS_VALUE_TYPE_MAP:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "{%s", handlebars_value_count(value) ? "\n" : "");
-            HANDLEBARS_VALUE_FOREACH_KV(value, key, child) {
-                char * tmp = handlebars_value_dump(child, context, depth + 1);
-                buf = handlebars_talloc_asprintf_append_buffer(buf, "%s%.*s => %s\n", indent2, (int) hbs_str_len(key), hbs_str_val(key), tmp);
-                handlebars_talloc_free(tmp);
-            } HANDLEBARS_VALUE_FOREACH_END();
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "%s}", handlebars_value_count(value) ? indent : "");
+        }
+        case HANDLEBARS_VALUE_TYPE_MAP: {
+            HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+
+            if( unlikely(depth >= HANDLEBARS_VALUE_MAX_DEPTH) ) {
+                handlebars_throw(
+                    state->context,
+                    HANDLEBARS_ERROR,
+                    "Value nesting exceeds the maximum depth of %d",
+                    HANDLEBARS_VALUE_MAX_DEPTH
+                );
+            }
+            handlebars_value_traversal_enter(state, value);
+            count = handlebars_value_count(value);
+            HANDLEBARS_VALUE_DUMP_APPEND("{%s", count ? "\n" : "");
+            if( handlebars_value_iterator_init_ex(iter, value, state->context) ) {
+                do {
+                    HANDLEBARS_VALUE_DUMP_APPEND(
+                        "%*s%.*s => ",
+                        (int) ((depth + 1) * 4),
+                        "",
+                        (int) hbs_str_len(iter->key),
+                        hbs_str_val(iter->key)
+                    );
+                    handlebars_value_dump_append(iter->cur, state, depth + 1);
+                    HANDLEBARS_VALUE_DUMP_APPEND("\n");
+                } while( handlebars_value_iterator_next(iter) );
+            }
+            handlebars_value_iterator_close(iter);
+            if( count ) {
+                HANDLEBARS_VALUE_DUMP_APPEND("%*s", (int) (depth * 4), "");
+            }
+            HANDLEBARS_VALUE_DUMP_APPEND("}");
+            handlebars_value_traversal_leave(state);
             break;
+        }
         case HANDLEBARS_VALUE_TYPE_HELPER:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "(function, real type %d)", value->type);
+            HANDLEBARS_VALUE_DUMP_APPEND("(function, real type %d)", value->type);
             break;
         default:
-            buf = handlebars_talloc_asprintf_append_buffer(buf, "unknown type %d", value->type);
+            HANDLEBARS_VALUE_DUMP_APPEND("unknown type %d", value->type);
             break;
     }
 
-    HANDLEBARS_MEMCHECK(buf, context);
+#undef HANDLEBARS_VALUE_DUMP_APPEND
+}
 
-    return buf;
+char * handlebars_value_dump(struct handlebars_value * value, struct handlebars_context * context, size_t depth)
+{
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    struct handlebars_value_traversal state;
+    void * owner = handlebars_talloc_zero_size(context, 1);
+    char * output;
+    jmp_buf buf;
+
+    state.context = context;
+    state.active_count = 0;
+    state.output = NULL;
+    HANDLEBARS_MEMCHECK(owner, context);
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        error->jmp = previous;
+        handlebars_talloc_free(owner);
+        handlebars_value_rethrow(context, previous);
+    }
+
+    state.output = talloc_steal(owner, handlebars_talloc_strdup(context, ""));
+    HANDLEBARS_MEMCHECK(state.output, context);
+    handlebars_value_dump_append(value, &state, depth);
+    output = talloc_steal(context, state.output);
+    error->jmp = previous;
+    handlebars_talloc_free(owner);
+    return output;
 }
 
 const char * handlebars_value_type_readable(enum handlebars_value_type type)
@@ -996,6 +1267,20 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
     }
 
     return false;
+}
+
+static bool handlebars_value_iterator_init_ex(
+    struct handlebars_value_iterator * it,
+    struct handlebars_value * value,
+    struct handlebars_context * unwind_context
+) {
+    bool result = handlebars_value_iterator_init(it, value);
+
+    if( result ) {
+        handlebars_value_iterator_unregister(it);
+        handlebars_value_iterator_register(it, unwind_context);
+    }
+    return result;
 }
 
 bool handlebars_value_iterator_next(

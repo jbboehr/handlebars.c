@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <json.h>
 #include <stdio.h>
 #include <talloc.h>
 
@@ -402,6 +403,73 @@ START_TEST(test_convert_json)
 }
 END_TEST
 
+static void assert_json_convert_rejected(
+    struct handlebars_value * value,
+    const char * expected_error
+) {
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), expected_error));
+        handlebars_talloc_free((char *) context->e->msg);
+        context->e->msg = NULL;
+        context->e->num = HANDLEBARS_SUCCESS;
+        return;
+    }
+
+    handlebars_value_convert(value);
+    context->e->jmp = previous;
+    ck_abort_msg("Expected recursive JSON conversion to be rejected");
+}
+
+START_TEST(test_convert_json_rejects_cycle)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct json_object * json = json_object_new_object();
+    struct json_object * child = json_object_new_object();
+
+    ck_assert_ptr_nonnull(json);
+    ck_assert_ptr_nonnull(child);
+    ck_assert_int_eq(json_object_object_add(json, "child", child), 0);
+    json_object_get(json);
+    ck_assert_int_eq(json_object_object_add(child, "parent", json), 0);
+    handlebars_value_init_json_object(context, value, json);
+    json_object_put(json);
+
+    assert_json_convert_rejected(value, "Cyclic JSON value reference");
+
+    json_object_object_del(child, "parent");
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_convert_json_rejects_excessive_depth)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct json_object * json = json_object_new_int(1);
+
+    ck_assert_ptr_nonnull(json);
+    for( size_t i = 0; i < HANDLEBARS_VALUE_MAX_DEPTH + 1; i++ ) {
+        struct json_object * parent = json_object_new_array();
+
+        ck_assert_ptr_nonnull(parent);
+        ck_assert_int_eq(json_object_array_add(parent, json), 0);
+        json = parent;
+    }
+    handlebars_value_init_json_object(context, value, json);
+    json_object_put(json);
+
+    assert_json_convert_rejected(value, "maximum depth");
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_parse_error_json)
 {
     jmp_buf buf;
@@ -446,6 +514,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_find_json, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex_json, "Complex");
     REGISTER_TEST_FIXTURE(s, test_convert_json, "Convert");
+    REGISTER_TEST_FIXTURE(s, test_convert_json_rejects_cycle, "Convert rejects cyclic JSON graphs");
+    REGISTER_TEST_FIXTURE(s, test_convert_json_rejects_excessive_depth, "Convert rejects excessively deep JSON graphs");
     REGISTER_TEST_FIXTURE(s, test_parse_error_json, "JSON Parse Error");
 
     return s;

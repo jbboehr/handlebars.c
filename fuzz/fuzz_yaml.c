@@ -35,8 +35,6 @@
 
 #define HANDLEBARS_FUZZ_MAX_INPUT_SIZE (64 * 1024)
 #define HANDLEBARS_FUZZ_MAX_DEPTH 32
-/* handlebars_value_dump's fixed indentation buffer supports depths 0-30. */
-#define HANDLEBARS_FUZZ_MAX_DUMP_DEPTH 30
 #define HANDLEBARS_FUZZ_MAX_VALUES 4096
 
 int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size);
@@ -49,16 +47,15 @@ static void handlebars_fuzz_touch_value(struct handlebars_value * value)
     (void) handlebars_value_is_scalar(value);
 }
 
-static bool handlebars_fuzz_walk_value(
+static void handlebars_fuzz_walk_value(
     struct handlebars_value * value,
     size_t depth,
     size_t * remaining
 ) {
-    bool dump_safe = depth <= HANDLEBARS_FUZZ_MAX_DUMP_DEPTH;
     enum handlebars_value_type type;
 
     if( *remaining == 0 ) {
-        return false;
+        return;
     }
     (*remaining)--;
 
@@ -66,7 +63,7 @@ static bool handlebars_fuzz_walk_value(
     handlebars_fuzz_touch_value(value);
 
     if( depth >= HANDLEBARS_FUZZ_MAX_DEPTH ) {
-        return dump_safe;
+        return;
     }
 
     /* Drain iterators after the budget expires so native maps clear their
@@ -81,12 +78,8 @@ static bool handlebars_fuzz_walk_value(
                 if( handlebars_value_array_find(value, index, found) != NULL ) {
                     handlebars_fuzz_touch_value(found);
                 }
-                if( !handlebars_fuzz_walk_value(child, depth + 1, remaining) ) {
-                    dump_safe = false;
-                }
+                handlebars_fuzz_walk_value(child, depth + 1, remaining);
                 HANDLEBARS_VALUE_UNDECL(found);
-            } else {
-                dump_safe = false;
             }
         } HANDLEBARS_VALUE_FOREACH_END();
 
@@ -103,17 +96,11 @@ static bool handlebars_fuzz_walk_value(
                 if( handlebars_value_map_find(value, key, found) != NULL ) {
                     handlebars_fuzz_touch_value(found);
                 }
-                if( !handlebars_fuzz_walk_value(child, depth + 1, remaining) ) {
-                    dump_safe = false;
-                }
+                handlebars_fuzz_walk_value(child, depth + 1, remaining);
                 HANDLEBARS_VALUE_UNDECL(found);
-            } else {
-                dump_safe = false;
             }
         } HANDLEBARS_VALUE_FOREACH_END();
     }
-
-    return dump_safe;
 }
 
 static void handlebars_fuzz_render(
@@ -147,7 +134,6 @@ int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
 {
     struct handlebars_context * context;
     struct handlebars_string * expression;
-    bool dump_safe;
     size_t remaining;
     char * dump;
     jmp_buf buf;
@@ -177,13 +163,11 @@ int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
         );
 
         remaining = HANDLEBARS_FUZZ_MAX_VALUES;
-        dump_safe = handlebars_fuzz_walk_value(value, 0, &remaining);
+        handlebars_fuzz_walk_value(value, 0, &remaining);
         expression = handlebars_value_expression(context, value, false);
         (void) expression;
-        if( dump_safe ) {
-            dump = handlebars_value_dump(value, context, 0);
-            (void) dump;
-        }
+        dump = handlebars_value_dump(value, context, 0);
+        (void) dump;
         handlebars_fuzz_render(context, value);
 
         HANDLEBARS_VALUE_UNDECL(value);

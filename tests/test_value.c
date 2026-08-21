@@ -111,6 +111,83 @@ static void clear_intentional_error(void)
     context->e->num = HANDLEBARS_SUCCESS;
 }
 
+enum value_traversal_operation {
+    VALUE_TRAVERSAL_CONVERT,
+    VALUE_TRAVERSAL_EXPRESSION,
+    VALUE_TRAVERSAL_EXPRESSION_APPEND,
+    VALUE_TRAVERSAL_DUMP
+};
+
+static void assert_value_traversal_rejected(
+    struct handlebars_value * value,
+    enum value_traversal_operation operation,
+    const char * expected_error
+) {
+    jmp_buf * volatile previous = context->e->jmp;
+    struct handlebars_string * volatile prefix = NULL;
+    void * volatile unexpected_result = NULL;
+    jmp_buf buf;
+
+    if( operation == VALUE_TRAVERSAL_EXPRESSION_APPEND ) {
+        prefix = handlebars_string_ctor(context, HBS_STRL("prefix"));
+    }
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), expected_error));
+        ck_assert_ptr_null(context->e->iterator_cleanup);
+        if( prefix != NULL ) {
+            ck_assert_hbs_str_eq_cstr((struct handlebars_string *) prefix, "prefix");
+            handlebars_talloc_free((struct handlebars_string *) prefix);
+        }
+        clear_intentional_error();
+        return;
+    }
+
+    switch( operation ) {
+        case VALUE_TRAVERSAL_CONVERT:
+            handlebars_value_convert(value);
+            break;
+        case VALUE_TRAVERSAL_EXPRESSION:
+            unexpected_result = handlebars_value_expression(context, value, false);
+            break;
+        case VALUE_TRAVERSAL_EXPRESSION_APPEND:
+            unexpected_result = handlebars_value_expression_append(
+                context,
+                value,
+                (struct handlebars_string *) prefix,
+                false
+            );
+            break;
+        case VALUE_TRAVERSAL_DUMP:
+            unexpected_result = handlebars_value_dump(value, context, 0);
+            break;
+        default:
+            ck_abort_msg("Unknown value traversal operation");
+    }
+
+    context->e->jmp = previous;
+    if( unexpected_result != NULL ) {
+        handlebars_talloc_free((void *) unexpected_result);
+    }
+    ck_abort_msg("Expected recursive value traversal to be rejected");
+}
+
+static void init_nested_array(
+    struct handlebars_value * value,
+    struct handlebars_context * owner,
+    size_t depth
+)
+{
+    handlebars_value_integer(value, 1);
+    for( size_t i = 0; i < depth; i++ ) {
+        struct handlebars_stack * stack = handlebars_stack_ctor(owner, 1);
+
+        stack = handlebars_stack_push(stack, value);
+        handlebars_value_array(value, stack);
+    }
+}
+
 
 START_TEST(test_closure_rejects_negative_local_count)
 {
@@ -940,6 +1017,125 @@ START_TEST(test_iterator_void)
 }
 END_TEST
 
+START_TEST(test_recursive_value_traversal_allows_shared_subgraph)
+{
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(parent);
+    HANDLEBARS_VALUE_DECL(tmp);
+    struct handlebars_string * expression;
+    char * dump;
+
+    handlebars_value_array(child, handlebars_stack_ctor(context, 1));
+    handlebars_value_integer(tmp, 1);
+    handlebars_value_array_push(child, tmp);
+
+    handlebars_value_array(parent, handlebars_stack_ctor(context, 2));
+    handlebars_value_array_push(parent, child);
+    handlebars_value_array_push(parent, child);
+
+    handlebars_value_convert(parent);
+    expression = handlebars_value_expression(context, parent, false);
+    ck_assert_hbs_str_eq_cstr(expression, "1,1");
+    handlebars_talloc_free(expression);
+    dump = handlebars_value_dump(parent, context, 0);
+    ck_assert_ptr_nonnull(dump);
+    handlebars_talloc_free(dump);
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(parent);
+    HANDLEBARS_VALUE_UNDECL(child);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ASSERT_INIT_BLOCKS();
+#endif
+}
+END_TEST
+
+START_TEST(test_recursive_value_traversal_rejects_cycle)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_value * child;
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 1));
+    handlebars_value_array_push(value, value);
+
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_CONVERT, "Cyclic value reference");
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_EXPRESSION, "Cyclic value reference");
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_EXPRESSION_APPEND, "Cyclic value reference");
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_DUMP, "Cyclic value reference");
+
+    child = handlebars_stack_get(value->v.stack, 0);
+    ck_assert_ptr_nonnull(child);
+    handlebars_value_null(child);
+    HANDLEBARS_VALUE_UNDECL(value);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ASSERT_INIT_BLOCKS();
+#endif
+}
+END_TEST
+
+START_TEST(test_recursive_value_traversal_rejects_excessive_depth)
+{
+    HANDLEBARS_VALUE_DECL(value);
+
+    init_nested_array(value, context, HANDLEBARS_VALUE_MAX_DEPTH + 1);
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_CONVERT, "maximum depth");
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_EXPRESSION, "maximum depth");
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_EXPRESSION_APPEND, "maximum depth");
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_DUMP, "maximum depth");
+
+    HANDLEBARS_VALUE_UNDECL(value);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ASSERT_INIT_BLOCKS();
+#endif
+}
+END_TEST
+
+START_TEST(test_recursive_value_traversal_unwinds_cross_context_iterators)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    struct handlebars_context * owner = handlebars_context_ctor_ex(context);
+    struct handlebars_map * map;
+    struct handlebars_value * child;
+    jmp_buf * volatile previous;
+    jmp_buf buf;
+
+    ck_assert_ptr_nonnull(owner);
+    previous = owner->e->jmp;
+    if( handlebars_setjmp_ex(owner, &buf) ) {
+        owner->e->jmp = previous;
+        ck_abort_msg("Traversal unexpectedly threw through the value owner context");
+    }
+
+    init_nested_array(value, owner, HANDLEBARS_VALUE_MAX_DEPTH + 1);
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_EXPRESSION, "maximum depth");
+    ck_assert_ptr_null(owner->e->iterator_cleanup);
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_EXPRESSION_APPEND, "maximum depth");
+    ck_assert_ptr_null(owner->e->iterator_cleanup);
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_DUMP, "maximum depth");
+    ck_assert_ptr_null(owner->e->iterator_cleanup);
+
+    handlebars_value_null(value);
+    map = handlebars_map_ctor(owner, 1);
+    map = handlebars_map_str_update(map, HBS_STRL("self"), tmp);
+    handlebars_value_map(value, map);
+    child = handlebars_map_str_find(map, HBS_STRL("self"));
+    ck_assert_ptr_nonnull(child);
+    handlebars_value_value(child, value);
+    assert_value_traversal_rejected(value, VALUE_TRAVERSAL_DUMP, "Cyclic value reference");
+    ck_assert_ptr_null(owner->e->iterator_cleanup);
+    handlebars_value_null(child);
+
+    owner->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_context_dtor(owner);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ASSERT_INIT_BLOCKS();
+#endif
+}
+END_TEST
+
 START_TEST(test_dump_null)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -1096,6 +1292,10 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_find, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_readable_type, "Readable Type");
     REGISTER_TEST_FIXTURE(s, test_iterator_void, "Void iterator");
+    REGISTER_TEST_FIXTURE(s, test_recursive_value_traversal_allows_shared_subgraph, "Recursive value traversal allows shared subgraphs");
+    REGISTER_TEST_FIXTURE(s, test_recursive_value_traversal_rejects_cycle, "Recursive value traversal rejects cycles");
+    REGISTER_TEST_FIXTURE(s, test_recursive_value_traversal_rejects_excessive_depth, "Recursive value traversal rejects excessive depth");
+    REGISTER_TEST_FIXTURE(s, test_recursive_value_traversal_unwinds_cross_context_iterators, "Recursive value traversal unwinds cross-context iterators");
     REGISTER_TEST_FIXTURE(s, test_dump_null, "dump - null");
     REGISTER_TEST_FIXTURE(s, test_dump_true, "dump - true");
     REGISTER_TEST_FIXTURE(s, test_dump_false, "dump - false");
