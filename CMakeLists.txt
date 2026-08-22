@@ -37,6 +37,13 @@ option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
 option(HANDLEBARS_ENABLE_FUZZING
         "Build the libFuzzer targets" OFF)
+option(HANDLEBARS_ENABLE_MEMORY
+        "Enable memory allocation failure testing functions" OFF)
+
+if(HANDLEBARS_ENABLE_MEMORY)
+    set(HANDLEBARS_MEMORY 1)
+    add_definitions(-DHANDLEBARS_MEMORY)
+endif()
 
 if(HANDLEBARS_ENABLE_FUZZING)
     if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -160,6 +167,11 @@ if (HANDLEBARS_ENABLE_TESTS)
     add_test(NAME test_partial_loader COMMAND test_partial_loader)
     set_tests_properties(test_partial_loader PROPERTIES
         ENVIRONMENT "top_srcdir=${CMAKE_SOURCE_DIR}")
+    if(HANDLEBARS_ENABLE_MEMORY AND LIBJSONC_LIBRARY)
+        add_test(NAME test_random_alloc_fail COMMAND test_random_alloc_fail)
+    elseif(HANDLEBARS_ENABLE_MEMORY)
+        message(STATUS "json-c not found; the random allocation failure test will not run")
+    endif()
     add_test(NAME test_scanners COMMAND test_scanners)
     add_test(NAME test_spec_handlebars COMMAND test_spec_handlebars "${HANDLEBARS_SPEC_DIR}")
     add_test(NAME test_spec_handlebars_compiler COMMAND test_spec_handlebars_compiler "${HANDLEBARS_EXPORT_DIR}")

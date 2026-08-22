@@ -161,7 +161,8 @@ stdenv.mkDerivation rec {
     []
     ++ lib.optional debugSupport "-DCMAKE_BUILD_TYPE=Debug"
     ++ lib.optional (!debugSupport) "-DCMAKE_BUILD_TYPE=Release"
-    ++ lib.optional checkSupport "-DHANDLEBARS_ENABLE_TESTS=1";
+    ++ lib.optional checkSupport "-DHANDLEBARS_ENABLE_TESTS=1"
+    ++ lib.optional memoryTestingSupport "-DHANDLEBARS_ENABLE_MEMORY=1";
 
   preConfigure = lib.optionalString checkSupport ''
     patchShebangs ./bench/run.sh
@@ -174,6 +175,9 @@ stdenv.mkDerivation rec {
   '';
 
   doCheck = checkSupport;
+  preCheck = lib.optionalString (cmakeSupport && memoryTestingSupport) ''
+    ctest -R '^test_random_alloc_fail$' --output-on-failure --no-tests=error
+  '';
   checkTarget =
     if cmakeSupport
     then "test"

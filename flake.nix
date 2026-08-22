@@ -129,6 +129,11 @@
             cmakeSupport = true;
           }
           {
+            attr = "handlebars-c-cmake-memory";
+            cmakeSupport = true;
+            memoryTestingSupport = true;
+          }
+          {
             attr = "handlebars-c-norc";
             noRefcountingSupport = true;
           }

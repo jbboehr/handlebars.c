@@ -33,7 +33,6 @@ set(SOURCE_FILES
     handlebars_helpers.c
     handlebars_json.c
     handlebars_map.c
-    # handlebars_memory.c
     handlebars_module_printer.c
     handlebars_opcode_printer.c
     handlebars_opcode_serializer.c
@@ -52,6 +51,10 @@ set(SOURCE_FILES
     handlebars_vm.c
     handlebars_whitespace.c
     handlebars_yaml.c)
+
+if(HANDLEBARS_ENABLE_MEMORY)
+    list(APPEND SOURCE_FILES handlebars_memory.c)
+endif()
 
 set(HEADERS
     ${CMAKE_CURRENT_BINARY_DIR}/handlebars_config.h
