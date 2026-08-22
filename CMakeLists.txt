@@ -57,6 +57,7 @@ ENDIF(WIN32)
 
 if(HANDLEBARS_ENABLE_TESTS)
     find_package(Check REQUIRED)
+    find_program(BATS_EXECUTABLE NAMES bats)
     include_directories(${CHECK_INCLUDE_DIRS})
     set(LIBS ${LIBS} ${CHECK_LIBRARIES})
 endif()
@@ -124,34 +125,72 @@ endif()
 
 # Unit tests
 if (HANDLEBARS_ENABLE_TESTS)
-    set(ENV{handlebars_export_dir} "${CMAKE_SOURCE_DIR}/spec/handlebars/export")
-    set(ENV{handlebars_spec_dir} "${CMAKE_SOURCE_DIR}/spec/handlebars/spec")
-    set(ENV{handlebars_tokenizer_spec} "${CMAKE_SOURCE_DIR}/spec/handlebars/spec/tokenizer.json")
-    set(ENV{handlebars_parser_spec} "${CMAKE_SOURCE_DIR}/spec/handlebars/spec/parser.json")
-    set(ENV{mustache_spec_dir} "${CMAKE_SOURCE_DIR}/spec/mustache/specs")
+    function(handlebars_resolve_test_path output value fallback)
+        set(path "${value}")
+        if(path)
+            get_filename_component(path "${path}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
+        endif()
+        if(NOT EXISTS "${path}")
+            set(path "${fallback}")
+        endif()
+        set(${output} "${path}" PARENT_SCOPE)
+    endfunction()
+    handlebars_resolve_test_path(HANDLEBARS_EXPORT_DIR
+        "$ENV{handlebars_export_dir}" "${CMAKE_SOURCE_DIR}/spec/handlebars/export")
+    handlebars_resolve_test_path(HANDLEBARS_SPEC_DIR
+        "$ENV{handlebars_spec_dir}" "${CMAKE_SOURCE_DIR}/spec/handlebars/spec")
+    handlebars_resolve_test_path(HANDLEBARS_TOKENIZER_SPEC
+        "$ENV{handlebars_tokenizer_spec}" "${CMAKE_SOURCE_DIR}/spec/handlebars/spec/tokenizer.json")
+    handlebars_resolve_test_path(HANDLEBARS_PARSER_SPEC
+        "$ENV{handlebars_parser_spec}" "${CMAKE_SOURCE_DIR}/spec/handlebars/spec/parser.json")
+    handlebars_resolve_test_path(MUSTACHE_SPEC_DIR
+        "$ENV{mustache_spec_dir}" "${CMAKE_SOURCE_DIR}/spec/mustache/specs")
     add_subdirectory(tests)
     enable_testing()
-    add_test(NAME test_ast COMMAND tests/test_ast)
-    add_test(NAME test_ast_helpers COMMAND tests/test_ast_helpers)
-    add_test(NAME test_ast_list COMMAND tests/test_ast_list)
-    add_test(NAME test_cache COMMAND tests/test_cache)
-    add_test(NAME test_compiler COMMAND tests/test_compiler)
-    add_test(NAME test_json COMMAND tests/test_json)
-    add_test(NAME test_main COMMAND tests/test_main)
-    add_test(NAME test_map COMMAND tests/test_map)
-    add_test(NAME test_opcode_printer COMMAND tests/test_opcode_printer)
-    add_test(NAME test_opcodes COMMAND tests/test_opcodes)
-    # @TODO FIXME broken because test files are in the wrong path
-    #add_test(NAME test_partial_loader COMMAND tests/test_partial_loader)
-    add_test(NAME test_scanners COMMAND tests/test_scanners)
-    add_test(NAME test_spec_handlebars COMMAND tests/test_spec_handlebars $ENV{handlebars_spec_dir})
-    add_test(NAME test_spec_handlebars_compiler COMMAND tests/test_spec_handlebars_compiler $ENV{handlebars_export_dir})
-    add_test(NAME test_spec_handlebars_parser COMMAND tests/test_spec_handlebars_parser $ENV{handlebars_parser_spec})
-    add_test(NAME test_spec_handlebars_tokenizer COMMAND tests/test_spec_handlebars_tokenizer $ENV{handlebars_tokenizer_spec})
-    add_test(NAME test_spec_mustache COMMAND tests/test_spec_mustache $ENV{mustache_spec_dir})
-    add_test(NAME test_string COMMAND tests/test_string)
-    add_test(NAME test_token COMMAND tests/test_token)
-    add_test(NAME test_utils COMMAND tests/test_utils)
-    add_test(NAME test_value COMMAND tests/test_value)
-    add_test(NAME test_yaml COMMAND tests/test_yaml)
+    add_test(NAME test_ast COMMAND test_ast)
+    add_test(NAME test_ast_helpers COMMAND test_ast_helpers)
+    add_test(NAME test_ast_list COMMAND test_ast_list)
+    add_test(NAME test_cache COMMAND test_cache)
+    add_test(NAME test_compiler COMMAND test_compiler)
+    add_test(NAME test_json COMMAND test_json)
+    add_test(NAME test_main COMMAND test_main)
+    add_test(NAME test_map COMMAND test_map)
+    add_test(NAME test_opcode_printer COMMAND test_opcode_printer)
+    add_test(NAME test_opcodes COMMAND test_opcodes)
+    add_test(NAME test_partial_loader COMMAND test_partial_loader)
+    set_tests_properties(test_partial_loader PROPERTIES
+        ENVIRONMENT "top_srcdir=${CMAKE_SOURCE_DIR}")
+    add_test(NAME test_scanners COMMAND test_scanners)
+    add_test(NAME test_spec_handlebars COMMAND test_spec_handlebars "${HANDLEBARS_SPEC_DIR}")
+    add_test(NAME test_spec_handlebars_compiler COMMAND test_spec_handlebars_compiler "${HANDLEBARS_EXPORT_DIR}")
+    add_test(NAME test_spec_handlebars_parser COMMAND test_spec_handlebars_parser "${HANDLEBARS_PARSER_SPEC}")
+    add_test(NAME test_spec_handlebars_tokenizer COMMAND test_spec_handlebars_tokenizer "${HANDLEBARS_TOKENIZER_SPEC}")
+    add_test(NAME test_spec_mustache COMMAND test_spec_mustache "${MUSTACHE_SPEC_DIR}")
+    set_tests_properties(test_spec_handlebars PROPERTIES
+        ENVIRONMENT "handlebars_spec_dir=${HANDLEBARS_SPEC_DIR}")
+    set_tests_properties(test_spec_handlebars_compiler PROPERTIES
+        ENVIRONMENT "handlebars_export_dir=${HANDLEBARS_EXPORT_DIR}")
+    set_tests_properties(test_spec_handlebars_parser PROPERTIES
+        ENVIRONMENT "handlebars_parser_spec=${HANDLEBARS_PARSER_SPEC}")
+    set_tests_properties(test_spec_handlebars_tokenizer PROPERTIES
+        ENVIRONMENT "handlebars_tokenizer_spec=${HANDLEBARS_TOKENIZER_SPEC}")
+    set_tests_properties(test_spec_mustache PROPERTIES
+        ENVIRONMENT "mustache_spec_dir=${MUSTACHE_SPEC_DIR}")
+    add_test(NAME test_stack COMMAND test_stack)
+    add_test(NAME test_string COMMAND test_string)
+    add_test(NAME test_token COMMAND test_token)
+    add_test(NAME test_utils COMMAND test_utils)
+    add_test(NAME test_value COMMAND test_value)
+    add_test(NAME test_yaml COMMAND test_yaml)
+    if(BATS_EXECUTABLE)
+        add_test(NAME test_executable
+            COMMAND ${CMAKE_COMMAND} -E env
+                "HANDLEBARSC=$<TARGET_FILE:handlebarsc>"
+                "TEST_DIR=${CMAKE_SOURCE_DIR}/tests"
+                "BENCH_DIR=${CMAKE_SOURCE_DIR}/bench"
+                "${BATS_EXECUTABLE}"
+                "${CMAKE_SOURCE_DIR}/tests/test_executable.bats")
+    else()
+        message(STATUS "bats not found; the handlebarsc CLI test suite will not run")
+    endif()
 endif()
