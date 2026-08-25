@@ -391,7 +391,10 @@ static bool should_skip(struct generic_test * test)
     MYCHECK("regressions", "Regressions", "GH-1089: should support failover content in multiple levels of inline partials")
     MYCHECK("regressions", "Regressions", "GH-1186: Support block params for existing programs");
 
-    // Subexpressions
+    // stringParams was legacy pre-Glimmer Ember support and is rejected by
+    // Handlebars v5; see https://github.com/handlebars-lang/handlebars.js/issues/1145.
+    // Keep compiler opcode compatibility with v4, but do not implement the
+    // pushStringParam/types/hashTypes runtime protocol in the C VM.
     MYCHECK("subexpressions", "subexpressions", "in string params mode,");
     MYCHECK("subexpressions", "subexpressions", "as hashes in string params mode");
 
