@@ -615,6 +615,20 @@ START_TEST(test_serialized_module_verification)
 }
 END_TEST
 
+START_TEST(test_serialize_preserves_block_param_counts)
+{
+    struct handlebars_module * module = serialize_for_verification(
+        "{{#helper as |outer|}}{{#helper}}{{outer}}{{#helper as |inner|}}{{inner}}{{/helper}}{{/helper}}{{/helper}}"
+    );
+
+    ck_assert_uint_eq(module->program_count, 4);
+    ck_assert_uint_eq(module->programs[0].block_params, 0);
+    ck_assert_uint_eq(module->programs[1].block_params, 1);
+    ck_assert_uint_eq(module->programs[2].block_params, 0);
+    ck_assert_uint_eq(module->programs[3].block_params, 1);
+}
+END_TEST
+
 START_TEST(test_serialized_module_rejects_invalid_layout)
 {
     struct handlebars_module * module = serialize_for_verification("{{foo.bar}}");
@@ -628,6 +642,11 @@ START_TEST(test_serialized_module_rejects_invalid_layout)
 
     module = serialize_for_verification("{{foo.bar}}");
     module->programs[0].opcode_count++;
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification("{{foo.bar}}");
+    module->programs[0].block_params = 3;
     handlebars_module_generate_hash(module);
     ck_assert(!handlebars_module_verify(module, NULL));
 
@@ -901,6 +920,7 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_serialize_traversal_allocation_failures, "Serialized module traversal allocation failures");
 #endif
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_verification, "Verify serialized module layout");
+	REGISTER_TEST_FIXTURE(s, test_serialize_preserves_block_param_counts, "Preserve serialized block parameter counts");
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");
 	REGISTER_TEST_FIXTURE(s, test_string_params_supports_implicit_partial_context, "String params with implicit partial context");

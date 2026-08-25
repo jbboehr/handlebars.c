@@ -11,11 +11,15 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   iteration, and are closed when an error unwinds through the library.
 - The public value iterator layout changed and the shared-library ABI is now
   version 10. Downstream binaries must be rebuilt.
+- Serialized programs now retain block-parameter counts, extending the public
+  module-table and `handlebars_options` layouts.
 
 ### Fixed
 - JSON `null` elements no longer reuse the preceding iterator value.
 - Recursive value conversion, expression rendering, and diagnostic dumping now
   reject cyclic and excessively deep container graphs.
+- Block parameters preserve lexical precedence through nested helpers and
+  partial blocks.
 
 ## [1.0.0]
 

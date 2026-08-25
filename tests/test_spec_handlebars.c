@@ -384,7 +384,6 @@ static bool should_skip(struct generic_test * test)
 
     // Decorators aren't implemented
     MYCHECKALL("blocks", "blocks - decorators");
-    MYCHECK("helpers", "helpers - block params", "should take presednece over parent block params");
 
     // Regressions
     MYCHECK("regressions", "Regressions", "GH-1065: Sparse arrays")
@@ -407,7 +406,7 @@ static bool should_skip(struct generic_test * test)
 }
 
 enum {
-    EXPECTED_RUNTIME_EXCLUSIONS = 28,
+    EXPECTED_RUNTIME_EXCLUSIONS = 27,
     EXPECTED_AST_INAPPLICABLE = 40,
 };
 

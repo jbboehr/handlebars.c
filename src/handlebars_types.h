@@ -106,6 +106,8 @@ struct handlebars_options {
     struct handlebars_value * scope;
     struct handlebars_value * data;
     struct handlebars_value * hash;
+    //! Number of block parameters declared by the child program
+    size_t program_block_params;
 };
 
 // }}} options

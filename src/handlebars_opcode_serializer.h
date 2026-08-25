@@ -110,6 +110,8 @@ struct handlebars_module_table_entry
 {
     //! The unique ID of this program
     size_t guid;
+    //! Number of block parameters declared by this program
+    size_t block_params;
     //! Number of opcodes
     size_t opcode_count;
     //! Offset to start opcode for function

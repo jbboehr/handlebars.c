@@ -221,6 +221,23 @@ struct handlebars_value * handlebars_vm_call_helper_str(const char * name, unsig
     return rv;
 }
 
+static inline size_t program_block_params(struct handlebars_vm * vm, long program)
+{
+    struct handlebars_module_table_entry * entry;
+
+    if( program < 0 ) {
+        return 0;
+    }
+    if( unlikely((size_t) program >= vm->module->program_count) ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program: %ld", program);
+    }
+    entry = &vm->module->programs[program];
+    if( unlikely(entry->guid != (size_t) program || entry->block_params > 2) ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program metadata: %ld", program);
+    }
+    return entry->block_params;
+}
+
 static inline void setup_options(struct handlebars_vm * vm, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * mem)
 {
     struct handlebars_value * inverse;
@@ -245,6 +262,7 @@ static inline void setup_options(struct handlebars_vm * vm, int argc, struct han
     }
     if (program) {
         options->program = handlebars_value_get_intval(program);
+        options->program_block_params = program_block_params(vm, options->program);
         handlebars_value_dtor(program);
     } else {
         options->program = -1;
@@ -413,14 +431,24 @@ done:
 HANDLEBARS_CLOSURE_ATTRS
 static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE_ARGS)
 {
-    assert(localc >= 3);
+    assert(localc >= 4);
     assert(HANDLEBARS_LOCAL_AT(0)->type == HANDLEBARS_VALUE_TYPE_PTR);
     assert(HANDLEBARS_LOCAL_AT(1)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
     assert(HANDLEBARS_LOCAL_AT(2)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
+    assert(HANDLEBARS_LOCAL_AT(3)->type == HANDLEBARS_VALUE_TYPE_ARRAY);
 
     struct handlebars_module * module = handlebars_value_get_ptr(HANDLEBARS_LOCAL_AT(0), struct handlebars_module);
     long program = handlebars_value_get_intval(HANDLEBARS_LOCAL_AT(1));
     long partial_block_depth = handlebars_value_get_intval(HANDLEBARS_LOCAL_AT(2));
+    struct handlebars_stack * captured_block_params = handlebars_value_get_stack(HANDLEBARS_LOCAL_AT(3));
+    struct handlebars_stack * previous_block_params = vm->blockParamStack;
+    struct handlebars_stack_save_buf captured_block_params_save = handlebars_stack_save(captured_block_params);
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile prev_jmp = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    struct handlebars_value * input;
+    struct handlebars_string * buffer;
+    jmp_buf buf;
     bool pushed_partial_block = false;
 
     // Push partial block
@@ -433,16 +461,27 @@ static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE
         PUSH(vm->partialBlockStack, partial_block);
     }
 
-    struct handlebars_value * input = argc > 0 ? &argv[0] : TOP(vm->contextStack);
-    struct handlebars_string * buffer;
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
+
+    vm->blockParamStack = captured_block_params;
+
+    input = argc > 0 ? &argv[0] : TOP(vm->contextStack);
     if (vm->module == module) {
-        buffer = handlebars_vm_execute_program_ex(vm, program, input, NULL, TOP(vm->blockParamStack));
+        buffer = handlebars_vm_execute_program_ex(vm, program, input, NULL, NULL);
     } else {
-        buffer = handlebars_vm_execute_ex(vm, module, input, program, NULL, TOP(vm->blockParamStack));
+        buffer = handlebars_vm_execute_ex(vm, module, input, program, NULL, NULL);
     }
     if (buffer) {
         handlebars_value_str(rv, buffer);
     }
+
+done:
+    error->jmp = prev_jmp;
+    handlebars_stack_restore(captured_block_params, captured_block_params_save);
+    vm->blockParamStack = previous_block_params;
 
     // Pop partial block
     if (pushed_partial_block) {
@@ -453,6 +492,10 @@ static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE
         HANDLEBARS_VALUE_DECL(closure_value);
         POP(vm->partialBlockStack, closure_value);
         HANDLEBARS_VALUE_UNDECL(closure_value);
+    }
+
+    if( caught != HANDLEBARS_SUCCESS && prev_jmp != NULL ) {
+        handlebars_longjmp(HBSCTX(vm), prev_jmp, caught);
     }
 
     return rv;
@@ -821,11 +864,15 @@ ACCEPT_FUNCTION(invoke_partial)
 
     // Push partial block
     if (options.program > 0) {
-        const int closure_localc = 3;
+        const int closure_localc = 4;
         HANDLEBARS_VALUE_ARRAY_DECL(closure_localv, closure_localc);
         handlebars_value_ptr(&closure_localv[0], handlebars_ptr_ctor(CONTEXT, struct handlebars_module, vm->module, true));
         handlebars_value_integer(&closure_localv[1], options.program);
         handlebars_value_integer(&closure_localv[2], LEN(vm->partialBlockStack));
+        handlebars_value_array(
+            &closure_localv[3],
+            handlebars_stack_copy_ctor(vm->blockParamStack, HANDLEBARS_VM_STACK_SIZE)
+        );
         handlebars_value_closure(partial_block, handlebars_closure_ctor(vm, invoke_partial_block_closure, closure_localc, closure_localv));
         pushed_partial_block = true;
         PUSH(vm->partialBlockStack, partial_block);
@@ -1337,6 +1384,7 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
             || entry->opcode_count > vm->module->opcode_count - entry->opcode_offset) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid opcode range for program: %ld", program_num);
     }
+    HANDLEBARS_VALUE_DECL(empty_block_params);
 
     // Save and set buffer
     struct handlebars_string * prev_buffer = vm->buffer;
@@ -1370,8 +1418,8 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     }
 
     // Set block params
-    if( block_params ) {
-        PUSH(vm->blockParamStack, block_params);
+    if( block_params || program_num != 0 ) {
+        PUSH(vm->blockParamStack, block_params ? block_params : empty_block_params);
     }
 
     // Execute the program
@@ -1398,6 +1446,8 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     // Restore buffer
     struct handlebars_string * buffer = vm->buffer;
     vm->buffer = prev_buffer;
+
+    HANDLEBARS_VALUE_UNDECL(empty_block_params);
 
     return buffer;
 }

@@ -1188,6 +1188,72 @@ START_TEST(test_vm_hash_rehash)
 }
 END_TEST
 
+START_TEST(test_partial_block_preserves_lexical_block_params)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#with value as |x|}}{{#> p}}{{x}}{{/p}}{{/with}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+
+    handlebars_value_init_json_string(context, input, "{\"value\": \"ok\"}");
+    handlebars_value_convert(input);
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("{{#if true}}{{> @partial-block}}{{/if}}"))
+    );
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+    partial_map = handlebars_map_str_add(partial_map, HBS_STRL("p"), partial);
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_ne(output, NULL);
+    ck_assert_hbs_str_eq_cstr(output, "ok");
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_partial_block_preserves_all_lexical_block_params)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#with outer as |a|}}{{#with inner as |b|}}"
+        "{{#> p}}{{a.name}}-{{b}}{{/p}}"
+        "{{/with}}{{/with}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+
+    handlebars_value_init_json_string(
+        context,
+        input,
+        "{\"outer\": {\"name\": \"A\", \"inner\": \"B\"}}"
+    );
+    handlebars_value_convert(input);
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("{{#if true}}{{> @partial-block}}{{/if}}"))
+    );
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+    partial_map = handlebars_map_str_add(partial_map, HBS_STRL("p"), partial);
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_ne(output, NULL);
+    ck_assert_hbs_str_eq_cstr(output, "A-B");
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -1235,6 +1301,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_vm_error_returns_null_without_outer_handler, "VM error returns NULL without outer handler");
     REGISTER_TEST_FIXTURE(s, test_vm_rejects_empty_lookup_path, "VM rejects empty lookup path");
     REGISTER_TEST_FIXTURE(s, test_vm_hash_rehash, "VM rehashes helper hashes safely");
+    REGISTER_TEST_FIXTURE(s, test_partial_block_preserves_lexical_block_params, "Partial blocks preserve lexical block parameters");
+    REGISTER_TEST_FIXTURE(s, test_partial_block_preserves_all_lexical_block_params, "Partial blocks preserve all lexical block parameters");
 
     return s;
 }

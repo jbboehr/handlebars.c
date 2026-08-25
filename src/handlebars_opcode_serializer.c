@@ -628,7 +628,16 @@ static struct handlebars_module_table_entry * serialize_program_shallow(
     guid = module->program_count++;
     entry = &module->programs[guid];
 
+    if( unlikely(program->block_params < 0 || program->block_params > 2) ) {
+        handlebars_throw(
+            state->context,
+            HANDLEBARS_ERROR,
+            "Invalid block parameter count: %d",
+            program->block_params
+        );
+    }
     entry->guid = guid;
+    entry->block_params = (size_t) program->block_params;
 
     return entry;
 }
@@ -1284,6 +1293,7 @@ static bool module_verify_structure(struct handlebars_module * module, size_t si
         size_t program_end;
 
         if( unlikely(program->guid != i
+                || program->block_params > 2
                 || program->opcode_count == 0
                 || program->opcode_offset > module->opcode_count
                 || program->opcode_count > module->opcode_count - program->opcode_offset) ) {

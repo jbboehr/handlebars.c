@@ -77,10 +77,12 @@ struct handlebars_string * handlebars_module_print(
             ctx,
             buffer,
             "PROGRAM: %zu\n"
+            "BLOCK_PARAMS: %zu\n"
             "OPCODE_COUNT: %zu\n"
             "OPCODE_OFFSET: %zu\n"
             "\n",
             module->programs[i].guid,
+            module->programs[i].block_params,
             module->programs[i].opcode_count,
             module->programs[i].opcode_offset
         );
