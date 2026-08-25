@@ -31,6 +31,7 @@
 
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_compiler.h"
 #include "handlebars_memory.h"
 #include "handlebars_parser.h"
 #include "handlebars_parser_private.h"
@@ -203,7 +204,7 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
     struct handlebars_ast_list * statements = program->node.program.statements;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
-    bool do_standalone = true; //!(parser->flags & handlebars_compiler_flag_ignore_standalone);
+    bool do_standalone = !(parser->flags & handlebars_compiler_flag_ignore_standalone);
 
     parser->whitespace_root_seen = 1;
 
@@ -322,7 +323,7 @@ static inline void handlebars_whitespace_accept_block(struct handlebars_parser *
     struct handlebars_ast_node * firstInverse;
     struct handlebars_ast_node * lastInverse;
     unsigned strip = 0;
-    bool do_standalone = true; //!(parser->flags & handlebars_compiler_flag_ignore_standalone);
+    bool do_standalone = !(parser->flags & handlebars_compiler_flag_ignore_standalone);
 
     if( block->node.block.program ) {
         handlebars_whitespace_accept(parser, block->node.block.program);

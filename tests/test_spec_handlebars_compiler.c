@@ -665,6 +665,7 @@ START_TEST(handlebars_spec_compiler)
 {
     struct compiler_test * test = &tests[_i];
     struct handlebars_string * actual;
+    unsigned long parser_flags = test->flags;
 
     // NOTE: works but handlebars.js doesn't concatenate adjacent content blocks
     if( 0 == strcmp(test->it, "escaping") && 0 == strcmp(test->description, "basic context") ) {
@@ -673,8 +674,12 @@ START_TEST(handlebars_spec_compiler)
     	return;
     }
 
+    // The upstream opcode exporter parses without forwarding compile options.
+    // Runtime specs cover the end-to-end ignoreStandalone behavior instead.
+    parser_flags &= ~handlebars_compiler_flag_ignore_standalone;
+
     // Parse
-    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), test->flags);
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, handlebars_string_ctor(HBSCTX(parser), test->tmpl, strlen(test->tmpl)), parser_flags);
 
     // Compile
     handlebars_compiler_set_flags(compiler, test->flags);

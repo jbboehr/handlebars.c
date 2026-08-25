@@ -382,9 +382,6 @@ static bool should_skip(struct generic_test * test)
 #define MYCHECK(s, d, i) \
     if( 0 == strcmp(s, test->suite_name) && 0 == strcmp(d, test->description) && 0 == strcmp(i, test->it) ) return true;
 
-    // Still having issues with whitespace
-    MYCHECK("blocks", "blocks - standalone sections", "block standalone else sections can be disabled");
-
     // Decorators aren't implemented
     MYCHECKALL("blocks", "blocks - decorators");
     MYCHECK("helpers", "helpers - block params", "should take presednece over parent block params");
@@ -410,7 +407,7 @@ static bool should_skip(struct generic_test * test)
 }
 
 enum {
-    EXPECTED_RUNTIME_EXCLUSIONS = 30,
+    EXPECTED_RUNTIME_EXCLUSIONS = 28,
     EXPECTED_AST_INAPPLICABLE = 40,
 };
 
