@@ -20,6 +20,7 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   reject cyclic and excessively deep container graphs.
 - Block parameters preserve lexical precedence through nested helpers and
   partial blocks.
+- Subexpressions reject truthy context values that are not callable.
 
 ## [1.0.0]
 

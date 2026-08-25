@@ -79,6 +79,51 @@ static struct handlebars_value * test_throwing_helper(
     handlebars_throw(HBSCTX(callback_vm), HANDLEBARS_ERROR, "Intentional helper failure");
 }
 
+static struct handlebars_value * test_passthrough_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) options;
+    (void) callback_vm;
+    ck_assert_int_eq(argc, 1);
+    handlebars_value_value(rv, &argv[0]);
+    return rv;
+}
+
+static struct handlebars_value * test_context_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) argv;
+    (void) options;
+    ck_assert_int_eq(argc, 0);
+    handlebars_value_str(rv, handlebars_string_ctor(HBSCTX(callback_vm), HBS_STRL("ok")));
+    return rv;
+}
+
+static void test_register_helper(const char * name, size_t length, handlebars_func helper_fn)
+{
+    HANDLEBARS_VALUE_DECL(helper);
+    HANDLEBARS_VALUE_DECL(helpers);
+    struct handlebars_map * helper_map = handlebars_map_ctor(context, 1);
+
+    handlebars_value_helper(helper, helper_fn);
+    helper_map = handlebars_map_str_update(helper_map, name, length, helper);
+    handlebars_value_map(helpers, helper_map);
+    handlebars_vm_set_helpers(vm, helpers);
+
+    HANDLEBARS_VALUE_UNDECL(helpers);
+    HANDLEBARS_VALUE_UNDECL(helper);
+}
+
 static struct handlebars_module * test_compile_template(const char * tmpl)
 {
     struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
@@ -103,6 +148,22 @@ static struct handlebars_module * test_compile_template(const char * tmpl)
     handlebars_compiler_dtor(local_compiler);
     handlebars_parser_dtor(local_parser);
     return module;
+}
+
+static struct handlebars_string * test_execute_with_bar(
+    struct handlebars_module * module,
+    struct handlebars_value * bar
+)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_string * output;
+
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("bar"), bar);
+    handlebars_value_map(input, input_map);
+    output = handlebars_vm_execute(vm, module, input);
+    HANDLEBARS_VALUE_UNDECL(input);
+    return output;
 }
 
 static void assert_value_expression_result(
@@ -386,6 +447,126 @@ START_TEST(test_vm_reusable_after_helper_error)
     HANDLEBARS_VALUE_UNDECL(input);
     HANDLEBARS_VALUE_UNDECL(helpers);
     HANDLEBARS_VALUE_UNDECL(helper);
+}
+END_TEST
+
+START_TEST(test_subexpression_rejects_non_callable_context_value)
+{
+    struct handlebars_module * module = test_compile_template("{{foo (bar)}}");
+    HANDLEBARS_VALUE_DECL(bar);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    size_t blocks_after_first_error;
+#endif
+
+    test_register_helper(HBS_STRL("foo"), test_passthrough_helper);
+    handlebars_value_str(bar, handlebars_string_ctor(context, HBS_STRL("not callable")));
+
+    struct handlebars_string * output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_null(output);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "bar"));
+#ifndef HANDLEBARS_NO_REFCOUNT
+    blocks_after_first_error = talloc_total_blocks(context);
+
+    output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_null(output);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+    ck_assert_uint_eq(talloc_total_blocks(context), blocks_after_first_error);
+#endif
+
+    HANDLEBARS_VALUE_UNDECL(bar);
+}
+END_TEST
+
+START_TEST(test_subexpression_allows_falsey_context_values)
+{
+    struct handlebars_module * module = test_compile_template("{{foo (bar)}}");
+    HANDLEBARS_VALUE_DECL(bar);
+    struct handlebars_string * output;
+
+    test_register_helper(HBS_STRL("foo"), test_passthrough_helper);
+
+    handlebars_value_boolean(bar, false);
+    output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
+
+    handlebars_value_integer(bar, 0);
+    output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
+
+    handlebars_value_float(bar, 0.0);
+    output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
+
+    handlebars_value_str(bar, handlebars_string_ctor(context, HBS_STRL("")));
+    output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
+
+    HANDLEBARS_VALUE_UNDECL(bar);
+}
+END_TEST
+
+START_TEST(test_subexpression_rejects_empty_containers)
+{
+    struct handlebars_module * module = test_compile_template("{{foo (bar)}}");
+    HANDLEBARS_VALUE_DECL(bar);
+    struct handlebars_string * output;
+
+    test_register_helper(HBS_STRL("foo"), test_passthrough_helper);
+
+    handlebars_value_map(bar, handlebars_map_ctor(context, 0));
+    output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_null(output);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+
+    handlebars_value_dtor(bar);
+    handlebars_value_array(bar, handlebars_stack_ctor(context, 0));
+    output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_null(output);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+
+    HANDLEBARS_VALUE_UNDECL(bar);
+}
+END_TEST
+
+START_TEST(test_subexpression_calls_callable_context_value)
+{
+    struct handlebars_module * module = test_compile_template("{{foo (bar)}}");
+    HANDLEBARS_VALUE_DECL(bar);
+
+    test_register_helper(HBS_STRL("foo"), test_passthrough_helper);
+    handlebars_value_helper(bar, test_context_helper);
+
+    struct handlebars_string * output = test_execute_with_bar(module, bar);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "ok");
+    handlebars_string_delref(output);
+
+    HANDLEBARS_VALUE_UNDECL(bar);
+}
+END_TEST
+
+START_TEST(test_subexpression_allows_missing_context_value)
+{
+    struct handlebars_module * module = test_compile_template("{{foo (bar)}}");
+    HANDLEBARS_VALUE_DECL(input);
+
+    test_register_helper(HBS_STRL("foo"), test_passthrough_helper);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
+
+    HANDLEBARS_VALUE_UNDECL(input);
 }
 END_TEST
 
@@ -1457,6 +1638,11 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_delimiter_replacement_releases_old_values, "Delimiter replacement ownership");
 #endif
     REGISTER_TEST_FIXTURE(s, test_vm_reusable_after_helper_error, "VM reuse after helper error");
+    REGISTER_TEST_FIXTURE(s, test_subexpression_rejects_non_callable_context_value, "Subexpression rejects non-callable context value");
+    REGISTER_TEST_FIXTURE(s, test_subexpression_allows_falsey_context_values, "Subexpression allows falsey context values");
+    REGISTER_TEST_FIXTURE(s, test_subexpression_rejects_empty_containers, "Subexpression rejects empty containers");
+    REGISTER_TEST_FIXTURE(s, test_subexpression_calls_callable_context_value, "Subexpression calls callable context value");
+    REGISTER_TEST_FIXTURE(s, test_subexpression_allows_missing_context_value, "Subexpression allows missing context value");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_array_iterator_retains_stack, "Array iterator retains its backing stack");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");

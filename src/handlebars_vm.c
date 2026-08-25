@@ -20,6 +20,7 @@
 #endif
 
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -236,6 +237,23 @@ static inline size_t program_block_params(struct handlebars_vm * vm, long progra
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program metadata: %ld", program);
     }
     return entry->block_params;
+}
+
+static inline bool helper_context_is_truthy(struct handlebars_value * value)
+{
+    switch( value->type ) {
+        case HANDLEBARS_VALUE_TYPE_NULL:
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            return false;
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            return value->v.lval != 0;
+        case HANDLEBARS_VALUE_TYPE_FLOAT:
+            return value->v.dval != 0.0 && !isnan(value->v.dval);
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            return hbs_str_len(value->v.string) != 0;
+        default:
+            return true;
+    }
 }
 
 static inline void setup_options(struct handlebars_vm * vm, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * mem)
@@ -773,6 +791,19 @@ ACCEPT_FUNCTION(invoke_helper)
         // fallthrough
     } else if (value && handlebars_value_is_callable(value)) {
         fn = value;
+    } else if (unlikely(helper_context_is_truthy(value))) {
+        VM_TEARDOWN_OPTIONS(argc);
+        HANDLEBARS_VALUE_UNDECL(fnv);
+        HANDLEBARS_VALUE_UNDECL(rv);
+        HANDLEBARS_VALUE_UNDECL(value);
+        handlebars_throw_ex(
+            CONTEXT,
+            HANDLEBARS_ERROR,
+            &opcode->loc,
+            "Value for helper \"%.*s\" is not callable",
+            (int) hbs_str_len(options.name),
+            hbs_str_val(options.name)
+        );
     } else {
         struct handlebars_string * tmp_str = handlebars_string_ctor(CONTEXT, HBS_STRL("helperMissing"));
         fn = lookup_helper(vm, tmp_str, fnv);

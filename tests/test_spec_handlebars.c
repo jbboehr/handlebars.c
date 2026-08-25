@@ -392,8 +392,6 @@ static bool should_skip(struct generic_test * test)
     MYCHECK("regressions", "Regressions", "GH-1186: Support block params for existing programs");
 
     // Subexpressions
-    // This one might need to be handled in the parser
-    MYCHECK("subexpressions", "subexpressions", "subexpressions can\'t just be property lookups");
     MYCHECK("subexpressions", "subexpressions", "in string params mode,");
     MYCHECK("subexpressions", "subexpressions", "as hashes in string params mode");
 
@@ -406,7 +404,7 @@ static bool should_skip(struct generic_test * test)
 }
 
 enum {
-    EXPECTED_RUNTIME_EXCLUSIONS = 27,
+    EXPECTED_RUNTIME_EXCLUSIONS = 26,
     EXPECTED_AST_INAPPLICABLE = 40,
 };
 
