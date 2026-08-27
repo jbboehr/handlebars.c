@@ -23,6 +23,7 @@
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
@@ -138,6 +139,111 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
         handlebars_string_delref(vm->delim_close);
     }
     handlebars_talloc_free(vm);
+}
+
+HBS_LOCAL void handlebars_vm_call_checkpoint_begin(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_call_checkpoint * checkpoint
+)
+{
+    checkpoint->open = false;
+    if( vm->stack == NULL ) {
+        assert(vm->hashStack == NULL);
+        assert(vm->contextStack == NULL);
+        assert(vm->blockParamStack == NULL);
+        assert(vm->partialBlockStack == NULL);
+        assert(vm->partialScopeStack == NULL);
+        return;
+    }
+
+    assert(vm->hashStack != NULL);
+    assert(vm->contextStack != NULL);
+    assert(vm->blockParamStack != NULL);
+    assert(vm->partialBlockStack != NULL);
+    assert(vm->partialScopeStack != NULL);
+    checkpoint->stack = handlebars_stack_save(vm->stack);
+    checkpoint->hash_stack = handlebars_stack_save(vm->hashStack);
+    checkpoint->context_stack = handlebars_stack_save(vm->contextStack);
+    checkpoint->block_param_stack = handlebars_stack_save(vm->blockParamStack);
+    checkpoint->partial_block_stack = handlebars_stack_save(vm->partialBlockStack);
+    checkpoint->partial_scope_stack = handlebars_stack_save(vm->partialScopeStack);
+    checkpoint->buffer = vm->buffer;
+    checkpoint->depth = vm->depth;
+    checkpoint->open = true;
+}
+
+HBS_LOCAL void handlebars_vm_call_checkpoint_commit(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_call_checkpoint * checkpoint
+)
+{
+    if( !checkpoint->open ) {
+        return;
+    }
+
+    handlebars_stack_protect(vm->stack, checkpoint->stack.protect);
+    handlebars_stack_protect(vm->hashStack, checkpoint->hash_stack.protect);
+    handlebars_stack_protect(vm->contextStack, checkpoint->context_stack.protect);
+    handlebars_stack_protect(vm->blockParamStack, checkpoint->block_param_stack.protect);
+    handlebars_stack_protect(vm->partialBlockStack, checkpoint->partial_block_stack.protect);
+    handlebars_stack_protect(vm->partialScopeStack, checkpoint->partial_scope_stack.protect);
+    checkpoint->open = false;
+}
+
+HBS_LOCAL void handlebars_vm_call_checkpoint_rollback(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_call_checkpoint * checkpoint
+)
+{
+    if( !checkpoint->open ) {
+        return;
+    }
+
+    handlebars_stack_restore(vm->stack, checkpoint->stack);
+    handlebars_stack_restore(vm->hashStack, checkpoint->hash_stack);
+    handlebars_stack_restore(vm->contextStack, checkpoint->context_stack);
+    handlebars_stack_restore(vm->blockParamStack, checkpoint->block_param_stack);
+    handlebars_stack_restore(vm->partialBlockStack, checkpoint->partial_block_stack);
+    handlebars_stack_restore(vm->partialScopeStack, checkpoint->partial_scope_stack);
+    if( vm->buffer != checkpoint->buffer ) {
+        if( vm->buffer != NULL ) {
+            handlebars_string_delref(vm->buffer);
+        }
+        vm->buffer = checkpoint->buffer;
+    }
+    vm->depth = checkpoint->depth;
+    checkpoint->open = false;
+}
+
+HBS_LOCAL void handlebars_vm_call_checkpoint_finish(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_call_checkpoint * checkpoint,
+    enum handlebars_error_type result
+)
+{
+    if( result == HANDLEBARS_SUCCESS ) {
+        handlebars_vm_call_checkpoint_commit(vm, checkpoint);
+    } else {
+        handlebars_vm_call_checkpoint_rollback(vm, checkpoint);
+    }
+}
+
+HBS_LOCAL HBS_ATTR_NORETURN void handlebars_vm_rethrow_caught(
+    struct handlebars_vm * vm,
+    jmp_buf * previous,
+    enum handlebars_error_type caught
+)
+{
+    assert(caught != HANDLEBARS_SUCCESS);
+    if( likely(previous != NULL) ) {
+        handlebars_longjmp(HBSCTX(vm), previous, caught);
+    }
+    fprintf(
+        stderr,
+        "Throw with invalid jmp_buf: %s\n",
+        handlebars_error_msg(HBSCTX(vm))
+    );
+    abort();
 }
 
 // }}} Constructors & Destructors
@@ -283,7 +389,7 @@ static inline bool helper_context_is_truthy(struct handlebars_value * value)
     }
 }
 
-static inline void setup_options(struct handlebars_vm * vm, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * mem)
+static void setup_options(struct handlebars_vm * vm, int argc, struct handlebars_value * argv, struct handlebars_options * options, struct handlebars_value * mem)
 {
     struct handlebars_value * inverse;
     struct handlebars_value * program;
@@ -1088,32 +1194,123 @@ static struct handlebars_value * invoke_mustache_style_lambda_closure(HANDLEBARS
     return rv;
 }
 
+struct handlebars_helper_call_state {
+    struct handlebars_options options;
+    struct handlebars_value * argv;
+    struct handlebars_value extra[5];
+    struct handlebars_value rv;
+    struct handlebars_value fnv;
+    struct handlebars_value value;
+    struct handlebars_string * temporary_name;
+    struct handlebars_vm_call_checkpoint checkpoint;
+    int argc;
+};
 
-
-
-
-
-ACCEPT_FUNCTION(ambiguous_block_value)
+static void handlebars_helper_call_state_init(
+    struct handlebars_helper_call_state * state,
+    struct handlebars_value * argv
+)
 {
-    HANDLEBARS_VALUE_DECL(rv);
+    memset(state, 0, sizeof(*state));
+    state->argv = argv;
+}
 
-    if( vm->last_helper == NULL ) {
-        VM_SETUP_OPTIONS(1);
-        struct handlebars_value * result = handlebars_vm_call_helper_str(HBS_STRL("blockHelperMissing"), 1, argv, &options, vm, rv);
-        assert(result != NULL);
-        PUSH(vm->stack, result);
-        VM_TEARDOWN_OPTIONS(1);
-    } else if (hbs_str_eq_strl(vm->last_helper, HBS_STRL("lambda"))) {
-        VM_SETUP_OPTIONS(0);
-        handlebars_string_delref(vm->last_helper);
-        vm->last_helper = NULL;
-        VM_TEARDOWN_OPTIONS(0);
-    } else {
-        VM_SETUP_OPTIONS(0);
-        VM_TEARDOWN_OPTIONS(0);
+static void handlebars_helper_call_state_deinit(
+    struct handlebars_helper_call_state * state
+)
+{
+    if( state->temporary_name != NULL ) {
+        handlebars_string_delref(state->temporary_name);
+    }
+    for( int i = 0; i < 5; i++ ) {
+        handlebars_value_dtor(&state->extra[i]);
+    }
+    for( int i = 0; i < state->argc; i++ ) {
+        handlebars_value_dtor(&state->argv[i]);
+    }
+    handlebars_options_deinit(&state->options);
+    handlebars_value_dtor(&state->value);
+    handlebars_value_dtor(&state->fnv);
+    handlebars_value_dtor(&state->rv);
+}
+
+HBS_ATTR_NOINLINE HBS_ATTR_NONNULL_ALL
+static void accept_ambiguous_block_value_guarded(
+    struct handlebars_vm * vm,
+    struct handlebars_opcode * opcode,
+    struct handlebars_helper_call_state * state
+)
+{
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile prev_jmp = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
     }
 
-    HANDLEBARS_VALUE_UNDECL(rv);
+    if( vm->last_helper == NULL ) {
+        struct handlebars_value * result;
+
+        state->argc = 1;
+        setup_options(
+            vm,
+            state->argc,
+            state->argv,
+            &state->options,
+            state->extra
+        );
+        handlebars_vm_call_checkpoint_begin(vm, &state->checkpoint);
+        result = handlebars_vm_call_helper_str(
+            HBS_STRL("blockHelperMissing"),
+            state->argc,
+            state->argv,
+            &state->options,
+            vm,
+            &state->rv
+        );
+        assert(result != NULL);
+        PUSH(vm->stack, result);
+    } else if (hbs_str_eq_strl(vm->last_helper, HBS_STRL("lambda"))) {
+        setup_options(
+            vm,
+            state->argc,
+            state->argv,
+            &state->options,
+            state->extra
+        );
+        handlebars_string_delref(vm->last_helper);
+        vm->last_helper = NULL;
+    } else {
+        setup_options(
+            vm,
+            state->argc,
+            state->argv,
+            &state->options,
+            state->extra
+        );
+    }
+
+done:
+    error->jmp = prev_jmp;
+    handlebars_vm_call_checkpoint_finish(vm, &state->checkpoint, caught);
+    handlebars_helper_call_state_deinit(state);
+
+    if( caught != HANDLEBARS_SUCCESS ) {
+        handlebars_vm_rethrow_caught(vm, prev_jmp, caught);
+    }
+}
+
+ACCEPT_NOINLINE_FUNCTION(ambiguous_block_value)
+{
+    HANDLEBARS_VALUE_ARRAY_DECL(argv, 1);
+    struct handlebars_helper_call_state state;
+
+    handlebars_helper_call_state_init(&state, argv);
+    accept_ambiguous_block_value_guarded(vm, opcode, &state);
+    HANDLEBARS_VALUE_ARRAY_UNDECL(argv, 0);
 }
 
 ACCEPT_FUNCTION(append)
@@ -1167,23 +1364,69 @@ ACCEPT_FUNCTION(assign_to_hash)
     HANDLEBARS_VALUE_UNDECL(hash);
 }
 
-ACCEPT_FUNCTION(block_value)
+HBS_ATTR_NOINLINE HBS_ATTR_NONNULL_ALL
+static void accept_block_value_guarded(
+    struct handlebars_vm * vm,
+    struct handlebars_opcode * opcode,
+    struct handlebars_helper_call_state * state
+)
 {
-    const int argc = 1;
-    HANDLEBARS_VALUE_DECL(rv);
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile prev_jmp = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    struct handlebars_value * result;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
 
     assert(opcode->op1.type == handlebars_operand_type_string);
 
-    VM_SETUP_OPTIONS(argc);
-    options.name = opcode->op1.data.string.string;
+    state->argc = 1;
+    setup_options(
+        vm,
+        state->argc,
+        state->argv,
+        &state->options,
+        state->extra
+    );
+    state->options.name = opcode->op1.data.string.string;
+    handlebars_vm_call_checkpoint_begin(vm, &state->checkpoint);
 
-    struct handlebars_value * result = handlebars_vm_call_helper_str(HBS_STRL("blockHelperMissing"), argc, argv, &options, vm, rv);
+    result = handlebars_vm_call_helper_str(
+        HBS_STRL("blockHelperMissing"),
+        state->argc,
+        state->argv,
+        &state->options,
+        vm,
+        &state->rv
+    );
+    /* append_to_buffer may replace the borrowed buffer snapshot. */
+    handlebars_vm_call_checkpoint_commit(vm, &state->checkpoint);
     if (likely(result != NULL)) {
         append_to_buffer(vm, result, 0);
     }
 
-    VM_TEARDOWN_OPTIONS(argc);
-    HANDLEBARS_VALUE_UNDECL(rv);
+done:
+    error->jmp = prev_jmp;
+    handlebars_vm_call_checkpoint_finish(vm, &state->checkpoint, caught);
+    handlebars_helper_call_state_deinit(state);
+
+    if( caught != HANDLEBARS_SUCCESS ) {
+        handlebars_vm_rethrow_caught(vm, prev_jmp, caught);
+    }
+}
+
+ACCEPT_NOINLINE_FUNCTION(block_value)
+{
+    HANDLEBARS_VALUE_ARRAY_DECL(argv, 1);
+    struct handlebars_helper_call_state state;
+
+    handlebars_helper_call_state_init(&state, argv);
+    accept_block_value_guarded(vm, opcode, &state);
+    HANDLEBARS_VALUE_ARRAY_UNDECL(argv, 0);
 }
 
 ACCEPT_FUNCTION(empty_hash)
@@ -1371,67 +1614,136 @@ ACCEPT_NOINLINE_FUNCTION(invoke_ambiguous)
     accept_invoke_ambiguous_guarded(vm, opcode, &state);
 }
 
-ACCEPT_FUNCTION(invoke_helper)
+HBS_ATTR_NOINLINE HBS_ATTR_NONNULL_ALL
+static void accept_invoke_helper_guarded(
+    struct handlebars_vm * vm,
+    struct handlebars_opcode * opcode,
+    struct handlebars_helper_call_state * state
+)
 {
-    HANDLEBARS_VALUE_DECL(value);
-    HANDLEBARS_VALUE_DECL(rv);
-    HANDLEBARS_VALUE_DECL(fnv);
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile prev_jmp = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
     struct handlebars_value * fn;
+    jmp_buf buf;
 
-    HBS_ASSERT(POP(vm->stack, value));
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
+
+    HBS_ASSERT(POP(vm->stack, &state->value));
 
     assert(opcode->op1.type == handlebars_operand_type_long);
     assert(opcode->op2.type == handlebars_operand_type_string);
     assert(opcode->op3.type == handlebars_operand_type_boolean);
 
-    int argc = (int) opcode->op1.data.longval;
-    VM_SETUP_OPTIONS(argc);
-    options.name = opcode->op2.data.string.string;
+    setup_options(
+        vm,
+        state->argc,
+        state->argv,
+        &state->options,
+        state->extra
+    );
+    state->options.name = opcode->op2.data.string.string;
+    handlebars_vm_call_checkpoint_begin(vm, &state->checkpoint);
 
-    if (opcode->op3.data.boolval && NULL != (fn = lookup_helper(vm, options.name, fnv))) { // isSimple
+    if (opcode->op3.data.boolval && NULL != (fn = lookup_helper(
+            vm,
+            state->options.name,
+            &state->fnv
+        ))) { // isSimple
         // fallthrough
-    } else if (value && handlebars_value_is_callable(value)) {
-        fn = value;
-    } else if (unlikely(helper_context_is_truthy(value))) {
-        VM_TEARDOWN_OPTIONS(argc);
-        HANDLEBARS_VALUE_UNDECL(fnv);
-        HANDLEBARS_VALUE_UNDECL(rv);
-        HANDLEBARS_VALUE_UNDECL(value);
+    } else if (handlebars_value_is_callable(&state->value)) {
+        fn = &state->value;
+    } else if (unlikely(helper_context_is_truthy(&state->value))) {
         handlebars_throw_ex(
             CONTEXT,
             HANDLEBARS_ERROR,
             &opcode->loc,
             "Value for helper \"%.*s\" is not callable",
-            (int) hbs_str_len(options.name),
-            hbs_str_val(options.name)
+            (int) hbs_str_len(state->options.name),
+            hbs_str_val(state->options.name)
         );
     } else {
-        struct handlebars_string * tmp_str = handlebars_string_ctor(CONTEXT, HBS_STRL("helperMissing"));
-        fn = lookup_helper(vm, tmp_str, fnv);
-        handlebars_string_delref(tmp_str);
+        state->temporary_name = handlebars_string_ctor(
+            CONTEXT,
+            HBS_STRL("helperMissing")
+        );
+        fn = lookup_helper(vm, state->temporary_name, &state->fnv);
+        handlebars_string_delref(state->temporary_name);
+        state->temporary_name = NULL;
     }
 
-    PUSH(vm->stack, handlebars_value_call(fn, argc, argv, &options, vm, rv));
+    PUSH(
+        vm->stack,
+        handlebars_value_call(
+            fn,
+            state->argc,
+            state->argv,
+            &state->options,
+            vm,
+            &state->rv
+        )
+    );
 
-    VM_TEARDOWN_OPTIONS(argc);
-    HANDLEBARS_VALUE_UNDECL(fnv);
-    HANDLEBARS_VALUE_UNDECL(rv);
-    HANDLEBARS_VALUE_UNDECL(value);
+done:
+    error->jmp = prev_jmp;
+    handlebars_vm_call_checkpoint_finish(vm, &state->checkpoint, caught);
+    handlebars_helper_call_state_deinit(state);
+
+    if( caught != HANDLEBARS_SUCCESS ) {
+        handlebars_vm_rethrow_caught(vm, prev_jmp, caught);
+    }
 }
 
-ACCEPT_FUNCTION(invoke_known_helper)
+ACCEPT_NOINLINE_FUNCTION(invoke_helper)
 {
-    HANDLEBARS_VALUE_DECL(rv);
-    HANDLEBARS_VALUE_DECL(fnv);
+    int argc;
+    struct handlebars_helper_call_state state;
+
+    assert(opcode->op1.type == handlebars_operand_type_long);
+    argc = (int) opcode->op1.data.longval;
+    HANDLEBARS_VALUE_ARRAY_DECL(argv, argc);
+
+    handlebars_helper_call_state_init(&state, argv);
+    state.argc = argc;
+    accept_invoke_helper_guarded(vm, opcode, &state);
+    HANDLEBARS_VALUE_ARRAY_UNDECL(argv, 0);
+}
+
+HBS_ATTR_NOINLINE HBS_ATTR_NONNULL_ALL
+static void accept_invoke_known_helper_guarded(
+    struct handlebars_vm * vm,
+    struct handlebars_opcode * opcode,
+    struct handlebars_helper_call_state * state
+)
+{
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile prev_jmp = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    struct handlebars_value * fn;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
 
     assert(opcode->op1.type == handlebars_operand_type_long);
     assert(opcode->op2.type == handlebars_operand_type_string);
 
-    int argc = (int) opcode->op1.data.longval;
-    VM_SETUP_OPTIONS(argc);
-    options.name = opcode->op2.data.string.string;
+    setup_options(
+        vm,
+        state->argc,
+        state->argv,
+        &state->options,
+        state->extra
+    );
+    state->options.name = opcode->op2.data.string.string;
+    handlebars_vm_call_checkpoint_begin(vm, &state->checkpoint);
 
-    struct handlebars_value * fn = lookup_helper(vm, options.name, fnv);
+    fn = lookup_helper(vm, state->options.name, &state->fnv);
 
     if (unlikely(fn == NULL)) {
         handlebars_throw_ex(
@@ -1439,16 +1751,46 @@ ACCEPT_FUNCTION(invoke_known_helper)
             HANDLEBARS_ERROR,
             &opcode->loc,
             "Invalid known helper: %.*s",
-            (int) hbs_str_len(options.name),
-            hbs_str_val(options.name)
+            (int) hbs_str_len(state->options.name),
+            hbs_str_val(state->options.name)
         );
     }
 
-    PUSH(vm->stack, handlebars_value_call(fn, argc, argv, &options, vm, rv));
+    PUSH(
+        vm->stack,
+        handlebars_value_call(
+            fn,
+            state->argc,
+            state->argv,
+            &state->options,
+            vm,
+            &state->rv
+        )
+    );
 
-    VM_TEARDOWN_OPTIONS(argc);
-    HANDLEBARS_VALUE_UNDECL(fnv);
-    HANDLEBARS_VALUE_UNDECL(rv);
+done:
+    error->jmp = prev_jmp;
+    handlebars_vm_call_checkpoint_finish(vm, &state->checkpoint, caught);
+    handlebars_helper_call_state_deinit(state);
+
+    if( caught != HANDLEBARS_SUCCESS ) {
+        handlebars_vm_rethrow_caught(vm, prev_jmp, caught);
+    }
+}
+
+ACCEPT_NOINLINE_FUNCTION(invoke_known_helper)
+{
+    int argc;
+    struct handlebars_helper_call_state state;
+
+    assert(opcode->op1.type == handlebars_operand_type_long);
+    argc = (int) opcode->op1.data.longval;
+    HANDLEBARS_VALUE_ARRAY_DECL(argv, argc);
+
+    handlebars_helper_call_state_init(&state, argv);
+    state.argc = argc;
+    accept_invoke_known_helper_guarded(vm, opcode, &state);
+    HANDLEBARS_VALUE_ARRAY_UNDECL(argv, 0);
 }
 
 struct handlebars_partial_call_state {

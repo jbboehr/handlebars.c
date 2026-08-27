@@ -304,6 +304,92 @@ START_TEST(test_vm_owns_default_maps)
 }
 END_TEST
 
+static void assert_idle_builtin_rejects_bad_arity(
+    handlebars_helper_func helper,
+    const char * expected_error
+)
+{
+    HANDLEBARS_VALUE_DECL(argv);
+    HANDLEBARS_VALUE_DECL(rv);
+    struct handlebars_options options = {
+        .program = -1,
+        .inverse = -1
+    };
+    struct handlebars_value * unexpected_result;
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_ptr_nonnull(
+            strstr(handlebars_error_msg(context), expected_error)
+        );
+        clear_intentional_error();
+        goto done;
+    }
+
+    unexpected_result = helper(0, argv, &options, vm, rv);
+    context->e->jmp = previous;
+    ck_abort_msg(
+        "Expected idle VM builtin to reject bad arity, got %p",
+        (void *) unexpected_result
+    );
+
+done:
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(argv);
+}
+
+START_TEST(test_idle_vm_builtins_reject_bad_arity)
+{
+    ck_assert_ptr_null(vm->stack);
+    ck_assert_ptr_null(vm->contextStack);
+    ck_assert_ptr_null(vm->hashStack);
+    ck_assert_ptr_null(vm->blockParamStack);
+    ck_assert_ptr_null(vm->partialBlockStack);
+    ck_assert_ptr_null(vm->partialScopeStack);
+
+    assert_idle_builtin_rejects_bad_arity(
+        handlebars_builtin_each,
+        "Must pass iterator to #each"
+    );
+    assert_idle_builtin_rejects_bad_arity(
+        handlebars_builtin_with,
+        "#with requires exactly one argument"
+    );
+}
+END_TEST
+
+START_TEST(test_idle_vm_builtins_handle_missing_programs)
+{
+    HANDLEBARS_VALUE_DECL(argv);
+    HANDLEBARS_VALUE_DECL(rv);
+    struct handlebars_options options = {
+        .program = -1,
+        .inverse = -1
+    };
+    struct handlebars_value * result;
+
+    options.scope = argv;
+    handlebars_value_array(argv, handlebars_stack_ctor(context, 0));
+    result = handlebars_builtin_each(1, argv, &options, vm, rv);
+    ck_assert_ptr_eq(result, rv);
+    ck_assert_int_eq(handlebars_value_get_type(rv), HANDLEBARS_VALUE_TYPE_STRING);
+    ck_assert_hbs_str_eq_cstr(handlebars_value_get_string(rv), "");
+    handlebars_value_null(rv);
+
+    handlebars_value_boolean(argv, true);
+    result = handlebars_builtin_with(1, argv, &options, vm, rv);
+    ck_assert_ptr_eq(result, rv);
+    ck_assert_int_eq(handlebars_value_get_type(rv), HANDLEBARS_VALUE_TYPE_STRING);
+    ck_assert_hbs_str_eq_cstr(handlebars_value_get_string(rv), "");
+
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(argv);
+}
+END_TEST
+
 #ifndef HANDLEBARS_NO_REFCOUNT
 static int throwing_iterator_user_dtors;
 
@@ -450,6 +536,313 @@ START_TEST(test_vm_reusable_after_helper_error)
     HANDLEBARS_VALUE_UNDECL(helper);
 }
 END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+static void assert_block_helper_error_releases_vm_temporaries(
+    const char * tmpl,
+    struct handlebars_value * input
+)
+{
+    struct handlebars_module * failing = test_compile_template(tmpl);
+    size_t baseline_blocks;
+
+    baseline_blocks = talloc_total_blocks(vm);
+
+    for( int i = 0; i < 3; i++ ) {
+        jmp_buf * previous = context->e->jmp;
+        jmp_buf buf;
+
+        if( handlebars_setjmp_ex(context, &buf) ) {
+            context->e->jmp = previous;
+            ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+            ck_assert_ptr_nonnull(
+                strstr(
+                    handlebars_error_msg(context),
+                    "partial missing could not be found"
+                )
+            );
+            clear_intentional_error();
+        } else {
+            (void) handlebars_vm_execute(vm, failing, input);
+            context->e->jmp = previous;
+            ck_abort_msg("Expected the nested missing partial to throw");
+        }
+
+        ck_assert_msg(
+            talloc_total_blocks(vm) == baseline_blocks,
+            "failed render %d retained %zu VM blocks (baseline %zu)",
+            i + 1,
+            talloc_total_blocks(vm),
+            baseline_blocks
+        );
+    }
+}
+
+START_TEST(test_with_helper_error_releases_vm_temporaries)
+{
+    HANDLEBARS_VALUE_DECL(holder);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+
+    handlebars_value_boolean(holder, true);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("holder"),
+        holder
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_error_releases_vm_temporaries(
+        "{{#with holder}}{{> missing}}{{/with}}",
+        input
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(holder);
+}
+END_TEST
+
+START_TEST(test_if_helper_error_releases_vm_temporaries)
+{
+    HANDLEBARS_VALUE_DECL(input);
+
+    assert_block_helper_error_releases_vm_temporaries(
+        "{{#if true}}{{> missing}}{{/if}}",
+        input
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_unless_helper_error_releases_vm_temporaries)
+{
+    HANDLEBARS_VALUE_DECL(input);
+
+    assert_block_helper_error_releases_vm_temporaries(
+        "{{#unless false}}{{> missing}}{{/unless}}",
+        input
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_each_helper_error_releases_vm_temporaries)
+{
+    HANDLEBARS_VALUE_DECL(item);
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_stack * item_stack;
+    struct handlebars_map * input_map;
+
+    handlebars_value_map(item, handlebars_map_ctor(context, 0));
+    item_stack = handlebars_stack_ctor(context, 1);
+    item_stack = handlebars_stack_push(item_stack, item);
+    handlebars_value_array(items, item_stack);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("items"),
+        items
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_error_releases_vm_temporaries(
+        "{{#each items}}{{> missing}}{{/each}}",
+        input
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(items);
+    HANDLEBARS_VALUE_UNDECL(item);
+}
+END_TEST
+
+START_TEST(test_each_helper_success_releases_nested_buffers)
+{
+    HANDLEBARS_VALUE_DECL(item);
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_stack * item_stack;
+    struct handlebars_map * input_map;
+    struct handlebars_module * module;
+    struct handlebars_string * output;
+    size_t baseline_blocks;
+
+    handlebars_value_str(
+        item,
+        handlebars_string_ctor(context, HBS_STRL("x"))
+    );
+    item_stack = handlebars_stack_ctor(context, 3);
+    item_stack = handlebars_stack_push(item_stack, item);
+    item_stack = handlebars_stack_push(item_stack, item);
+    item_stack = handlebars_stack_push(item_stack, item);
+    handlebars_value_array(items, item_stack);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("items"),
+        items
+    );
+    handlebars_value_map(input, input_map);
+    module = test_compile_template("{{#each items}}{{this}}{{/each}}");
+    baseline_blocks = talloc_total_blocks(vm);
+
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "xxx");
+    handlebars_string_delref(output);
+
+    ck_assert_msg(
+        talloc_total_blocks(vm) == baseline_blocks,
+        "successful each render retained %zu VM blocks (baseline %zu)",
+        talloc_total_blocks(vm),
+        baseline_blocks
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(items);
+    HANDLEBARS_VALUE_UNDECL(item);
+}
+END_TEST
+
+START_TEST(test_block_helper_missing_error_releases_vm_temporaries)
+{
+    HANDLEBARS_VALUE_DECL(holder);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+
+    handlebars_value_boolean(holder, true);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("holder"),
+        holder
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_error_releases_vm_temporaries(
+        "{{#holder}}{{> missing}}{{/holder}}",
+        input
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(holder);
+}
+END_TEST
+#endif
+
+#ifdef HANDLEBARS_MEMORY
+static void assert_block_helper_allocation_failures_unwind_vm(
+    const char * tmpl,
+    struct handlebars_value * input,
+    const char * expected
+)
+{
+    struct handlebars_module * module = test_compile_template(tmpl);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    size_t baseline_blocks = talloc_total_blocks(vm);
+#endif
+    bool reached_success = false;
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_string * output;
+
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        output = handlebars_vm_execute(vm, module, input);
+        handlebars_memory_fail_disable();
+
+        if( output != NULL ) {
+            ck_assert_hbs_str_eq_cstr(output, expected);
+            handlebars_string_delref(output);
+            reached_success = true;
+            break;
+        }
+
+        ck_assert_msg(
+            handlebars_error_num(context) == HANDLEBARS_NOMEM,
+            "allocation %d failed with %d (%s), expected HANDLEBARS_NOMEM",
+            fail_at,
+            handlebars_error_num(context),
+            handlebars_error_msg(context)
+        );
+        ck_assert_ptr_null(vm->stack);
+        ck_assert_ptr_null(vm->contextStack);
+        ck_assert_ptr_null(vm->hashStack);
+        ck_assert_ptr_null(vm->blockParamStack);
+        ck_assert_ptr_null(vm->partialBlockStack);
+        ck_assert_ptr_null(vm->partialScopeStack);
+#ifndef HANDLEBARS_NO_REFCOUNT
+        ck_assert_msg(
+            talloc_total_blocks(vm) == baseline_blocks,
+            "allocation %d retained %zu VM blocks (baseline %zu)",
+            fail_at,
+            talloc_total_blocks(vm),
+            baseline_blocks
+        );
+#endif
+
+        output = handlebars_vm_execute(vm, module, input);
+        ck_assert_msg(output != NULL, "%s", handlebars_error_msg(context));
+        ck_assert_hbs_str_eq_cstr(output, expected);
+        handlebars_string_delref(output);
+#ifndef HANDLEBARS_NO_REFCOUNT
+        ck_assert_uint_eq(talloc_total_blocks(vm), baseline_blocks);
+#endif
+    }
+
+    ck_assert(reached_success);
+}
+
+START_TEST(test_with_helper_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(input);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#with true}}success{{/with}}",
+        input,
+        "success"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_each_helper_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(item);
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_stack * item_stack;
+    struct handlebars_map * input_map;
+
+    handlebars_value_boolean(item, true);
+    item_stack = handlebars_stack_ctor(context, 1);
+    item_stack = handlebars_stack_push(item_stack, item);
+    handlebars_value_array(items, item_stack);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("items"),
+        items
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#each items}}success{{/each}}",
+        input,
+        "success"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(items);
+    HANDLEBARS_VALUE_UNDECL(item);
+}
+END_TEST
+#endif
 
 START_TEST(test_inline_partial_error_unwinds_vm)
 {
@@ -2031,6 +2424,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_value_self_assignment, "Value self-assignment");
     REGISTER_TEST_FIXTURE(s, test_closure_rejects_negative_local_count, "Closure local count bounds");
     REGISTER_TEST_FIXTURE(s, test_vm_owns_default_maps, "VM owns its default maps");
+    REGISTER_TEST_FIXTURE(s, test_idle_vm_builtins_reject_bad_arity, "Idle VM builtins reject bad arity");
+    REGISTER_TEST_FIXTURE(s, test_idle_vm_builtins_handle_missing_programs, "Idle VM builtins handle missing programs");
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_user_value_allows_optional_destructor, "Optional user destructor");
 #endif
@@ -2038,11 +2433,21 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_delimiter_replacement_releases_old_values, "Delimiter replacement ownership");
 #endif
     REGISTER_TEST_FIXTURE(s, test_vm_reusable_after_helper_error, "VM reuse after helper error");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_with_helper_error_releases_vm_temporaries, "With helper errors release VM temporaries");
+    REGISTER_TEST_FIXTURE(s, test_if_helper_error_releases_vm_temporaries, "If helper errors release VM temporaries");
+    REGISTER_TEST_FIXTURE(s, test_unless_helper_error_releases_vm_temporaries, "Unless helper errors release VM temporaries");
+    REGISTER_TEST_FIXTURE(s, test_each_helper_error_releases_vm_temporaries, "Each helper errors release VM temporaries");
+    REGISTER_TEST_FIXTURE(s, test_each_helper_success_releases_nested_buffers, "Each helper success releases nested buffers");
+    REGISTER_TEST_FIXTURE(s, test_block_helper_missing_error_releases_vm_temporaries, "Block helper missing errors release VM temporaries");
+#endif
     REGISTER_TEST_FIXTURE(s, test_inline_partial_error_unwinds_vm, "Inline partial errors unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_explicit_context_error_unwinds_vm, "Inline partial explicit-context errors unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_recursive_partial_block_is_bounded, "Recursive inline partial blocks are bounded");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_error_after_stack_growth_unwinds_vm, "Inline partial errors unwind after captured stack growth");
 #ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_with_helper_allocation_failures_unwind_vm, "With helper allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_each_helper_allocation_failures_unwind_vm, "Each helper allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_allocation_failures_unwind_vm, "Inline partial allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_scalar_name_allocation_failures_unwind_vm, "Inline partial scalar-name allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_block_allocation_failures_unwind_vm, "Inline partial block allocation failures unwind VM state");

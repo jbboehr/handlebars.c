@@ -19,6 +19,7 @@
 #define HANDLEBARS_VM_PRIVATE_H
 
 #include "handlebars.h"
+#include "handlebars_stack.h"
 #include "handlebars_types.h"
 #include "handlebars_value_private.h"
 
@@ -60,6 +61,53 @@ struct handlebars_vm {
     struct handlebars_string * delim_open;
     struct handlebars_string * delim_close;
 };
+
+/*
+ * A transactional snapshot around a potentially throwing VM call.
+ *
+ * The saved buffer is borrowed, rather than reference-counted. A checkpoint
+ * may span nested program execution, which temporarily installs its own
+ * buffer, but must be committed before directly replacing or mutating the
+ * outer buffer.
+ */
+struct handlebars_vm_call_checkpoint {
+    struct handlebars_stack_save_buf stack;
+    struct handlebars_stack_save_buf hash_stack;
+    struct handlebars_stack_save_buf context_stack;
+    struct handlebars_stack_save_buf block_param_stack;
+    struct handlebars_stack_save_buf partial_block_stack;
+    struct handlebars_stack_save_buf partial_scope_stack;
+    struct handlebars_string * buffer;
+    long depth;
+    bool open;
+};
+
+HBS_LOCAL void handlebars_vm_call_checkpoint_begin(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_call_checkpoint * checkpoint
+) HBS_ATTR_NONNULL_ALL;
+
+HBS_LOCAL void handlebars_vm_call_checkpoint_commit(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_call_checkpoint * checkpoint
+) HBS_ATTR_NONNULL_ALL;
+
+HBS_LOCAL void handlebars_vm_call_checkpoint_rollback(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_call_checkpoint * checkpoint
+) HBS_ATTR_NONNULL_ALL;
+
+HBS_LOCAL void handlebars_vm_call_checkpoint_finish(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_call_checkpoint * checkpoint,
+    enum handlebars_error_type result
+) HBS_ATTR_NONNULL_ALL;
+
+HBS_LOCAL HBS_ATTR_NORETURN void handlebars_vm_rethrow_caught(
+    struct handlebars_vm * vm,
+    jmp_buf * previous,
+    enum handlebars_error_type caught
+);
 
 HBS_EXTERN_C_END
 
