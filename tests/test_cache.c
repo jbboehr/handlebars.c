@@ -86,17 +86,26 @@ static struct cache_test_ctx * make_cache_test_ctx(int i, struct handlebars_cach
     return ctx;
 }
 
-static struct handlebars_module * serialize_template(const char * tmpl)
+static struct handlebars_module * serialize_template_with_flags(
+    const char * tmpl,
+    unsigned long flags
+)
 {
     struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
     struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
     struct handlebars_ast_node * ast = handlebars_parse_ex(
         local_parser,
         handlebars_string_ctor(context, tmpl, strlen(tmpl)),
-        0
+        flags
     );
+    handlebars_compiler_set_flags(local_compiler, flags);
     struct handlebars_program * program = handlebars_compiler_compile_ex(local_compiler, ast);
     return handlebars_program_serialize(context, program);
+}
+
+static struct handlebars_module * serialize_template(const char * tmpl)
+{
+    return serialize_template_with_flags(tmpl, 0);
 }
 
 static bool simple_cache_module_destroyed;
@@ -895,6 +904,39 @@ START_TEST(test_lmdb_cache_copies_unaligned_records)
     handlebars_cache_dtor(cache);
 }
 END_TEST
+
+START_TEST(test_lmdb_cache_round_trips_inline_partial_module)
+{
+    struct handlebars_cache * cache;
+    struct handlebars_module * module = serialize_template(
+        "{{#*inline \"p\"}}string{{/inline}}"
+        "{{#*inline 123}}scalar{{/inline}}"
+        "{{#*inline \"withArgs\" \"ignored\"}}positional{{/inline}}"
+        "{{> p}}-{{> 123}}-{{> withArgs}}"
+    );
+    struct handlebars_module * found;
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("lmdb-inline-partial")
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    handlebars_cache_add(cache, key, module);
+
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_nonnull(found);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, found, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "string-scalar-positional");
+
+    handlebars_cache_release(cache, key, found);
+    handlebars_cache_dtor(cache);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
 #endif
 
 #ifdef HANDLEBARS_HAVE_PTHREAD
@@ -1173,6 +1215,33 @@ START_TEST(test_vm_rejects_empty_lookup_path)
 }
 END_TEST
 
+START_TEST(test_vm_rejects_invalid_partial_block_program)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#> missing}}body{{/missing}}"
+    );
+    bool changed = false;
+
+    for( size_t i = 0; i < module->opcode_count; i++ ) {
+        if( module->opcodes[i].type == handlebars_opcode_type_push_program
+                && module->opcodes[i].op1.type == handlebars_operand_type_long ) {
+            module->opcodes[i].op1.data.longval = (long) module->program_count;
+            changed = true;
+            break;
+        }
+    }
+    ck_assert(changed);
+
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_null(output);
+    ck_assert_int_eq(handlebars_error_num(HBSCTX(vm)), HANDLEBARS_ERROR);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(HBSCTX(vm)), "Invalid program"));
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 START_TEST(test_vm_hash_rehash)
 {
     struct handlebars_module * module = serialize_template(
@@ -1254,6 +1323,367 @@ START_TEST(test_partial_block_preserves_all_lexical_block_params)
 }
 END_TEST
 
+START_TEST(test_inline_partial_definition)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#*inline \"myPartial\"}}success{{/inline}}{{> myPartial}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "success");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_scalar_name)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#*inline 123}}integer{{/inline}}"
+        "{{#*inline 0}}zero{{/inline}}"
+        "{{#*inline true}}boolean{{/inline}}"
+        "{{#*inline false}}false{{/inline}}"
+        "{{#*inline 1.5}}number{{/inline}}"
+        "{{#*inline null}}null{{/inline}}"
+        "{{#*inline undefined}}undefined{{/inline}}"
+        "{{> 123}}-{{> 0}}-{{> true}}-{{> false}}-{{> 1.5}}-"
+        "{{> null}}-{{> undefined}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(
+        output,
+        "integer-zero-boolean-false-number-null-undefined"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_partial_block_installs_inline_partials)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#> dude}}{{#*inline \"myPartial\"}}success{{/inline}}{{/dude}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("{{> myPartial}}"))
+    );
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+    partial_map = handlebars_map_str_add(partial_map, HBS_STRL("dude"), partial);
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "success");
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_partial_block_inline_partial_preserves_caller_depths)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#> layout child}}"
+        "{{#*inline \"p\"}}{{../x}}:{{x}}{{/inline}}"
+        "{{/layout}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+
+    handlebars_value_init_json_string(
+        context,
+        input,
+        "{\"x\":\"root\",\"child\":{\"x\":\"child\"}}"
+    );
+    handlebars_value_convert(input);
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("{{> p}}"))
+    );
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+    partial_map = handlebars_map_str_add(partial_map, HBS_STRL("layout"), partial);
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "root:child");
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_with_alternate_decorators)
+{
+    struct handlebars_module * module = serialize_template_with_flags(
+        "{{#*inline \"myPartial\"}}success{{/inline}}{{> myPartial}}",
+        handlebars_compiler_flag_alternate_decorators
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "success");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_statement_with_alternate_decorators)
+{
+    struct handlebars_module * module = serialize_template_with_flags(
+        "{{*inline \"p\"}}ok",
+        handlebars_compiler_flag_alternate_decorators
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "ok");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_with_hash_arguments)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#*inline \"myPartial\" unused=1}}success{{/inline}}{{> myPartial}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "success");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_with_positional_arguments)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#*inline \"myPartial\" \"extra\" value}}success{{/inline}}"
+        "{{> myPartial}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "success");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_with_nested_hash_arguments)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#*inline \"myPartial\" unused=(helper nested=1)}}"
+        "success"
+        "{{/inline}}{{> myPartial}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "success");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_many_inline_partial_definitions_share_scope)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL(""));
+    struct handlebars_module * module;
+    HANDLEBARS_VALUE_DECL(input);
+
+    for( unsigned int i = 0; i < 128; i++ ) {
+        tmpl = handlebars_string_asprintf_append(
+            context,
+            tmpl,
+            "{{#*inline \"partial%u\"}}%u{{/inline}}",
+            i,
+            i
+        );
+    }
+    tmpl = handlebars_string_append(context, tmpl, HBS_STRL("{{> partial127}}"));
+    module = serialize_template(hbs_str_val(tmpl));
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "127");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_parent_depth_uses_invocation_context)
+{
+    struct handlebars_module * module = serialize_template(
+        "{{#*inline \"p\"}}{{../x}}{{/inline}}"
+        "{{#with child}}{{> p}}{{/with}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    handlebars_value_init_json_string(
+        context,
+        input,
+        "{\"x\":\"root\",\"child\":{\"y\":true}}"
+    );
+    handlebars_value_convert(input);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "");
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_reuses_full_captured_block_param_stack)
+{
+    struct handlebars_module * module = serialize_template("{{> recurse start}}");
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(node);
+    HANDLEBARS_VALUE_DECL(recurse_partial);
+    HANDLEBARS_VALUE_DECL(partials);
+
+    handlebars_value_map(node, handlebars_map_ctor(context, 0));
+    for( unsigned int i = 0; i < 47; i++ ) {
+        struct handlebars_map * parent = handlebars_map_ctor(context, 1);
+        parent = handlebars_map_str_add(parent, HBS_STRL("next"), node);
+        handlebars_value_map(node, parent);
+    }
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(input_map, HBS_STRL("start"), node);
+    handlebars_value_map(input, input_map);
+
+    handlebars_value_str(
+        recurse_partial,
+        handlebars_string_ctor(
+            context,
+            HBS_STRL(
+                "{{#if next}}"
+                "{{#with next as |x|}}{{> recurse}}{{/with}}"
+                "{{else}}"
+                "{{#if true}}{{#if true}}{{#if true}}"
+                "{{#*inline \"p\"}}ok{{/inline}}{{> p}}{{> p}}"
+                "{{/if}}{{/if}}{{/if}}"
+                "{{/if}}"
+            )
+        )
+    );
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+    partial_map = handlebars_map_str_add(
+        partial_map,
+        HBS_STRL("recurse"),
+        recurse_partial
+    );
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_msg(
+        hbs_str_eq_strl(output, HBS_STRL("okok")),
+        "expected okok, got '%s' (error %d: %s)",
+        hbs_str_val(output),
+        handlebars_error_num(HBSCTX(vm)),
+        handlebars_error_msg(HBSCTX(vm))
+    );
+    handlebars_string_delref(output);
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(recurse_partial);
+    HANDLEBARS_VALUE_UNDECL(node);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_partial_block_grows_captured_block_param_stack)
+{
+    struct handlebars_module * module = serialize_template("{{> recurse start}}");
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(node);
+    HANDLEBARS_VALUE_DECL(recurse_partial);
+    HANDLEBARS_VALUE_DECL(layout_partial);
+    HANDLEBARS_VALUE_DECL(partials);
+
+    handlebars_value_map(node, handlebars_map_ctor(context, 0));
+    for( unsigned int i = 0; i < 47; i++ ) {
+        struct handlebars_map * parent = handlebars_map_ctor(context, 1);
+        parent = handlebars_map_str_add(parent, HBS_STRL("next"), node);
+        handlebars_value_map(node, parent);
+    }
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(input_map, HBS_STRL("start"), node);
+    handlebars_value_map(input, input_map);
+
+    handlebars_value_str(
+        recurse_partial,
+        handlebars_string_ctor(
+            context,
+            HBS_STRL(
+                "{{#if next}}"
+                "{{#with next as |x|}}{{> recurse}}{{/with}}"
+                "{{else}}"
+                "{{#if true}}{{#if true}}{{#if true}}"
+                "{{#> layout}}ok{{/layout}}"
+                "{{/if}}{{/if}}{{/if}}"
+                "{{/if}}"
+            )
+        )
+    );
+    handlebars_value_str(
+        layout_partial,
+        handlebars_string_ctor(
+            context,
+            HBS_STRL("{{> @partial-block}}{{> @partial-block}}")
+        )
+    );
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 2);
+    partial_map = handlebars_map_str_add(
+        partial_map,
+        HBS_STRL("recurse"),
+        recurse_partial
+    );
+    partial_map = handlebars_map_str_add(
+        partial_map,
+        HBS_STRL("layout"),
+        layout_partial
+    );
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "okok");
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(layout_partial);
+    HANDLEBARS_VALUE_UNDECL(recurse_partial);
+    HANDLEBARS_VALUE_UNDECL(node);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -1287,6 +1717,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc_nomem_closes_transaction, "LMDB GC cleans up after allocation failure");
 #endif
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_copies_unaligned_records, "LMDB copies unaligned records");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_round_trips_inline_partial_module, "LMDB round-trips inline-partial modules");
 #endif
 #ifdef HANDLEBARS_HAVE_PTHREAD
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
@@ -1300,9 +1731,23 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_vm_rejects_empty_opcode_range, "VM rejects empty opcode range");
     REGISTER_TEST_FIXTURE(s, test_vm_error_returns_null_without_outer_handler, "VM error returns NULL without outer handler");
     REGISTER_TEST_FIXTURE(s, test_vm_rejects_empty_lookup_path, "VM rejects empty lookup path");
+    REGISTER_TEST_FIXTURE(s, test_vm_rejects_invalid_partial_block_program, "VM rejects invalid partial block programs");
     REGISTER_TEST_FIXTURE(s, test_vm_hash_rehash, "VM rehashes helper hashes safely");
     REGISTER_TEST_FIXTURE(s, test_partial_block_preserves_lexical_block_params, "Partial blocks preserve lexical block parameters");
     REGISTER_TEST_FIXTURE(s, test_partial_block_preserves_all_lexical_block_params, "Partial blocks preserve all lexical block parameters");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_definition, "Inline partial definitions");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_scalar_name, "Inline partial scalar names");
+    REGISTER_TEST_FIXTURE(s, test_partial_block_installs_inline_partials, "Partial blocks install inline partials");
+    REGISTER_TEST_FIXTURE(s, test_partial_block_inline_partial_preserves_caller_depths, "Partial-block inline partials preserve caller depths");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_with_alternate_decorators, "Inline partials with alternate decorators");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_statement_with_alternate_decorators, "Inline partial statements with alternate decorators");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_with_hash_arguments, "Inline partials with hash arguments");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_with_positional_arguments, "Inline partials with positional arguments");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_with_nested_hash_arguments, "Inline partials with nested hash arguments");
+    REGISTER_TEST_FIXTURE(s, test_many_inline_partial_definitions_share_scope, "Inline partial definitions share one lexical scope");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_parent_depth_uses_invocation_context, "Inline partial parent depths use the invocation context");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_reuses_full_captured_block_param_stack, "Inline partials reuse a full captured block parameter stack");
+    REGISTER_TEST_FIXTURE(s, test_partial_block_grows_captured_block_param_stack, "Partial blocks grow captured block parameter stacks safely");
 
     return s;
 }

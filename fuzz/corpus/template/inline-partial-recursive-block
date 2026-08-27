@@ -1,0 +1,2 @@
+0000
+{{#*inline "layout"}}{{@partial-block}}{{/inline}}{{#> layout}}{{@partial-block}}{{/layout}}

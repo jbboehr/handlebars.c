@@ -1,0 +1,2 @@
+0000
+{{#*inline "layout" unused=(lookup this "key")}}<{{> @partial-block}}>{{/inline}}{{#> layout}}{{value}}{{/layout}}

@@ -216,6 +216,15 @@ AC_DEFUN([_AX_CODE_COVERAGE_ENABLED],[
 		 AC_MSG_RESULT([yes])])
 	AC_SUBST([GENHTML_IGNORE_ERRORS_UNMAPPED], [$genhtml_ignore_errors_unmapped])
 
+	AC_MSG_CHECKING([whether genhtml supports --ignore-errors range])
+	genhtml_ignore_errors_range=
+	genhtml_ignore_errors_output=`$GENHTML --ignore-errors range 2>&1`
+	AS_CASE([$genhtml_ignore_errors_output],
+		[*unknown*argument*], [AC_MSG_RESULT([no])],
+		[genhtml_ignore_errors_range="--ignore-errors range"
+		 AC_MSG_RESULT([yes])])
+	AC_SUBST([GENHTML_IGNORE_ERRORS_RANGE], [$genhtml_ignore_errors_range])
+
 	dnl Build the code coverage flags
 	dnl Define CODE_COVERAGE_LDFLAGS for backwards compatibility
 	CODE_COVERAGE_CPPFLAGS="-DNDEBUG"

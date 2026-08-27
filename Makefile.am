@@ -48,9 +48,10 @@ CODE_COVERAGE_IGNORE_PATTERN = \
 	'*/handlebars.lex.c' \
 	'*/handlebars_scanners.c'
 CODE_COVERAGE_LCOV_RMOPTS = $(CODE_COVERAGE_LCOV_RMOPTS_DEFAULT) \
-	--ignore-errors unused
+	--ignore-errors unused,inconsistent
 CODE_COVERAGE_GENHTML_OPTIONS = $(CODE_COVERAGE_GENHTML_OPTIONS_DEFAULT) \
-	$(GENHTML_IGNORE_ERRORS_UNMAPPED)
+	$(GENHTML_IGNORE_ERRORS_UNMAPPED) \
+	$(GENHTML_IGNORE_ERRORS_RANGE)
 include $(top_srcdir)/build/aminclude_static.am
 clean-local: code-coverage-clean my-clean-local
 distclean-local: code-coverage-dist-clean

@@ -1002,8 +1002,14 @@ static inline void handlebars_compiler_accept_decorator(
     struct handlebars_string * original;
     struct handlebars_compiler * origcompiler;
     struct handlebars_compiler * subcompiler;
+    bool builtin_inline_block;
 
-    if( compiler->flags & handlebars_compiler_flag_alternate_decorators ) {
+    original = handlebars_ast_node_get_string_mode_value(CONTEXT, path);
+    builtin_inline_block = programGuid >= 0
+        && hbs_str_eq_strl(original, HBS_STRL("inline"));
+
+    if( (compiler->flags & handlebars_compiler_flag_alternate_decorators)
+            && !builtin_inline_block ) {
         // Realloc decorators array
         if( program->decorators_size <= program->decorators_length ) {
             size_t new_size = handlebars_compiler_capacity_add(CONTEXT, program->decorators_size, 8);
@@ -1033,7 +1039,6 @@ static inline void handlebars_compiler_accept_decorator(
         compiler->program->result_flags |= handlebars_compiler_result_flag_use_decorators;
     }
 
-	original = handlebars_ast_node_get_string_mode_value(CONTEXT, path);
 	params = handlebars_compiler_setup_full_mustache_params(
                 compiler, ast_node, programGuid, inverseGuid, 0);
 

@@ -722,6 +722,7 @@ CODE_COVERAGE_LIBS
 CODE_COVERAGE_CXXFLAGS
 CODE_COVERAGE_CFLAGS
 CODE_COVERAGE_CPPFLAGS
+GENHTML_IGNORE_ERRORS_RANGE
 GENHTML_IGNORE_ERRORS_UNMAPPED
 GENHTML
 GCOV
@@ -20787,6 +20788,21 @@ printf "%s\n" "no" >&6; } ;; #(
 printf "%s\n" "yes" >&6; } ;;
 esac
 	GENHTML_IGNORE_ERRORS_UNMAPPED=$genhtml_ignore_errors_unmapped
+
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether genhtml supports --ignore-errors range" >&5
+printf %s "checking whether genhtml supports --ignore-errors range... " >&6; }
+	genhtml_ignore_errors_range=
+	genhtml_ignore_errors_output=`$GENHTML --ignore-errors range 2>&1`
+	case $genhtml_ignore_errors_output in #(
+  *unknown*argument*) :
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; } ;; #(
+  *) :
+    genhtml_ignore_errors_range="--ignore-errors range"
+		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; } ;;
+esac
+	GENHTML_IGNORE_ERRORS_RANGE=$genhtml_ignore_errors_range
 
 
 			CODE_COVERAGE_CPPFLAGS="-DNDEBUG"

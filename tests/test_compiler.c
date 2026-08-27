@@ -544,6 +544,112 @@ static struct handlebars_module * serialize_for_verification(const char * source
     return serialize_for_verification_flags(source, 0);
 }
 
+static size_t poison_string_representation_padding(struct handlebars_string * string)
+{
+    unsigned char * padding = (unsigned char *) hbs_str_val(string) + hbs_str_len(string) + 1;
+    unsigned char * end = (unsigned char *) string + HBS_STR_SIZE(hbs_str_len(string));
+    size_t size = (size_t) (end - padding);
+
+    memset(padding, 0xa5, size);
+    return size;
+}
+
+static size_t poison_operand_string_padding(struct handlebars_operand * operand)
+{
+    size_t poisoned = 0;
+
+    if( operand->type == handlebars_operand_type_string ) {
+        poisoned += poison_string_representation_padding(operand->data.string.string);
+    } else if( operand->type == handlebars_operand_type_array ) {
+        for( size_t i = 0; i < operand->data.array.count; i++ ) {
+            poisoned += poison_string_representation_padding(
+                operand->data.array.array[i].string
+            );
+        }
+    }
+    return poisoned;
+}
+
+static size_t poison_program_string_padding(struct handlebars_program * program)
+{
+    size_t poisoned = 0;
+
+    for( size_t i = 0; i < program->opcodes_length; i++ ) {
+        struct handlebars_operand * operands = &program->opcodes[i]->op1;
+
+        for( size_t j = 0; j < 4; j++ ) {
+            poisoned += poison_operand_string_padding(&operands[j]);
+        }
+    }
+    for( size_t i = 0; i < program->children_length; i++ ) {
+        poisoned += poison_program_string_padding(program->children[i]);
+    }
+    for( size_t i = 0; i < program->decorators_length; i++ ) {
+        poisoned += poison_program_string_padding(program->decorators[i]);
+    }
+    return poisoned;
+}
+
+static size_t assert_serialized_string_padding_zero(struct handlebars_string * string)
+{
+    unsigned char * padding = (unsigned char *) hbs_str_val(string) + hbs_str_len(string) + 1;
+    unsigned char * end = (unsigned char *) string + HBS_STR_SIZE(hbs_str_len(string));
+    size_t checked = 0;
+
+    while( padding < end ) {
+        ck_assert_uint_eq(*padding++, 0);
+        checked++;
+    }
+    return checked;
+}
+
+static size_t assert_serialized_operand_padding_zero(struct handlebars_operand * operand)
+{
+    size_t checked = 0;
+
+    if( operand->type == handlebars_operand_type_string ) {
+        checked += assert_serialized_string_padding_zero(operand->data.string.string);
+    } else if( operand->type == handlebars_operand_type_array ) {
+        for( size_t i = 0; i < operand->data.array.count; i++ ) {
+            checked += assert_serialized_string_padding_zero(
+                operand->data.array.array[i].string
+            );
+        }
+    }
+    return checked;
+}
+
+START_TEST(test_serialized_strings_zero_representation_padding)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#*inline \"p\"}}success{{/inline}}{{> p}}")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(local_parser, tmpl, 0);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(local_compiler, ast);
+    struct handlebars_module * module;
+    size_t poisoned;
+    size_t checked = 0;
+
+    poisoned = poison_program_string_padding(program);
+    module = handlebars_program_serialize(context, program);
+
+    for( size_t i = 0; i < module->opcode_count; i++ ) {
+        struct handlebars_operand * operands = &module->opcodes[i].op1;
+
+        for( size_t j = 0; j < 4; j++ ) {
+            checked += assert_serialized_operand_padding_zero(&operands[j]);
+        }
+    }
+
+    ck_assert_uint_eq(checked, poisoned);
+    handlebars_compiler_dtor(local_compiler);
+    handlebars_parser_dtor(local_parser);
+}
+END_TEST
+
 START_TEST(test_serialized_module_verification)
 {
     struct handlebars_module * module = serialize_for_verification(
@@ -626,6 +732,82 @@ START_TEST(test_serialize_preserves_block_param_counts)
     ck_assert_uint_eq(module->programs[1].block_params, 1);
     ck_assert_uint_eq(module->programs[2].block_params, 0);
     ck_assert_uint_eq(module->programs[3].block_params, 1);
+}
+END_TEST
+
+START_TEST(test_serialized_inline_partial_prologue)
+{
+    struct handlebars_module * module = serialize_for_verification(
+        "{{> myPartial}}{{#*inline \"myPartial\"}}success{{/inline}}"
+    );
+    struct handlebars_module_table_entry * entry = &module->programs[0];
+    struct handlebars_opcode * opcodes = &module->opcodes[entry->opcode_offset];
+
+    ck_assert(entry->opcode_count >= 6);
+    ck_assert_int_eq(opcodes[0].type, handlebars_opcode_type_push_string);
+    ck_assert_int_eq(opcodes[1].type, handlebars_opcode_type_push_program);
+    ck_assert_int_eq(opcodes[2].type, handlebars_opcode_type_push_program);
+    ck_assert_int_eq(opcodes[3].type, handlebars_opcode_type_empty_hash);
+    ck_assert_int_eq(opcodes[4].type, handlebars_opcode_type_register_decorator);
+    ck_assert_int_eq(opcodes[0].op1.type, handlebars_operand_type_string);
+    ck_assert_int_eq(opcodes[1].op1.type, handlebars_operand_type_long);
+    ck_assert_int_ge(opcodes[1].op1.data.longval, 0);
+    ck_assert(opcodes[1].op4.data.boolval);
+    ck_assert_int_eq(opcodes[2].op1.type, handlebars_operand_type_null);
+    ck_assert_int_eq(opcodes[3].op1.type, handlebars_operand_type_null);
+    ck_assert_int_eq(opcodes[4].op1.type, handlebars_operand_type_long);
+    ck_assert_int_eq(opcodes[4].op1.data.longval, 1);
+    ck_assert_int_eq(opcodes[4].op2.type, handlebars_operand_type_string);
+    ck_assert_hbs_str_eq_cstr(opcodes[4].op2.data.string.string, "inline");
+    ck_assert_int_eq(opcodes[4].op3.type, handlebars_operand_type_boolean);
+    ck_assert(opcodes[4].op3.data.boolval);
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification(
+        "{{> myPartial}}{{#*inline \"myPartial\" unused=1}}success{{/inline}}"
+    );
+    entry = &module->programs[0];
+    opcodes = &module->opcodes[entry->opcode_offset];
+    ck_assert_int_eq(opcodes[3].type, handlebars_opcode_type_push_hash);
+    size_t hash_marker_offset = SIZE_MAX;
+    for( size_t i = 4; i < entry->opcode_count; i++ ) {
+        if( opcodes[i].type == handlebars_opcode_type_register_decorator
+                && opcodes[i].op3.type == handlebars_operand_type_boolean
+                && opcodes[i].op3.data.boolval ) {
+            hash_marker_offset = i;
+            break;
+        }
+    }
+    ck_assert(hash_marker_offset != SIZE_MAX);
+    ck_assert_int_eq(
+        opcodes[hash_marker_offset - 1].type,
+        handlebars_opcode_type_pop_hash
+    );
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+
+    opcodes[hash_marker_offset - 1].type = handlebars_opcode_type_nil;
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification(
+        "{{> myPartial}}{{#*inline \"myPartial\"}}success{{/inline}}"
+    );
+    entry = &module->programs[0];
+    opcodes = &module->opcodes[entry->opcode_offset];
+    opcodes[2].type = handlebars_opcode_type_nil;
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
+
+    module = serialize_for_verification(
+        "{{> myPartial}}{{#*inline \"myPartial\"}}success{{/inline}}"
+    );
+    entry = &module->programs[0];
+    opcodes = &module->opcodes[entry->opcode_offset];
+    opcodes[5] = opcodes[4];
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
 }
 END_TEST
 
@@ -920,7 +1102,9 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_serialize_traversal_allocation_failures, "Serialized module traversal allocation failures");
 #endif
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_verification, "Verify serialized module layout");
+	REGISTER_TEST_FIXTURE(s, test_serialized_strings_zero_representation_padding, "Zero serialized string representation padding");
 	REGISTER_TEST_FIXTURE(s, test_serialize_preserves_block_param_counts, "Preserve serialized block parameter counts");
+	REGISTER_TEST_FIXTURE(s, test_serialized_inline_partial_prologue, "Verify serialized inline partial prologues");
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");
 	REGISTER_TEST_FIXTURE(s, test_string_params_supports_implicit_partial_context, "String params with implicit partial context");

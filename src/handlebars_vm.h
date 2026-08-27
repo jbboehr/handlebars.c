@@ -38,6 +38,10 @@ struct handlebars_vm;
 #define HANDLEBARS_VM_BUFFER_INIT_SIZE 128
 #endif
 
+#ifndef HANDLEBARS_VM_MAX_DEPTH
+#define HANDLEBARS_VM_MAX_DEPTH 256
+#endif
+
 extern const size_t HANDLEBARS_VM_SIZE;
 
 /**

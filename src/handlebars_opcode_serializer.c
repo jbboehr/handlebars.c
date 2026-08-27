@@ -185,6 +185,36 @@ static inline void patch_string(struct handlebars_string * str) {
     handlebars_string_immortalize(str);
 }
 
+static struct handlebars_string * append_string(
+    struct handlebars_serialize_state * state,
+    struct handlebars_string * string
+)
+{
+    size_t length = hbs_str_len(string);
+    size_t size = serialize_string_size(state->context, string);
+    size_t value_offset = (size_t) (hbs_str_val(string) - (char *) string);
+    size_t initialized_size = serialize_size_add(
+        state->context,
+        value_offset,
+        serialize_size_add(state->context, length, 1)
+    );
+    struct handlebars_string * serialized;
+
+    if( unlikely(initialized_size > size) ) {
+        handlebars_throw(state->context, HANDLEBARS_ERROR, "Invalid serialized string layout");
+    }
+
+    // Make sure hash is computed before copying the complete string header.
+    hbs_str_hash(string);
+    serialized = append(state, string, size);
+
+    // Flexible array members may leave trailing representation padding after
+    // the NUL terminator. Canonicalize it before hashing or persisting modules.
+    memset((char *) serialized + initialized_size, 0, size - initialized_size);
+    patch_string(serialized);
+    return serialized;
+}
+
 static void calculate_size_operand(
     struct handlebars_context * context,
     struct handlebars_operand * operand,
@@ -537,13 +567,10 @@ static void serialize_operand(
     // Increment for children
     switch( operand->type ) {
         case handlebars_operand_type_string:
-            size = serialize_string_size(state->context, operand->data.string.string);
-
-            // Make sure hash is computed
-            hbs_str_hash(operand->data.string.string);
-
-            operand->data.string.string = append(state, operand->data.string.string, size);
-            patch_string(operand->data.string.string);
+            operand->data.string.string = append_string(
+                state,
+                operand->data.string.string
+            );
             break;
         case handlebars_operand_type_array:
             size = serialize_size_multiply(
@@ -553,13 +580,10 @@ static void serialize_operand(
             );
             operand->data.array.array = append(state, operand->data.array.array, size);
             for( i = 0; i < operand->data.array.count; i++ ) {
-                size = serialize_string_size(state->context, operand->data.array.array[i].string);
-
-                // Make sure hash is computed
-                hbs_str_hash(operand->data.array.array[i].string);
-
-                operand->data.array.array[i].string = append(state, operand->data.array.array[i].string, size);
-                patch_string(operand->data.array.array[i].string);
+                operand->data.array.array[i].string = append_string(
+                    state,
+                    operand->data.array.array[i].string
+                );
             }
             break;
         case handlebars_operand_type_null:
@@ -575,7 +599,8 @@ static void serialize_opcode(
     struct handlebars_serialize_state * state,
     struct handlebars_opcode * opcode,
     struct handlebars_module_table_entry ** table,
-    size_t table_count
+    size_t table_count,
+    bool inline_partial
 )
 {
     struct handlebars_module * module = state->module;
@@ -590,6 +615,9 @@ static void serialize_opcode(
 
     // Copy
     *new_opcode = *opcode;
+    if( inline_partial ) {
+        handlebars_operand_set_boolval(&new_opcode->op3, true);
+    }
 
     // Serialize operands
     serialize_operand(state, &new_opcode->op1);
@@ -611,6 +639,103 @@ static void serialize_opcode(
             new_opcode->op4.data.boolval = 1;
         }
     }
+}
+
+#define INLINE_PARTIAL_MIN_OPCODE_COUNT 5
+
+static bool inline_partial_name_opcode_is_valid(
+    const struct handlebars_opcode * opcode
+)
+{
+    if( opcode->type == handlebars_opcode_type_push_string ) {
+        return opcode->op1.type == handlebars_operand_type_string;
+    }
+    if( opcode->type != handlebars_opcode_type_push_literal ) {
+        return false;
+    }
+    return opcode->op1.type == handlebars_operand_type_boolean
+        || opcode->op1.type == handlebars_operand_type_long
+        || opcode->op1.type == handlebars_operand_type_string;
+}
+
+static size_t inline_partial_opcode_range_length(
+    struct handlebars_program * program,
+    size_t offset
+)
+{
+    struct handlebars_opcode ** opcodes;
+    size_t opcode_count;
+
+    if( offset > program->opcodes_length
+            || program->opcodes_length - offset < INLINE_PARTIAL_MIN_OPCODE_COUNT ) {
+        return 0;
+    }
+
+    opcodes = &program->opcodes[offset];
+    opcode_count = program->opcodes_length - offset;
+    if( !inline_partial_name_opcode_is_valid(opcodes[0]) ) {
+        return 0;
+    }
+
+    for( size_t program_offset = 1;
+            program_offset <= opcode_count - 4;
+            program_offset++ ) {
+        size_t hash_offset;
+        size_t registration_offset;
+
+        if( opcodes[program_offset]->type != handlebars_opcode_type_push_program
+                || opcodes[program_offset]->op1.type != handlebars_operand_type_long
+                || opcodes[program_offset]->op1.data.longval < 0
+                || opcodes[program_offset + 1]->type != handlebars_opcode_type_push_program
+                || opcodes[program_offset + 1]->op1.type != handlebars_operand_type_null ) {
+            continue;
+        }
+
+        hash_offset = program_offset + 2;
+        if( opcodes[hash_offset]->type == handlebars_opcode_type_empty_hash ) {
+            registration_offset = hash_offset + 1;
+        } else if( opcodes[hash_offset]->type == handlebars_opcode_type_push_hash ) {
+            size_t hash_depth = 1;
+            bool found_pop_hash = false;
+
+            for( size_t i = hash_offset + 1; i < opcode_count; i++ ) {
+                if( opcodes[i]->type == handlebars_opcode_type_push_hash ) {
+                    hash_depth++;
+                } else if( opcodes[i]->type == handlebars_opcode_type_pop_hash ) {
+                    if( hash_depth == 1 ) {
+                        registration_offset = i + 1;
+                        found_pop_hash = true;
+                        break;
+                    }
+                    hash_depth--;
+                }
+            }
+            if( !found_pop_hash ) {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        if( registration_offset >= opcode_count ) {
+            continue;
+        }
+
+        if( opcodes[registration_offset]->type == handlebars_opcode_type_register_decorator
+                && opcodes[registration_offset]->op1.type == handlebars_operand_type_long
+                && opcodes[registration_offset]->op1.data.longval >= 1
+                && opcodes[registration_offset]->op2.type == handlebars_operand_type_string
+                && hbs_str_eq_strl(
+                    opcodes[registration_offset]->op2.data.string.string,
+                    HBS_STRL("inline")
+                )
+                && opcodes[registration_offset]->op3.type == handlebars_operand_type_null
+                && opcodes[registration_offset]->op4.type == handlebars_operand_type_null ) {
+            return registration_offset + 1;
+        }
+    }
+
+    return 0;
 }
 
 static struct handlebars_module_table_entry * serialize_program_shallow(
@@ -665,22 +790,51 @@ static void serialize_program_frame_enter(
         frame->children[i] = serialize_program_shallow(state, frame->program->children[i]);
     }
 
-    // Serialize opcodes
+    // Inline partial declarations are decorators in the upstream opcode
+    // format, so they apply to the whole program even when written after
+    // their first use. Move only the compiler's built-in sequence into
+    // a marked prologue; generic decorators remain in source order.
     frame->entry->opcode_count = frame->program->opcodes_length;
     frame->entry->opcode_offset = module->opcode_count;
-    for( size_t i = 0 ; i < frame->program->opcodes_length; i++ ) {
+    for( size_t i = 0; i < frame->program->opcodes_length; ) {
+        size_t range_length = inline_partial_opcode_range_length(frame->program, i);
+
+        if( range_length > 0 ) {
+            for( size_t j = 0; j < range_length; j++ ) {
+                serialize_opcode(
+                    state,
+                    frame->program->opcodes[i + j],
+                    frame->children,
+                    frame->program->children_length,
+                    j == range_length - 1
+                );
+            }
+            i += range_length;
+        } else {
+            i++;
+        }
+    }
+    for( size_t i = 0 ; i < frame->program->opcodes_length; ) {
+        size_t range_length = inline_partial_opcode_range_length(frame->program, i);
+
+        if( range_length > 0 ) {
+            i += range_length;
+            continue;
+        }
         serialize_opcode(
             state,
             frame->program->opcodes[i],
             frame->children,
-            frame->program->children_length
+            frame->program->children_length,
+            false
         );
+        i++;
     }
 
     // Insert return opcode
     struct handlebars_opcode opcode = {0};
     opcode.type = handlebars_opcode_type_return;
-    serialize_opcode(state, &opcode, frame->children, frame->program->children_length);
+    serialize_opcode(state, &opcode, frame->children, frame->program->children_length, false);
     serialize_count_increment(state->context, &frame->entry->opcode_count);
 }
 
@@ -762,6 +916,9 @@ struct handlebars_module * handlebars_program_serialize(
 
     // Reallocate buffer
     module = MC(handlebars_talloc_realloc_size(context, module, module->size));
+    if( data_size != 0 ) {
+        memset(module->data, 0, data_size);
+    }
     module->addr = (void *) module;
     talloc_set_type(module, struct handlebars_module);
 
@@ -953,6 +1110,59 @@ static bool module_pointer_matches_offset(
         && serialized_pointer - original_base == expected_offset;
 }
 
+static struct handlebars_string * module_resolve_string(
+    struct handlebars_module * module,
+    size_t size,
+    struct handlebars_string * serialized_string
+) {
+    uintptr_t original_base = (uintptr_t) module->addr;
+    uintptr_t serialized_pointer = (uintptr_t) serialized_string;
+    uintptr_t serialized_offset;
+    struct handlebars_string * string;
+    size_t string_offset;
+    size_t string_size;
+    size_t length;
+
+    if( unlikely(serialized_pointer < original_base) ) {
+        return NULL;
+    }
+    serialized_offset = serialized_pointer - original_base;
+    if( unlikely(serialized_offset > size) ) {
+        return NULL;
+    }
+    string_offset = (size_t) serialized_offset;
+    if( unlikely(HANDLEBARS_STRING_SIZE > size - string_offset) ) {
+        return NULL;
+    }
+
+    string = (void *) ((unsigned char *) module + string_offset);
+    length = hbs_str_len(string);
+    if( unlikely(length > SIZE_MAX - HANDLEBARS_STRING_SIZE - 1) ) {
+        return NULL;
+    }
+    string_size = HBS_STR_SIZE(length);
+    if( unlikely(string_size > size - string_offset
+            || hbs_str_val(string)[length] != '\0') ) {
+        return NULL;
+    }
+    return string;
+}
+
+static bool module_string_eq_strl(
+    struct handlebars_module * module,
+    struct handlebars_string * serialized_string,
+    const char * value,
+    size_t length
+) {
+    struct handlebars_string * string = module_resolve_string(
+        module,
+        module->size,
+        serialized_string
+    );
+
+    return string != NULL && hbs_str_eq_strl(string, value, length);
+}
+
 static bool module_advance(
     size_t * offset,
     size_t count,
@@ -983,24 +1193,20 @@ static bool module_verify_string(
 ) {
     struct handlebars_string * string;
     size_t string_size;
-    size_t length;
 
-    if( unlikely(!module_pointer_matches_offset(state->module, serialized_string, state->data_offset)
-            || state->data_offset > state->size
-            || HANDLEBARS_STRING_SIZE > state->size - state->data_offset) ) {
+    if( unlikely(!module_pointer_matches_offset(
+                    state->module,
+                    serialized_string,
+                    state->data_offset
+                )) ) {
         return false;
     }
 
-    string = (void *) ((unsigned char *) state->module + state->data_offset);
-    length = hbs_str_len(string);
-    if( unlikely(length > SIZE_MAX - HANDLEBARS_STRING_SIZE - 1) ) {
+    string = module_resolve_string(state->module, state->size, serialized_string);
+    if( unlikely(string == NULL) ) {
         return false;
     }
-    string_size = HBS_STR_SIZE(length);
-    if( unlikely(string_size > state->size - state->data_offset
-            || hbs_str_val(string)[length] != '\0') ) {
-        return false;
-    }
+    string_size = HBS_STR_SIZE(hbs_str_len(string));
 
     return module_advance_aligned(&state->data_offset, string_size, state->size);
 }
@@ -1150,9 +1356,14 @@ static bool module_verify_opcode_shape(
             break;
 
         case handlebars_opcode_type_invoke_known_helper:
+            allowed[0] = long_type;
+            allowed[1] = string_type;
+            break;
+
         case handlebars_opcode_type_register_decorator:
             allowed[0] = long_type;
             allowed[1] = string_type;
+            allowed[2] |= bool_type;
             break;
 
         case handlebars_opcode_type_invoke_helper:
@@ -1206,9 +1417,25 @@ static bool module_verify_opcode_shape(
 
         case handlebars_opcode_type_invoke_known_helper:
         case handlebars_opcode_type_invoke_helper:
-        case handlebars_opcode_type_register_decorator:
             return opcode->op1.data.longval >= 0
                 && (size_t) opcode->op1.data.longval <= module->opcode_count;
+
+        case handlebars_opcode_type_register_decorator:
+            if( opcode->op1.data.longval < 0
+                    || (size_t) opcode->op1.data.longval > module->opcode_count ) {
+                return false;
+            }
+            if( opcode->op3.type == handlebars_operand_type_null ) {
+                return true;
+            }
+            return module_verify_boolean(&opcode->op3.data.boolval)
+                && opcode->op3.data.boolval
+                && opcode->op1.data.longval >= 1
+                && module_string_eq_strl(
+                    module,
+                    opcode->op2.data.string.string,
+                    HBS_STRL("inline")
+                );
 
         case handlebars_opcode_type_lookup_block_param:
             return opcode->op1.data.array.count >= 2;
@@ -1231,6 +1458,119 @@ static bool module_verify_opcode_shape(
         default:
             return true;
     }
+}
+
+static bool module_opcode_is_inline_partial_marker(
+    struct handlebars_opcode * opcode
+)
+{
+    return opcode->type == handlebars_opcode_type_register_decorator
+        && opcode->op3.type == handlebars_operand_type_boolean
+        && opcode->op3.data.boolval;
+}
+
+static size_t module_inline_partial_opcode_range_length(
+    struct handlebars_module * module,
+    struct handlebars_opcode * opcodes,
+    size_t opcode_count
+)
+{
+    if( opcode_count < INLINE_PARTIAL_MIN_OPCODE_COUNT
+            || !inline_partial_name_opcode_is_valid(&opcodes[0]) ) {
+        return 0;
+    }
+
+    for( size_t program_offset = 1;
+            program_offset <= opcode_count - 4;
+            program_offset++ ) {
+        size_t hash_offset;
+        size_t registration_offset;
+
+        if( opcodes[program_offset].type != handlebars_opcode_type_push_program
+                || opcodes[program_offset].op1.type != handlebars_operand_type_long
+                || opcodes[program_offset].op1.data.longval < 0
+                || !opcodes[program_offset].op4.data.boolval
+                || opcodes[program_offset + 1].type != handlebars_opcode_type_push_program
+                || opcodes[program_offset + 1].op1.type != handlebars_operand_type_null ) {
+            continue;
+        }
+
+        hash_offset = program_offset + 2;
+        if( opcodes[hash_offset].type == handlebars_opcode_type_empty_hash ) {
+            registration_offset = hash_offset + 1;
+        } else if( opcodes[hash_offset].type == handlebars_opcode_type_push_hash ) {
+            size_t hash_depth = 1;
+            bool found_pop_hash = false;
+
+            for( size_t i = hash_offset + 1; i < opcode_count; i++ ) {
+                if( opcodes[i].type == handlebars_opcode_type_push_hash ) {
+                    hash_depth++;
+                } else if( opcodes[i].type == handlebars_opcode_type_pop_hash ) {
+                    if( hash_depth == 1 ) {
+                        registration_offset = i + 1;
+                        found_pop_hash = true;
+                        break;
+                    }
+                    hash_depth--;
+                }
+            }
+            if( !found_pop_hash ) {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        if( registration_offset >= opcode_count ) {
+            continue;
+        }
+
+        if( opcodes[registration_offset].type == handlebars_opcode_type_register_decorator
+                && opcodes[registration_offset].op1.type == handlebars_operand_type_long
+                && opcodes[registration_offset].op1.data.longval >= 1
+                && opcodes[registration_offset].op2.type == handlebars_operand_type_string
+                && module_string_eq_strl(
+                    module,
+                    opcodes[registration_offset].op2.data.string.string,
+                    HBS_STRL("inline")
+                )
+                && opcodes[registration_offset].op3.type == handlebars_operand_type_boolean
+                && opcodes[registration_offset].op3.data.boolval ) {
+            return registration_offset + 1;
+        }
+    }
+
+    return 0;
+}
+
+static bool module_verify_inline_partial_program(
+    struct handlebars_module * module,
+    struct handlebars_opcode * opcodes,
+    struct handlebars_module_table_entry * program
+)
+{
+    size_t offset = program->opcode_offset;
+    size_t end = offset + program->opcode_count;
+
+    while( offset < end ) {
+        size_t range_length = module_inline_partial_opcode_range_length(
+            module,
+            &opcodes[offset],
+            end - offset
+        );
+
+        if( range_length == 0 ) {
+            break;
+        }
+        offset += range_length;
+    }
+
+    for( ; offset < end; offset++ ) {
+        if( unlikely(module_opcode_is_inline_partial_marker(&opcodes[offset])) ) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static bool module_verify_structure(struct handlebars_module * module, size_t size)
@@ -1301,6 +1641,10 @@ static bool module_verify_structure(struct handlebars_module * module, size_t si
             return false;
         }
         program_end = program->opcode_offset + program->opcode_count;
+        if( unlikely(!module_verify_inline_partial_program(module, opcodes, program)) ) {
+            free(opcode_owners);
+            return false;
+        }
         for( size_t j = program->opcode_offset; j < program_end; j++ ) {
             if( unlikely(opcode_owners[j]
                     || (j + 1 < program_end

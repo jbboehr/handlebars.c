@@ -387,9 +387,6 @@ static bool should_skip(struct generic_test * test)
 
     // Regressions
     MYCHECK("regressions", "Regressions", "GH-1065: Sparse arrays")
-    MYCHECK("regressions", "Regressions", "should support multiple levels of inline partials")
-    MYCHECK("regressions", "Regressions", "GH-1089: should support failover content in multiple levels of inline partials")
-    MYCHECK("regressions", "Regressions", "GH-1186: Support block params for existing programs");
 
     // stringParams was legacy pre-Glimmer Ember support and is rejected by
     // Handlebars v5; see https://github.com/handlebars-lang/handlebars.js/issues/1145.
@@ -398,16 +395,13 @@ static bool should_skip(struct generic_test * test)
     MYCHECK("subexpressions", "subexpressions", "in string params mode,");
     MYCHECK("subexpressions", "subexpressions", "as hashes in string params mode");
 
-    // Partials
-    MYCHECKALL("partials", "partials - inline partials");
-
     return false;
 
 #undef MYCCHECK
 }
 
 enum {
-    EXPECTED_RUNTIME_EXCLUSIONS = 26,
+    EXPECTED_RUNTIME_EXCLUSIONS = 11,
     EXPECTED_AST_INAPPLICABLE = 40,
 };
 

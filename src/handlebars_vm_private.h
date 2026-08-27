@@ -52,6 +52,7 @@ struct handlebars_vm {
     struct handlebars_stack * hashStack;
     struct handlebars_stack * blockParamStack;
     struct handlebars_stack * partialBlockStack;
+    struct handlebars_stack * partialScopeStack;
 
     handlebars_func log_func;
     void * log_ctx;
