@@ -77,8 +77,10 @@ struct handlebars_vm_call_checkpoint {
     struct handlebars_stack_save_buf block_param_stack;
     struct handlebars_stack_save_buf partial_block_stack;
     struct handlebars_stack_save_buf partial_scope_stack;
+    struct handlebars_value data;
     struct handlebars_string * buffer;
     long depth;
+    bool stacks_active;
     bool open;
 };
 

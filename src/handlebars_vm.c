@@ -147,28 +147,31 @@ HBS_LOCAL void handlebars_vm_call_checkpoint_begin(
 )
 {
     checkpoint->open = false;
-    if( vm->stack == NULL ) {
+    checkpoint->stacks_active = vm->stack != NULL;
+    handlebars_value_init(&checkpoint->data);
+    handlebars_value_value(&checkpoint->data, &vm->data);
+    checkpoint->buffer = vm->buffer;
+    checkpoint->depth = vm->depth;
+
+    if( !checkpoint->stacks_active ) {
         assert(vm->hashStack == NULL);
         assert(vm->contextStack == NULL);
         assert(vm->blockParamStack == NULL);
         assert(vm->partialBlockStack == NULL);
         assert(vm->partialScopeStack == NULL);
-        return;
+    } else {
+        assert(vm->hashStack != NULL);
+        assert(vm->contextStack != NULL);
+        assert(vm->blockParamStack != NULL);
+        assert(vm->partialBlockStack != NULL);
+        assert(vm->partialScopeStack != NULL);
+        checkpoint->stack = handlebars_stack_save(vm->stack);
+        checkpoint->hash_stack = handlebars_stack_save(vm->hashStack);
+        checkpoint->context_stack = handlebars_stack_save(vm->contextStack);
+        checkpoint->block_param_stack = handlebars_stack_save(vm->blockParamStack);
+        checkpoint->partial_block_stack = handlebars_stack_save(vm->partialBlockStack);
+        checkpoint->partial_scope_stack = handlebars_stack_save(vm->partialScopeStack);
     }
-
-    assert(vm->hashStack != NULL);
-    assert(vm->contextStack != NULL);
-    assert(vm->blockParamStack != NULL);
-    assert(vm->partialBlockStack != NULL);
-    assert(vm->partialScopeStack != NULL);
-    checkpoint->stack = handlebars_stack_save(vm->stack);
-    checkpoint->hash_stack = handlebars_stack_save(vm->hashStack);
-    checkpoint->context_stack = handlebars_stack_save(vm->contextStack);
-    checkpoint->block_param_stack = handlebars_stack_save(vm->blockParamStack);
-    checkpoint->partial_block_stack = handlebars_stack_save(vm->partialBlockStack);
-    checkpoint->partial_scope_stack = handlebars_stack_save(vm->partialScopeStack);
-    checkpoint->buffer = vm->buffer;
-    checkpoint->depth = vm->depth;
     checkpoint->open = true;
 }
 
@@ -181,12 +184,15 @@ HBS_LOCAL void handlebars_vm_call_checkpoint_commit(
         return;
     }
 
-    handlebars_stack_protect(vm->stack, checkpoint->stack.protect);
-    handlebars_stack_protect(vm->hashStack, checkpoint->hash_stack.protect);
-    handlebars_stack_protect(vm->contextStack, checkpoint->context_stack.protect);
-    handlebars_stack_protect(vm->blockParamStack, checkpoint->block_param_stack.protect);
-    handlebars_stack_protect(vm->partialBlockStack, checkpoint->partial_block_stack.protect);
-    handlebars_stack_protect(vm->partialScopeStack, checkpoint->partial_scope_stack.protect);
+    if( checkpoint->stacks_active ) {
+        handlebars_stack_protect(vm->stack, checkpoint->stack.protect);
+        handlebars_stack_protect(vm->hashStack, checkpoint->hash_stack.protect);
+        handlebars_stack_protect(vm->contextStack, checkpoint->context_stack.protect);
+        handlebars_stack_protect(vm->blockParamStack, checkpoint->block_param_stack.protect);
+        handlebars_stack_protect(vm->partialBlockStack, checkpoint->partial_block_stack.protect);
+        handlebars_stack_protect(vm->partialScopeStack, checkpoint->partial_scope_stack.protect);
+    }
+    handlebars_value_dtor(&checkpoint->data);
     checkpoint->open = false;
 }
 
@@ -199,18 +205,22 @@ HBS_LOCAL void handlebars_vm_call_checkpoint_rollback(
         return;
     }
 
-    handlebars_stack_restore(vm->stack, checkpoint->stack);
-    handlebars_stack_restore(vm->hashStack, checkpoint->hash_stack);
-    handlebars_stack_restore(vm->contextStack, checkpoint->context_stack);
-    handlebars_stack_restore(vm->blockParamStack, checkpoint->block_param_stack);
-    handlebars_stack_restore(vm->partialBlockStack, checkpoint->partial_block_stack);
-    handlebars_stack_restore(vm->partialScopeStack, checkpoint->partial_scope_stack);
+    if( checkpoint->stacks_active ) {
+        handlebars_stack_restore(vm->stack, checkpoint->stack);
+        handlebars_stack_restore(vm->hashStack, checkpoint->hash_stack);
+        handlebars_stack_restore(vm->contextStack, checkpoint->context_stack);
+        handlebars_stack_restore(vm->blockParamStack, checkpoint->block_param_stack);
+        handlebars_stack_restore(vm->partialBlockStack, checkpoint->partial_block_stack);
+        handlebars_stack_restore(vm->partialScopeStack, checkpoint->partial_scope_stack);
+    }
     if( vm->buffer != checkpoint->buffer ) {
         if( vm->buffer != NULL ) {
             handlebars_string_delref(vm->buffer);
         }
         vm->buffer = checkpoint->buffer;
     }
+    handlebars_value_value(&vm->data, &checkpoint->data);
+    handlebars_value_dtor(&checkpoint->data);
     vm->depth = checkpoint->depth;
     checkpoint->open = false;
 }

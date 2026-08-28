@@ -389,39 +389,106 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
     return rv;
 }
 
-struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
+struct handlebars_if_call_state {
+    int argc;
+    struct handlebars_options * options;
+    struct handlebars_value * rv;
+    struct handlebars_value * conditional;
+    struct handlebars_value rv2;
+    struct handlebars_value lambda_argv[1];
+    struct handlebars_vm_call_checkpoint checkpoint;
+};
+
+static void handlebars_if_call_state_deinit(
+    struct handlebars_if_call_state * state
+)
 {
-    struct handlebars_value * conditional = &argv[0];
+    handlebars_value_dtor(&state->lambda_argv[0]);
+    handlebars_value_dtor(&state->rv2);
+}
+
+HBS_ATTR_NOINLINE HBS_ATTR_NONNULL_ALL
+static void handlebars_builtin_if_guarded(
+    struct handlebars_vm * vm,
+    struct handlebars_if_call_state * state
+)
+{
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile prev_jmp = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    struct handlebars_value * conditional;
     long program;
     struct handlebars_string * result_str = NULL;
-    HANDLEBARS_VALUE_DECL(rv2);
+    jmp_buf buf;
 
-    if (argc != 1) {
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
+
+    handlebars_vm_call_checkpoint_begin(vm, &state->checkpoint);
+
+    if (state->argc != 1) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "#if requires exactly one argument");
     }
 
+    conditional = state->conditional;
     if( handlebars_value_is_callable(conditional) ) {
         const int argc2 = 1;
-        HANDLEBARS_VALUE_ARRAY_DECL(argv2, argc2);
-        handlebars_value_value(&argv2[0], options->scope);
-        conditional = handlebars_value_call(conditional, argc2, argv2, options, vm, rv2);
-        HANDLEBARS_VALUE_ARRAY_UNDECL(argv2, argc2);
+        handlebars_value_value(
+            &state->lambda_argv[0],
+            state->options->scope
+        );
+        conditional = handlebars_value_call(
+            conditional,
+            argc2,
+            state->lambda_argv,
+            state->options,
+            vm,
+            &state->rv2
+        );
     }
 
     if( !handlebars_value_is_empty(conditional) ) {
-        program = options->program;
+        program = state->options->program;
     } else if( handlebars_value_get_type(conditional) == HANDLEBARS_VALUE_TYPE_INTEGER &&
             handlebars_value_get_intval(conditional) == 0 &&
-            NULL != handlebars_value_map_str_find(options->hash, HBS_STRL("includeZero"), rv2) ) {
-        program = options->program;
+            NULL != handlebars_value_map_str_find(
+                state->options->hash,
+                HBS_STRL("includeZero"),
+                &state->rv2
+            ) ) {
+        program = state->options->program;
     } else {
-        program = options->inverse;
+        program = state->options->inverse;
     }
 
-    result_str = handlebars_vm_execute_program(vm, program, options->scope);
-    handlebars_value_str(rv, result_str);
+    result_str = handlebars_vm_execute_program(
+        vm,
+        program,
+        state->options->scope
+    );
+    handlebars_value_str(state->rv, result_str);
 
-    HANDLEBARS_VALUE_UNDECL(rv2);
+done:
+    error->jmp = prev_jmp;
+    handlebars_vm_call_checkpoint_finish(vm, &state->checkpoint, caught);
+    handlebars_if_call_state_deinit(state);
+
+    if( caught != HANDLEBARS_SUCCESS ) {
+        handlebars_vm_rethrow_caught(vm, prev_jmp, caught);
+    }
+}
+
+struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
+{
+    struct handlebars_if_call_state state = {0};
+
+    state.argc = argc;
+    state.options = options;
+    state.rv = rv;
+    state.conditional = argc > 0 ? argv : NULL;
+    handlebars_builtin_if_guarded(vm, &state);
 
     return rv;
 }
