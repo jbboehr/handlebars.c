@@ -2,8 +2,8 @@
 
 * Benchmark custom known-helper lookup and replace the compiler's linear list
   with an indexed container if it is a meaningful bottleneck.
-* Extend the explicit-status `_try` API to caches and loaders, and define
-  whether custom helper callbacks need an explicit-status ABI.
+* Extend the explicit-status `_try` API to loaders, and define whether custom
+  helper callbacks need an explicit-status ABI.
 * Implement general decorator execution and enable its excluded upstream
   specification tests. Inline partials are supported without executing general
   decorators.

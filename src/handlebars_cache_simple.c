@@ -275,10 +275,17 @@ static const struct handlebars_cache_handlers hbs_cache_handlers_simple = {
     &cache_reset
 };
 
-struct handlebars_cache * handlebars_cache_simple_ctor(
-    struct handlebars_context * context
+struct handlebars_cache_simple_ctor_state {
+    struct handlebars_cache * cache;
+};
+
+static void handlebars_cache_simple_ctor_init(
+    struct handlebars_context * context,
+    struct handlebars_cache_simple_ctor_state * state
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
+
+    state->cache = cache;
     handlebars_context_bind(context, HBSCTX(cache));
     cache->max_age = -1;
     cache->hnd = &hbs_cache_handlers_simple;
@@ -287,6 +294,65 @@ struct handlebars_cache * handlebars_cache_simple_ctor(
     cache->internal = intern;
 
     intern->map = handlebars_map_ctor(HBSCTX(cache), 32);
+}
 
-    return cache;
+struct handlebars_cache * handlebars_cache_simple_ctor(
+    struct handlebars_context * context
+) {
+    struct handlebars_cache_simple_ctor_state state = {0};
+
+    handlebars_cache_simple_ctor_init(context, &state);
+    return state.cache;
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_cache_simple_ctor_try_guarded(
+    struct handlebars_context * context,
+    struct handlebars_cache_simple_ctor_state * state
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+        if( state->cache != NULL ) {
+            handlebars_cache_dtor(state->cache);
+            state->cache = NULL;
+        }
+    } else {
+        handlebars_cache_simple_ctor_init(context, state);
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_cache_simple_ctor_try(
+    struct handlebars_context * context,
+    struct handlebars_cache ** result
+) {
+    struct handlebars_cache_simple_ctor_state state = {0};
+    struct handlebars_cache_try_guard guard;
+    enum handlebars_error_type error;
+    enum handlebars_error_type guard_error;
+
+    *result = NULL;
+    error = handlebars_cache_try_guard_begin(context->e, &guard);
+    if( error != HANDLEBARS_SUCCESS ) {
+        return error;
+    }
+    handlebars_error_clear(context);
+    error = handlebars_cache_simple_ctor_try_guarded(context, &state);
+    guard_error = handlebars_cache_try_guard_end(&guard);
+    if( error == HANDLEBARS_SUCCESS ) {
+        error = guard_error;
+    }
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.cache;
+    } else if( state.cache != NULL ) {
+        handlebars_cache_dtor(state.cache);
+    }
+    return error;
 }

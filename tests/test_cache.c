@@ -20,12 +20,17 @@
 #endif
 
 #include <check.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <talloc.h>
+#include <time.h>
 
 #ifdef HANDLEBARS_HAVE_PTHREAD
 #include <pthread.h>
+#ifdef HANDLEBARS_TESTING_EXPORTS
+#include <sys/mman.h>
+#endif
 #endif
 
 #ifndef YY_NO_UNISTD_H
@@ -116,6 +121,471 @@ static int simple_cache_module_dtor(struct handlebars_module * module)
     simple_cache_module_destroyed = true;
     return 0;
 }
+
+#ifdef HANDLEBARS_HAVE_PTHREAD
+struct cache_try_concurrency_state {
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    handlebars_cache_find_func original_find;
+    struct handlebars_string * first_key;
+    bool first_entered;
+    bool allow_first_complete;
+    bool probe_completed;
+    bool probe_acquired;
+    enum handlebars_error_type probe_error;
+    enum handlebars_error_type nested_error;
+};
+
+struct cache_try_concurrency_arg {
+    struct handlebars_cache * cache;
+    struct handlebars_string * key;
+    bool probe_guard;
+    enum handlebars_error_type error;
+};
+
+static struct cache_try_concurrency_state * cache_try_concurrency_current_state;
+
+static struct handlebars_module * cache_try_concurrency_find(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key
+) {
+    struct cache_try_concurrency_state * state = cache_try_concurrency_current_state;
+    struct handlebars_cache_stat stat;
+
+    ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+    if( key == state->first_key ) {
+        ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+        state->nested_error = handlebars_cache_stat_try(cache, &stat);
+        ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+        state->first_entered = true;
+        ck_assert_int_eq(pthread_cond_broadcast(&state->cond), 0);
+        while( !state->allow_first_complete ) {
+            ck_assert_int_eq(pthread_cond_wait(&state->cond, &state->lock), 0);
+        }
+    }
+    ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+    return state->original_find(cache, key);
+}
+
+static void * cache_try_concurrency_thread(void * opaque)
+{
+    struct cache_try_concurrency_arg * arg = opaque;
+    struct cache_try_concurrency_state * state = cache_try_concurrency_current_state;
+    struct handlebars_module * found = (void *) 1;
+
+    if( arg->probe_guard ) {
+        struct handlebars_cache_try_guard guard;
+        bool acquired;
+
+        state->probe_error = handlebars_cache_try_guard_try_begin(
+            HBSCTX(arg->cache)->e,
+            &guard,
+            &acquired
+        );
+        state->probe_acquired = acquired;
+        if( acquired ) {
+            enum handlebars_error_type end_error = handlebars_cache_try_guard_end(
+                &guard
+            );
+            if( state->probe_error == HANDLEBARS_SUCCESS ) {
+                state->probe_error = end_error;
+            }
+        }
+        ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+        state->probe_completed = true;
+        ck_assert_int_eq(pthread_cond_broadcast(&state->cond), 0);
+        ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+    }
+    arg->error = handlebars_cache_find_try(arg->cache, arg->key, &found);
+    ck_assert_ptr_null(found);
+    return NULL;
+}
+
+START_TEST(test_cache_try_concurrent_calls_restore_jump_target)
+{
+    struct cache_try_concurrency_state state = {0};
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
+    const struct handlebars_cache_handlers * original_handlers = cache->hnd;
+    struct handlebars_cache_handlers ordered_handlers = *original_handlers;
+    struct cache_try_concurrency_arg first = {0};
+    struct cache_try_concurrency_arg second = {0};
+    struct handlebars_cache_stat stat;
+    pthread_t first_thread;
+    pthread_t second_thread;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf * observed;
+    jmp_buf outer;
+
+    state.original_find = original_handlers->find;
+    state.first_key = handlebars_string_ctor(context, HBS_STRL("cache-try-first"));
+    ordered_handlers.find = &cache_try_concurrency_find;
+    cache->hnd = &ordered_handlers;
+    cache_try_concurrency_current_state = &state;
+    first.cache = cache;
+    first.key = state.first_key;
+    second.cache = cache;
+    second.key = handlebars_string_ctor(context, HBS_STRL("cache-try-second"));
+    second.probe_guard = true;
+
+    ck_assert_int_eq(pthread_mutex_init(&state.lock, NULL), 0);
+    ck_assert_int_eq(pthread_cond_init(&state.cond, NULL), 0);
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("A concurrent cache try API escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    ck_assert_int_eq(pthread_create(&first_thread, NULL, cache_try_concurrency_thread, &first), 0);
+    ck_assert_int_eq(pthread_mutex_lock(&state.lock), 0);
+    while( !state.first_entered ) {
+        ck_assert_int_eq(pthread_cond_wait(&state.cond, &state.lock), 0);
+    }
+    ck_assert_int_eq(pthread_mutex_unlock(&state.lock), 0);
+
+    ck_assert_int_eq(pthread_create(&second_thread, NULL, cache_try_concurrency_thread, &second), 0);
+    ck_assert_int_eq(pthread_mutex_lock(&state.lock), 0);
+    while( !state.probe_completed ) {
+        ck_assert_int_eq(pthread_cond_wait(&state.cond, &state.lock), 0);
+    }
+    state.allow_first_complete = true;
+    ck_assert_int_eq(pthread_cond_broadcast(&state.cond), 0);
+    ck_assert_int_eq(pthread_mutex_unlock(&state.lock), 0);
+    ck_assert_int_eq(pthread_join(first_thread, NULL), 0);
+    ck_assert_int_eq(pthread_join(second_thread, NULL), 0);
+
+    observed = context->e->jmp;
+    context->e->jmp = previous;
+    cache->hnd = original_handlers;
+    cache_try_concurrency_current_state = NULL;
+    stat = handlebars_cache_stat(cache);
+
+    ck_assert_int_eq(pthread_cond_destroy(&state.cond), 0);
+    ck_assert_int_eq(pthread_mutex_destroy(&state.lock), 0);
+    handlebars_cache_dtor(cache);
+
+    ck_assert_int_eq(first.error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(second.error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(state.nested_error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(state.probe_error, HANDLEBARS_SUCCESS);
+    ck_assert(!state.probe_acquired);
+    ck_assert_uint_eq(stat.misses, 2);
+    ck_assert_int_eq(stat.refcount, 0);
+    ck_assert_ptr_eq(observed, &outer);
+}
+END_TEST
+
+struct cache_try_independent_context_state {
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    struct handlebars_cache * cache;
+    struct handlebars_string * key;
+    bool start;
+    bool completed;
+    bool timed_out;
+    enum handlebars_error_type error;
+};
+
+static struct cache_try_independent_context_state * cache_try_independent_context_current_state;
+
+static void * cache_try_independent_context_thread(void * opaque)
+{
+    struct cache_try_independent_context_state * state = opaque;
+    struct handlebars_module * found = (void *) 1;
+
+    ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+    while( !state->start ) {
+        ck_assert_int_eq(pthread_cond_wait(&state->cond, &state->lock), 0);
+    }
+    ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+
+    state->error = handlebars_cache_find_try(state->cache, state->key, &found);
+    ck_assert_ptr_null(found);
+
+    ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+    state->completed = true;
+    ck_assert_int_eq(pthread_cond_broadcast(&state->cond), 0);
+    ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+    return NULL;
+}
+
+static int cache_try_independent_context_module_dtor(
+    struct handlebars_module * module
+)
+{
+    struct cache_try_independent_context_state * state = cache_try_independent_context_current_state;
+    struct timespec deadline;
+    int rc = 0;
+
+    (void) module;
+    ck_assert_int_eq(clock_gettime(CLOCK_REALTIME, &deadline), 0);
+    deadline.tv_sec += 2;
+
+    ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+    state->start = true;
+    ck_assert_int_eq(pthread_cond_broadcast(&state->cond), 0);
+    while( !state->completed && rc != ETIMEDOUT ) {
+        rc = pthread_cond_timedwait(&state->cond, &state->lock, &deadline);
+        ck_assert(rc == 0 || rc == ETIMEDOUT);
+    }
+    state->timed_out = !state->completed;
+    ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+    return 0;
+}
+
+START_TEST(test_cache_try_independent_contexts_progress_during_reset_destructor)
+{
+    struct cache_try_independent_context_state state = {0};
+    struct handlebars_context * other_context = handlebars_context_ctor_ex(root);
+    struct handlebars_cache * reset_cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_cache * find_cache = handlebars_cache_simple_ctor(other_context);
+    struct handlebars_string * reset_key = handlebars_string_ctor(
+        context,
+        HBS_STRL("cache-try-reset")
+    );
+    struct handlebars_module * module = serialize_template("cache try reset");
+    pthread_t worker;
+    enum handlebars_error_type error;
+
+    state.cache = find_cache;
+    state.key = handlebars_string_ctor(
+        other_context,
+        HBS_STRL("cache-try-independent")
+    );
+    cache_try_independent_context_current_state = &state;
+    ck_assert_int_eq(pthread_mutex_init(&state.lock, NULL), 0);
+    ck_assert_int_eq(pthread_cond_init(&state.cond, NULL), 0);
+    ck_assert_int_eq(pthread_create(
+        &worker,
+        NULL,
+        cache_try_independent_context_thread,
+        &state
+    ), 0);
+
+    talloc_set_destructor(module, cache_try_independent_context_module_dtor);
+    handlebars_cache_add(reset_cache, reset_key, module);
+    error = handlebars_cache_reset_try(reset_cache);
+
+    ck_assert_int_eq(pthread_join(worker, NULL), 0);
+    cache_try_independent_context_current_state = NULL;
+    ck_assert_int_eq(pthread_cond_destroy(&state.cond), 0);
+    ck_assert_int_eq(pthread_mutex_destroy(&state.lock), 0);
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(state.error, HANDLEBARS_SUCCESS);
+    ck_assert(state.completed);
+    ck_assert(!state.timed_out);
+
+    handlebars_cache_dtor(reset_cache);
+    handlebars_cache_dtor(find_cache);
+    handlebars_context_dtor(other_context);
+}
+END_TEST
+#endif
+
+START_TEST(test_simple_cache_try_api)
+{
+    struct handlebars_cache * cache = (void *) 1;
+    struct handlebars_string * key;
+    struct handlebars_module * module;
+    struct handlebars_module * duplicate;
+    struct handlebars_module * found = (void *) 1;
+    struct handlebars_cache_stat stat = { .name = "unchanged" };
+    enum handlebars_error_type error;
+    int removed = -1;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("A cache try API escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_cache_simple_ctor_try(context, &cache);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(cache);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    key = handlebars_string_ctor(context, HBS_STRL("simple-try"));
+    module = serialize_template("simple try");
+    duplicate = serialize_template("duplicate");
+
+    error = handlebars_cache_add_try(cache, key, module);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    error = handlebars_cache_find_try(cache, key, &found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_eq(found, module);
+
+    error = handlebars_cache_release_try(cache, key, found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    error = handlebars_cache_stat_try(cache, &stat);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_str_eq(stat.name, "simple");
+    ck_assert_uint_eq(stat.current_entries, 1);
+
+    error = handlebars_cache_add_try(cache, key, duplicate);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Duplicate cache key"));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    found = (void *) 1;
+    error = handlebars_cache_find_try(cache, key, &found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_eq(found, module);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+
+    cache->max_age = 0;
+    error = handlebars_cache_gc_try(cache, &removed);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(removed, 1);
+
+    found = (void *) 1;
+    error = handlebars_cache_find_try(cache, key, &found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(found);
+
+    error = handlebars_cache_reset_try(cache);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    context->e->jmp = previous;
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
+#ifdef HANDLEBARS_HAVE_LMDB
+START_TEST(test_lmdb_cache_try_constructor_reports_errors)
+{
+    struct handlebars_cache * cache = (void *) 1;
+    enum handlebars_error_type error;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("LMDB cache try constructor escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_cache_lmdb_ctor_try(
+        context,
+        "./handlebars-lmdb-cache-missing/cache.mdb",
+        &cache
+    );
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_null(cache);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(handlebars_error_msg(context));
+
+    context->e->jmp = previous;
+}
+END_TEST
+#endif
+
+#ifdef HANDLEBARS_HAVE_PTHREAD
+START_TEST(test_mmap_cache_try_constructor_reports_errors)
+{
+    struct handlebars_cache * cache = (void *) 1;
+    enum handlebars_error_type error;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("MMAP cache try constructor escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_cache_mmap_ctor_try(context, 4096, 0, &cache);
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_null(cache);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Invalid number"));
+
+    context->e->jmp = previous;
+}
+END_TEST
+
+#ifdef HANDLEBARS_TESTING_EXPORTS
+static int cache_try_mprotect_fail_reads;
+static int cache_try_mprotect_read_calls;
+
+static int cache_try_mprotect_injected(
+    void * address,
+    size_t length,
+    int protection
+)
+{
+    if( !(protection & PROT_WRITE) ) {
+        cache_try_mprotect_read_calls++;
+        if( cache_try_mprotect_fail_reads > 0 ) {
+            cache_try_mprotect_fail_reads--;
+            errno = EACCES;
+            return -1;
+        }
+    }
+    return mprotect(address, length, protection);
+}
+
+START_TEST(test_mmap_cache_try_reprotect_failure_recovers_or_poison)
+{
+    struct handlebars_cache * cache = NULL;
+    struct handlebars_string * key;
+    struct handlebars_module * module;
+    struct handlebars_module * found = NULL;
+    struct handlebars_cache_stat stat = { .name = "unchanged" };
+    int (*original_mprotect)(void *, size_t, int) = handlebars_cache_mmap_mprotect;
+    enum handlebars_error_type error;
+    int read_calls_before;
+
+    error = handlebars_cache_mmap_ctor_try(context, 2097152, 2053, &cache);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(cache);
+    key = handlebars_string_ctor(context, HBS_STRL("cache-try-mprotect"));
+    module = serialize_template("cache try mprotect");
+
+    handlebars_cache_mmap_mprotect = &cache_try_mprotect_injected;
+
+    /* A transient failure is recovered internally: read-only protection is
+     * restored and the completed add is reported as successful. */
+    cache_try_mprotect_fail_reads = 1;
+    read_calls_before = cache_try_mprotect_read_calls;
+    error = handlebars_cache_add_try(cache, key, module);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(cache_try_mprotect_read_calls - read_calls_before, 2);
+
+    error = handlebars_cache_find_try(cache, key, &found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(found);
+    error = handlebars_cache_release_try(cache, key, found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    /* If both the original transition and recovery fail, later operations
+     * reject the poisoned cache instead of publishing writable mmap data. */
+    cache_try_mprotect_fail_reads = 2;
+    read_calls_before = cache_try_mprotect_read_calls;
+    error = handlebars_cache_reset_try(cache);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_int_eq(cache_try_mprotect_read_calls - read_calls_before, 2);
+
+    cache_try_mprotect_fail_reads = 0;
+    error = handlebars_cache_stat_try(cache, &stat);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_str_eq(stat.name, "unchanged");
+
+    handlebars_cache_mmap_mprotect = original_mprotect;
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+#endif
+#endif
 
 #ifdef HANDLEBARS_HAVE_LMDB
 static void reset_lmdb_test_files(void)
@@ -384,6 +854,113 @@ START_TEST(test_simple_cache_duplicate_preserves_module_ownership)
 END_TEST
 
 #ifdef HANDLEBARS_MEMORY
+START_TEST(test_simple_cache_try_handles_allocation_failures)
+{
+    struct handlebars_cache * cache = NULL;
+    struct handlebars_cache_try_guard guard;
+    struct handlebars_string * key;
+    struct handlebars_module * module;
+    struct handlebars_locinfo loc;
+    void * module_parent;
+    enum handlebars_error_type error;
+    int removed = 99;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+
+    if( setjmp(outer) != 0 ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = previous;
+        ck_abort_msg("A cache try API escaped an allocation failure");
+    }
+    context->e->jmp = &outer;
+
+    context->e->num = HANDLEBARS_ERROR;
+    context->e->msg = handlebars_talloc_strdup(context->e, "stale guard error");
+    context->e->loc.first_line = 7;
+    context->e->loc.first_column = 8;
+    context->e->loc.last_line = 9;
+    context->e->loc.last_column = 10;
+
+    /* The first allocation creates the persistent per-error try guard. */
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(1);
+    error = handlebars_cache_simple_ctor_try(context, &cache);
+    handlebars_memory_fail_disable();
+
+    ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+    ck_assert_ptr_null(cache);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+    ck_assert_ptr_nonnull(handlebars_error_msg(context));
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Out of memory"));
+    loc = handlebars_error_loc(context);
+    ck_assert_int_eq(loc.first_line, 0);
+    ck_assert_int_eq(loc.first_column, 0);
+    ck_assert_int_eq(loc.last_line, 0);
+    ck_assert_int_eq(loc.last_column, 0);
+
+    /* Prewarm the persistent guard so the next failure reaches the actual
+     * constructor allocation rather than guard setup. */
+    error = handlebars_cache_try_guard_begin(context->e, &guard);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    error = handlebars_cache_try_guard_end(&guard);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(1);
+    error = handlebars_cache_simple_ctor_try(context, &cache);
+    handlebars_memory_fail_disable();
+
+    ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+    ck_assert_ptr_null(cache);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    error = handlebars_cache_simple_ctor_try(context, &cache);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(cache);
+
+    key = handlebars_string_ctor(context, HBS_STRL("simple-try-nomem"));
+    module = serialize_template("simple try nomem");
+    module_parent = talloc_parent(module);
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(1);
+    error = handlebars_cache_add_try(cache, key, module);
+    handlebars_memory_fail_disable();
+
+    ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+    ck_assert_ptr_eq(talloc_parent(module), module_parent);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    error = handlebars_cache_add_try(cache, key, module);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    cache->max_age = 0;
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(1);
+    error = handlebars_cache_gc_try(cache, &removed);
+    handlebars_memory_fail_disable();
+
+    ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+    ck_assert_int_eq(removed, 99);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(1);
+    error = handlebars_cache_reset_try(cache);
+    handlebars_memory_fail_disable();
+
+    ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    context->e->jmp = previous;
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
 START_TEST(test_simple_cache_add_nomem_preserves_module_ownership)
 {
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
@@ -678,6 +1255,61 @@ START_TEST(test_simple_cache_reset_releases_entries)
 END_TEST
 
 #ifdef HANDLEBARS_HAVE_LMDB
+START_TEST(test_lmdb_cache_try_api)
+{
+    struct handlebars_cache * cache = (void *) 1;
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("lmdb-try")
+    );
+    struct handlebars_module * module = serialize_template("lmdb try");
+    struct handlebars_module * found = (void *) 1;
+    struct handlebars_cache_stat stat = { .name = "unchanged" };
+    enum handlebars_error_type error;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+
+    reset_lmdb_test_files();
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("An LMDB cache try API escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_cache_lmdb_ctor_try(context, lmdb_db_file, &cache);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(cache);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    error = handlebars_cache_add_try(cache, key, module);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    error = handlebars_cache_find_try(cache, key, &found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(found);
+
+    error = handlebars_cache_release_try(cache, key, found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    error = handlebars_cache_stat_try(cache, &stat);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_str_eq(stat.name, "lmdb");
+    ck_assert_uint_eq(stat.current_entries, 1);
+
+    error = handlebars_cache_reset_try(cache);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    found = (void *) 1;
+    error = handlebars_cache_find_try(cache, key, &found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(found);
+
+    context->e->jmp = previous;
+    handlebars_cache_dtor(cache);
+    reset_lmdb_test_files();
+}
+END_TEST
+
 START_TEST(test_lmdb_cache_gc)
 {
     struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
@@ -1691,12 +2323,18 @@ static Suite * suite(void)
     Suite * s = suite_create(title);
 
     REGISTER_TEST_FIXTURE(s, test_cache_gc_entries, "Garbage Collection");
+#ifdef HANDLEBARS_HAVE_PTHREAD
+    REGISTER_TEST_FIXTURE(s, test_cache_try_concurrent_calls_restore_jump_target, "Cache try API concurrent jump target restoration");
+    REGISTER_TEST_FIXTURE(s, test_cache_try_independent_contexts_progress_during_reset_destructor, "Independent cache try contexts progress during reset destructor");
+#endif
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_try_api, "Simple cache try API");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_owns_key, "Simple cache owns key");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_refuses_entry_over_capacity, "Simple cache refuses entries over capacity");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_does_not_evict_executing_module, "Simple cache keeps executing modules alive");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_rejects_oversized_module_without_taking_ownership, "Simple cache rejects oversized modules");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_duplicate_preserves_module_ownership, "Simple cache duplicate preserves ownership");
 #ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_try_handles_allocation_failures, "Simple cache try API handles allocation failures");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_add_nomem_preserves_module_ownership, "Simple cache add preserves ownership after allocation failure");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_gc_nomem_keeps_cache_consistent, "Simple cache GC remains consistent after allocation failure");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset_nomem_preserves_entries, "Simple cache reset preserves entries after allocation failure");
@@ -1705,6 +2343,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset, "Simple Cache (Reset)");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset_releases_entries, "Simple cache reset releases entries");
 #ifdef HANDLEBARS_HAVE_LMDB
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_try_constructor_reports_errors, "LMDB cache try constructor errors");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_try_api, "LMDB cache try API");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset_removes_entries, "LMDB reset removes entries");
@@ -1720,6 +2360,10 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_round_trips_inline_partial_module, "LMDB round-trips inline-partial modules");
 #endif
 #ifdef HANDLEBARS_HAVE_PTHREAD
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache_try_constructor_reports_errors, "MMAP cache try constructor errors");
+#ifdef HANDLEBARS_TESTING_EXPORTS
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache_try_reprotect_failure_recovers_or_poison, "MMAP cache try reprotection failures");
+#endif
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_concurrent_reset_and_find, "MMAP concurrent reset and find");

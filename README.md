@@ -101,11 +101,11 @@ the process.
 
 ### C API error handling
 
-The core construction, parse, compile, serialize, render, and optional JSON/YAML
-conversion operations have additive `_try` entrypoints for applications that do
-not want library errors to `longjmp` into consumer code. These functions return
-an `enum handlebars_error_type` and leave the error message and location on the
-associated context:
+The core construction, parse, compile, serialize, render, cache, and optional
+JSON/YAML conversion operations have additive `_try` entrypoints for
+applications that do not want library errors to `longjmp` into consumer code.
+These functions return an `enum handlebars_error_type` and leave the error
+message and location on the associated context:
 
 ```c
 struct handlebars_string * output = NULL;
@@ -123,7 +123,9 @@ if (error != HANDLEBARS_SUCCESS) {
 
 Pointer-producing `_try` functions set their output pointer to `NULL` on
 failure. JSON and YAML conversion `_try` functions replace the supplied value
-only on success, preserving its previous contents on failure.
+only on success, preserving its previous contents on failure. Cache lookup
+reports a miss as success with a `NULL` module; cache statistics and garbage
+collection publish their output values only on success.
 
 Each `_try` call clears stale error state before it begins and restores any
 previous internal jump target before returning. Existing entrypoints retain

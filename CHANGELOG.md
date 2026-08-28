@@ -12,6 +12,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   internal `longjmp` handling to escape the call.
 - Optional JSON and YAML conversions now have transactional `_try` entry points
   that preserve the destination value on failure.
+- Cache constructors and operations now have `_try` entry points that report
+  errors without allowing library `longjmp` handling to escape the call.
 
 ### Changed
 - Value iterators now retain their backing storage, support nested map
@@ -28,6 +30,7 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 - Block parameters preserve lexical precedence through nested helpers and
   partial blocks.
 - Subexpressions reject truthy context values that are not callable.
+- LMDB cache statistics report the correct backend name.
 
 ## [1.0.0]
 

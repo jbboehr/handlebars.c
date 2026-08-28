@@ -48,6 +48,13 @@ HBS_LOCAL HBS_ATTR_NORETURN void handlebars_longjmp(
     int num
 ) HBS_ATTR_NONNULL_ALL;
 
+HBS_LOCAL void handlebars_error_set(
+    struct handlebars_context * context,
+    enum handlebars_error_type num,
+    const char * msg,
+    ...
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_PRINTF(3, 4);
+
 #define likely handlebars_likely
 #define unlikely handlebars_unlikely
 

@@ -346,7 +346,7 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
     err = mdb_stat(txn, dbi, &stat);
     if( unlikely(err != 0) ) goto error;
 
-    intern->stat.name = "mmap";
+    intern->stat.name = "lmdb";
     intern->stat.current_entries = stat.ms_entries;
 
 error:
@@ -393,12 +393,20 @@ static const struct handlebars_cache_handlers hbs_cache_handlers_lmdb = {
     &cache_reset
 };
 
-struct handlebars_cache * handlebars_cache_lmdb_ctor(
+struct handlebars_cache_lmdb_ctor_state {
+    struct handlebars_cache * cache;
+};
+
+static void handlebars_cache_lmdb_ctor_init(
     struct handlebars_context * context,
-    const char * path
+    const char * path,
+    struct handlebars_cache_lmdb_ctor_state * state
 ) {
+    int err;
     struct handlebars_cache * cache = handlebars_talloc_zero_size(context, sizeof(struct handlebars_cache) + sizeof(struct handlebars_cache_lmdb));
+
     HANDLEBARS_MEMCHECK(cache, context);
+    state->cache = cache;
     talloc_set_type(cache, struct handlebars_cache);
     handlebars_context_bind(context, HBSCTX(cache));
 
@@ -408,11 +416,74 @@ struct handlebars_cache * handlebars_cache_lmdb_ctor(
     struct handlebars_cache_lmdb * intern = (void *) ((char *) cache + sizeof(struct handlebars_cache));
     cache->internal = intern;
 
-    mdb_env_create(&intern->env);
+    err = mdb_env_create(&intern->env);
+    HANDLE_RC(err);
     talloc_set_destructor(cache, cache_dtor);
 
-    int err = mdb_env_open(intern->env, path, MDB_WRITEMAP | MDB_MAPASYNC | MDB_NOSUBDIR, 0644);
+    err = mdb_env_open(intern->env, path, MDB_WRITEMAP | MDB_MAPASYNC | MDB_NOSUBDIR, 0644);
     HANDLE_RC(err);
+}
 
-    return cache;
+struct handlebars_cache * handlebars_cache_lmdb_ctor(
+    struct handlebars_context * context,
+    const char * path
+) {
+    struct handlebars_cache_lmdb_ctor_state state = {0};
+
+    handlebars_cache_lmdb_ctor_init(context, path, &state);
+    return state.cache;
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_cache_lmdb_ctor_try_guarded(
+    struct handlebars_context * context,
+    const char * path,
+    struct handlebars_cache_lmdb_ctor_state * state
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+        if( state->cache != NULL ) {
+            handlebars_cache_dtor(state->cache);
+            state->cache = NULL;
+        }
+    } else {
+        handlebars_cache_lmdb_ctor_init(context, path, state);
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_cache_lmdb_ctor_try(
+    struct handlebars_context * context,
+    const char * path,
+    struct handlebars_cache ** result
+) {
+    struct handlebars_cache_lmdb_ctor_state state = {0};
+    struct handlebars_cache_try_guard guard;
+    enum handlebars_error_type error;
+    enum handlebars_error_type guard_error;
+
+    *result = NULL;
+    error = handlebars_cache_try_guard_begin(context->e, &guard);
+    if( error != HANDLEBARS_SUCCESS ) {
+        return error;
+    }
+    handlebars_error_clear(context);
+    error = handlebars_cache_lmdb_ctor_try_guarded(context, path, &state);
+    guard_error = handlebars_cache_try_guard_end(&guard);
+    if( error == HANDLEBARS_SUCCESS ) {
+        error = guard_error;
+    }
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.cache;
+    } else if( state.cache != NULL ) {
+        handlebars_cache_dtor(state.cache);
+    }
+    return error;
 }

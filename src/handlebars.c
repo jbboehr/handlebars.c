@@ -209,6 +209,19 @@ static void _set_err(struct handlebars_context * context, enum handlebars_error_
     }
 }
 
+void handlebars_error_set(
+    struct handlebars_context * context,
+    enum handlebars_error_type num,
+    const char * msg,
+    ...
+) {
+    va_list ap;
+
+    va_start(ap, msg);
+    _set_err(context, num, NULL, msg, ap);
+    va_end(ap);
+}
+
 void handlebars_longjmp(struct handlebars_context * context, jmp_buf * target, int num)
 {
     handlebars_value_iterator_unwind(context->e, target);

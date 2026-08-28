@@ -104,6 +104,8 @@ struct handlebars_cache_mmap {
 
     bool in_reset;
 
+    bool protection_failed;
+
 #ifdef USE_SPINLOCK
     pthread_spinlock_t write_lock;
 #else
@@ -140,15 +142,60 @@ static inline void * append(struct handlebars_cache_mmap * intern, void * source
     return addr;
 }
 
-static inline void protect(struct handlebars_cache * cache, bool on)
+#ifdef HANDLEBARS_TESTING_EXPORTS
+HBS_TEST_PUBLIC int (*handlebars_cache_mmap_mprotect)(
+    void * address,
+    size_t length,
+    int protection
+) = &mprotect;
+#else
+#define handlebars_cache_mmap_mprotect mprotect
+#endif
+
+static inline int protect(struct handlebars_cache * cache, bool on)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     int prot = on ? PROT_READ : PROT_READ | PROT_WRITE;
-    int rc = mprotect(intern->table, intern->table_size + intern->data_size, prot);
+    int rc = handlebars_cache_mmap_mprotect(
+        intern->table,
+        intern->table_size + intern->data_size,
+        prot
+    );
+
     if( unlikely(rc != 0) ) {
-        int error = errno;
-        handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "mprotect error: %s (%d)", strerror(error), error);
+        return errno;
     }
+    return 0;
+}
+
+static inline int protect_read(struct handlebars_cache * cache)
+{
+    struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    int error = protect(cache, true);
+
+    /* A failed transition back to read-only protection leaves the mapping
+     * writable. Retry once so a transient failure cannot silently weaken the
+     * cache. If protection still cannot be restored, poison the cache so no
+     * later operation publishes data from the writable mapping. */
+    if( unlikely(error != 0) ) {
+        if( protect(cache, true) == 0 ) {
+            return 0;
+        }
+        intern->protection_failed = true;
+    }
+    return error;
+}
+
+HBS_ATTR_NORETURN
+static void protect_throw(struct handlebars_cache * cache, int error)
+{
+    handlebars_throw(
+        HBSCTX(cache),
+        HANDLEBARS_ERROR,
+        "mprotect error: %s (%d)",
+        strerror(error),
+        error
+    );
 }
 
 static inline void lock(struct handlebars_cache * cache)
@@ -180,6 +227,20 @@ static inline void unlock(struct handlebars_cache * cache)
 #endif
     if( unlikely(rc != 0) ) {
         handlebars_throw(HBSCTX(cache), HANDLEBARS_ERROR, "pthread unlock error: %s (%d)", strerror(rc), rc);
+    }
+}
+
+static inline void require_protected(struct handlebars_cache * cache)
+{
+    struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+
+    if( unlikely(intern->protection_failed) ) {
+        unlock(cache);
+        handlebars_throw(
+            HBSCTX(cache),
+            HANDLEBARS_ERROR,
+            "Shared cache read-only protection could not be restored"
+        );
     }
 }
 
@@ -250,11 +311,13 @@ static int cache_dtor(struct handlebars_cache * cache)
 static void cache_reset(struct handlebars_cache * cache)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    int protect_error;
 
     /* Block new readers before checking the active-reader count. A lookup
      * takes the same lock while publishing its reference, so reset cannot
      * recycle the data segment in between lookup and refcount increment. */
     lock(cache);
+    require_protected(cache);
     if( intern->in_reset ) {
         unlock(cache);
         return;
@@ -286,7 +349,12 @@ static void cache_reset(struct handlebars_cache * cache)
 
     // Unprotect/Lock
     lock(cache);
-    protect(cache, false);
+    protect_error = protect(cache, false);
+    if( unlikely(protect_error != 0) ) {
+        intern->in_reset = false;
+        unlock(cache);
+        protect_throw(cache, protect_error);
+    }
 
     // Initialize header
     intern->table_entries = 0;
@@ -299,13 +367,19 @@ static void cache_reset(struct handlebars_cache * cache)
     memset(intern->table, 0, intern->table_size);
 
     // Protect/Unlock
-    protect(cache, true);
+    protect_error = protect_read(cache);
     intern->in_reset = false;
     unlock(cache);
+    if( unlikely(protect_error != 0) ) {
+        protect_throw(cache, protect_error);
+    }
 }
 
 static int cache_gc(struct handlebars_cache * cache)
 {
+    lock(cache);
+    require_protected(cache);
+    unlock(cache);
     return 0;
 }
 
@@ -315,9 +389,11 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct handlebars_module * module = NULL;
     struct table_entry * entry;
+    int protect_error;
     time_t now;
 
     lock(cache);
+    require_protected(cache);
 
     // Currently resetting
     if( unlikely(intern->in_reset) ) {
@@ -345,12 +421,20 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
     // Check if it's too old or wrong version
     time(&now);
     if( module->version != handlebars_version() || (cache->max_age >= 0 && difftime(now, module->ts) >= cache->max_age) ) {
-        protect(cache, false);
+        protect_error = protect(cache, false);
+        if( unlikely(protect_error != 0) ) {
+            unlock(cache);
+            protect_throw(cache, protect_error);
+        }
         table_unset(intern, key);
         intern->misses++;
         intern->table_entries--;
-        protect(cache, true);
+        protect_error = protect_read(cache);
         module = NULL;
+        if( unlikely(protect_error != 0) ) {
+            unlock(cache);
+            protect_throw(cache, protect_error);
+        }
         goto done;
     }
 
@@ -377,9 +461,11 @@ static void cache_add(
 ) {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct table_entry entry;
+    int protect_error;
 
     // Lock
     lock(cache);
+    require_protected(cache);
 
     // Currently resetting
     if( unlikely(intern->in_reset) ) {
@@ -399,7 +485,11 @@ static void cache_add(
         return;
     }
 
-    protect(cache, false);
+    protect_error = protect(cache, false);
+    if( unlikely(protect_error != 0) ) {
+        unlock(cache);
+        protect_throw(cache, protect_error);
+    }
 
     // Copy key
     entry.key = append(intern, (void *) key, HBS_STR_SIZE(hbs_str_len(key)));
@@ -409,8 +499,11 @@ static void cache_add(
 
     // Check for failure
     if( unlikely(!entry.key || !entry.data) ) {
-        protect(cache, true);
+        protect_error = protect_read(cache);
         unlock(cache);
+        if( unlikely(protect_error != 0) ) {
+            protect_throw(cache, protect_error);
+        }
         cache_reset(cache);
         return;
     }
@@ -420,16 +513,22 @@ static void cache_add(
 
     // Finish;
     if( unlikely(!table_set(intern, &entry)) ) {
-        protect(cache, true);
+        protect_error = protect_read(cache);
         unlock(cache);
+        if( unlikely(protect_error != 0) ) {
+            protect_throw(cache, protect_error);
+        }
         cache_reset(cache);
         return;
     }
     intern->table_entries++;
 
     // Unlock
-    protect(cache, true);
+    protect_error = protect_read(cache);
     unlock(cache);
+    if( unlikely(protect_error != 0) ) {
+        protect_throw(cache, protect_error);
+    }
 }
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
@@ -443,6 +542,7 @@ static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
     struct handlebars_cache_stat stat = {0};
 
     lock(cache);
+    require_protected(cache);
     stat.name = "mmap";
     stat.total_size = intern->size;
     stat.total_table_size = intern->table_size;
@@ -472,13 +572,20 @@ static const struct handlebars_cache_handlers hbs_cache_handlers_mmap = {
     &cache_reset
 };
 
-struct handlebars_cache * handlebars_cache_mmap_ctor(
+struct handlebars_cache_mmap_ctor_state {
+    struct handlebars_cache * cache;
+};
+
+static void handlebars_cache_mmap_ctor_init(
     struct handlebars_context * context,
     size_t size,
-    size_t entries
+    size_t entries,
+    struct handlebars_cache_mmap_ctor_state * state
 ) {
     struct handlebars_cache * cache = MC(handlebars_talloc_zero(context, struct handlebars_cache));
     size_t page_size;
+
+    state->cache = cache;
     handlebars_context_bind(context, HBSCTX(cache));
 
     cache->max_age = -1;
@@ -550,7 +657,80 @@ struct handlebars_cache * handlebars_cache_mmap_ctor(
     }
 
     cache_reset(cache);
-    protect(cache, true);
+    int protect_error = protect_read(cache);
+    if( unlikely(protect_error != 0) ) {
+        protect_throw(cache, protect_error);
+    }
+}
 
-    return cache;
+struct handlebars_cache * handlebars_cache_mmap_ctor(
+    struct handlebars_context * context,
+    size_t size,
+    size_t entries
+) {
+    struct handlebars_cache_mmap_ctor_state state = {0};
+
+    handlebars_cache_mmap_ctor_init(context, size, entries, &state);
+    return state.cache;
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_cache_mmap_ctor_try_guarded(
+    struct handlebars_context * context,
+    size_t size,
+    size_t entries,
+    struct handlebars_cache_mmap_ctor_state * state
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+        if( state->cache != NULL ) {
+            handlebars_cache_dtor(state->cache);
+            state->cache = NULL;
+        }
+    } else {
+        handlebars_cache_mmap_ctor_init(context, size, entries, state);
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_cache_mmap_ctor_try(
+    struct handlebars_context * context,
+    size_t size,
+    size_t entries,
+    struct handlebars_cache ** result
+) {
+    struct handlebars_cache_mmap_ctor_state state = {0};
+    struct handlebars_cache_try_guard guard;
+    enum handlebars_error_type error;
+    enum handlebars_error_type guard_error;
+
+    *result = NULL;
+    error = handlebars_cache_try_guard_begin(context->e, &guard);
+    if( error != HANDLEBARS_SUCCESS ) {
+        return error;
+    }
+    handlebars_error_clear(context);
+    error = handlebars_cache_mmap_ctor_try_guarded(
+        context,
+        size,
+        entries,
+        &state
+    );
+    guard_error = handlebars_cache_try_guard_end(&guard);
+    if( error == HANDLEBARS_SUCCESS ) {
+        error = guard_error;
+    }
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.cache;
+    } else if( state.cache != NULL ) {
+        handlebars_cache_dtor(state.cache);
+    }
+    return error;
 }
