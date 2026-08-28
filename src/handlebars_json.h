@@ -40,6 +40,20 @@ void handlebars_value_init_json_object(
 ) HBS_ATTR_NONNULL(1, 2);
 
 /**
+ * @brief Initialize a value from a JSON object without allowing an internal
+ *        `longjmp` to escape
+ * @param[in] ctx The handlebars context
+ * @param[in,out] value The value to replace on success and preserve on failure
+ * @param[in] json The JSON object
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_init_json_object_try(
+    struct handlebars_context * ctx,
+    struct handlebars_value * value,
+    struct json_object * json
+) HBS_ATTR_NONNULL(1, 2) HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
  * @brief Initialize a value from a JSON string
  * @param[in] ctx The handlebars context
  * @param[in] value The value to initialize
@@ -50,6 +64,20 @@ void handlebars_value_init_json_string(
     struct handlebars_value * value,
     const char * json
 ) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Initialize a value from a JSON string without allowing an internal
+ *        `longjmp` to escape
+ * @param[in] ctx The handlebars context
+ * @param[in,out] value The value to replace on success and preserve on failure
+ * @param[in] json The JSON string
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_init_json_string_try(
+    struct handlebars_context * ctx,
+    struct handlebars_value * value,
+    const char * json
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Initialize a value from a JSON string
@@ -64,6 +92,22 @@ void handlebars_value_init_json_stringl(
     const char * json,
     size_t length
 ) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Initialize a value from a length-delimited JSON string without
+ *        allowing an internal `longjmp` to escape
+ * @param[in] ctx The handlebars context
+ * @param[in,out] value The value to replace on success and preserve on failure
+ * @param[in] json The JSON string
+ * @param[in] length The JSON string length
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_init_json_stringl_try(
+    struct handlebars_context * ctx,
+    struct handlebars_value * value,
+    const char * json,
+    size_t length
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 HBS_EXTERN_C_END
 

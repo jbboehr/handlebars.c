@@ -21,7 +21,9 @@
 
 #include <check.h>
 #include <json.h>
+#include <limits.h>
 #include <stdio.h>
+#include <string.h>
 #include <talloc.h>
 
 #include "handlebars.h"
@@ -553,6 +555,315 @@ START_TEST(test_parse_error_json)
 }
 END_TEST
 
+START_TEST(test_json_try_returns_errors_without_longjmp)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct json_object * object;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+    enum handlebars_error_type error;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("A JSON try conversion escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+    handlebars_value_integer(value, 42);
+
+    error = handlebars_value_init_json_string_try(context, value, "{\"key\":1");
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 42);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "JSON Parse error"));
+
+    error = handlebars_value_init_json_stringl_try(
+        context,
+        value,
+        "0",
+        (size_t) INT_MAX + 1
+    );
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 42);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "length exceeds parser limit"));
+
+    error = handlebars_value_init_json_stringl_try(
+        context,
+        value,
+        HBS_STRL("[1,2]")
+    );
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_ARRAY);
+    ck_assert_int_eq(handlebars_value_count(value), 2);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    object = json_object_new_int64(7);
+    ck_assert_ptr_nonnull(object);
+    error = handlebars_value_init_json_object_try(context, value, object);
+    json_object_put(object);
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 7);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    context->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_json_try_reuse_and_object_lifetime)
+{
+    static const char * malformed[] = {
+        "{",
+        "[1,",
+        "{\"key\":}"
+    };
+    HANDLEBARS_VALUE_DECL(found);
+    HANDLEBARS_VALUE_DECL(value);
+    struct json_object * object;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+    enum handlebars_error_type error;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("A reused JSON try conversion escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_value_init_json_string_try(
+        context,
+        value,
+        "{\"keep\":\"alive\"}"
+    );
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    for( size_t i = 0; i < sizeof(malformed) / sizeof(malformed[0]); i++ ) {
+        error = handlebars_value_init_json_string_try(
+            context,
+            value,
+            malformed[i]
+        );
+
+        ck_assert_int_eq(error, HANDLEBARS_ERROR);
+        ck_assert_ptr_eq(context->e->jmp, &outer);
+        ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "JSON Parse error"));
+        ck_assert_ptr_nonnull(
+            handlebars_value_map_str_find(value, HBS_STRL("keep"), found)
+        );
+        ck_assert_str_eq(handlebars_value_get_strval(found), "alive");
+    }
+
+    object = json_object_new_object();
+    ck_assert_ptr_nonnull(object);
+    ck_assert_int_eq(
+        json_object_object_add(
+            object,
+            "owned",
+            json_object_new_string("after caller release")
+        ),
+        0
+    );
+
+    error = handlebars_value_init_json_object_try(context, value, object);
+    json_object_put(object);
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_nonnull(
+        handlebars_value_map_str_find(value, HBS_STRL("owned"), found)
+    );
+    ck_assert_str_eq(
+        handlebars_value_get_strval(found),
+        "after caller release"
+    );
+
+    error = handlebars_value_init_json_object_try(context, value, NULL);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_NULL);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    context->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(found);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_json_try_handles_deep_and_cyclic_inputs)
+{
+    const size_t depth = 64;
+    char deep[64 * 2 + 1];
+    HANDLEBARS_VALUE_DECL(value);
+    struct json_object * child;
+    struct json_object * root_json;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+    enum handlebars_error_type error;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("An adversarial JSON try conversion escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+    handlebars_value_integer(value, 42);
+
+    memset(deep, '[', depth);
+    memset(deep + depth, ']', depth);
+    deep[sizeof(deep) - 1] = '\0';
+    error = handlebars_value_init_json_stringl_try(
+        context,
+        value,
+        deep,
+        sizeof(deep) - 1
+    );
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 42);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    root_json = json_object_new_object();
+    child = json_object_new_object();
+    ck_assert_ptr_nonnull(root_json);
+    ck_assert_ptr_nonnull(child);
+    ck_assert_int_eq(json_object_object_add(root_json, "child", child), 0);
+    json_object_get(root_json);
+    ck_assert_int_eq(json_object_object_add(child, "parent", root_json), 0);
+
+    error = handlebars_value_init_json_object_try(context, value, root_json);
+    json_object_put(root_json);
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_MAP);
+    ck_assert_int_eq(handlebars_value_count(value), 1);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    json_object_object_del(child, "parent");
+    context->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+#if defined(HANDLEBARS_MEMORY) && !defined(HANDLEBARS_NO_REFCOUNT)
+static void mark_json_object_deleted(
+    struct json_object * object,
+    void * userdata
+)
+{
+    (void) object;
+    *(bool *) userdata = true;
+}
+#endif
+
+#ifdef HANDLEBARS_MEMORY
+START_TEST(test_json_try_handles_allocation_failures)
+{
+    struct json_object * object = json_object_new_object();
+    bool object_succeeded = false;
+    bool string_succeeded = false;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    bool object_deleted = false;
+#endif
+
+    ck_assert_ptr_nonnull(object);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    json_object_set_userdata(
+        object,
+        &object_deleted,
+        mark_json_object_deleted
+    );
+#endif
+    ck_assert_int_eq(
+        json_object_object_add(object, "key", json_object_new_string("value")),
+        0
+    );
+
+    for( int fail_at = 1; fail_at <= 64; fail_at++ ) {
+        HANDLEBARS_VALUE_DECL(value);
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        handlebars_value_integer(value, 42);
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        error = handlebars_value_init_json_object_try(context, value, object);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_MAP);
+            object_succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+            ck_assert_int_eq(handlebars_value_get_intval(value), 42);
+        }
+        handlebars_error_clear(context);
+        HANDLEBARS_VALUE_UNDECL(value);
+#ifndef HANDLEBARS_NO_REFCOUNT
+        ck_assert_uint_eq(talloc_total_blocks(context), blocks_before);
+#endif
+        if( object_succeeded ) {
+            break;
+        }
+    }
+
+    for( int fail_at = 1; fail_at <= 64; fail_at++ ) {
+        HANDLEBARS_VALUE_DECL(value);
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        handlebars_value_integer(value, 42);
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        error = handlebars_value_init_json_stringl_try(
+            context,
+            value,
+            HBS_STRL("{\"key\":\"value\"}")
+        );
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_MAP);
+            string_succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+            ck_assert_int_eq(handlebars_value_get_intval(value), 42);
+        }
+        handlebars_error_clear(context);
+        HANDLEBARS_VALUE_UNDECL(value);
+#ifndef HANDLEBARS_NO_REFCOUNT
+        ck_assert_uint_eq(talloc_total_blocks(context), blocks_before);
+#endif
+        if( string_succeeded ) {
+            break;
+        }
+    }
+
+    json_object_put(object);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ck_assert(object_deleted);
+#endif
+    ck_assert(object_succeeded);
+    ck_assert(string_succeeded);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -580,6 +891,12 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_convert_json_rejects_cycle, "Convert rejects cyclic JSON graphs");
     REGISTER_TEST_FIXTURE(s, test_convert_json_rejects_excessive_depth, "Convert rejects excessively deep JSON graphs");
     REGISTER_TEST_FIXTURE(s, test_parse_error_json, "JSON Parse Error");
+    REGISTER_TEST_FIXTURE(s, test_json_try_returns_errors_without_longjmp, "JSON try conversion returns errors without longjmp");
+    REGISTER_TEST_FIXTURE(s, test_json_try_reuse_and_object_lifetime, "JSON try conversion preserves values across reuse and owns object inputs");
+    REGISTER_TEST_FIXTURE(s, test_json_try_handles_deep_and_cyclic_inputs, "JSON try conversion handles deep and cyclic inputs");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_json_try_handles_allocation_failures, "JSON try conversion handles allocation failures");
+#endif
 
     return s;
 }

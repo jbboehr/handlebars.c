@@ -22,6 +22,7 @@
 #include <setjmp.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "handlebars.h"
 #include "handlebars_compiler.h"
@@ -133,6 +134,8 @@ int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
 {
     struct handlebars_context * context;
     struct handlebars_string * expression;
+    enum handlebars_error_type error;
+    int volatile in_try_conversion = 0;
     size_t remaining;
     char * dump;
     jmp_buf buf;
@@ -147,12 +150,34 @@ int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
     }
 
     if( handlebars_setjmp_ex(context, &buf) ) {
+        if( in_try_conversion ) {
+            abort();
+        }
         handlebars_context_dtor(context);
         return 0;
     }
 
     {
+        HANDLEBARS_VALUE_DECL(try_value);
         HANDLEBARS_VALUE_DECL(value);
+
+        handlebars_value_integer(try_value, 42);
+        in_try_conversion = 1;
+        error = handlebars_value_init_json_stringl_try(
+            context,
+            try_value,
+            (const char *) data,
+            size
+        );
+        in_try_conversion = 0;
+        if( error == HANDLEBARS_SUCCESS ) {
+            handlebars_fuzz_touch_value(try_value);
+        } else if( handlebars_value_get_type(try_value)
+                    != HANDLEBARS_VALUE_TYPE_INTEGER
+                || handlebars_value_get_intval(try_value) != 42 ) {
+            abort();
+        }
+        HANDLEBARS_VALUE_UNDECL(try_value);
 
         handlebars_value_init_json_stringl(context, value, (const char *) data, size);
 

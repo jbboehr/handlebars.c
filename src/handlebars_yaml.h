@@ -41,6 +41,22 @@ void handlebars_value_init_yaml_node(
 ) HBS_ATTR_NONNULL_ALL;
 
 /**
+ * @brief Initialize a value from a YAML node without allowing an internal
+ *        `longjmp` to escape
+ * @param[in] ctx The handlebars context
+ * @param[in,out] value The value to replace on success and preserve on failure
+ * @param[in] document The YAML document containing node
+ * @param[in] node The YAML node to convert
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_init_yaml_node_try(
+    struct handlebars_context * ctx,
+    struct handlebars_value * value,
+    struct yaml_document_s * document,
+    struct yaml_node_s * node
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
  * @brief Initialize a value from a YAML string
  * @param[in] ctx
  * @param[in] value
@@ -52,6 +68,20 @@ void handlebars_value_init_yaml_string(
     struct handlebars_value * value,
     const char * yaml
 ) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Initialize a value from a YAML string without allowing an internal
+ *        `longjmp` to escape
+ * @param[in] ctx The handlebars context
+ * @param[in,out] value The value to replace on success and preserve on failure
+ * @param[in] yaml The YAML string
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_init_yaml_string_try(
+    struct handlebars_context * ctx,
+    struct handlebars_value * value,
+    const char * yaml
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Initialize a value from a length-delimited YAML string
@@ -67,6 +97,22 @@ void handlebars_value_init_yaml_stringl(
     const char * yaml,
     size_t length
 ) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Initialize a value from a length-delimited YAML string without
+ *        allowing an internal `longjmp` to escape
+ * @param[in] ctx The handlebars context
+ * @param[in,out] value The value to replace on success and preserve on failure
+ * @param[in] yaml The YAML string
+ * @param[in] length The YAML string length
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_init_yaml_stringl_try(
+    struct handlebars_context * ctx,
+    struct handlebars_value * value,
+    const char * yaml,
+    size_t length
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 HBS_EXTERN_C_END
 

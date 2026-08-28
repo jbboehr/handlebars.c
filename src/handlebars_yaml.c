@@ -30,6 +30,7 @@
 #include "handlebars_map.h"
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
+#include "handlebars_value_private.h"
 #include "handlebars_value.h"
 #include "handlebars_yaml.h"
 
@@ -65,6 +66,20 @@ struct handlebars_yaml_convert_state {
     unsigned char * active;
     size_t node_count;
     size_t visited;
+};
+
+enum handlebars_yaml_try_operation {
+    handlebars_yaml_try_node,
+    handlebars_yaml_try_string
+};
+
+struct handlebars_yaml_try_state {
+    struct handlebars_value value;
+    enum handlebars_yaml_try_operation operation;
+    yaml_document_t * document;
+    yaml_node_t * node;
+    const char * yaml;
+    size_t length;
 };
 
 static int _yaml_ctx_dtor(struct _yaml_ctx * holder)
@@ -489,4 +504,107 @@ void handlebars_value_init_yaml_string(
 )
 {
     handlebars_value_init_yaml_stringl(context, value, yaml, strlen(yaml));
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_yaml_try_guarded(
+    struct handlebars_context * context,
+    struct handlebars_yaml_try_state * state
+)
+{
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+    } else {
+        switch( state->operation ) {
+            case handlebars_yaml_try_node:
+                handlebars_value_init_yaml_node(
+                    context,
+                    &state->value,
+                    state->document,
+                    state->node
+                );
+                break;
+            case handlebars_yaml_try_string:
+                handlebars_value_init_yaml_stringl(
+                    context,
+                    &state->value,
+                    state->yaml,
+                    state->length
+                );
+                break;
+            default: abort(); // LCOV_EXCL_LINE
+        }
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+static enum handlebars_error_type handlebars_yaml_try(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    struct handlebars_yaml_try_state * state
+)
+{
+    enum handlebars_error_type error;
+
+    handlebars_value_init(&state->value);
+    handlebars_error_clear(context);
+    error = handlebars_yaml_try_guarded(context, state);
+    if( error == HANDLEBARS_SUCCESS ) {
+        handlebars_value_value(value, &state->value);
+    }
+    handlebars_value_dtor(&state->value);
+    return error;
+}
+
+enum handlebars_error_type handlebars_value_init_yaml_node_try(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    struct yaml_document_s * document,
+    struct yaml_node_s * node
+)
+{
+    struct handlebars_yaml_try_state state = {
+        .operation = handlebars_yaml_try_node,
+        .document = document,
+        .node = node
+    };
+
+    return handlebars_yaml_try(context, value, &state);
+}
+
+enum handlebars_error_type handlebars_value_init_yaml_stringl_try(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    const char * yaml,
+    size_t length
+)
+{
+    struct handlebars_yaml_try_state state = {
+        .operation = handlebars_yaml_try_string,
+        .yaml = yaml,
+        .length = length
+    };
+
+    return handlebars_yaml_try(context, value, &state);
+}
+
+enum handlebars_error_type handlebars_value_init_yaml_string_try(
+    struct handlebars_context * context,
+    struct handlebars_value * value,
+    const char * yaml
+)
+{
+    return handlebars_value_init_yaml_stringl_try(
+        context,
+        value,
+        yaml,
+        strlen(yaml)
+    );
 }

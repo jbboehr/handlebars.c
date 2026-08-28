@@ -10,6 +10,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 - Core construction, parsing, compilation, serialization, and rendering now
   have `_try` entry points that return errors without allowing the library's
   internal `longjmp` handling to escape the call.
+- Optional JSON and YAML conversions now have transactional `_try` entry points
+  that preserve the destination value on failure.
 
 ### Changed
 - Value iterators now retain their backing storage, support nested map
