@@ -188,16 +188,79 @@ static size_t handlebars_compiler_capacity_add(
 
 
 
-struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * context)
-{
+struct handlebars_compiler_ctor_state {
     struct handlebars_compiler * compiler;
-    compiler = handlebars_talloc_zero(context, struct handlebars_compiler);
+};
+
+struct handlebars_compiler_try_state {
+    struct handlebars_compiler_ctor_state worker;
+    struct handlebars_program * program;
+};
+
+static void handlebars_compiler_ctor_init(
+    struct handlebars_context * context,
+    struct handlebars_compiler_ctor_state * state
+)
+{
+    struct handlebars_compiler * compiler = handlebars_talloc_zero(
+        context,
+        struct handlebars_compiler
+    );
+
     HANDLEBARS_MEMCHECK(compiler, context);
+    state->compiler = compiler;
     handlebars_context_bind(context, HBSCTX(compiler));
     compiler->program = MC(handlebars_talloc_zero(compiler, struct handlebars_program));
     compiler->program->main = compiler->program;
     compiler->known_helpers = handlebars_builtins_names();
-    return compiler;
+}
+
+struct handlebars_compiler * handlebars_compiler_ctor(struct handlebars_context * context)
+{
+    struct handlebars_compiler_ctor_state state = {0};
+
+    handlebars_compiler_ctor_init(context, &state);
+    return state.compiler;
+};
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_compiler_ctor_try_guarded(
+    struct handlebars_context * context,
+    struct handlebars_compiler_ctor_state * state
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+        if( state->compiler != NULL ) {
+            handlebars_compiler_dtor(state->compiler);
+            state->compiler = NULL;
+        }
+    } else {
+        handlebars_compiler_ctor_init(context, state);
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_compiler_ctor_try(
+    struct handlebars_context * context,
+    struct handlebars_compiler ** result
+) {
+    struct handlebars_compiler_ctor_state state = {0};
+    enum handlebars_error_type error;
+
+    *result = NULL;
+    handlebars_error_clear(context);
+    error = handlebars_compiler_ctor_try_guarded(context, &state);
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.compiler;
+    }
+    return error;
 };
 
 void handlebars_compiler_dtor(struct handlebars_compiler * compiler)
@@ -1489,6 +1552,62 @@ struct handlebars_program * handlebars_compiler_compile_ex(
 ) {
     handlebars_compiler_compile(compiler, node);
     return compiler->program;
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_compiler_compile_try_guarded(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * node,
+    struct handlebars_compiler_try_state * state
+) {
+    struct handlebars_error * error = HBSCTX(compiler)->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(compiler, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
+
+    // Compile in a temporary compiler so an error cannot leave child
+    // compilers or other partially connected state owned by the reusable
+    // caller's compiler.
+    handlebars_compiler_ctor_init(HBSCTX(compiler), &state->worker);
+    state->worker.compiler->flags = compiler->flags;
+    state->worker.compiler->known_helpers = compiler->known_helpers;
+    handlebars_compiler_compile(state->worker.compiler, node);
+
+    state->program = talloc_steal(compiler, state->worker.compiler->program);
+    handlebars_talloc_free(compiler->program);
+    compiler->program = state->program;
+    compiler->guid = state->worker.compiler->guid;
+    compiler->flags = state->worker.compiler->flags;
+
+done:
+    if( state->worker.compiler != NULL ) {
+        handlebars_compiler_dtor(state->worker.compiler);
+        state->worker.compiler = NULL;
+    }
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_compiler_compile_try(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * node,
+    struct handlebars_program ** result
+) {
+    struct handlebars_compiler_try_state state = {0};
+    enum handlebars_error_type error;
+
+    *result = NULL;
+    handlebars_error_clear(HBSCTX(compiler));
+    error = handlebars_compiler_compile_try_guarded(compiler, node, &state);
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.program;
+    }
+    return error;
 }
 
 void handlebars_compiler_compile(

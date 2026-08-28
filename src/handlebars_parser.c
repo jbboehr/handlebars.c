@@ -42,14 +42,31 @@
 
 const size_t HANDLEBARS_PARSER_SIZE = sizeof(struct handlebars_parser);
 
-struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ctx)
+struct handlebars_parser_ctor_state {
+    struct handlebars_parser * parser;
+};
+
+struct handlebars_parse_try_state {
+    struct handlebars_parser_ctor_state worker;
+    struct handlebars_ast_node * ast;
+};
+
+static void handlebars_parser_ctor_init(
+    struct handlebars_context * context,
+    struct handlebars_parser_ctor_state * state
+)
 {
     int lexerr = 0;
-    struct handlebars_parser * parser = handlebars_talloc_zero(ctx, struct handlebars_parser);
-    HANDLEBARS_MEMCHECK(parser, ctx);
+    struct handlebars_parser * parser = handlebars_talloc_zero(
+        context,
+        struct handlebars_parser
+    );
+
+    HANDLEBARS_MEMCHECK(parser, context);
+    state->parser = parser;
 
     // Bind error context
-    handlebars_context_bind(ctx, HBSCTX(parser));
+    handlebars_context_bind(context, HBSCTX(parser));
 
     // Set the current context in a variable for yyalloc >.>
     handlebars_parser_init_current = parser;
@@ -59,7 +76,8 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     if( unlikely(lexerr != 0) ) {
         handlebars_parser_init_current = NULL;
         handlebars_talloc_free(parser);
-        handlebars_throw(ctx, HANDLEBARS_NOMEM, "Lexer initialization failed");
+        state->parser = NULL;
+        handlebars_throw(context, HANDLEBARS_NOMEM, "Lexer initialization failed");
     }
 
     // Steal the scanner just in case
@@ -69,7 +87,55 @@ struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ct
     handlebars_yy_set_extra(parser, parser->scanner);
 
     handlebars_parser_init_current = NULL;
-    return parser;
+}
+
+struct handlebars_parser * handlebars_parser_ctor(struct handlebars_context * ctx)
+{
+    struct handlebars_parser_ctor_state state = {0};
+
+    handlebars_parser_ctor_init(ctx, &state);
+    return state.parser;
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_parser_ctor_try_guarded(
+    struct handlebars_context * context,
+    struct handlebars_parser_ctor_state * state
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+        handlebars_parser_init_current = NULL;
+        if( state->parser != NULL ) {
+            handlebars_parser_dtor(state->parser);
+            state->parser = NULL;
+        }
+    } else {
+        handlebars_parser_ctor_init(context, state);
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_parser_ctor_try(
+    struct handlebars_context * context,
+    struct handlebars_parser ** result
+) {
+    struct handlebars_parser_ctor_state state = {0};
+    enum handlebars_error_type error;
+
+    *result = NULL;
+    handlebars_error_clear(context);
+    error = handlebars_parser_ctor_try_guarded(context, &state);
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.parser;
+    }
+    return error;
 }
 
 void handlebars_parser_dtor(struct handlebars_parser * parser)
@@ -197,6 +263,65 @@ struct handlebars_ast_node * handlebars_parse_ex(struct handlebars_parser * pars
     parser->bison_stack = NULL;
     e->jmp = prev;
     return parser->program;
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_parse_try_guarded(
+    struct handlebars_parser * parser,
+    struct handlebars_string * tmpl,
+    unsigned flags,
+    struct handlebars_parse_try_state * state
+) {
+    struct handlebars_error * error = HBSCTX(parser)->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(parser, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
+
+    if( unlikely(parser->bison_stack != NULL) ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Parser is already in use");
+    }
+
+    // Parse in a temporary parser so a failed grammar production cannot leave
+    // partially connected AST nodes owned by the reusable caller's parser.
+    handlebars_parser_ctor_init(HBSCTX(parser), &state->worker);
+    state->ast = handlebars_parse_ex(state->worker.parser, tmpl, flags);
+    state->ast = talloc_steal(parser, state->ast);
+
+    parser->tmpl = tmpl;
+    parser->flags = flags;
+    parser->program = state->ast;
+    parser->whitespace_root_seen = state->worker.parser->whitespace_root_seen;
+
+done:
+    if( state->worker.parser != NULL ) {
+        handlebars_parser_dtor(state->worker.parser);
+        state->worker.parser = NULL;
+    }
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_parse_try(
+    struct handlebars_parser * parser,
+    struct handlebars_string * tmpl,
+    unsigned flags,
+    struct handlebars_ast_node ** result
+) {
+    struct handlebars_parse_try_state state = {0};
+    enum handlebars_error_type error;
+
+    *result = NULL;
+    handlebars_error_clear(HBSCTX(parser));
+    error = handlebars_parse_try_guarded(parser, tmpl, flags, &state);
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.ast;
+    }
+    return error;
 }
 
 bool handlebars_parse(struct handlebars_parser * parser)

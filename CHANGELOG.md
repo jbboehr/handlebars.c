@@ -6,6 +6,11 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 
 ## [Unreleased]
 
+### Added
+- Core construction, parsing, compilation, serialization, and rendering now
+  have `_try` entry points that return errors without allowing the library's
+  internal `longjmp` handling to escape the call.
+
 ### Changed
 - Value iterators now retain their backing storage, support nested map
   iteration, and are closed when an error unwinds through the library.

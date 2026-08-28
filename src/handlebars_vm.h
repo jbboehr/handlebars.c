@@ -19,6 +19,7 @@
 #define HANDLEBARS_VM_H
 
 #include "handlebars.h"
+#include "handlebars_types.h"
 
 HBS_EXTERN_C_START
 
@@ -54,6 +55,21 @@ struct handlebars_vm * handlebars_vm_ctor(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
+ * @brief Construct a VM without allowing an internal longjmp to escape.
+ *
+ * Clears the context's previous error. On failure, `*result` is NULL and the
+ * returned error and context error state describe the failure.
+ *
+ * @param[in] context The parent handlebars and talloc context
+ * @param[out] result Receives the initialized VM on success
+ * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ */
+enum handlebars_error_type handlebars_vm_ctor_try(
+    struct handlebars_context * context,
+    struct handlebars_vm ** result
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
  * @brief Destruct a VM
  * @param[in] vm The VM to destruct
  * @return The string array
@@ -76,6 +92,50 @@ struct handlebars_string * handlebars_vm_execute_ex(
     struct handlebars_value * data,
     struct handlebars_value * block_params
 ) HBS_ATTR_NONNULL(1, 2, 3) HBS_ATTR_NOINLINE;
+
+/**
+ * @brief Execute a module without allowing an internal longjmp to escape.
+ *
+ * Equivalent to #handlebars_vm_execute_try_ex with the main program and no
+ * explicit data or block-parameter frames.
+ *
+ * @param[in] vm The VM
+ * @param[in] module The serialized module
+ * @param[in] context The input value
+ * @param[out] result Receives the rendered VM-owned string on success
+ * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ */
+enum handlebars_error_type handlebars_vm_execute_try(
+    struct handlebars_vm * vm,
+    struct handlebars_module * module,
+    struct handlebars_value * context,
+    struct handlebars_string ** result
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Execute a module without allowing an internal longjmp to escape.
+ *
+ * Clears the VM context's previous error. On failure, `*result` is NULL and
+ * the VM is restored to its pre-call state so it can be reused.
+ *
+ * @param[in] vm The VM
+ * @param[in] module The serialized module
+ * @param[in] context The input value
+ * @param[in] program The program index to execute
+ * @param[in] data Optional data frame
+ * @param[in] block_params Optional block-parameter frame
+ * @param[out] result Receives the rendered VM-owned string on success
+ * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ */
+enum handlebars_error_type handlebars_vm_execute_try_ex(
+    struct handlebars_vm * vm,
+    struct handlebars_module * module,
+    struct handlebars_value * context,
+    long program,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params,
+    struct handlebars_string ** result
+) HBS_ATTR_NONNULL(1, 2, 3, 7) HBS_ATTR_WARN_UNUSED_RESULT;
 
 struct handlebars_string * handlebars_vm_execute_program(
     struct handlebars_vm * vm,

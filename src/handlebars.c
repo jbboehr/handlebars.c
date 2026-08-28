@@ -30,6 +30,8 @@
 #include "handlebars_private.h"
 
 
+static const char handlebars_nomem_msg[] = HANDLEBARS_MEMCHECK_MSG;
+
 
 int handlebars_version(void) {
     return HANDLEBARS_VERSION_PATCH
@@ -108,6 +110,19 @@ const char * handlebars_error_msg(struct handlebars_context * context)
     return context->e->msg;
 }
 
+void handlebars_error_clear(struct handlebars_context * context)
+{
+    struct handlebars_error * error = context->e;
+
+    assert(error != NULL);
+    if( error->msg != NULL && error->msg != handlebars_nomem_msg ) {
+        handlebars_talloc_free((char *) error->msg);
+    }
+    error->num = HANDLEBARS_SUCCESS;
+    error->msg = NULL;
+    memset(&error->loc, 0, sizeof(error->loc));
+}
+
 char * handlebars_error_message(struct handlebars_context * context)
 {
     char * errmsg;
@@ -169,7 +184,6 @@ char * handlebars_error_message_js(struct handlebars_context * context)
 HBS_ATTR_PRINTF(4, 0)
 static void _set_err(struct handlebars_context * context, enum handlebars_error_type num, struct handlebars_locinfo * loc, const char * msg, va_list ap)
 {
-    static const char nomem_msg[] = HANDLEBARS_MEMCHECK_MSG;
     struct handlebars_error * e = context->e;
     const char * old_msg = e->msg;
     char * new_msg;
@@ -177,14 +191,14 @@ static void _set_err(struct handlebars_context * context, enum handlebars_error_
     // Format before releasing the previous message because it may be one of
     // the arguments, as it is when rethrowing an existing error.
     new_msg = talloc_vasprintf(e, msg, ap);
-    if( old_msg != NULL && old_msg != nomem_msg ) {
+    if( old_msg != NULL && old_msg != handlebars_nomem_msg ) {
         talloc_free((char *) old_msg);
     }
 
     e->num = num;
     if( unlikely(new_msg == NULL) ) {
         e->num = HANDLEBARS_NOMEM;
-        e->msg = nomem_msg;
+        e->msg = handlebars_nomem_msg;
     } else {
         e->msg = new_msg;
     }

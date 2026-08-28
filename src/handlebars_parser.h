@@ -37,6 +37,21 @@ struct handlebars_parser * handlebars_parser_ctor(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
+ * @brief Construct a parser without allowing an internal longjmp to escape.
+ *
+ * Clears the context's previous error. On failure, `*result` is NULL and the
+ * returned error and context error state describe the failure.
+ *
+ * @param[in] context The parent handlebars and talloc context
+ * @param[out] result Receives the initialized parser on success
+ * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ */
+enum handlebars_error_type handlebars_parser_ctor_try(
+    struct handlebars_context * context,
+    struct handlebars_parser ** result
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
  * @brief Free a parser and it's resources.
  * @param[in] parser The parser to free
  * @return void
@@ -73,6 +88,25 @@ struct handlebars_ast_node * handlebars_parse_ex(
     struct handlebars_parser * parser,
     struct handlebars_string * tmpl,
     unsigned flags
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Parse a template without allowing an internal longjmp to escape.
+ *
+ * Clears the parser context's previous error. On failure, `*result` is NULL
+ * and the returned error and context error state describe the failure.
+ *
+ * @param[in] parser The parser, which must not be used concurrently
+ * @param[in] tmpl The template to parse
+ * @param[in] flags Compiler flags
+ * @param[out] result Receives the parser-owned AST on success
+ * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ */
+enum handlebars_error_type handlebars_parse_try(
+    struct handlebars_parser * parser,
+    struct handlebars_string * tmpl,
+    unsigned flags,
+    struct handlebars_ast_node ** result
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**

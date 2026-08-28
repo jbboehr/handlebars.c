@@ -116,14 +116,73 @@ static inline struct handlebars_value * pop(struct handlebars_stack * stack, str
 
 // {{{ Constructors & Destructors
 
-struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
+struct handlebars_vm_ctor_state {
+    struct handlebars_vm * vm;
+};
+
+static void handlebars_vm_ctor_init(
+    struct handlebars_context * context,
+    struct handlebars_vm_ctor_state * state
+)
 {
-    struct handlebars_vm * vm = handlebars_talloc_zero(ctx, struct handlebars_vm);
-    HANDLEBARS_MEMCHECK(vm, ctx);
-    handlebars_context_bind(ctx, HBSCTX(vm));
+    struct handlebars_vm * vm = handlebars_talloc_zero(
+        context,
+        struct handlebars_vm
+    );
+
+    HANDLEBARS_MEMCHECK(vm, context);
+    state->vm = vm;
+    handlebars_context_bind(context, HBSCTX(vm));
     handlebars_value_map(&vm->helpers, handlebars_map_ctor(HBSCTX(vm), 0));
     handlebars_value_map(&vm->partials, handlebars_map_ctor(HBSCTX(vm), 0));
-    return vm;
+}
+
+struct handlebars_vm * handlebars_vm_ctor(struct handlebars_context * ctx)
+{
+    struct handlebars_vm_ctor_state state = {0};
+
+    handlebars_vm_ctor_init(ctx, &state);
+    return state.vm;
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_vm_ctor_try_guarded(
+    struct handlebars_context * context,
+    struct handlebars_vm_ctor_state * state
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+        if( state->vm != NULL ) {
+            handlebars_vm_dtor(state->vm);
+            state->vm = NULL;
+        }
+    } else {
+        handlebars_vm_ctor_init(context, state);
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_vm_ctor_try(
+    struct handlebars_context * context,
+    struct handlebars_vm ** result
+) {
+    struct handlebars_vm_ctor_state state = {0};
+    enum handlebars_error_type error;
+
+    *result = NULL;
+    handlebars_error_clear(context);
+    error = handlebars_vm_ctor_try_guarded(context, &state);
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.vm;
+    }
+    return error;
 }
 
 
@@ -508,7 +567,10 @@ static struct handlebars_string * execute_template(
     int escape,
     bool use_delimiters
 ) {
-    struct handlebars_context * context = handlebars_context_ctor_ex(vm);
+    struct handlebars_context * context = handlebars_talloc_zero(
+        vm,
+        struct handlebars_context
+    );
     struct handlebars_string * volatile retval = NULL;
     struct handlebars_module * volatile module = NULL;
     bool volatile from_cache = false;
@@ -516,6 +578,10 @@ static struct handlebars_string * execute_template(
     jmp_buf * prev_jmp = HBSCTX(vm)->e->jmp;
     jmp_buf buf;
 
+    HANDLEBARS_MEMCHECK(context, HBSCTX(vm));
+    // Keep temporary allocations grouped under context, but route runtime
+    // parse, compile, and serialization errors through the VM boundary.
+    handlebars_context_bind(HBSCTX(vm), context);
     handlebars_string_addref(tmpl);
 
     // Get template
@@ -2726,4 +2792,68 @@ struct handlebars_string * handlebars_vm_execute(
     struct handlebars_value * context
 ) {
     return handlebars_vm_execute_ex(vm, module, context, 0, NULL, NULL);
+}
+
+enum handlebars_error_type handlebars_vm_execute_try_ex(
+    struct handlebars_vm * vm,
+    struct handlebars_module * module,
+    struct handlebars_value * context,
+    long program,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params,
+    struct handlebars_string ** result
+) {
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile previous = error->jmp;
+    struct handlebars_string * volatile output = NULL;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    *result = NULL;
+    handlebars_error_clear(HBSCTX(vm));
+
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
+
+    output = handlebars_vm_execute_ex(
+        vm,
+        module,
+        context,
+        program,
+        data,
+        block_params
+    );
+
+done:
+    error->jmp = previous;
+    if( caught == HANDLEBARS_SUCCESS && error->num != HANDLEBARS_SUCCESS ) {
+        caught = error->num;
+        if( output != NULL ) {
+            handlebars_string_delref((struct handlebars_string *) output);
+            output = NULL;
+        }
+    }
+    if( caught == HANDLEBARS_SUCCESS ) {
+        *result = (struct handlebars_string *) output;
+    }
+    return caught;
+}
+
+enum handlebars_error_type handlebars_vm_execute_try(
+    struct handlebars_vm * vm,
+    struct handlebars_module * module,
+    struct handlebars_value * context,
+    struct handlebars_string ** result
+) {
+    return handlebars_vm_execute_try_ex(
+        vm,
+        module,
+        context,
+        0,
+        NULL,
+        NULL,
+        result
+    );
 }

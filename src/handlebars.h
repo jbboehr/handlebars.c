@@ -333,9 +333,21 @@ struct handlebars_locinfo handlebars_error_loc(
  * @brief Get the error message for the specified context
  * @param[in] context The handlebars context
  * @return A borrowed error message, or NULL if no error has occurred. The
- *         pointer is invalidated by the next error or context destruction.
+ *         pointer is invalidated by the next error, #handlebars_error_clear,
+ *         or context destruction.
  */
 const char * handlebars_error_msg(
+    struct handlebars_context * context
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Clear the current error code, message, and location.
+ *
+ * The active error jump target and iterator cleanup state are preserved.
+ *
+ * @param[in] context The handlebars context
+ */
+void handlebars_error_clear(
     struct handlebars_context * context
 ) HBS_ATTR_NONNULL_ALL;
 

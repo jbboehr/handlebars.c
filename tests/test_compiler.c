@@ -34,12 +34,15 @@
 #include "handlebars_ast_list.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
+#include "handlebars_map.h"
 #include "handlebars_module_printer.h"
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_parser.h"
 #include "handlebars_string.h"
 #include "handlebars_memory.h"
+#include "handlebars_value.h"
+#include "handlebars_vm.h"
 #include "utils.h"
 
 
@@ -61,6 +64,730 @@ START_TEST(test_program_size_constant)
     ck_assert_uint_eq(HANDLEBARS_PROGRAM_SIZE, sizeof(struct handlebars_program));
 }
 END_TEST
+
+static struct handlebars_module * compile_try_test_template_flags(
+    const char * source,
+    unsigned flags
+)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        strlen(source)
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(
+        local_parser,
+        tmpl,
+        flags
+    );
+    handlebars_compiler_set_flags(local_compiler, flags);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(
+        local_compiler,
+        ast
+    );
+
+    return handlebars_program_serialize(context, program);
+}
+
+static struct handlebars_module * compile_try_test_template(const char * source)
+{
+    return compile_try_test_template_flags(source, 0);
+}
+
+static struct handlebars_value * try_test_throwing_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+) {
+    (void) argc;
+    (void) argv;
+    (void) options;
+    (void) rv;
+    handlebars_throw(HBSCTX(callback_vm), HANDLEBARS_ERROR, "Intentional helper failure");
+}
+
+static struct handlebars_value * try_test_invalid_template_lambda(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+) {
+    (void) argc;
+    (void) argv;
+    (void) options;
+    handlebars_value_str(
+        rv,
+        handlebars_string_ctor(HBSCTX(callback_vm), HBS_STRL("{{#if}}"))
+    );
+    return rv;
+}
+
+START_TEST(test_vm_execute_try_returns_errors_without_longjmp)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_module * module = compile_try_test_template("ok");
+    struct handlebars_string * output = (void *) 1;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+    enum handlebars_error_type error;
+
+    module->programs[0].opcode_count = 0;
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("handlebars_vm_execute_try escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_vm_execute_try(vm, module, input, &output);
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_null(output);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Invalid opcode range"));
+
+    module = compile_try_test_template("ok");
+    error = handlebars_vm_execute_try_ex(
+        vm,
+        module,
+        input,
+        0,
+        NULL,
+        NULL,
+        &output
+    );
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "ok");
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    context->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_execute_try_reports_errors_from_string_partials)
+{
+    HANDLEBARS_VALUE_DECL(helper);
+    HANDLEBARS_VALUE_DECL(helpers);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    struct handlebars_map * helper_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+    struct handlebars_module * module = compile_try_test_template("A{{> p}}B");
+    struct handlebars_string * output = (void *) 1;
+    enum handlebars_error_type error;
+
+    handlebars_value_helper(helper, try_test_throwing_helper);
+    helper_map = handlebars_map_str_update(helper_map, HBS_STRL("boom"), helper);
+    handlebars_value_map(helpers, helper_map);
+    handlebars_vm_set_helpers(vm, helpers);
+
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("{{boom}}"))
+    );
+    partial_map = handlebars_map_str_update(partial_map, HBS_STRL("p"), partial);
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    error = handlebars_vm_execute_try(vm, module, input, &output);
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_null(output);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Intentional helper failure"));
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(helpers);
+    HANDLEBARS_VALUE_UNDECL(helper);
+}
+END_TEST
+
+START_TEST(test_vm_execute_try_reports_parse_errors_from_string_partials)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+    struct handlebars_module * module = compile_try_test_template("A{{> p}}B");
+    struct handlebars_string * output = (void *) 1;
+    enum handlebars_error_type error;
+
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("{{#if}}"))
+    );
+    partial_map = handlebars_map_str_update(partial_map, HBS_STRL("p"), partial);
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    error = handlebars_vm_execute_try(vm, module, input, &output);
+
+    ck_assert_int_eq(error, HANDLEBARS_PARSEERR);
+    ck_assert_ptr_null(output);
+    ck_assert_ptr_nonnull(handlebars_error_msg(context));
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_execute_try_reports_parse_errors_from_lambdas)
+{
+    const unsigned flags = handlebars_compiler_flag_mustache_style_lambdas;
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(lambda);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_module * module = compile_try_test_template_flags(
+        "A{{lambda}}B",
+        flags
+    );
+    struct handlebars_string * output = (void *) 1;
+    enum handlebars_error_type error;
+
+    handlebars_value_helper(lambda, try_test_invalid_template_lambda);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("lambda"), lambda);
+    handlebars_value_map(input, input_map);
+    handlebars_vm_set_flags(vm, flags);
+
+    error = handlebars_vm_execute_try(vm, module, input, &output);
+
+    ck_assert_int_eq(error, HANDLEBARS_PARSEERR);
+    ck_assert_ptr_null(output);
+    ck_assert_ptr_nonnull(handlebars_error_msg(context));
+
+    HANDLEBARS_VALUE_UNDECL(lambda);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_parse_try_returns_errors_without_longjmp)
+{
+    struct handlebars_string * invalid = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#if}}")
+    );
+    struct handlebars_string * valid = handlebars_string_ctor(
+        context,
+        HBS_STRL("text")
+    );
+    struct handlebars_ast_node * ast = (void *) 1;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+    enum handlebars_error_type error;
+    size_t failed_blocks;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("handlebars_parse_try escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_parse_try(parser, invalid, 0, &ast);
+
+    ck_assert_int_eq(error, HANDLEBARS_PARSEERR);
+    ck_assert_ptr_null(ast);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(handlebars_error_msg(context));
+
+    failed_blocks = talloc_total_blocks(parser);
+    error = handlebars_parse_try(parser, invalid, 0, &ast);
+
+    ck_assert_int_eq(error, HANDLEBARS_PARSEERR);
+    ck_assert_ptr_null(ast);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_uint_eq(talloc_total_blocks(parser), failed_blocks);
+
+    error = handlebars_parse_try(parser, valid, 0, &ast);
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(ast);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    context->e->jmp = previous;
+}
+END_TEST
+
+START_TEST(test_compiler_compile_try_does_not_publish_failures)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_string * invalid = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#if x}}ok{{/if}}{{..f}}")
+    );
+    struct handlebars_string * valid = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#if x}}ok{{/if}}")
+    );
+    struct handlebars_string * nested_invalid = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#if x}}{{missing 1}}{{/if}}")
+    );
+    struct handlebars_ast_node * invalid_ast = handlebars_parse_ex(
+        local_parser,
+        invalid,
+        0
+    );
+    struct handlebars_ast_node * valid_ast;
+    struct handlebars_ast_node * nested_invalid_ast;
+    struct handlebars_program * program = (void *) 1;
+    struct handlebars_module * module = (void *) 1;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+    enum handlebars_error_type error;
+    size_t failed_blocks;
+
+    handlebars_compiler_set_flags(
+        local_compiler,
+        handlebars_compiler_flag_known_helpers_only
+    );
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("handlebars_compiler_compile_try escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_compiler_compile_try(
+        local_compiler,
+        invalid_ast,
+        &program
+    );
+
+    ck_assert_int_eq(error, HANDLEBARS_UNKNOWN_HELPER);
+    ck_assert_ptr_null(program);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "unknown helper"));
+
+    nested_invalid_ast = handlebars_parse_ex(local_parser, nested_invalid, 0);
+    error = handlebars_compiler_compile_try(
+        local_compiler,
+        nested_invalid_ast,
+        &program
+    );
+    ck_assert_int_eq(error, HANDLEBARS_UNKNOWN_HELPER);
+    ck_assert_ptr_null(program);
+    failed_blocks = talloc_total_blocks(local_compiler);
+
+    error = handlebars_compiler_compile_try(
+        local_compiler,
+        nested_invalid_ast,
+        &program
+    );
+    ck_assert_int_eq(error, HANDLEBARS_UNKNOWN_HELPER);
+    ck_assert_ptr_null(program);
+    ck_assert_uint_eq(talloc_total_blocks(local_compiler), failed_blocks);
+
+    valid_ast = handlebars_parse_ex(local_parser, valid, 0);
+    error = handlebars_compiler_compile_try(
+        local_compiler,
+        valid_ast,
+        &program
+    );
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(program);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    error = handlebars_program_serialize_try(context, program, &module);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(module);
+
+    context->e->jmp = previous;
+    handlebars_compiler_dtor(local_compiler);
+    handlebars_parser_dtor(local_parser);
+}
+END_TEST
+
+START_TEST(test_program_serialize_try_returns_errors_without_longjmp)
+{
+    struct handlebars_program invalid = {0};
+    struct handlebars_program * children[] = {&invalid};
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("text")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_program * valid = handlebars_compiler_compile_ex(
+        compiler,
+        ast
+    );
+    struct handlebars_module * module = (void *) 1;
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+    enum handlebars_error_type error;
+
+    invalid.children = children;
+    invalid.children_length = 1;
+    invalid.children_size = 1;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("handlebars_program_serialize_try escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    error = handlebars_program_serialize_try(context, &invalid, &module);
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_null(module);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Cyclic child program"));
+
+    error = handlebars_program_serialize_try(context, valid, &module);
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(module);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    context->e->jmp = previous;
+}
+END_TEST
+
+START_TEST(test_try_constructors_publish_only_initialized_objects)
+{
+    struct handlebars_parser * local_parser = (void *) 1;
+    struct handlebars_compiler * local_compiler = (void *) 1;
+    struct handlebars_vm * local_vm = (void *) 1;
+    enum handlebars_error_type error;
+
+    error = handlebars_parser_ctor_try(context, &local_parser);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(local_parser);
+
+    error = handlebars_compiler_ctor_try(context, &local_compiler);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(local_compiler);
+
+    error = handlebars_vm_ctor_try(context, &local_vm);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(local_vm);
+
+    handlebars_vm_dtor(local_vm);
+    handlebars_compiler_dtor(local_compiler);
+    handlebars_parser_dtor(local_parser);
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+static void try_api_memory_failure_at(int fail_at)
+{
+    handlebars_memory_fail_set_flags(
+        handlebars_memory_fail_flag_alloc | handlebars_memory_fail_flag_yy
+    );
+    handlebars_memory_fail_counter(fail_at);
+}
+
+static void assert_try_api_context_blocks(size_t expected)
+{
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ck_assert_uint_le(talloc_total_blocks(context), expected);
+#else
+    (void) expected;
+#endif
+}
+
+START_TEST(test_try_constructors_handle_allocation_failures)
+{
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+    volatile bool parser_succeeded = false;
+    volatile bool compiler_succeeded = false;
+    volatile bool vm_succeeded = false;
+
+    if( setjmp(outer) != 0 ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = previous;
+        ck_abort_msg("A try constructor escaped through longjmp");
+    }
+    context->e->jmp = &outer;
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_parser * result = (void *) 1;
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        try_api_memory_failure_at(fail_at);
+        error = handlebars_parser_ctor_try(context, &result);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_ptr_nonnull(result);
+            handlebars_parser_dtor(result);
+            parser_succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_ptr_null(result);
+        }
+        ck_assert_ptr_eq(context->e->jmp, &outer);
+        handlebars_error_clear(context);
+        assert_try_api_context_blocks(blocks_before);
+        if( parser_succeeded ) {
+            break;
+        }
+    }
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_compiler * result = (void *) 1;
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        try_api_memory_failure_at(fail_at);
+        error = handlebars_compiler_ctor_try(context, &result);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_ptr_nonnull(result);
+            handlebars_compiler_dtor(result);
+            compiler_succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_ptr_null(result);
+        }
+        ck_assert_ptr_eq(context->e->jmp, &outer);
+        handlebars_error_clear(context);
+        assert_try_api_context_blocks(blocks_before);
+        if( compiler_succeeded ) {
+            break;
+        }
+    }
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_vm * result = (void *) 1;
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        try_api_memory_failure_at(fail_at);
+        error = handlebars_vm_ctor_try(context, &result);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_ptr_nonnull(result);
+            handlebars_vm_dtor(result);
+            vm_succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_ptr_null(result);
+        }
+        ck_assert_ptr_eq(context->e->jmp, &outer);
+        handlebars_error_clear(context);
+        assert_try_api_context_blocks(blocks_before);
+        if( vm_succeeded ) {
+            break;
+        }
+    }
+
+    context->e->jmp = previous;
+    ck_assert(parser_succeeded);
+    ck_assert(compiler_succeeded);
+    ck_assert(vm_succeeded);
+}
+END_TEST
+
+START_TEST(test_parse_try_handles_allocation_failures)
+{
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("content {{foo \"bar\"}}")
+    );
+    bool succeeded = false;
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_parser * local_parser;
+        struct handlebars_ast_node * result = (void *) 1;
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        local_parser = handlebars_parser_ctor(context);
+        try_api_memory_failure_at(fail_at);
+        error = handlebars_parse_try(local_parser, tmpl, 0, &result);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_ptr_nonnull(result);
+            succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_ptr_null(result);
+        }
+        handlebars_parser_dtor(local_parser);
+        handlebars_error_clear(context);
+        assert_try_api_context_blocks(blocks_before);
+        if( succeeded ) {
+            break;
+        }
+    }
+
+    ck_assert(succeeded);
+}
+END_TEST
+
+START_TEST(test_compiler_try_handles_allocation_failures)
+{
+    bool succeeded = false;
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_parser * local_parser;
+        struct handlebars_compiler * local_compiler;
+        struct handlebars_string * tmpl;
+        struct handlebars_ast_node * ast;
+        struct handlebars_program * result = (void *) 1;
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        local_parser = handlebars_parser_ctor(context);
+        tmpl = handlebars_string_ctor(
+            HBSCTX(local_parser),
+            HBS_STRL("{{#if foo}}bar {{baz qux=1}}{{/if}}")
+        );
+        ast = handlebars_parse_ex(local_parser, tmpl, 0);
+        local_compiler = handlebars_compiler_ctor(context);
+        try_api_memory_failure_at(fail_at);
+        error = handlebars_compiler_compile_try(
+            local_compiler,
+            ast,
+            &result
+        );
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_ptr_nonnull(result);
+            succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_ptr_null(result);
+        }
+        handlebars_compiler_dtor(local_compiler);
+        handlebars_parser_dtor(local_parser);
+        handlebars_error_clear(context);
+        assert_try_api_context_blocks(blocks_before);
+        if( succeeded ) {
+            break;
+        }
+    }
+
+    ck_assert(succeeded);
+}
+END_TEST
+
+START_TEST(test_serializer_try_handles_allocation_failures)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{#if foo}}bar {{baz qux=1}}{{/if}}")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(
+        local_parser,
+        tmpl,
+        0
+    );
+    struct handlebars_program * program = handlebars_compiler_compile_ex(
+        local_compiler,
+        ast
+    );
+    bool succeeded = false;
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_module * result = (void *) 1;
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        try_api_memory_failure_at(fail_at);
+        error = handlebars_program_serialize_try(context, program, &result);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_ptr_nonnull(result);
+            handlebars_talloc_free(result);
+            succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_ptr_null(result);
+        }
+        handlebars_error_clear(context);
+        assert_try_api_context_blocks(blocks_before);
+        if( succeeded ) {
+            break;
+        }
+    }
+
+    handlebars_compiler_dtor(local_compiler);
+    handlebars_parser_dtor(local_parser);
+    ck_assert(succeeded);
+}
+END_TEST
+
+START_TEST(test_vm_try_handles_allocation_failures)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+    struct handlebars_module * module = compile_try_test_template(
+        "A{{> p}}B"
+    );
+    bool succeeded = false;
+
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("content {{foo}}"))
+    );
+    partial_map = handlebars_map_str_update(partial_map, HBS_STRL("p"), partial);
+    handlebars_value_map(partials, partial_map);
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_vm * local_vm;
+        struct handlebars_string * result = (void *) 1;
+        size_t blocks_before = talloc_total_blocks(context);
+        enum handlebars_error_type error;
+
+        local_vm = handlebars_vm_ctor(context);
+        handlebars_vm_set_partials(local_vm, partials);
+        try_api_memory_failure_at(fail_at);
+        error = handlebars_vm_execute_try(local_vm, module, input, &result);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_ptr_nonnull(result);
+            succeeded = true;
+        } else {
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_ptr_null(result);
+        }
+        handlebars_vm_dtor(local_vm);
+        handlebars_error_clear(context);
+        assert_try_api_context_blocks(blocks_before);
+        if( succeeded ) {
+            break;
+        }
+    }
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+    ck_assert(succeeded);
+}
+END_TEST
+#endif
 
 static struct handlebars_string * compiler_nested_template(size_t levels)
 {
@@ -1076,6 +1803,21 @@ static Suite * suite(void)
 
 	REGISTER_TEST_FIXTURE(s, test_compiler_ctor, "Constructor");
 	REGISTER_TEST_FIXTURE(s, test_program_size_constant, "Program size constant");
+	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_returns_errors_without_longjmp, "VM try execution returns errors without longjmp");
+	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_reports_errors_from_string_partials, "VM try reports errors from string partials");
+	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_reports_parse_errors_from_string_partials, "VM try reports parse errors from string partials");
+	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_reports_parse_errors_from_lambdas, "VM try reports parse errors from lambdas");
+	REGISTER_TEST_FIXTURE(s, test_parse_try_returns_errors_without_longjmp, "Parse try returns errors without longjmp");
+	REGISTER_TEST_FIXTURE(s, test_compiler_compile_try_does_not_publish_failures, "Compiler try does not publish failures");
+	REGISTER_TEST_FIXTURE(s, test_program_serialize_try_returns_errors_without_longjmp, "Serializer try returns errors without longjmp");
+	REGISTER_TEST_FIXTURE(s, test_try_constructors_publish_only_initialized_objects, "Try constructors publish initialized objects");
+#ifdef HANDLEBARS_MEMORY
+	REGISTER_TEST_FIXTURE(s, test_try_constructors_handle_allocation_failures, "Try constructors handle allocation failures");
+	REGISTER_TEST_FIXTURE(s, test_parse_try_handles_allocation_failures, "Parse try handles allocation failures");
+	REGISTER_TEST_FIXTURE(s, test_compiler_try_handles_allocation_failures, "Compiler try handles allocation failures");
+	REGISTER_TEST_FIXTURE(s, test_serializer_try_handles_allocation_failures, "Serializer try handles allocation failures");
+	REGISTER_TEST_FIXTURE(s, test_vm_try_handles_allocation_failures, "VM try handles allocation failures");
+#endif
 	REGISTER_MEMORY_TEST_FIXTURE(s, test_compiler_ctor_failed_alloc, "Constructor (failed alloc)");
 	REGISTER_TEST_FIXTURE(s, test_compiler_dtor, "Destructor");
 	REGISTER_TEST_FIXTURE(s, test_compiler_get_flags, "Get Flags");

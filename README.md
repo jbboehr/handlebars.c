@@ -8,8 +8,8 @@ C implementation of [handlebars.js](https://github.com/wycats/handlebars.js/),
 developed in conjunction with [php-handlebars](https://github.com/jbboehr/php-handlebars)
 and [handlebars.php](https://github.com/jbboehr/handlebars.php).
 
-The opcode compiler is fully featured, however the VM currently does not implement decorators, and therefore inline
-partials.
+The opcode compiler is fully featured. The VM supports inline partials, but
+does not implement general decorator execution.
 
 ## Installation
 
@@ -98,6 +98,34 @@ after the work completes. Cache and partial-loader allocations follow their
 cache or loader context instead of a VM context, so applications using this
 mode must also bound those contexts rather than keep them for the lifetime of
 the process.
+
+### C API error handling
+
+The core construction, parse, compile, serialize, and render operations have
+additive `_try` entrypoints for applications that do not want library errors to
+`longjmp` into consumer code. These functions return an
+`enum handlebars_error_type`, set their output pointer to `NULL` on failure,
+and leave the error message and location on the associated context:
+
+```c
+struct handlebars_string * output = NULL;
+enum handlebars_error_type error = handlebars_vm_execute_try(
+    vm,
+    module,
+    input,
+    &output
+);
+
+if (error != HANDLEBARS_SUCCESS) {
+    fprintf(stderr, "render failed: %s\n", handlebars_error_msg(context));
+}
+```
+
+Each `_try` call clears stale error state before it begins and restores any
+previous internal jump target before returning. Existing entrypoints retain
+their original behavior and ownership rules. Helper callbacks still use the
+existing callback ABI internally; errors they raise during rendering are
+caught by `handlebars_vm_execute_try` before it returns.
 
 ## Usage
 

@@ -893,9 +893,10 @@ static void serialize_program(
     }
 }
 
-struct handlebars_module * handlebars_program_serialize(
+static struct handlebars_module * handlebars_program_serialize_impl(
     struct handlebars_context * context,
-    struct handlebars_program * program
+    struct handlebars_program * program,
+    struct handlebars_module ** published
 ) {
     struct handlebars_serialize_state state;
     size_t data_size;
@@ -904,6 +905,7 @@ struct handlebars_module * handlebars_program_serialize(
 
     // Allocate initial buffer
     struct handlebars_module * module = MC(handlebars_talloc_zero(context, struct handlebars_module));
+    *published = module;
     memcpy(&module->header, HANDLEBARS_MODULE_HEADER, sizeof(module->header));
     module->version = handlebars_version();
     module->flags = program->flags;
@@ -916,6 +918,7 @@ struct handlebars_module * handlebars_program_serialize(
 
     // Reallocate buffer
     module = MC(handlebars_talloc_realloc_size(context, module, module->size));
+    *published = module;
     if( data_size != 0 ) {
         memset(module->data, 0, data_size);
     }
@@ -960,6 +963,69 @@ struct handlebars_module * handlebars_program_serialize(
     }
 
     return module;
+}
+
+struct handlebars_module * handlebars_program_serialize(
+    struct handlebars_context * context,
+    struct handlebars_program * program
+) {
+    struct handlebars_module * module = NULL;
+
+    return handlebars_program_serialize_impl(context, program, &module);
+}
+
+struct handlebars_program_serialize_try_state {
+    struct handlebars_module * module;
+};
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type handlebars_program_serialize_try_guarded(
+    struct handlebars_context * context,
+    struct handlebars_program * program,
+    struct handlebars_program_serialize_try_state * state
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+        if( state->module != NULL ) {
+            handlebars_talloc_free(state->module);
+            state->module = NULL;
+        }
+    } else {
+        state->module = handlebars_program_serialize_impl(
+            context,
+            program,
+            &state->module
+        );
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_program_serialize_try(
+    struct handlebars_context * context,
+    struct handlebars_program * program,
+    struct handlebars_module ** result
+) {
+    struct handlebars_program_serialize_try_state state = {0};
+    enum handlebars_error_type error;
+
+    *result = NULL;
+    handlebars_error_clear(context);
+    error = handlebars_program_serialize_try_guarded(
+        context,
+        program,
+        &state
+    );
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.module;
+    }
+    return error;
 }
 
 

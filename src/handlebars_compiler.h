@@ -124,6 +124,24 @@ struct handlebars_program * handlebars_compiler_compile_ex(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
+ * @brief Compile an AST without allowing an internal longjmp to escape.
+ *
+ * Clears the compiler context's previous error. On failure, `*result` is NULL,
+ * the returned error and context error state describe the failure, and the
+ * compiler remains reusable.
+ *
+ * @param[in] compiler The compiler context
+ * @param[in] node The AST node to compile
+ * @param[out] result Receives the compiler-owned program on success
+ * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ */
+enum handlebars_error_type handlebars_compiler_compile_try(
+    struct handlebars_compiler * compiler,
+    struct handlebars_ast_node * node,
+    struct handlebars_program ** result
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
  * @brief Main compile function. Compiles an AST
  *
  * @param[in] compiler The compiler context
@@ -145,6 +163,21 @@ void handlebars_compiler_compile(
 struct handlebars_compiler * handlebars_compiler_ctor(
     struct handlebars_context * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Construct a compiler without allowing an internal longjmp to escape.
+ *
+ * Clears the context's previous error. On failure, `*result` is NULL and the
+ * returned error and context error state describe the failure.
+ *
+ * @param[in] context The parent handlebars and talloc context
+ * @param[out] result Receives the initialized compiler on success
+ * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ */
+enum handlebars_error_type handlebars_compiler_ctor_try(
+    struct handlebars_context * context,
+    struct handlebars_compiler ** result
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Free a compiler context and it's resources.

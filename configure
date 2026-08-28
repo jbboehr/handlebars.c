@@ -7074,9 +7074,9 @@ printf "%s\n" "#define MUSTACHE_SPEC_VERSION_STRING \"1.1.3\"" >>confdefs.h
 
 
 # Define substitutions for the libtool version numbers.
-HANDLEBARS_LT_CURRENT=10
+HANDLEBARS_LT_CURRENT=11
 HANDLEBARS_LT_REVISION=0
-HANDLEBARS_LT_AGE=0
+HANDLEBARS_LT_AGE=1
 
 
 
@@ -26971,4 +26971,3 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 printf "%s\n" "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
