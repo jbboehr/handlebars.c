@@ -109,6 +109,74 @@ static struct handlebars_value * test_context_helper(
     return rv;
 }
 
+#if !defined(HANDLEBARS_NO_REFCOUNT) || defined(HANDLEBARS_MEMORY)
+static struct handlebars_value * test_with_context_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) argv;
+    (void) options;
+    ck_assert_int_eq(argc, 1);
+    handlebars_value_str(
+        rv,
+        handlebars_string_ctor(
+            HBSCTX(callback_vm),
+            HBS_STRL("callable")
+        )
+    );
+    return rv;
+}
+
+static struct handlebars_value * test_each_context_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    HANDLEBARS_VALUE_DECL(item);
+    struct handlebars_stack * items;
+
+    (void) argv;
+    (void) options;
+    ck_assert_int_eq(argc, 1);
+    handlebars_value_boolean(item, true);
+    items = handlebars_stack_ctor(HBSCTX(callback_vm), 1);
+    items = handlebars_stack_push(items, item);
+    handlebars_value_array(rv, items);
+    HANDLEBARS_VALUE_UNDECL(item);
+    return rv;
+}
+#endif
+
+#ifdef HANDLEBARS_MEMORY
+static struct handlebars_value * test_allocating_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) argc;
+    (void) argv;
+    (void) options;
+    handlebars_value_str(
+        rv,
+        handlebars_string_ctor(
+            HBSCTX(callback_vm),
+            HBS_STRL("success")
+        )
+    );
+    return rv;
+}
+#endif
+
 static void test_register_helper(const char * name, size_t length, handlebars_func helper_fn)
 {
     HANDLEBARS_VALUE_DECL(helper);
@@ -603,6 +671,31 @@ START_TEST(test_with_helper_error_releases_vm_temporaries)
 }
 END_TEST
 
+START_TEST(test_with_callable_error_releases_vm_temporaries)
+{
+    HANDLEBARS_VALUE_DECL(holder);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+
+    handlebars_value_helper(holder, test_with_context_helper);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("holder"),
+        holder
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_error_releases_vm_temporaries(
+        "{{#with holder}}{{> missing}}{{/with}}",
+        input
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(holder);
+}
+END_TEST
+
 START_TEST(test_if_helper_error_releases_vm_temporaries)
 {
     HANDLEBARS_VALUE_DECL(input);
@@ -660,6 +753,31 @@ START_TEST(test_each_helper_error_releases_vm_temporaries)
 }
 END_TEST
 
+START_TEST(test_each_callable_error_releases_vm_temporaries)
+{
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+
+    handlebars_value_helper(items, test_each_context_helper);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("items"),
+        items
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_error_releases_vm_temporaries(
+        "{{#each items}}{{> missing}}{{/each}}",
+        input
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(items);
+}
+END_TEST
+
 START_TEST(test_each_helper_success_releases_nested_buffers)
 {
     HANDLEBARS_VALUE_DECL(item);
@@ -705,6 +823,46 @@ START_TEST(test_each_helper_success_releases_nested_buffers)
     HANDLEBARS_VALUE_UNDECL(input);
     HANDLEBARS_VALUE_UNDECL(items);
     HANDLEBARS_VALUE_UNDECL(item);
+}
+END_TEST
+
+START_TEST(test_with_helper_success_releases_nested_buffer)
+{
+    HANDLEBARS_VALUE_DECL(holder);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+    struct handlebars_module * module;
+    struct handlebars_string * output;
+    size_t baseline_blocks;
+
+    handlebars_value_str(
+        holder,
+        handlebars_string_ctor(context, HBS_STRL("value"))
+    );
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("holder"),
+        holder
+    );
+    handlebars_value_map(input, input_map);
+    module = test_compile_template("{{#with holder}}{{this}}{{/with}}");
+    baseline_blocks = talloc_total_blocks(vm);
+
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "value");
+    handlebars_string_delref(output);
+
+    ck_assert_msg(
+        talloc_total_blocks(vm) == baseline_blocks,
+        "successful with render retained %zu VM blocks (baseline %zu)",
+        talloc_total_blocks(vm),
+        baseline_blocks
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(holder);
 }
 END_TEST
 
@@ -840,6 +998,212 @@ START_TEST(test_each_helper_allocation_failures_unwind_vm)
     HANDLEBARS_VALUE_UNDECL(input);
     HANDLEBARS_VALUE_UNDECL(items);
     HANDLEBARS_VALUE_UNDECL(item);
+}
+END_TEST
+
+START_TEST(test_each_map_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(item);
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * items_map;
+    struct handlebars_map * input_map;
+
+    handlebars_value_str(
+        item,
+        handlebars_string_ctor(context, HBS_STRL("value"))
+    );
+    items_map = handlebars_map_ctor(context, 1);
+    items_map = handlebars_map_str_add(
+        items_map,
+        HBS_STRL("only"),
+        item
+    );
+    handlebars_value_map(items, items_map);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("items"),
+        items
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#each items}}{{@key}}={{this}};{{/each}}",
+        input,
+        "only=value;"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(items);
+    HANDLEBARS_VALUE_UNDECL(item);
+}
+END_TEST
+
+START_TEST(test_with_callable_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(holder);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+
+    handlebars_value_helper(holder, test_with_context_helper);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("holder"),
+        holder
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#with holder}}{{this}}{{/with}}",
+        input,
+        "callable"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(holder);
+}
+END_TEST
+
+START_TEST(test_each_callable_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+
+    handlebars_value_helper(items, test_each_context_helper);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("items"),
+        items
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#each items}}{{this}}{{/each}}",
+        input,
+        "true"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(items);
+}
+END_TEST
+
+START_TEST(test_ambiguous_block_value_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(holder);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+
+    test_register_helper(
+        HBS_STRL("blockHelperMissing"),
+        test_allocating_helper
+    );
+    handlebars_value_boolean(holder, true);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("holder"),
+        holder
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#holder}}ignored{{/holder}}",
+        input,
+        "success"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(holder);
+}
+END_TEST
+
+START_TEST(test_block_value_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(awesome);
+    HANDLEBARS_VALUE_DECL(foo);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * foo_map;
+    struct handlebars_map * input_map;
+
+    test_register_helper(
+        HBS_STRL("blockHelperMissing"),
+        test_allocating_helper
+    );
+    handlebars_value_boolean(awesome, true);
+    foo_map = handlebars_map_ctor(context, 1);
+    foo_map = handlebars_map_str_add(
+        foo_map,
+        HBS_STRL("awesome"),
+        awesome
+    );
+    handlebars_value_map(foo, foo_map);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("foo"),
+        foo
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#foo.awesome}}ignored{{/foo.awesome}}",
+        input,
+        "success"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(foo);
+    HANDLEBARS_VALUE_UNDECL(awesome);
+}
+END_TEST
+
+START_TEST(test_invoke_helper_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(bar);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_map * input_map;
+
+    test_register_helper(HBS_STRL("foo"), test_allocating_helper);
+    handlebars_value_str(
+        bar,
+        handlebars_string_ctor(context, HBS_STRL("success"))
+    );
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(
+        input_map,
+        HBS_STRL("bar"),
+        bar
+    );
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{foo bar}}",
+        input,
+        "success"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(bar);
+}
+END_TEST
+
+START_TEST(test_invoke_known_helper_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(input);
+
+    test_register_helper(HBS_STRL("with"), test_allocating_helper);
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#with true}}ignored{{/with}}",
+        input,
+        "success"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
 }
 END_TEST
 #endif
@@ -2435,10 +2799,13 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_vm_reusable_after_helper_error, "VM reuse after helper error");
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_with_helper_error_releases_vm_temporaries, "With helper errors release VM temporaries");
+    REGISTER_TEST_FIXTURE(s, test_with_callable_error_releases_vm_temporaries, "With callable errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_if_helper_error_releases_vm_temporaries, "If helper errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_unless_helper_error_releases_vm_temporaries, "Unless helper errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_each_helper_error_releases_vm_temporaries, "Each helper errors release VM temporaries");
+    REGISTER_TEST_FIXTURE(s, test_each_callable_error_releases_vm_temporaries, "Each callable errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_each_helper_success_releases_nested_buffers, "Each helper success releases nested buffers");
+    REGISTER_TEST_FIXTURE(s, test_with_helper_success_releases_nested_buffer, "With helper success releases nested buffer");
     REGISTER_TEST_FIXTURE(s, test_block_helper_missing_error_releases_vm_temporaries, "Block helper missing errors release VM temporaries");
 #endif
     REGISTER_TEST_FIXTURE(s, test_inline_partial_error_unwinds_vm, "Inline partial errors unwind VM state");
@@ -2448,6 +2815,13 @@ static Suite * suite(void)
 #ifdef HANDLEBARS_MEMORY
     REGISTER_TEST_FIXTURE(s, test_with_helper_allocation_failures_unwind_vm, "With helper allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_each_helper_allocation_failures_unwind_vm, "Each helper allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_each_map_allocation_failures_unwind_vm, "Each map allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_with_callable_allocation_failures_unwind_vm, "With callable allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_each_callable_allocation_failures_unwind_vm, "Each callable allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_ambiguous_block_value_allocation_failures_unwind_vm, "Ambiguous block value allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_block_value_allocation_failures_unwind_vm, "Block value allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_invoke_helper_allocation_failures_unwind_vm, "Invoke helper allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_invoke_known_helper_allocation_failures_unwind_vm, "Invoke known helper allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_allocation_failures_unwind_vm, "Inline partial allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_scalar_name_allocation_failures_unwind_vm, "Inline partial scalar-name allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_block_allocation_failures_unwind_vm, "Inline partial block allocation failures unwind VM state");
