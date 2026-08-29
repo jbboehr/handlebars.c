@@ -372,20 +372,13 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
 
     struct handlebars_value * context = &argv[0];
     struct handlebars_value * field = &argv[1];
-    enum handlebars_value_type type = handlebars_value_get_type(context);
+    struct handlebars_string * key = handlebars_value_to_string(field, CONTEXT);
+    struct handlebars_value * result;
 
-    if( type == HANDLEBARS_VALUE_TYPE_MAP ) {
-        struct handlebars_string * key = handlebars_value_to_string(field, CONTEXT);
-        (void) handlebars_value_map_find(context, key, rv);
-        handlebars_string_delref(key);
-    } else if( type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        // @todo sscanf?
-        if( handlebars_value_get_type(field) == HANDLEBARS_VALUE_TYPE_INTEGER ) {
-            rv = handlebars_value_array_find(context, handlebars_value_get_intval(field), rv);
-        }
-    }
+    result = handlebars_vm_lookup_property(vm, context, key, rv);
+    handlebars_string_delref(key);
 
-    return rv;
+    return result != NULL ? result : rv;
 }
 
 struct handlebars_if_call_state {

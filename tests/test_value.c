@@ -389,6 +389,163 @@ static struct handlebars_string * test_execute_with_bar(
     return output;
 }
 
+struct test_lazy_array_user {
+    struct handlebars_user user;
+    struct handlebars_value item;
+    long count;
+    size_t find_calls;
+    size_t last_index;
+};
+
+static enum handlebars_value_type test_lazy_array_type(
+    struct handlebars_value * value
+)
+{
+    (void) value;
+    return HANDLEBARS_VALUE_TYPE_ARRAY;
+}
+
+static struct handlebars_value * test_lazy_array_find(
+    struct handlebars_value * value,
+    size_t index,
+    struct handlebars_value * rv
+)
+{
+    struct test_lazy_array_user * user = (struct test_lazy_array_user *)
+        handlebars_value_get_user(value);
+
+    user->find_calls++;
+    user->last_index = index;
+    if( index >= (size_t) user->count ) {
+        return NULL;
+    }
+    (void) rv;
+    handlebars_value_integer(&user->item, (long) index + 10);
+    return &user->item;
+}
+
+static long test_lazy_array_count(struct handlebars_value * value)
+{
+    struct test_lazy_array_user * user = (struct test_lazy_array_user *)
+        handlebars_value_get_user(value);
+
+    return user->count;
+}
+
+static const struct handlebars_value_handlers test_lazy_array_handlers = {
+    .name = "test-lazy-array",
+    .type = &test_lazy_array_type,
+    .array_find = &test_lazy_array_find,
+    .count = &test_lazy_array_count
+};
+
+static const struct handlebars_value_handlers test_lazy_array_no_count_handlers = {
+    .name = "test-lazy-array-no-count",
+    .type = &test_lazy_array_type,
+    .array_find = &test_lazy_array_find
+};
+
+struct test_lazy_map_user {
+    struct handlebars_user user;
+    struct handlebars_value item;
+    bool has_length;
+};
+
+static enum handlebars_value_type test_lazy_map_type(
+    struct handlebars_value * value
+)
+{
+    (void) value;
+    return HANDLEBARS_VALUE_TYPE_MAP;
+}
+
+static struct handlebars_value * test_lazy_map_find(
+    struct handlebars_value * value,
+    struct handlebars_string * key,
+    struct handlebars_value * rv
+)
+{
+    struct test_lazy_map_user * user = (struct test_lazy_map_user *)
+        handlebars_value_get_user(value);
+
+    (void) rv;
+    if( !user->has_length || !hbs_str_eq_strl(key, HBS_STRL("length")) ) {
+        return NULL;
+    }
+    handlebars_value_integer(&user->item, 37);
+    return &user->item;
+}
+
+static const struct handlebars_value_handlers test_lazy_map_handlers = {
+    .name = "test-lazy-map",
+    .type = &test_lazy_map_type,
+    .map_find = &test_lazy_map_find
+};
+
+static enum handlebars_value_type test_type_only_string_type(
+    struct handlebars_value * value
+)
+{
+    (void) value;
+    return HANDLEBARS_VALUE_TYPE_STRING;
+}
+
+static const struct handlebars_value_handlers test_type_only_string_handlers = {
+    .name = "test-type-only-string",
+    .type = &test_type_only_string_type
+};
+
+static void test_value_lazy_array(
+    struct handlebars_value * value,
+    long count
+)
+{
+    struct test_lazy_array_user * user = handlebars_talloc_zero(
+        context,
+        struct test_lazy_array_user
+    );
+
+    ck_assert_ptr_nonnull(user);
+    handlebars_value_init(&user->item);
+    user->count = count;
+    handlebars_user_init(&user->user, context, &test_lazy_array_handlers);
+    handlebars_value_user(value, &user->user);
+}
+
+static void test_value_lazy_array_without_count(
+    struct handlebars_value * value,
+    long count
+)
+{
+    struct test_lazy_array_user * user = handlebars_talloc_zero(
+        context,
+        struct test_lazy_array_user
+    );
+
+    ck_assert_ptr_nonnull(user);
+    handlebars_value_init(&user->item);
+    user->count = count;
+    handlebars_user_init(&user->user, context, &test_lazy_array_no_count_handlers);
+    handlebars_value_user(value, &user->user);
+}
+
+static void test_value_lazy_map(
+    struct handlebars_value * value,
+    bool has_length
+)
+{
+    struct test_lazy_map_user * user = handlebars_talloc_zero(
+        context,
+        struct test_lazy_map_user
+    );
+
+    ck_assert_ptr_nonnull(user);
+    handlebars_value_init(&user->item);
+    user->has_length = has_length;
+    handlebars_user_init(&user->user, context, &test_lazy_map_handlers);
+    handlebars_value_user(value, &user->user);
+}
+
 static void assert_value_expression_result(
     struct handlebars_value * value,
     bool escape,
@@ -517,6 +674,135 @@ START_TEST(test_closure_rejects_negative_local_count)
     context->e->jmp = previous;
     (void) closure;
     ck_abort_msg("Expected a negative closure local count to be rejected");
+}
+END_TEST
+
+START_TEST(test_vm_string_length_handles_user_without_count)
+{
+    struct handlebars_module * module = test_compile_template("{{text.length}}");
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_user * user = handlebars_talloc_zero(
+        context,
+        struct handlebars_user
+    );
+    struct handlebars_string * output;
+
+    ck_assert_ptr_nonnull(user);
+    handlebars_user_init(user, context, &test_type_only_string_handlers);
+    handlebars_value_user(value, user);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("text"), value);
+    handlebars_value_map(input, input_map);
+
+    output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_user_collection_length_and_callback_contracts)
+{
+    struct handlebars_module * module = test_compile_template(
+        "{{items.length}}|{{lookup items \"length\"}}|"
+        "{{items.[0]}}|{{lookup items \"0\"}}|{{lookup items \"01\"}}|"
+        "{{record.length}}|{{lookup record \"length\"}}|"
+        "{{emptyRecord.length}}|{{lookup emptyRecord \"length\"}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 3);
+    struct handlebars_string * output;
+
+    test_value_lazy_array_without_count(value, 2);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("items"), value);
+    test_value_lazy_map(value, true);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("record"), value);
+    test_value_lazy_map(value, false);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("emptyRecord"), value);
+    handlebars_value_map(input, input_map);
+
+    output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "||10|10||37|37||");
+
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_array_index_canonical_boundaries)
+{
+    static const char * invalid_keys[] = {
+        "", "00", "01", "+1", "-1", " 1", "1 ", "1x", "1.0", "\x80"
+    };
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(rv);
+    struct test_lazy_array_user * user;
+    struct handlebars_string * key;
+    struct handlebars_value * result;
+    char max_key[64];
+    char overflow_key[65];
+    int max_key_length;
+
+    test_value_lazy_array(value, 2);
+    user = (struct test_lazy_array_user *) handlebars_value_get_user(value);
+    ck_assert_ptr_nonnull(user);
+
+    key = handlebars_string_ctor(context, HBS_STRL("0"));
+    result = handlebars_vm_lookup_property(vm, value, key, rv);
+    ck_assert_ptr_eq(result, &user->item);
+    ck_assert_int_eq(handlebars_value_get_intval(result), 10);
+    ck_assert_uint_eq(user->find_calls, 1);
+    ck_assert_uint_eq(user->last_index, 0);
+    handlebars_string_delref(key);
+
+    for( size_t i = 0; i < sizeof(invalid_keys) / sizeof(invalid_keys[0]); i++ ) {
+        user->find_calls = 0;
+        key = handlebars_string_ctor(context, invalid_keys[i], strlen(invalid_keys[i]));
+        result = handlebars_vm_lookup_property(vm, value, key, rv);
+        ck_assert_msg(result == NULL, "noncanonical array key %zu was accepted", i);
+        ck_assert_msg(user->find_calls == 0, "noncanonical array key %zu reached callback", i);
+        handlebars_string_delref(key);
+    }
+
+    max_key_length = snprintf(max_key, sizeof(max_key), "%zu", SIZE_MAX);
+    ck_assert_msg(
+        max_key_length > 0 && (size_t) max_key_length + 1 < sizeof(overflow_key),
+        "SIZE_MAX did not fit the test buffer"
+    );
+
+    user->find_calls = 0;
+    key = handlebars_string_ctor(context, max_key, (size_t) max_key_length);
+    result = handlebars_vm_lookup_property(vm, value, key, rv);
+    ck_assert_ptr_null(result);
+    ck_assert_uint_eq(user->find_calls, 1);
+    ck_assert_uint_eq(user->last_index, SIZE_MAX);
+    handlebars_string_delref(key);
+
+    memcpy(overflow_key, max_key, (size_t) max_key_length);
+    overflow_key[max_key_length] = '0';
+    overflow_key[max_key_length + 1] = '\0';
+    user->find_calls = 0;
+    key = handlebars_string_ctor(
+        context,
+        overflow_key,
+        (size_t) max_key_length + 1
+    );
+    result = handlebars_vm_lookup_property(vm, value, key, rv);
+    ck_assert_ptr_null(result);
+    ck_assert_uint_eq(user->find_calls, 0);
+    handlebars_string_delref(key);
+
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(value);
 }
 END_TEST
 
@@ -2102,6 +2388,137 @@ START_TEST(test_subexpression_allows_missing_context_value)
 }
 END_TEST
 
+START_TEST(test_vm_emulates_string_and_array_length_properties)
+{
+    static const char * template =
+        "{{text.length}}|{{items.length}}|"
+        "{{emptyText.length}}|{{emptyItems.length}}|"
+        "{{#with text as |value|}}{{value.length}}{{/with}}|"
+        "{{@root.items.length}}|{{record.length}}";
+    struct handlebars_module * module = test_compile_template(template);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 5);
+    struct handlebars_map * record_map = handlebars_map_ctor(context, 1);
+    struct handlebars_stack * items = handlebars_stack_ctor(context, 3);
+    struct handlebars_string * output;
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("four")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("text"), value);
+
+    for( long i = 1; i <= 3; i++ ) {
+        handlebars_value_integer(value, i);
+        items = handlebars_stack_push(items, value);
+    }
+    handlebars_value_array(value, items);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("items"), value);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("emptyText"), value);
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 0));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("emptyItems"), value);
+
+    handlebars_value_integer(value, 9);
+    record_map = handlebars_map_str_update(record_map, HBS_STRL("length"), value);
+    handlebars_value_map(value, record_map);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("record"), value);
+
+    handlebars_value_map(input, input_map);
+    output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "4|3|0|0|4|3|9");
+
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_length_data_path_stays_missing_after_missing_segment)
+{
+    struct handlebars_module * module = test_compile_template(
+        "{{@root.items.missing.length}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_stack * items = handlebars_stack_ctor(context, 1);
+    struct handlebars_string * output;
+
+    handlebars_value_integer(value, 1);
+    items = handlebars_stack_push(items, value);
+    handlebars_value_array(value, items);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("items"), value);
+    handlebars_value_map(input, input_map);
+
+    output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_emulates_length_for_custom_lazy_arrays)
+{
+    struct handlebars_module * module = test_compile_template(
+        "{{items.length}}|{{items.[0]}}|{{lookup items 0}}|{{empty.length}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 2);
+    struct handlebars_string * output;
+
+    test_value_lazy_array(value, 2);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("items"), value);
+    test_value_lazy_array(value, 0);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("empty"), value);
+    handlebars_value_map(input, input_map);
+
+    output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "2|10|10|0");
+
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_length_block_param_stays_missing_after_missing_segment)
+{
+    struct handlebars_module * module = test_compile_template(
+        "{{#with items as |value|}}{{value.missing.length}}{{/with}}"
+    );
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_stack * items = handlebars_stack_ctor(context, 1);
+    struct handlebars_string * output;
+
+    handlebars_value_integer(value, 1);
+    items = handlebars_stack_push(items, value);
+    handlebars_value_array(value, items);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("items"), value);
+    handlebars_value_map(input, input_map);
+
+    output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 
 START_TEST(test_boolean_true)
 {
@@ -3212,6 +3629,13 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_subexpression_rejects_empty_containers, "Subexpression rejects empty containers");
     REGISTER_TEST_FIXTURE(s, test_subexpression_calls_callable_context_value, "Subexpression calls callable context value");
     REGISTER_TEST_FIXTURE(s, test_subexpression_allows_missing_context_value, "Subexpression allows missing context value");
+    REGISTER_TEST_FIXTURE(s, test_vm_emulates_string_and_array_length_properties, "VM emulates string and array length properties");
+    REGISTER_TEST_FIXTURE(s, test_vm_string_length_handles_user_without_count, "VM string length handles USER values without count handlers");
+    REGISTER_TEST_FIXTURE(s, test_vm_user_collection_length_and_callback_contracts, "VM honors USER collection length and callback contracts");
+    REGISTER_TEST_FIXTURE(s, test_vm_array_index_canonical_boundaries, "VM accepts only canonical array index boundaries");
+    REGISTER_TEST_FIXTURE(s, test_vm_length_data_path_stays_missing_after_missing_segment, "VM length data paths stay missing after a missing segment");
+    REGISTER_TEST_FIXTURE(s, test_vm_emulates_length_for_custom_lazy_arrays, "VM emulates length for custom lazy arrays");
+    REGISTER_TEST_FIXTURE(s, test_vm_length_block_param_stays_missing_after_missing_segment, "VM length block-param paths stay missing after a missing segment");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_array_iterator_retains_stack, "Array iterator retains its backing stack");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");

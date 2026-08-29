@@ -30,6 +30,13 @@ struct handlebars_module;
 struct handlebars_string;
 struct handlebars_stack;
 
+HBS_LOCAL struct handlebars_value * handlebars_vm_lookup_property(
+    struct handlebars_vm * vm,
+    struct handlebars_value * value,
+    struct handlebars_string * key,
+    struct handlebars_value * rv
+) HBS_ATTR_NONNULL_ALL;
+
 struct handlebars_vm {
     struct handlebars_context ctx;
     struct handlebars_cache * cache;

@@ -375,6 +375,102 @@ load "../vendor/bats-assert/assert"
     assert_output "|bar|"
 }
 
+@test "--execute emulates length for lazy JSON strings and arrays" {
+    local data_file="$BATS_TEST_TMPDIR/length.json"
+
+    skip_if_no_json
+    printf '%s' '{"text":"four","emptyText":"","items":[1,2,3],"emptyItems":[]}' > "$data_file"
+    run bash -c 'printf "%s" "{{text.length}}|{{emptyText.length}}|{{items.length}}|{{items.[0]}}|{{emptyItems.length}}" | "$1" --execute --no-newline --no-convert-input --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_success
+    assert_output "4|0|3|1|0"
+}
+
+@test "--execute resolves lazy array length through compat depthed lookup" {
+    local data_file="$BATS_TEST_TMPDIR/length-compat.json"
+
+    skip_if_no_json
+    printf '%s' '{"scope":{"present":true},"items":[1,2,3]}' > "$data_file"
+    run bash -c 'printf "%s" "{{#with scope}}{{items.length}}{{/with}}" | "$1" --execute --no-newline --no-convert-input --flags compat --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_success
+    assert_output "3"
+}
+
+@test "--execute lookup helper resolves emulated length properties" {
+    local data_file="$BATS_TEST_TMPDIR/length-lookup.json"
+
+    skip_if_no_json
+    printf '%s' '{"text":"four","items":["zero","one"],"record":{"length":9}}' > "$data_file"
+    run bash -c 'printf "%s" "{{lookup items \"length\"}}|{{lookup text \"length\"}}|{{lookup items 1}}|{{lookup record \"length\"}}" | "$1" --execute --no-newline --no-convert-input --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_success
+    assert_output "2|4|one|9"
+}
+
+@test "--execute compat lookup rejects noncanonical array indexes" {
+    local data_file="$BATS_TEST_TMPDIR/length-compat-index.json"
+
+    skip_if_no_json
+    printf '%s' '{"items":["zero","one"],"01":"leading","1x":"junk","1.5":"decimal","-1":"negative","+1":"positive"," 1":"space"}' > "$data_file"
+    run bash -c 'printf "%s" "{{#with items}}{{[1]}}|{{[01]}}|{{[1x]}}|{{[1.5]}}|{{[-1]}}|{{[+1]}}|{{[ 1]}}{{/with}}" | "$1" --execute --no-newline --no-convert-input --flags compat --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_success
+    assert_output "one|leading|junk|decimal|negative|positive|space"
+}
+
+@test "--execute lazy JSON arrays do not truncate large canonical indexes" {
+    local data_file="$BATS_TEST_TMPDIR/length-large-index.json"
+
+    skip_if_no_json
+    printf '%s' '{"items":["zero"]}' > "$data_file"
+    run bash -c 'printf "%s" "{{items.[4294967296]}}|{{lookup items \"4294967296\"}}" | "$1" --execute --no-newline --no-convert-input --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_success
+    assert_output "|"
+}
+
+@test "--execute assume_objects rejects missing properties on strings" {
+    local data_file="$BATS_TEST_TMPDIR/length-assume-objects.json"
+
+    skip_if_no_json
+    printf '%s' '{"foo":"bar"}' > "$data_file"
+    run bash -c 'printf "%s" "{{foo.missing}}" | "$1" --execute --no-newline --flags assume_objects --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_failure
+    assert_output --partial '"missing" not defined in object'
+}
+
+@test "--execute assume_objects preserves missing nested string paths" {
+    local data_file="$BATS_TEST_TMPDIR/length-assume-objects-nested.json"
+
+    skip_if_no_json
+    printf '%s' '{"foo":"bar"}' > "$data_file"
+    run bash -c 'printf "%s" "{{foo.missing.deep}}" | "$1" --execute --no-newline --flags assume_objects --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_success
+    assert_output ""
+}
+
+@test "--execute assume_objects rejects missing nested array paths" {
+    local data_file="$BATS_TEST_TMPDIR/length-assume-objects-array.json"
+
+    skip_if_no_json
+    printf '%s' '{"items":[1,2]}' > "$data_file"
+    run bash -c 'printf "%s" "{{items.missing.deep}}" | "$1" --execute --no-newline --flags assume_objects --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_failure
+    assert_output --partial '"missing" not defined in object'
+}
+
 @test "--helper-exec invokes an executable with primitive arguments" {
     run bash -c 'printf "%s" "A{{external \"hello\" 42}}B" | "$1" --execute --no-newline --helper-exec "external=$2" -' _ \
         "$HANDLEBARSC" "$TEST_DIR/helper_executable.sh"

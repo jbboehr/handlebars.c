@@ -230,7 +230,7 @@ static struct handlebars_value * hbs_json_map_find(struct handlebars_value * val
 static struct handlebars_value * hbs_json_array_find(struct handlebars_value * value, size_t index, struct handlebars_value * rv)
 {
     struct handlebars_json * intern = GET_INTERN_V(value);
-    struct json_object * item = json_object_array_get_idx(intern->object, (int) index);
+    struct json_object * item = json_object_array_get_idx(intern->object, index);
     if( item == NULL ) {
         return NULL;
     }

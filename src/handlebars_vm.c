@@ -538,6 +538,85 @@ static inline void append_to_buffer(struct handlebars_vm * vm, struct handlebars
 }
 
 HBS_ATTR_NONNULL_ALL
+static inline bool parse_array_index(
+    struct handlebars_string * key,
+    size_t * index
+)
+{
+    const unsigned char * str = (const unsigned char *) hbs_str_val(key);
+    size_t length = hbs_str_len(key);
+    size_t result = 0;
+
+    if( length == 0 || (length > 1 && str[0] == '0') ) {
+        return false;
+    }
+    for( size_t i = 0; i < length; i++ ) {
+        size_t digit;
+
+        if( str[i] < '0' || str[i] > '9' ) {
+            return false;
+        }
+        digit = (size_t) (str[i] - '0');
+        if( result > (SIZE_MAX - digit) / 10 ) {
+            return false;
+        }
+        result = result * 10 + digit;
+    }
+    *index = result;
+    return true;
+}
+
+HBS_LOCAL struct handlebars_value * handlebars_vm_lookup_property(
+    struct handlebars_vm * vm,
+    struct handlebars_value * value,
+    struct handlebars_string * key,
+    struct handlebars_value * rv
+)
+{
+    enum handlebars_value_type type = handlebars_value_get_type(value);
+    bool can_count = value->type != HANDLEBARS_VALUE_TYPE_USER
+        || handlebars_value_get_handlers(value)->count != NULL;
+
+    if( type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        return handlebars_value_map_find(value, key, rv);
+    }
+    if( hbs_str_eq_strl(key, HBS_STRL("length")) ) {
+        long length = -1;
+
+        if( type == HANDLEBARS_VALUE_TYPE_ARRAY && can_count ) {
+            length = handlebars_value_count(value);
+        } else if( type == HANDLEBARS_VALUE_TYPE_STRING ) {
+            if( value->type == HANDLEBARS_VALUE_TYPE_STRING ) {
+                size_t string_length = handlebars_value_get_strlen(value);
+
+                if( unlikely(string_length > LONG_MAX) ) {
+                    handlebars_throw(
+                        CONTEXT,
+                        HANDLEBARS_ERROR,
+                        "String length exceeds the supported integer range"
+                    );
+                }
+                length = (long) string_length;
+            } else if( can_count ) {
+                length = handlebars_value_count(value);
+            }
+        }
+        if( length >= 0 ) {
+            handlebars_value_integer(rv, length);
+            return rv;
+        }
+    }
+    if( type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        size_t index;
+
+        if( parse_array_index(key, &index) ) {
+            return handlebars_value_array_find(value, index, rv);
+        }
+    }
+    return NULL;
+}
+
+HBS_ATTR_NONNULL_ALL
 static inline void depthed_lookup(struct handlebars_vm * vm, struct handlebars_string * key)
 {
     size_t i;
@@ -550,11 +629,9 @@ static inline void depthed_lookup(struct handlebars_vm * vm, struct handlebars_s
     for( i = 0, l = LEN(vm->contextStack); i < l; i++ ) {
         value = GET(vm->contextStack, i);
         assert(value != NULL);
-        if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            tmp = handlebars_value_map_find(value, key, rv);
-            if( tmp != NULL ) {
-                break;
-            }
+        tmp = handlebars_vm_lookup_property(vm, value, key, rv);
+        if( tmp != NULL ) {
+            break;
         }
         value = empty_value;
     }
@@ -2178,10 +2255,11 @@ ACCEPT_FUNCTION(lookup_block_param)
         struct handlebars_value * tmp = v2;
         struct handlebars_value * tmp2;
         for( i = 1; i < arr_len; i++ ) {
-            tmp2 = handlebars_value_map_find(tmp, arr[i].string, rv);
+            tmp2 = handlebars_vm_lookup_property(vm, tmp, arr[i].string, rv);
             if( tmp2 ) {
                 tmp = tmp2;
             } else {
+                tmp = NULL;
                 break;
             }
         }
@@ -2236,7 +2314,7 @@ ACCEPT_FUNCTION(lookup_data)
         }
     }
 
-    if( data && (tmp = handlebars_value_map_find(data, first->string, rv)) ) {
+    if( data && (tmp = handlebars_vm_lookup_property(vm, data, first->string, rv)) ) {
         handlebars_value_value(val, tmp);
     } else if (hbs_str_eq_strl(first->string, HBS_STRL("root"))) {
         handlebars_value_value(val, TOP(vm->contextStack));
@@ -2254,11 +2332,13 @@ ACCEPT_FUNCTION(lookup_data)
 
     for( i = 1 ; i < arr_len; i++ ) {
         struct handlebars_operand_string * part = arr + i;
-        if( handlebars_value_get_type(val) == HANDLEBARS_VALUE_TYPE_MAP &&
-                NULL != (tmp = handlebars_value_map_find(val, part->string, rv)) ) {
+        if( NULL != (tmp = handlebars_vm_lookup_property(vm, val, part->string, rv)) ) {
             handlebars_value_value(val, tmp);
         } else if( is_strict || require_terminal ) {
             goto done_and_err;
+        } else {
+            handlebars_value_null(val);
+            break;
         }
     }
 
@@ -2302,7 +2382,6 @@ ACCEPT_FUNCTION(lookup_on_context)
     size_t arr_len = opcode->op1.data.array.count;
     struct handlebars_operand_string * arr = opcode->op1.data.array.array;
     struct handlebars_operand_string * arr_end = arr + arr_len;
-    long index = -1;
     bool is_strict = (vm->flags & handlebars_compiler_flag_strict) || (vm->flags & handlebars_compiler_flag_assume_objects);
     bool require_terminal = (vm->flags & handlebars_compiler_flag_strict) && opcode->op3.data.boolval;
 
@@ -2316,20 +2395,24 @@ ACCEPT_FUNCTION(lookup_on_context)
 
     do {
         bool is_last = arr == arr_end - 1;
-        if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_MAP ) {
-            value = handlebars_value_map_find(value, arr->string, rv2);
-        } else if( handlebars_value_get_type(value) == HANDLEBARS_VALUE_TYPE_ARRAY ) {
-            if (sscanf(hbs_str_val(arr->string), "%ld", &index)) {
-                value = handlebars_value_array_find(value, index, rv2);
-            } else {
-                value = NULL;
-            }
+        enum handlebars_value_type type = handlebars_value_get_type(value);
+
+        if( type == HANDLEBARS_VALUE_TYPE_MAP
+                || type == HANDLEBARS_VALUE_TYPE_ARRAY
+                || type == HANDLEBARS_VALUE_TYPE_STRING ) {
+            value = handlebars_vm_lookup_property(vm, value, arr->string, rv2);
         } else if( vm->flags & handlebars_compiler_flag_assume_objects && is_last ) {
             goto done_and_err;
         } else {
             goto done_and_null;
         }
         if( !value ) {
+            if( type == HANDLEBARS_VALUE_TYPE_STRING ) {
+                if( (vm->flags & handlebars_compiler_flag_assume_objects) && is_last ) {
+                    goto done_and_err;
+                }
+                goto done_and_null;
+            }
             if( is_strict && !is_last ) {
                 goto done_and_err;
             }

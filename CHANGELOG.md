@@ -18,6 +18,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   `_try` entry points that preserve caller-owned output values on failure.
 - `handlebarsc` can register bounded plain-text or structured-JSON helpers
   backed by external executables.
+- String and array values expose an emulated `length` property during template
+  lookup.
 
 ### Changed
 - Value iterators now retain their backing storage, support nested map
