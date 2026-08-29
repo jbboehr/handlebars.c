@@ -28,6 +28,7 @@
 
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 #define HANDLEBARS_OPCODES_PRIVATE
+#define HANDLEBARS_PARTIAL_LOADER_PRIVATE
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
@@ -42,6 +43,7 @@
 #include "handlebars_helpers.h"
 #include "handlebars_map.h"
 #include "handlebars_parser.h"
+#include "handlebars_partial_loader.h"
 #include "handlebars_ptr.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_opcode_printer.h"
@@ -403,6 +405,30 @@ static inline struct handlebars_value * lookup_partial(
                 return partial;
             }
         }
+    }
+    if( handlebars_value_is_partial_loader(&vm->partials) ) {
+        struct handlebars_context * loader_context =
+            handlebars_value_get_user(&vm->partials)->ctx;
+        enum handlebars_error_type error =
+            handlebars_value_partial_loader_find_try(
+                &vm->partials,
+                name,
+                rv
+            );
+
+        if( unlikely(error != HANDLEBARS_SUCCESS) ) {
+            struct handlebars_locinfo loc = handlebars_error_loc(loader_context);
+            const char * message = handlebars_error_msg(loader_context);
+
+            handlebars_throw_ex(
+                CONTEXT,
+                error,
+                &loc,
+                "%s",
+                message != NULL ? message : "Partial loader error"
+            );
+        }
+        return rv;
     }
     return handlebars_value_map_find(&vm->partials, name, rv);
 }

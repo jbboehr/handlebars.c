@@ -101,9 +101,10 @@ the process.
 
 ### C API error handling
 
-The core construction, parse, compile, serialize, render, cache, and optional
-JSON/YAML conversion operations have additive `_try` entrypoints for
-applications that do not want library errors to `longjmp` into consumer code.
+The core construction, parse, compile, serialize, render, cache,
+partial-loader, and optional JSON/YAML conversion operations have additive
+`_try` entrypoints for applications that do not want library errors to
+`longjmp` into consumer code.
 These functions return an `enum handlebars_error_type` and leave the error
 message and location on the associated context:
 
@@ -123,7 +124,10 @@ if (error != HANDLEBARS_SUCCESS) {
 
 Pointer-producing `_try` functions set their output pointer to `NULL` on
 failure. JSON and YAML conversion `_try` functions replace the supplied value
-only on success, preserving its previous contents on failure. Cache lookup
+only on success, preserving its previous contents on failure. Partial-loader
+construction and lookup follow the same value-preservation rule; VM rendering
+also transfers built-in partial-loader errors to the VM context when the loader
+uses a separate context. Cache lookup
 reports a miss as success with a `NULL` module; cache statistics and garbage
 collection publish their output values only on success.
 

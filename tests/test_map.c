@@ -529,34 +529,260 @@ START_TEST(test_map_rehash_preserves_aliased_reference_value)
 END_TEST
 
 #ifdef HANDLEBARS_MEMORY
-START_TEST(test_map_rehash_nomem_preserves_original)
+static bool map_mutation_with_alloc_failure(
+    struct handlebars_map * map,
+    struct handlebars_string * key,
+    struct handlebars_value * value,
+    struct handlebars_map ** result,
+    int fail_at,
+    bool update
+)
 {
-    struct handlebars_map * map = make_full_map();
-    HANDLEBARS_VALUE_DECL(value);
-    jmp_buf * prev = context->e->jmp;
+    jmp_buf * volatile previous = context->e->jmp;
     jmp_buf buf;
 
-    handlebars_value_integer(value, 5);
     if( handlebars_setjmp_ex(context, &buf) ) {
         handlebars_memory_fail_disable();
-        context->e->jmp = prev;
-        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
-        ck_assert_uint_eq(handlebars_map_count(map), 4);
-        ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
-
-        map = handlebars_map_str_add(map, HBS_STRL("e"), value);
-        ck_assert_uint_eq(handlebars_map_count(map), 5);
-        HANDLEBARS_VALUE_UNDECL(value);
-        handlebars_map_delref(map);
-        return;
+        context->e->jmp = previous;
+        return true;
     }
 
     handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
-    handlebars_memory_fail_counter(2);
-    ck_assert_ptr_nonnull(handlebars_map_str_add(map, HBS_STRL("e"), value));
+    handlebars_memory_fail_counter(fail_at);
+    *result = update
+        ? handlebars_map_update(map, key, value)
+        : handlebars_map_add(map, key, value);
     handlebars_memory_fail_disable();
-    context->e->jmp = prev;
-    ck_abort_msg("Expected map rehash allocation to fail");
+    context->e->jmp = previous;
+    return false;
+}
+
+static void assert_map_growth_nomem_preserves_original(bool update)
+{
+    struct handlebars_map * map = make_full_map();
+    struct handlebars_map * result = map;
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("e"));
+    jmp_buf * previous = context->e->jmp;
+    size_t blocks_before;
+    int fail_at;
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_string_addref(key);
+    handlebars_value_integer(value, 5);
+    blocks_before = talloc_total_blocks(context);
+
+    for( fail_at = 1; fail_at < 16; fail_at++ ) {
+        result = map;
+        bool failed = map_mutation_with_alloc_failure(
+                map,
+                key,
+                value,
+                &result,
+                fail_at,
+                update
+            );
+        ck_assert_ptr_eq(context->e->jmp, previous);
+        if( !failed ) {
+            map = result;
+            break;
+        }
+
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_uint_eq(handlebars_map_count(map), 4);
+        ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
+        ck_assert_ptr_null(handlebars_map_find(map, key));
+        handlebars_error_clear(context);
+        ck_assert_msg(
+            talloc_total_blocks(context) == blocks_before,
+            "failed map %s leaked at allocation %d: before=%zu after=%zu",
+            update ? "update" : "add",
+            fail_at,
+            blocks_before,
+            talloc_total_blocks(context)
+        );
+    }
+    ck_assert_int_lt(fail_at, 16);
+    ck_assert_uint_eq(handlebars_map_count(map), 5);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_find(map, key)), 5);
+
+    handlebars_string_delref(key);
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_map_delref(map);
+}
+
+START_TEST(test_map_rehash_nomem_preserves_original)
+{
+    assert_map_growth_nomem_preserves_original(false);
+    assert_map_growth_nomem_preserves_original(true);
+}
+END_TEST
+
+enum map_string_test_mutation {
+    MAP_STRING_TEST_REMOVE,
+    MAP_STRING_TEST_ADD,
+    MAP_STRING_TEST_UPDATE
+};
+
+static bool map_string_mutation_with_alloc_failure(
+    struct handlebars_map * map,
+    struct handlebars_value * value,
+    struct handlebars_map ** result,
+    int fail_at,
+    enum map_string_test_mutation mutation
+)
+{
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = previous;
+        return true;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(fail_at);
+    switch( mutation ) {
+        case MAP_STRING_TEST_REMOVE:
+            *result = handlebars_map_str_remove(map, HBS_STRL("a"));
+            break;
+        case MAP_STRING_TEST_ADD:
+            *result = handlebars_map_str_add(map, HBS_STRL("e"), value);
+            break;
+        case MAP_STRING_TEST_UPDATE:
+            *result = handlebars_map_str_update(map, HBS_STRL("e"), value);
+            break;
+        default:
+            ck_abort_msg("Invalid map string mutation");
+    }
+    handlebars_memory_fail_disable();
+    context->e->jmp = previous;
+    return false;
+}
+
+static void assert_map_string_growth_nomem_releases_temporary_key(bool update)
+{
+    jmp_buf * previous = context->e->jmp;
+    int fail_at;
+
+    for( fail_at = 1; fail_at < 16; fail_at++ ) {
+        struct handlebars_map * map = make_full_map();
+        struct handlebars_map * result = map;
+        size_t blocks_before = talloc_total_blocks(context);
+        bool failed;
+        HANDLEBARS_VALUE_DECL(value);
+
+        handlebars_value_integer(value, 5);
+        failed = map_string_mutation_with_alloc_failure(
+            map,
+            value,
+            &result,
+            fail_at,
+            update ? MAP_STRING_TEST_UPDATE : MAP_STRING_TEST_ADD
+        );
+        ck_assert_ptr_eq(context->e->jmp, previous);
+        if( !failed ) {
+            map = result;
+            ck_assert_uint_eq(handlebars_map_count(map), 5);
+            ck_assert_int_eq(
+                handlebars_value_get_intval(
+                    handlebars_map_str_find(map, HBS_STRL("e"))
+                ),
+                5
+            );
+            HANDLEBARS_VALUE_UNDECL(value);
+            handlebars_map_delref(map);
+            break;
+        }
+
+        handlebars_memory_fail_disable();
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_uint_eq(handlebars_map_count(map), 4);
+        ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
+        ck_assert_ptr_null(handlebars_map_str_find(map, HBS_STRL("e")));
+        handlebars_error_clear(context);
+        ck_assert_msg(
+            talloc_total_blocks(context) == blocks_before,
+            "failed map string %s leaked its temporary key: before=%zu after=%zu",
+            update ? "update" : "add",
+            blocks_before,
+            talloc_total_blocks(context)
+        );
+        HANDLEBARS_VALUE_UNDECL(value);
+        handlebars_map_delref(map);
+    }
+    ck_assert_int_lt(fail_at, 16);
+}
+
+START_TEST(test_map_str_add_nomem_releases_temporary_key)
+{
+    assert_map_string_growth_nomem_releases_temporary_key(false);
+}
+END_TEST
+
+START_TEST(test_map_str_update_nomem_releases_temporary_key)
+{
+    assert_map_string_growth_nomem_releases_temporary_key(true);
+}
+END_TEST
+
+START_TEST(test_map_str_remove_nomem_releases_temporary_key)
+{
+    jmp_buf * previous = context->e->jmp;
+    int fail_at;
+
+    for( fail_at = 1; fail_at < 16; fail_at++ ) {
+        struct handlebars_map * map = handlebars_map_ctor(context, 64);
+        struct handlebars_map * result = map;
+        size_t blocks_before;
+        bool failed;
+        HANDLEBARS_VALUE_DECL(value);
+
+        for( long i = 0; i < 4; i++ ) {
+            char key[2] = {(char) ('a' + i), '\0'};
+            handlebars_value_integer(value, i + 1);
+            map = handlebars_map_str_add(map, key, 1, value);
+        }
+        result = map;
+        blocks_before = talloc_total_blocks(context);
+        failed = map_string_mutation_with_alloc_failure(
+            map,
+            NULL,
+            &result,
+            fail_at,
+            MAP_STRING_TEST_REMOVE
+        );
+        ck_assert_ptr_eq(context->e->jmp, previous);
+        if( !failed ) {
+            map = result;
+            ck_assert_uint_eq(handlebars_map_count(map), 3);
+            ck_assert_ptr_null(handlebars_map_str_find(map, HBS_STRL("a")));
+            ck_assert_int_eq(
+                handlebars_value_get_intval(
+                    handlebars_map_str_find(map, HBS_STRL("d"))
+                ),
+                4
+            );
+            HANDLEBARS_VALUE_UNDECL(value);
+            handlebars_map_delref(map);
+            break;
+        }
+
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_uint_eq(handlebars_map_count(map), 4);
+        ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("a"))), 1);
+        ck_assert_int_eq(handlebars_value_get_intval(handlebars_map_str_find(map, HBS_STRL("d"))), 4);
+        handlebars_error_clear(context);
+        ck_assert_msg(
+            talloc_total_blocks(context) == blocks_before,
+            "failed map string remove leaked its temporary key: before=%zu after=%zu",
+            blocks_before,
+            talloc_total_blocks(context)
+        );
+        HANDLEBARS_VALUE_UNDECL(value);
+        handlebars_map_delref(map);
+    }
+    ck_assert_int_lt(fail_at, 16);
 }
 END_TEST
 #endif
@@ -631,6 +857,9 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_rehash_preserves_aliased_reference_value, "Map rehash preserves aliased reference values");
 #ifdef HANDLEBARS_MEMORY
     REGISTER_TEST_FIXTURE(s, test_map_rehash_nomem_preserves_original, "Map remains usable after rehash allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_map_str_add_nomem_releases_temporary_key, "Map string add releases its key after allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_map_str_update_nomem_releases_temporary_key, "Map string update releases its key after allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_map_str_remove_nomem_releases_temporary_key, "Map string remove releases its key after allocation failure");
 #endif
     REGISTER_TEST_FIXTURE(s, test_map_sparse_array_compact_multiple_tombstones, "Compact multiple sparse map entries");
     REGISTER_TEST_FIXTURE(s, test_map_distinguishes_hash_collisions, "Map distinguishes hash collisions");

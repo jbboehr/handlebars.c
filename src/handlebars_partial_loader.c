@@ -30,6 +30,7 @@
 #include "handlebars_value_private.h"
 
 #include "handlebars_map.h"
+#define HANDLEBARS_PARTIAL_LOADER_PRIVATE
 #include "handlebars_partial_loader.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -55,6 +56,19 @@ struct handlebars_partial_loader_load_state {
     FILE * file;
     struct handlebars_value value;
     struct handlebars_string * key;
+};
+
+struct handlebars_partial_loader_init_state {
+    struct handlebars_string * base_path;
+    struct handlebars_string * extension;
+    struct handlebars_partial_loader * loader;
+};
+
+struct handlebars_partial_loader_find_state {
+    struct handlebars_value * loader;
+    struct handlebars_string * name;
+    struct handlebars_value value;
+    bool found;
 };
 
 static bool partial_name_is_safe(struct handlebars_string * key)
@@ -114,7 +128,8 @@ static HBS_ATTR_NORETURN void partial_loader_rethrow(
     if( previous != NULL ) {
         handlebars_longjmp(context, previous, context->e->num);
     }
-    fprintf(stderr, "Throw with invalid jmp_buf: %s\n", handlebars_error_msg(context));
+    const char * message = handlebars_error_msg(context);
+    fprintf(stderr, "Throw with invalid jmp_buf: %s\n", message != NULL ? message : "(no error message)");
     abort();
 }
 
@@ -323,20 +338,163 @@ static const struct handlebars_value_handlers handlebars_value_hbs_partial_loade
     &hbs_partial_loader_count
 };
 
+HBS_LOCAL bool handlebars_value_is_partial_loader(struct handlebars_value * value)
+{
+    return handlebars_value_get_real_type(value) == HANDLEBARS_VALUE_TYPE_USER
+        && handlebars_value_get_handlers(value) == &handlebars_value_hbs_partial_loader_handlers;
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type partial_loader_init_guarded(
+    struct handlebars_context * context,
+    struct handlebars_partial_loader_init_state * state
+)
+{
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf jump;
+
+    if( handlebars_setjmp_ex(context, &jump) ) {
+        caught = error->num;
+    } else {
+        state->loader = handlebars_talloc_zero(
+            context,
+            struct handlebars_partial_loader
+        );
+        HANDLEBARS_MEMCHECK(state->loader, context);
+        handlebars_user_init(
+            &state->loader->user,
+            context,
+            &handlebars_value_hbs_partial_loader_handlers
+        );
+        state->loader->base_path = talloc_steal(
+            state->loader,
+            handlebars_string_copy_ctor(context, state->base_path)
+        );
+        state->loader->extension = talloc_steal(
+            state->loader,
+            handlebars_string_copy_ctor(context, state->extension)
+        );
+        state->loader->map = talloc_steal(
+            state->loader,
+            handlebars_map_ctor(context, 32)
+        );
+        /* The iterator-retention API requires its owner to hold the initial ref. */
+        handlebars_map_addref(state->loader->map);
+        talloc_set_destructor(state->loader, partial_loader_dtor);
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+static enum handlebars_error_type partial_loader_init_transaction(
+    struct handlebars_context * context,
+    struct handlebars_string * base_path,
+    struct handlebars_string * extension,
+    struct handlebars_value * result,
+    bool clear_error
+)
+{
+    struct handlebars_partial_loader_init_state state = {
+        .base_path = base_path,
+        .extension = extension
+    };
+    enum handlebars_error_type error;
+
+    if( clear_error ) {
+        handlebars_error_clear(context);
+    }
+    error = partial_loader_init_guarded(context, &state);
+    if( error == HANDLEBARS_SUCCESS ) {
+        handlebars_value_user(result, &state.loader->user);
+    } else if( state.loader != NULL ) {
+        handlebars_talloc_free(state.loader);
+    }
+    return error;
+}
+
 struct handlebars_value * handlebars_value_partial_loader_init(
     struct handlebars_context * context,
     struct handlebars_string * base_path,
     struct handlebars_string * extension,
     struct handlebars_value * rv
 ) {
-    struct handlebars_partial_loader *obj = MC(handlebars_talloc(context, struct handlebars_partial_loader));
-    handlebars_user_init((struct handlebars_user *) obj, context, &handlebars_value_hbs_partial_loader_handlers);
-    obj->base_path = talloc_steal(obj, handlebars_string_copy_ctor(context, base_path));
-    obj->extension = talloc_steal(obj, handlebars_string_copy_ctor(context, extension));
-    obj->map = talloc_steal(obj, handlebars_map_ctor(context, 32));
-    /* The iterator-retention API requires its owner to hold the initial ref. */
-    handlebars_map_addref(obj->map);
-    talloc_set_destructor(obj, partial_loader_dtor);
-    handlebars_value_user(rv, (struct handlebars_user *) obj);
+    enum handlebars_error_type error = partial_loader_init_transaction(
+        context,
+        base_path,
+        extension,
+        rv,
+        false
+    );
+
+    if( unlikely(error != HANDLEBARS_SUCCESS) ) {
+        partial_loader_rethrow(context, context->e->jmp);
+    }
     return rv;
+}
+
+enum handlebars_error_type handlebars_value_partial_loader_init_try(
+    struct handlebars_context * context,
+    struct handlebars_string * base_path,
+    struct handlebars_string * extension,
+    struct handlebars_value * result
+) {
+    return partial_loader_init_transaction(
+        context,
+        base_path,
+        extension,
+        result,
+        true
+    );
+}
+
+HBS_ATTR_NOINLINE
+static enum handlebars_error_type partial_loader_find_guarded(
+    struct handlebars_context * context,
+    struct handlebars_partial_loader_find_state * state
+)
+{
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf jump;
+
+    if( handlebars_setjmp_ex(context, &jump) ) {
+        caught = error->num;
+    } else {
+        state->found = hbs_partial_loader_map_find(
+            state->loader,
+            state->name,
+            &state->value
+        ) != NULL;
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+enum handlebars_error_type handlebars_value_partial_loader_find_try(
+    struct handlebars_value * loader,
+    struct handlebars_string * name,
+    struct handlebars_value * result
+) {
+    struct handlebars_partial_loader * intern;
+    struct handlebars_partial_loader_find_state state = {
+        .loader = loader,
+        .name = name
+    };
+    enum handlebars_error_type error;
+
+    assert(handlebars_value_is_partial_loader(loader));
+    intern = GET_INTERN_V(loader);
+    handlebars_value_init(&state.value);
+    handlebars_error_clear(intern->user.ctx);
+    error = partial_loader_find_guarded(intern->user.ctx, &state);
+    if( error == HANDLEBARS_SUCCESS && state.found ) {
+        handlebars_value_value(result, &state.value);
+    }
+    handlebars_value_dtor(&state.value);
+    return error;
 }

@@ -125,6 +125,30 @@ static struct handlebars_string * execute_template(const char *template, const c
     return retval;
 }
 
+static struct handlebars_module * compile_template(const char * source)
+{
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        strlen(source)
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(local_parser, tmpl, 0);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(
+        local_compiler,
+        ast
+    );
+    struct handlebars_module * module = handlebars_program_serialize(
+        context,
+        program
+    );
+
+    handlebars_compiler_dtor(local_compiler);
+    handlebars_parser_dtor(local_parser);
+    return module;
+}
+
 START_TEST(test_partial_loader_1)
 {
     struct handlebars_string *rv = execute_template("{{> fixture1 .}}", "fixture1", "|{{foo}}|");
@@ -153,6 +177,249 @@ START_TEST(test_partial_loader_error)
 
     (void) execute_template("{{> nonexist .}}", "nonexist", "");
     ck_assert(0);
+}
+END_TEST
+
+START_TEST(test_partial_loader_cross_context_error_returns_from_vm_try)
+{
+    struct handlebars_context * loader_context = handlebars_context_ctor_ex(root);
+    struct handlebars_module * missing_module = compile_template("{{> nonexist-cross-context .}}");
+    struct handlebars_module * present_module = compile_template("{{> fixture1 .}}");
+    struct handlebars_string * path;
+    struct handlebars_string * extension;
+    struct handlebars_string * output = NULL;
+    enum handlebars_error_type error;
+    char * top_srcdir = getenv("top_srcdir");
+    jmp_buf loader_outer;
+    jmp_buf outer;
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(empty);
+
+    ck_assert_ptr_nonnull(loader_context);
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(loader_context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(loader_context, HBS_STRL("."));
+    }
+    extension = handlebars_string_ctor(loader_context, HBS_STRL(".hbs"));
+    handlebars_value_partial_loader_init(
+        loader_context,
+        path,
+        extension,
+        partials
+    );
+    handlebars_vm_set_partials(vm, partials);
+    loader_context->e->jmp = &loader_outer;
+    context->e->jmp = &outer;
+
+    error = handlebars_vm_execute_try(vm, missing_module, input, &output);
+
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_null(output);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_eq(loader_context->e->jmp, &loader_outer);
+    ck_assert_ptr_nonnull(handlebars_error_msg(context));
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "File to open partial"));
+
+    error = handlebars_vm_execute_try(vm, present_module, input, &output);
+    ck_assert_msg(
+        error == HANDLEBARS_SUCCESS,
+        "second render failed: %s",
+        handlebars_error_msg(context)
+    );
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "||");
+    ck_assert_int_eq(handlebars_error_num(loader_context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(loader_context));
+    ck_assert_ptr_eq(loader_context->e->jmp, &loader_outer);
+    handlebars_string_delref(output);
+
+    handlebars_vm_set_partials(vm, empty);
+    HANDLEBARS_VALUE_UNDECL(empty);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    handlebars_context_dtor(loader_context);
+}
+END_TEST
+
+START_TEST(test_partial_loader_try_api_preserves_results_and_jump_target)
+{
+    struct handlebars_string * path;
+    struct handlebars_string * extension;
+    struct handlebars_string * missing;
+    struct handlebars_string * present;
+    enum handlebars_error_type error;
+    char * top_srcdir = getenv("top_srcdir");
+    jmp_buf outer;
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(result);
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    missing = handlebars_string_ctor(context, HBS_STRL("nonexist-try"));
+    present = handlebars_string_ctor(context, HBS_STRL("fixture1"));
+    context->e->jmp = &outer;
+
+    error = handlebars_value_partial_loader_init_try(
+        context,
+        path,
+        extension,
+        partials
+    );
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(handlebars_value_get_type(partials), HANDLEBARS_VALUE_TYPE_MAP);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    handlebars_value_integer(result, 42);
+    error = handlebars_value_partial_loader_find_try(partials, missing, result);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_int_eq(handlebars_value_get_type(result), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(result), 42);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(handlebars_error_msg(context));
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "File to open partial"));
+
+    error = handlebars_value_partial_loader_find_try(partials, present, result);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(handlebars_value_get_type(result), HANDLEBARS_VALUE_TYPE_STRING);
+    ck_assert_str_eq(handlebars_value_get_strval(result), "|{{foo}}|");
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    HANDLEBARS_VALUE_UNDECL(result);
+    HANDLEBARS_VALUE_UNDECL(partials);
+}
+END_TEST
+
+START_TEST(test_partial_loader_try_supports_aliased_result)
+{
+    struct handlebars_string * path;
+    struct handlebars_string * extension;
+    struct handlebars_string * missing;
+    struct handlebars_string * present;
+    enum handlebars_error_type error;
+    char * top_srcdir = getenv("top_srcdir");
+    jmp_buf outer;
+    HANDLEBARS_VALUE_DECL(partials);
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    missing = handlebars_string_ctor(context, HBS_STRL("nonexist-alias"));
+    present = handlebars_string_ctor(context, HBS_STRL("fixture1"));
+    context->e->jmp = &outer;
+    error = handlebars_value_partial_loader_init_try(
+        context,
+        path,
+        extension,
+        partials
+    );
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    error = handlebars_value_partial_loader_find_try(partials, missing, partials);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_int_eq(handlebars_value_get_type(partials), HANDLEBARS_VALUE_TYPE_MAP);
+    ck_assert_int_eq(handlebars_value_count(partials), 0);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    error = handlebars_value_partial_loader_find_try(partials, present, partials);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_int_eq(handlebars_value_get_type(partials), HANDLEBARS_VALUE_TYPE_STRING);
+    ck_assert_str_eq(handlebars_value_get_strval(partials), "|{{foo}}|");
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+}
+END_TEST
+
+START_TEST(test_partial_loader_vm_supports_shared_error_context)
+{
+    struct handlebars_context * loader_context = handlebars_talloc_zero(
+        root,
+        struct handlebars_context
+    );
+    struct handlebars_module * missing_module = compile_template("{{> nonexist-shared-error .}}");
+    struct handlebars_module * present_module = compile_template("{{> fixture1 .}}");
+    struct handlebars_string * path;
+    struct handlebars_string * extension;
+    struct handlebars_string * present;
+    struct handlebars_string * output;
+    enum handlebars_error_type error;
+    char * top_srcdir = getenv("top_srcdir");
+    jmp_buf outer;
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(result);
+    HANDLEBARS_VALUE_DECL(empty);
+
+    ck_assert_ptr_nonnull(loader_context);
+    loader_context->e = context->e;
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(loader_context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(loader_context, HBS_STRL("."));
+    }
+    extension = handlebars_string_ctor(loader_context, HBS_STRL(".hbs"));
+    present = handlebars_string_ctor(loader_context, HBS_STRL("fixture1"));
+    error = handlebars_value_partial_loader_init_try(
+        loader_context,
+        path,
+        extension,
+        partials
+    );
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    handlebars_vm_set_partials(vm, partials);
+    context->e->jmp = &outer;
+
+    output = (struct handlebars_string *) (uintptr_t) 1;
+    error = handlebars_vm_execute_try(vm, missing_module, input, &output);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_null(output);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "File to open partial"));
+
+    error = handlebars_value_partial_loader_find_try(partials, present, result);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_str_eq(handlebars_value_get_strval(result), "|{{foo}}|");
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    output = (struct handlebars_string *) (uintptr_t) 1;
+    error = handlebars_vm_execute_try(vm, missing_module, input, &output);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_null(output);
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "File to open partial"));
+
+    error = handlebars_vm_execute_try(vm, present_module, input, &output);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "||");
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    handlebars_string_delref(output);
+
+    handlebars_vm_set_partials(vm, empty);
+    HANDLEBARS_VALUE_UNDECL(empty);
+    HANDLEBARS_VALUE_UNDECL(result);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    handlebars_context_dtor(loader_context);
 }
 END_TEST
 
@@ -305,6 +572,34 @@ END_TEST
 #endif
 
 #ifdef HANDLEBARS_MEMORY
+static bool partial_loader_init_with_alloc_failure(
+    struct handlebars_string * path,
+    struct handlebars_string * extension,
+    struct handlebars_value * result,
+    int fail_at
+) {
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = previous;
+        return true;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(fail_at);
+    (void) handlebars_value_partial_loader_init(
+        context,
+        path,
+        extension,
+        result
+    );
+    handlebars_memory_fail_disable();
+    context->e->jmp = previous;
+    return false;
+}
+
 static bool partial_loader_find_with_alloc_failure(
     struct handlebars_value * partials,
     struct handlebars_string * key,
@@ -333,6 +628,49 @@ static bool partial_loader_find_with_alloc_failure(
     return false;
 }
 #endif
+
+START_TEST(test_partial_loader_legacy_init_cleans_allocation_failures)
+{
+#ifdef HANDLEBARS_MEMORY
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    size_t blocks_before;
+    int fail_at;
+    HANDLEBARS_VALUE_DECL(partials);
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    blocks_before = talloc_total_blocks(context);
+
+    for( fail_at = 1; fail_at < 32; fail_at++ ) {
+        handlebars_value_integer(partials, 42);
+        if( !partial_loader_init_with_alloc_failure(
+                path,
+                extension,
+                partials,
+                fail_at
+            ) ) {
+            break;
+        }
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_int_eq(handlebars_value_get_type(partials), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(handlebars_value_get_intval(partials), 42);
+        handlebars_error_clear(context);
+        ck_assert_uint_eq(talloc_total_blocks(context), blocks_before);
+    }
+    ck_assert_int_lt(fail_at, 32);
+    ck_assert_int_eq(handlebars_value_get_type(partials), HANDLEBARS_VALUE_TYPE_MAP);
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
+}
+END_TEST
 
 START_TEST(test_partial_loader_recovers_after_alloc_error)
 {
@@ -369,6 +707,254 @@ START_TEST(test_partial_loader_recovers_after_alloc_error)
     HANDLEBARS_VALUE_UNDECL(partials);
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
+}
+END_TEST
+
+START_TEST(test_partial_loader_try_handles_allocation_failures)
+{
+#ifdef HANDLEBARS_MEMORY
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    struct handlebars_string * present = handlebars_string_ctor(context, HBS_STRL("fixture1"));
+    enum handlebars_error_type error;
+    size_t blocks_before;
+    size_t find_blocks_before;
+    int fail_at;
+    jmp_buf outer;
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(result);
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    context->e->jmp = &outer;
+    blocks_before = talloc_total_blocks(context);
+    for( fail_at = 1; fail_at < 32; fail_at++ ) {
+        handlebars_value_integer(partials, 42);
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        error = handlebars_value_partial_loader_init_try(
+            context,
+            path,
+            extension,
+            partials
+        );
+        handlebars_memory_fail_disable();
+
+        ck_assert_ptr_eq(context->e->jmp, &outer);
+        if( error == HANDLEBARS_SUCCESS ) {
+            break;
+        }
+        ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+        ck_assert_int_eq(handlebars_value_get_type(partials), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(handlebars_value_get_intval(partials), 42);
+        handlebars_error_clear(context);
+        ck_assert_uint_eq(talloc_total_blocks(context), blocks_before);
+    }
+    ck_assert_int_lt(fail_at, 32);
+    find_blocks_before = talloc_total_blocks(context);
+
+    for( fail_at = 1; fail_at < 32; fail_at++ ) {
+        handlebars_value_integer(result, 42);
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        error = handlebars_value_partial_loader_find_try(
+            partials,
+            present,
+            result
+        );
+        handlebars_memory_fail_disable();
+
+        ck_assert_ptr_eq(context->e->jmp, &outer);
+        if( error == HANDLEBARS_SUCCESS ) {
+            break;
+        }
+        ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+        ck_assert_int_eq(handlebars_value_get_type(result), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(handlebars_value_get_intval(result), 42);
+        handlebars_error_clear(context);
+        ck_assert_uint_eq(talloc_total_blocks(context), find_blocks_before);
+    }
+    ck_assert_int_lt(fail_at, 32);
+    ck_assert_str_eq(handlebars_value_get_strval(result), "|{{foo}}|");
+
+    HANDLEBARS_VALUE_UNDECL(result);
+    HANDLEBARS_VALUE_UNDECL(partials);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
+}
+END_TEST
+
+START_TEST(test_partial_loader_vm_preserves_loader_status_under_alloc_failure)
+{
+#ifdef HANDLEBARS_MEMORY
+    struct handlebars_context * loader_context = handlebars_context_ctor_ex(root);
+    struct handlebars_module * module = compile_template("{{> nonexist-transfer-alloc .}}");
+    struct handlebars_string * path;
+    struct handlebars_string * extension;
+    struct handlebars_string * output;
+    enum handlebars_error_type loader_error;
+    enum handlebars_error_type vm_error;
+    char * top_srcdir = getenv("top_srcdir");
+    bool saw_loader_filesystem_error = false;
+    bool injected;
+    int fail_at;
+    jmp_buf loader_outer;
+    jmp_buf vm_outer;
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(empty);
+
+    ck_assert_ptr_nonnull(loader_context);
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(loader_context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(loader_context, HBS_STRL("."));
+    }
+    extension = handlebars_string_ctor(loader_context, HBS_STRL(".hbs"));
+    handlebars_value_partial_loader_init(
+        loader_context,
+        path,
+        extension,
+        partials
+    );
+    handlebars_vm_set_partials(vm, partials);
+    context->e->jmp = &vm_outer;
+    loader_context->e->jmp = &loader_outer;
+
+    for( fail_at = 1; fail_at < 128; fail_at++ ) {
+        output = NULL;
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        vm_error = handlebars_vm_execute_try(vm, module, input, &output);
+        loader_error = handlebars_error_num(loader_context);
+        injected = !handlebars_memory_fail_get_state();
+        handlebars_memory_fail_disable();
+
+        ck_assert_ptr_null(output);
+        ck_assert_ptr_eq(context->e->jmp, &vm_outer);
+        ck_assert_ptr_eq(loader_context->e->jmp, &loader_outer);
+        if( loader_error == HANDLEBARS_ERROR ) {
+            saw_loader_filesystem_error = true;
+            ck_assert_msg(
+                vm_error == loader_error,
+                "VM changed loader status %d to %d at allocation %d",
+                loader_error,
+                vm_error,
+                fail_at
+            );
+        }
+        if( !injected ) {
+            break;
+        }
+    }
+    ck_assert(saw_loader_filesystem_error);
+
+    handlebars_vm_set_partials(vm, empty);
+    HANDLEBARS_VALUE_UNDECL(empty);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    handlebars_context_dtor(loader_context);
+#else
+    fprintf(stderr, "Skipped, memory testing functions are disabled\n");
+#endif
+}
+END_TEST
+
+START_TEST(test_partial_loader_try_cleans_failed_cache_growth)
+{
+#if defined(HANDLEBARS_MEMORY) && defined(HANDLEBARS_NO_REFCOUNT)
+    char * top_srcdir = getenv("top_srcdir");
+    struct handlebars_string * path;
+    struct handlebars_string * extension = handlebars_string_ctor(context, HBS_STRL(".hbs"));
+    struct handlebars_string * key;
+    enum handlebars_error_type error;
+    size_t blocks_before;
+    int fail_at;
+    char name[256];
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(result);
+
+    if( top_srcdir != NULL ) {
+        path = handlebars_string_asprintf(context, "%s/tests", top_srcdir);
+    } else {
+        path = handlebars_string_ctor(context, HBS_STRL("."));
+    }
+    ck_assert_int_eq(
+        handlebars_value_partial_loader_init_try(
+            context,
+            path,
+            extension,
+            partials
+        ),
+        HANDLEBARS_SUCCESS
+    );
+
+    for( int index = 0; index < 32; index++ ) {
+        size_t prefix_len = (size_t) index * 2;
+        memset(name, 0, sizeof(name));
+        for( int prefix = 0; prefix < index; prefix++ ) {
+            memcpy(name + ((size_t) prefix * 2), "./", 2);
+        }
+        memcpy(name + prefix_len, "fixture1", sizeof("fixture1"));
+        key = handlebars_string_ctor(
+            context,
+            name,
+            prefix_len + sizeof("fixture1") - 1
+        );
+        error = handlebars_value_partial_loader_find_try(partials, key, result);
+        ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    }
+    ck_assert_int_eq(handlebars_value_count(partials), 32);
+
+    memset(name, 0, sizeof(name));
+    for( int prefix = 0; prefix < 32; prefix++ ) {
+        memcpy(name + ((size_t) prefix * 2), "./", 2);
+    }
+    memcpy(name + 64, "fixture1", sizeof("fixture1"));
+    key = handlebars_string_ctor(
+        context,
+        name,
+        64 + sizeof("fixture1") - 1
+    );
+    blocks_before = talloc_total_blocks(context);
+
+    for( fail_at = 1; fail_at < 128; fail_at++ ) {
+        handlebars_value_integer(result, 42);
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        error = handlebars_value_partial_loader_find_try(partials, key, result);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            break;
+        }
+        ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+        ck_assert_int_eq(handlebars_value_get_type(result), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(handlebars_value_get_intval(result), 42);
+        ck_assert_int_eq(handlebars_value_count(partials), 32);
+        handlebars_error_clear(context);
+        ck_assert_msg(
+            talloc_total_blocks(context) == blocks_before,
+            "failed cache growth leaked at allocation %d: before=%zu after=%zu",
+            fail_at,
+            blocks_before,
+            talloc_total_blocks(context)
+        );
+    }
+    ck_assert_int_lt(fail_at, 128);
+    ck_assert_int_eq(handlebars_value_count(partials), 33);
+    ck_assert_str_eq(handlebars_value_get_strval(result), "|{{foo}}|");
+
+    HANDLEBARS_VALUE_UNDECL(result);
+    HANDLEBARS_VALUE_UNDECL(partials);
+#else
+    fprintf(stderr, "Skipped, memory testing or no-refcount mode is disabled\n");
 #endif
 }
 END_TEST
@@ -441,6 +1027,10 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_1, "Partial loader 1");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_2, "Partial loader 2");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_error, "Partial loader error");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_cross_context_error_returns_from_vm_try, "Partial loader cross-context errors return from VM try");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_try_api_preserves_results_and_jump_target, "Partial loader try API preserves results and jump target");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_try_supports_aliased_result, "Partial loader try supports aliased result");
+	REGISTER_TEST_FIXTURE(s, test_partial_loader_vm_supports_shared_error_context, "Partial loader VM supports a shared error context");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_recovers_after_error, "Partial loader recovers after error");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_result_outlives_loader, "Partial loader result outlives loader");
 #ifndef HANDLEBARS_NO_REFCOUNT
@@ -448,6 +1038,10 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_iterator_retains_loader, "Partial loader iterator retains its loader");
 #endif
 	REGISTER_MEMORY_TEST_FIXTURE(s, test_partial_loader_recovers_after_alloc_error, "Partial loader recovers after allocation error");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_partial_loader_legacy_init_cleans_allocation_failures, "Partial loader legacy initializer cleans allocation failures");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_partial_loader_try_handles_allocation_failures, "Partial loader try handles allocation failures");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_partial_loader_vm_preserves_loader_status_under_alloc_failure, "Partial loader VM preserves loader status under allocation failure");
+	REGISTER_MEMORY_TEST_FIXTURE(s, test_partial_loader_try_cleans_failed_cache_growth, "Partial loader try cleans failed cache growth");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_empty, "Partial loader empty file");
 	REGISTER_TEST_FIXTURE(s, test_partial_loader_rejects_unsafe_names, "Partial loader rejects unsafe names");
 

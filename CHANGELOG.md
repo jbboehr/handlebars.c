@@ -14,6 +14,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   that preserve the destination value on failure.
 - Cache constructors and operations now have `_try` entry points that report
   errors without allowing library `longjmp` handling to escape the call.
+- Filesystem partial-loader construction and lookup now have transactional
+  `_try` entry points that preserve caller-owned output values on failure.
 
 ### Changed
 - Value iterators now retain their backing storage, support nested map
@@ -22,6 +24,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   version 10. Downstream binaries must be rebuilt.
 - Serialized programs now retain block-parameter counts, extending the public
   module-table and `handlebars_options` layouts.
+- VM rendering now transfers filesystem partial-loader errors from the loader
+  context to the VM context.
 
 ### Fixed
 - JSON `null` elements no longer reuse the preceding iterator value.
@@ -31,6 +35,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   partial blocks.
 - Subexpressions reject truthy context values that are not callable.
 - LMDB cache statistics report the correct backend name.
+- Failed map copy-on-write mutations now release unpublished replacement maps
+  and temporary string keys while preserving the original map.
 
 ## [1.0.0]
 
