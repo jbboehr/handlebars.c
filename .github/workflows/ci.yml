@@ -48,6 +48,60 @@ jobs:
                       echo "-- END";
                   done
 
+    linux_committed_autotools:
+        name: linux (committed Autotools outputs)
+        runs-on: ubuntu-24.04
+        env:
+            ACLOCAL: "false"
+            AUTOCONF: "false"
+            AUTOHEADER: "false"
+            AUTOMAKE: "false"
+            RE2C: "no"
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  submodules: recursive
+            - name: Install packages
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y bats check gcc libjson-c-dev liblmdb-dev libpcre2-dev libsubunit-dev libtalloc-dev libyaml-dev make pkg-config
+            - name: Normalize generated-file timestamps
+              run: |
+                  touch \
+                      aclocal.m4 \
+                      configure \
+                      config.h.in \
+                      src/handlebars_config.h.in \
+                      Makefile.in \
+                      bench/Makefile.in \
+                      bin/Makefile.in \
+                      doc/Makefile.in \
+                      fuzz/Makefile.in \
+                      src/Makefile.in \
+                      tests/Makefile.in \
+                      build/* \
+                      src/handlebars.lex.c \
+                      src/handlebars.lex.h \
+                      src/handlebars.tab.c \
+                      src/handlebars.tab.h \
+                      src/handlebars_helpers_ht.h \
+                      src/handlebars_scanners.c
+            - name: Configure without regenerating Autotools outputs
+              run: ./configure --disable-bison --disable-flex --disable-gperf --enable-compile-warnings=yes
+            - run: make -j2
+            - run: make check
+            - name: Verify tracked files were not regenerated
+              run: git diff --exit-code
+            - name: dump logs
+              if: ${{ failure() }}
+              run: |
+                  find tests -name "*.log" -print0 2>/dev/null |
+                  while IFS= read -r -d '' log; do
+                      echo "-- START ${log}";
+                      cat "${log}";
+                      echo "-- END";
+                  done
+
     linux_sanitizers:
         name: linux (clang sanitizers)
         runs-on: ubuntu-24.04

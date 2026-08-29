@@ -22,6 +22,7 @@ doc/Makefile.am			linguist-documentation=false
 # autoconf
 Makefile.in			linguist-generated=true linguist-vendored=true
 config.h.in			linguist-generated=true linguist-vendored=true
+src/handlebars_config.h.in	linguist-generated=true linguist-vendored=true
 aclocal.m4			linguist-generated=true linguist-vendored=true
 configure			linguist-generated=true linguist-vendored=true
 build/*				linguist-generated=true linguist-vendored=true
