@@ -1,7 +1,5 @@
 # TODO
 
-* Benchmark custom known-helper lookup and replace the compiler's linear list
-  with an indexed container if it is a meaningful bottleneck.
 * Implement general decorator execution and enable its excluded upstream
   specification tests. Inline partials are supported without executing general
   decorators.
