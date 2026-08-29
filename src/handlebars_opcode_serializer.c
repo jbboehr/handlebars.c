@@ -140,6 +140,7 @@ struct handlebars_serialize_program_frame {
     struct handlebars_module_table_entry * entry;
     struct handlebars_module_table_entry ** children;
     size_t child_index;
+    size_t children_length;
 };
 
 static void * append(
@@ -776,17 +777,18 @@ static void serialize_program_frame_enter(
 
     frame->children = NULL;
     frame->child_index = 0;
-    if( frame->program->children_length > 0 ) {
+    frame->children_length = frame->program->children_length;
+    if( frame->children_length > 0 ) {
         frame->children = handlebars_talloc_array(
             module,
             struct handlebars_module_table_entry *,
-            frame->program->children_length
+            frame->children_length
         );
         HANDLEBARS_MEMCHECK(frame->children, state->context);
     }
 
     // Serialize children (shallow)
-    for( size_t i = 0; i < frame->program->children_length; i++ ) {
+    for( size_t i = 0; i < frame->children_length; i++ ) {
         frame->children[i] = serialize_program_shallow(state, frame->program->children[i]);
     }
 
@@ -805,7 +807,7 @@ static void serialize_program_frame_enter(
                     state,
                     frame->program->opcodes[i + j],
                     frame->children,
-                    frame->program->children_length,
+                    frame->children_length,
                     j == range_length - 1
                 );
             }
@@ -825,7 +827,7 @@ static void serialize_program_frame_enter(
             state,
             frame->program->opcodes[i],
             frame->children,
-            frame->program->children_length,
+            frame->children_length,
             false
         );
         i++;
@@ -834,7 +836,7 @@ static void serialize_program_frame_enter(
     // Insert return opcode
     struct handlebars_opcode opcode = {0};
     opcode.type = handlebars_opcode_type_return;
-    serialize_opcode(state, &opcode, frame->children, frame->program->children_length, false);
+    serialize_opcode(state, &opcode, frame->children, frame->children_length, false);
     serialize_count_increment(state->context, &frame->entry->opcode_count);
 }
 
@@ -867,7 +869,7 @@ static void serialize_program(
     while( length != 0 ) {
         struct handlebars_serialize_program_frame * frame = &frames[length - 1];
 
-        if( frame->child_index < frame->program->children_length ) {
+        if( frame->child_index < frame->children_length ) {
             size_t child_index = frame->child_index++;
 
             if( unlikely(length >= capacity) ) {

@@ -407,12 +407,22 @@ static enum handlebars_error_type partial_loader_init_transaction(
         handlebars_error_clear(context);
     }
     error = partial_loader_init_guarded(context, &state);
-    if( error == HANDLEBARS_SUCCESS ) {
-        handlebars_value_user(result, &state.loader->user);
-    } else if( state.loader != NULL ) {
-        handlebars_talloc_free(state.loader);
+    if( error != HANDLEBARS_SUCCESS ) {
+        if( state.loader != NULL ) {
+            handlebars_talloc_free(state.loader);
+        }
+        return error;
     }
-    return error;
+    if( unlikely(state.loader == NULL) ) {
+        handlebars_error_set(
+            context,
+            HANDLEBARS_ERROR,
+            "Partial loader initialization produced no result"
+        );
+        return handlebars_error_num(context);
+    }
+    handlebars_value_user(result, &state.loader->user);
+    return HANDLEBARS_SUCCESS;
 }
 
 struct handlebars_value * handlebars_value_partial_loader_init(

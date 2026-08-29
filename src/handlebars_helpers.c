@@ -148,7 +148,6 @@ static void handlebars_builtin_each_guarded(
 
     if( handlebars_value_get_type(state->context) != HANDLEBARS_VALUE_TYPE_MAP
             && handlebars_value_get_type(state->context) != HANDLEBARS_VALUE_TYPE_ARRAY ) {
-        use_data = false;
         goto whoopsie;
     }
 
