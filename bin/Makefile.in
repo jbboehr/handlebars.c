@@ -156,7 +156,8 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_handlebarsc_OBJECTS = handlebarsc.$(OBJEXT)
+am_handlebarsc_OBJECTS = handlebarsc.$(OBJEXT) \
+	handlebarsc_helpers.$(OBJEXT)
 handlebarsc_OBJECTS = $(am_handlebarsc_OBJECTS)
 handlebarsc_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
@@ -182,7 +183,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir) -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/build/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/handlebarsc.Po
+am__depfiles_remade = ./$(DEPDIR)/handlebarsc.Po \
+	./$(DEPDIR)/handlebarsc_helpers.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -432,7 +434,7 @@ AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/sr
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(FUZZING_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS)
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) $(FUZZING_LDFLAGS)
 LDADD = $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS) $(top_builddir)/src/libhandlebars.la
-handlebarsc_SOURCES = handlebarsc.c
+handlebarsc_SOURCES = handlebarsc.c handlebarsc_helpers.c handlebarsc_helpers.h
 all: all-am
 
 .SUFFIXES:
@@ -527,6 +529,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebarsc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handlebarsc_helpers.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -716,6 +719,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
 
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/handlebarsc.Po
+	-rm -f ./$(DEPDIR)/handlebarsc_helpers.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -762,6 +766,7 @@ installcheck-am:
 
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/handlebarsc.Po
+	-rm -f ./$(DEPDIR)/handlebarsc_helpers.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

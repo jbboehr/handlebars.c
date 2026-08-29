@@ -16,6 +16,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   errors without allowing library `longjmp` handling to escape the call.
 - Filesystem partial-loader construction and lookup now have transactional
   `_try` entry points that preserve caller-owned output values on failure.
+- `handlebarsc` can register bounded plain-text or structured-JSON helpers
+  backed by external executables.
 
 ### Changed
 - Value iterators now retain their backing storage, support nested map

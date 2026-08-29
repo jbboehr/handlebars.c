@@ -20,4 +20,4 @@ LDADD = $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS) $(
 
 bin_PROGRAMS = handlebarsc
 
-handlebarsc_SOURCES = handlebarsc.c
+handlebarsc_SOURCES = handlebarsc.c handlebarsc_helpers.c handlebarsc_helpers.h

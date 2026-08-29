@@ -87,6 +87,27 @@ AC_PROG_CC
 AC_PROG_CC_STDC
 AC_PROG_CC_C99
 
+# Executable-backed helpers in handlebarsc require bounded POSIX subprocess I/O.
+AC_CHECK_HEADERS([poll.h spawn.h])
+AC_SEARCH_LIBS([clock_gettime], [rt])
+AC_CHECK_FUNCS([clock_gettime poll posix_spawn posix_spawnp posix_spawnattr_setpgroup waitpid])
+AS_IF([
+    test "x$ac_cv_header_poll_h" = "xyes" &&
+    test "x$ac_cv_header_spawn_h" = "xyes" &&
+    test "x$ac_cv_func_clock_gettime" = "xyes" &&
+    test "x$ac_cv_func_poll" = "xyes" &&
+    test "x$ac_cv_func_posix_spawn" = "xyes" &&
+    test "x$ac_cv_func_posix_spawnp" = "xyes" &&
+    test "x$ac_cv_func_posix_spawnattr_setpgroup" = "xyes" &&
+    test "x$ac_cv_func_waitpid" = "xyes"
+], [
+    AC_COMPILE_IFELSE([
+        AC_LANG_PROGRAM([[#include <spawn.h>]], [[short flags = POSIX_SPAWN_SETPGROUP; return flags == 0;]])
+    ], [
+        AC_DEFINE([HANDLEBARSC_HAVE_EXEC_HELPERS], [1], [Build executable-backed handlebarsc helpers])
+    ])
+])
+
 AC_MSG_CHECKING([if compiling with gcc])
 AC_COMPILE_IFELSE(
 [AC_LANG_PROGRAM([], [[

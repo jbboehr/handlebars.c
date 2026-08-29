@@ -3,6 +3,9 @@
 /* Define to 1 if using 'alloca.c'. */
 #undef C_ALLOCA
 
+/* Build executable-backed handlebarsc helpers */
+#undef HANDLEBARSC_HAVE_EXEC_HELPERS
+
 /* Enable handlebars debugging */
 #undef HANDLEBARS_ENABLE_DEBUG
 
@@ -63,6 +66,9 @@
 /* Define to 1 if <alloca.h> works. */
 #undef HAVE_ALLOCA_H
 
+/* Define to 1 if you have the 'clock_gettime' function. */
+#undef HAVE_CLOCK_GETTIME
+
 /* Define to 1 if the compiler supports computed gotos */
 #undef HAVE_COMPUTED_GOTOS
 
@@ -84,8 +90,26 @@
 /* Define to 1 if you have the 'rt' library (-lrt). */
 #undef HAVE_LIBRT
 
+/* Define to 1 if you have the 'poll' function. */
+#undef HAVE_POLL
+
+/* Define to 1 if you have the <poll.h> header file. */
+#undef HAVE_POLL_H
+
+/* Define to 1 if you have the 'posix_spawn' function. */
+#undef HAVE_POSIX_SPAWN
+
+/* Define to 1 if you have the 'posix_spawnattr_setpgroup' function. */
+#undef HAVE_POSIX_SPAWNATTR_SETPGROUP
+
+/* Define to 1 if you have the 'posix_spawnp' function. */
+#undef HAVE_POSIX_SPAWNP
+
 /* Have PTHREAD_PRIO_INHERIT. */
 #undef HAVE_PTHREAD_PRIO_INHERIT
+
+/* Define to 1 if you have the <spawn.h> header file. */
+#undef HAVE_SPAWN_H
 
 /* Define to 1 if the compiler supports statement expressions */
 #undef HAVE_STATEMENT_EXPRESSIONS
@@ -119,6 +143,9 @@
 
 /* Define to 1 if the system has the `unused' variable attribute */
 #undef HAVE_VAR_ATTRIBUTE_UNUSED
+
+/* Define to 1 if you have the 'waitpid' function. */
+#undef HAVE_WAITPID
 
 /* Define to 1 if the system has the `__builtin_clz' built-in function */
 #undef HAVE___BUILTIN_CLZ

@@ -177,12 +177,79 @@ Behavior options:
   --partial-ext=EXT     The file extension of partials, including the '.'
   --pool-size=SIZE      The size of the memory pool to use, 0 to disable (default 2 MB)
   --run-count=NUM       The number of times to execute (for benchmarking)
+  --helper-exec=NAME=COMMAND
+                        Register a helper backed by plain executable output
+  --helper-json=NAME=COMMAND
+                        Register a helper using the structured JSON protocol
+  --helper-timeout-ms=MS
+                        Per-call timeout; 0 disables it (default 5000)
+  --helper-output-limit=BYTES
+                        Maximum stdout size; 0 disables it (default 1048576)
+  --allow-helper-override
+                        Allow later registrations to replace helpers
 
 The partial loader will concat the partial-path, given partial name in the template,
 and the partial-extension to resolve the file from which to load the partial.
 
 If a FILE is specified as '-', it will be read from STDIN.
 ```
+
+### Executable-backed CLI helpers
+
+`handlebarsc` can register a helper name to a separate executable for compile,
+module, and execute modes. A command containing `/` is invoked directly; a
+bare command is resolved through `PATH`. Commands are not interpreted by a
+shell, and each helper invocation starts a new process. For example:
+
+```console
+$ printf '%s' '{{greet "world"}}' |
+    handlebarsc --execute --no-newline \
+      --helper-exec greet=/usr/local/bin/greet -
+```
+
+Plain helpers receive primitive positional arguments in `argv`, read
+`/dev/null` on stdin, inherit stderr, and return their Handlebars string value
+verbatim on stdout. Plain helpers reject block calls, hash arguments,
+containers, and callable or opaque values.
+
+JSON helpers receive one newline-terminated request on stdin:
+
+```json
+{"protocol":1,"helper":"greet","args":["world"],"hash":{},"scope":null,"data":null}
+```
+
+They must return exactly one JSON response on stdout. Unknown response fields
+are ignored. A successful response is:
+
+```json
+{"protocol":1,"ok":true,"value":"hello, world","safe":false}
+```
+
+`value` may be any JSON value. `safe:true` is accepted only for strings and
+suppresses normal Handlebars HTML escaping. A helper-reported error is:
+
+```json
+{"protocol":1,"ok":false,"error":"explanation"}
+```
+
+By default a helper has five seconds to complete and may emit at most 1 MiB.
+`--helper-timeout-ms=0` and `--helper-output-limit=0` disable those respective
+limits. Timeouts, oversized output, spawn failures, nonzero exits, signals,
+and invalid JSON fail the render without publishing partial template output.
+
+Configured helper executables are trusted code and run with `handlebarsc`'s
+credentials and environment. Descendant cleanup is best-effort by process
+group; processes that deliberately change their session or process group are
+not contained and may survive helper completion or termination.
+
+Duplicate registrations and names that collide with built-in helpers are
+rejected. `--allow-helper-override` permits them, with the last registration
+winning. Helper commands are runtime configuration: compile and module modes
+record only the helper name and never execute or embed the command.
+
+Executable-backed helpers currently require POSIX spawn, process-group, poll,
+and monotonic-clock support. JSON helpers additionally require json-c. General
+block-helper callbacks and persistent helper processes are not supported.
 
 ### via Docker
 

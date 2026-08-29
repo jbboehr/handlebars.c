@@ -13,13 +13,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-set(SOURCES handlebarsc.c)
+set(SOURCES handlebarsc.c handlebarsc_helpers.c handlebarsc_helpers.h)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../src ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 
 link_libraries(${LIBS} handlebars_static)
 
-add_executable(handlebarsc handlebarsc.c)
+add_executable(handlebarsc ${SOURCES})
 
 install(TARGETS handlebarsc
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

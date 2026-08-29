@@ -22,6 +22,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdint.h>
 #include <sys/stat.h>
 #include <talloc.h>
 
@@ -57,6 +60,8 @@
 #include "handlebars_vm.h"
 #include "handlebars_yaml.h"
 
+#include "handlebarsc_helpers.h"
+
 #ifdef _MSC_VER
 #define BOOLEAN HBS_BOOLEAN
 #endif
@@ -79,6 +84,7 @@ static bool convert_input = true;
 static bool newline_at_eof = true;
 static size_t pool_size = 2 * 1024 * 1024;
 static bool pretty_print = true;
+static struct handlebarsc_helper_registry helper_registry;
 
 enum handlebarsc_mode {
     handlebarsc_mode_usage = 0,
@@ -108,6 +114,11 @@ enum handlebarsc_flag {
     handlebarsc_flag_partial_loader = 505,
     handlebarsc_flag_flags = 506,
     handlebarsc_flag_pretty_print = 507,
+    handlebarsc_flag_helper_exec = 508,
+    handlebarsc_flag_helper_json = 509,
+    handlebarsc_flag_helper_timeout_ms = 510,
+    handlebarsc_flag_helper_output_limit = 511,
+    handlebarsc_flag_allow_helper_override = 512,
 
     // modes
     handlebarsc_flag_lex = 600,
@@ -158,6 +169,11 @@ static void readOpts(int argc, char * argv[])
         HBSC_OPT(no-newline, no_argument, handlebarsc_flag_no_newline)
         HBSC_OPT(pool-size, required_argument, handlebarsc_flag_pool_size)
         HBSC_OPT(pretty-print, no_argument, handlebarsc_flag_pretty_print)
+        HBSC_OPT(helper-exec, required_argument, handlebarsc_flag_helper_exec)
+        HBSC_OPT(helper-json, required_argument, handlebarsc_flag_helper_json)
+        HBSC_OPT(helper-timeout-ms, required_argument, handlebarsc_flag_helper_timeout_ms)
+        HBSC_OPT(helper-output-limit, required_argument, handlebarsc_flag_helper_output_limit)
+        HBSC_OPT(allow-helper-override, no_argument, handlebarsc_flag_allow_helper_override)
         // end
         HBSC_OPT_END
     };
@@ -277,6 +293,66 @@ start:
 
         case handlebarsc_flag_pretty_print:
             pretty_print = true;
+            break;
+
+        case handlebarsc_flag_helper_exec: {
+            const char * error = NULL;
+            if( !handlebarsc_helper_registry_add(
+                    &helper_registry,
+                    handlebarsc_helper_mode_exec,
+                    optarg,
+                    &error
+            ) ) {
+                fprintf(stderr, "%s\n", error);
+                exit(1);
+            }
+            break;
+        }
+
+        case handlebarsc_flag_helper_json: {
+            const char * error = NULL;
+            if( !handlebarsc_helper_registry_add(
+                    &helper_registry,
+                    handlebarsc_helper_mode_json,
+                    optarg,
+                    &error
+            ) ) {
+                fprintf(stderr, "%s\n", error);
+                exit(1);
+            }
+            break;
+        }
+
+        case handlebarsc_flag_helper_timeout_ms:
+        case handlebarsc_flag_helper_output_limit: {
+            char * end = NULL;
+            unsigned long long value;
+
+            if( optarg[0] == '\0' || optarg[0] == '-' || optarg[0] == '+' ) {
+                fprintf(stderr, "External helper limit must be a non-negative integer\n");
+                exit(1);
+            }
+            errno = 0;
+            value = strtoull(optarg, &end, 10);
+            if( errno == ERANGE || end == optarg || *end != '\0'
+                    || value > (unsigned long long) LONG_MAX
+                    || (c == handlebarsc_flag_helper_output_limit
+                        && value > (unsigned long long) SIZE_MAX) ) {
+                fprintf(stderr, "External helper limit must be a non-negative integer\n");
+                exit(1);
+            }
+            if( c == handlebarsc_flag_helper_timeout_ms ) {
+                helper_registry.timeout_ms = (unsigned long) value;
+            } else {
+                helper_registry.output_limit = (size_t) value;
+            }
+            helper_registry.options_used = true;
+            break;
+        }
+
+        case handlebarsc_flag_allow_helper_override:
+            helper_registry.allow_override = true;
+            helper_registry.options_used = true;
             break;
 
         default: assert(0); break; // LCOV_EXCL_LINE
@@ -403,6 +479,16 @@ static int do_usage(void)
         "  --partial-ext=EXT     The file extension of partials, including the '.'\n"
         "  --pool-size=SIZE      The size of the memory pool to use, 0 to disable (default 2 MB)\n"
         "  --run-count=NUM       The number of times to execute (for benchmarking)\n"
+        "  --helper-exec=NAME=COMMAND\n"
+        "                        Register a helper backed by plain executable output\n"
+        "  --helper-json=NAME=COMMAND\n"
+        "                        Register a helper using the structured JSON protocol\n"
+        "  --helper-timeout-ms=MS\n"
+        "                        Per-call timeout; 0 disables it (default 5000)\n"
+        "  --helper-output-limit=BYTES\n"
+        "                        Maximum stdout size; 0 disables it (default 1048576)\n"
+        "  --allow-helper-override\n"
+        "                        Allow later registrations to replace helpers\n"
         "\n"
         "The partial loader will concat the partial-path, given partial name in the template,\n"
         "and the partial-extension to resolve the file from which to load the partial.\n"
@@ -581,6 +667,7 @@ static int do_compile(void)
     compiler = handlebars_compiler_ctor(ctx);
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
+    handlebarsc_helper_registry_apply_compiler(&helper_registry, ctx, compiler);
 
     // Read
     readInput();
@@ -630,6 +717,7 @@ static int do_module(void)
     compiler = handlebars_compiler_ctor(ctx);
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
+    handlebarsc_helper_registry_apply_compiler(&helper_registry, ctx, compiler);
 
     // Read
     readInput();
@@ -695,6 +783,7 @@ static int do_execute(void)
     }
 
     handlebars_compiler_set_flags(compiler, compiler_flags);
+    handlebarsc_helper_registry_apply_compiler(&helper_registry, ctx, compiler);
 
     // Read
     readInput();
@@ -762,8 +851,22 @@ static int do_execute(void)
         vm = handlebars_vm_ctor(ctx);
         handlebars_vm_set_flags(vm, compiler_flags);
         handlebars_vm_set_partials(vm, partials);
+        handlebarsc_helper_registry_apply_vm(&helper_registry, vm);
 
-        buffer = handlebars_vm_execute(vm, module, input);
+        enum handlebars_error_type execute_error = handlebars_vm_execute_try(
+            vm,
+            module,
+            input,
+            &buffer
+        );
+        if( execute_error != HANDLEBARS_SUCCESS ) {
+            print_error(ctx);
+            handlebars_vm_dtor(vm);
+            HANDLEBARS_VALUE_UNDECL(input);
+            HANDLEBARS_VALUE_UNDECL(partials);
+            handlebars_context_dtor(ctx);
+            return 1;
+        }
         buffer = talloc_steal(ctx, buffer);
 
         handlebars_vm_dtor(vm);
@@ -803,6 +906,7 @@ int main(int argc, char * argv[])
 
     root = talloc_new(NULL);
     atexit(cleanup_root);
+    handlebarsc_helper_registry_init(&helper_registry, root);
 
     if( argc <= 1 ) {
         do_usage();
@@ -811,6 +915,23 @@ int main(int argc, char * argv[])
     }
 
     readOpts(argc, argv);
+
+    {
+        const char * error = NULL;
+        bool supported_mode = mode == handlebarsc_mode_compile
+            || mode == handlebarsc_mode_module
+            || mode == handlebarsc_mode_execute;
+
+        if( !handlebarsc_helper_registry_validate(
+                &helper_registry,
+                supported_mode,
+                &error
+        ) ) {
+            fprintf(stderr, "%s\n", error);
+            rc = 1;
+            goto done;
+        }
+    }
 
     if (pool_size > 0) {
         void * old_root = root;

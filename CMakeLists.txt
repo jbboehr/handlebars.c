@@ -115,6 +115,36 @@ if(NOT MSVC)
     endif()
 endif()
 
+if(NOT WIN32)
+    check_symbol_exists(posix_spawn "spawn.h" HANDLEBARSC_HAVE_POSIX_SPAWN)
+    check_symbol_exists(posix_spawnp "spawn.h" HANDLEBARSC_HAVE_POSIX_SPAWNP)
+    check_symbol_exists(posix_spawnattr_setpgroup "spawn.h" HANDLEBARSC_HAVE_POSIX_SPAWNATTR_SETPGROUP)
+    check_symbol_exists(POSIX_SPAWN_SETPGROUP "spawn.h" HANDLEBARSC_HAVE_POSIX_SPAWN_SETPGROUP)
+    check_symbol_exists(poll "poll.h" HANDLEBARSC_HAVE_POLL)
+    check_symbol_exists(clock_gettime "time.h" HANDLEBARSC_HAVE_CLOCK_GETTIME)
+    if(NOT HANDLEBARSC_HAVE_CLOCK_GETTIME)
+        set(HANDLEBARSC_SAVED_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+        list(APPEND CMAKE_REQUIRED_LIBRARIES rt)
+        check_symbol_exists(clock_gettime "time.h" HANDLEBARSC_HAVE_CLOCK_GETTIME_IN_RT)
+        set(CMAKE_REQUIRED_LIBRARIES ${HANDLEBARSC_SAVED_REQUIRED_LIBRARIES})
+        unset(HANDLEBARSC_SAVED_REQUIRED_LIBRARIES)
+        if(HANDLEBARSC_HAVE_CLOCK_GETTIME_IN_RT)
+            set(HANDLEBARSC_HAVE_CLOCK_GETTIME 1)
+            list(APPEND LIBS rt)
+        endif()
+    endif()
+    check_symbol_exists(waitpid "sys/wait.h" HANDLEBARSC_HAVE_WAITPID)
+    if(HANDLEBARSC_HAVE_POSIX_SPAWN
+            AND HANDLEBARSC_HAVE_POSIX_SPAWNP
+            AND HANDLEBARSC_HAVE_POSIX_SPAWNATTR_SETPGROUP
+            AND HANDLEBARSC_HAVE_POSIX_SPAWN_SETPGROUP
+            AND HANDLEBARSC_HAVE_POLL
+            AND HANDLEBARSC_HAVE_CLOCK_GETTIME
+            AND HANDLEBARSC_HAVE_WAITPID)
+        add_definitions(-DHANDLEBARSC_HAVE_EXEC_HELPERS=1)
+    endif()
+endif()
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/vendor/sort_r ${CMAKE_CURRENT_SOURCE_DIR}/vendor/xxhash)
 
 # generate config.h
