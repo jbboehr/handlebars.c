@@ -137,6 +137,15 @@ their original behavior and ownership rules. Helper callbacks still use the
 existing callback ABI internally; errors they raise during rendering are
 caught by `handlebars_vm_execute_try` before it returns.
 
+The `_try` APIs are workflow boundaries rather than replacements for every
+allocation-bearing utility. Custom helpers do not need a separate
+explicit-status callback ABI when invoked while rendering: they may use
+`handlebars_throw`, and `handlebars_vm_execute_try` reports the resulting
+error. Direct calls to helper callbacks, built-in helpers,
+`handlebars_vm_call_helper_str`, lexer functions, container and string
+mutators, or diagnostic printers retain the legacy error behavior and may
+`longjmp` through an installed context error boundary.
+
 ## Usage
 
 ```console

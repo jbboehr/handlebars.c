@@ -151,6 +151,16 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_value * block_params
 ) HBS_ATTR_NONNULL(1, 3) HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Invoke a registered or built-in helper by name.
+ *
+ * This is a low-level legacy entry point. Helper errors may `longjmp` through
+ * the VM context's installed error boundary. Applications rendering templates
+ * without consumer-visible `longjmp` should call #handlebars_vm_execute_try or
+ * #handlebars_vm_execute_try_ex instead of invoking helpers directly.
+ *
+ * @return The helper result, or NULL when no helper has the supplied name
+ */
 struct handlebars_value * handlebars_vm_call_helper_str(
     const char * name,
     unsigned int len,
