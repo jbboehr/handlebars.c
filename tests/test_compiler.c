@@ -25,6 +25,7 @@
 #include <talloc.h>
 
 #define HANDLEBARS_AST_PRIVATE
+#define HANDLEBARS_AST_LIST_PRIVATE
 #define HANDLEBARS_COMPILER_PRIVATE
 #define HANDLEBARS_OPCODE_SERIALIZER_PRIVATE
 #define HANDLEBARS_OPCODES_PRIVATE
@@ -1273,6 +1274,7 @@ static struct handlebars_module * serialize_for_verification(const char * source
 
 static size_t poison_string_representation_padding(struct handlebars_string * string)
 {
+    /* Test-only access beyond the public logical byte buffer. */
     unsigned char * padding = (unsigned char *) hbs_str_val(string) + hbs_str_len(string) + 1;
     unsigned char * end = (unsigned char *) string + HBS_STR_SIZE(hbs_str_len(string));
     size_t size = (size_t) (end - padding);
@@ -1319,7 +1321,7 @@ static size_t poison_program_string_padding(struct handlebars_program * program)
 
 static size_t assert_serialized_string_padding_zero(struct handlebars_string * string)
 {
-    unsigned char * padding = (unsigned char *) hbs_str_val(string) + hbs_str_len(string) + 1;
+    const unsigned char * padding = (const unsigned char *) hbs_str_val(string) + hbs_str_len(string) + 1;
     unsigned char * end = (unsigned char *) string + HBS_STR_SIZE(hbs_str_len(string));
     size_t checked = 0;
 
@@ -1638,6 +1640,110 @@ START_TEST(test_string_params_supports_implicit_partial_context)
 }
 END_TEST
 
+START_TEST(test_string_params_normalization_preserves_sources_and_hashes)
+{
+    static const char * expected[] = {"a.b", "plain", "c.d"};
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{helper ./a/b ./plain ../c/d}}")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_ast_node * mustache;
+    struct handlebars_ast_list_item * param_item;
+    struct handlebars_program * program;
+    size_t expected_index = 0;
+
+    ck_assert_ptr_nonnull(ast);
+    mustache = ast->node.program.statements->first->data;
+    ck_assert_int_eq(mustache->type, HANDLEBARS_AST_NODE_MUSTACHE);
+
+    for( param_item = mustache->node.mustache.params->first;
+            param_item != NULL;
+            param_item = param_item->next ) {
+        struct handlebars_string * original =
+            handlebars_ast_node_get_string_mode_value(context, param_item->data);
+        ck_assert_uint_eq(
+            hbs_str_hash(original),
+            handlebars_string_hash(hbs_str_val(original), hbs_str_len(original))
+        );
+    }
+
+    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_string_params);
+    program = handlebars_compiler_compile_ex(compiler, ast);
+    ck_assert_ptr_nonnull(program);
+
+    for( size_t i = 0; i < program->opcodes_length; i++ ) {
+        struct handlebars_opcode * opcode = program->opcodes[i];
+        if( opcode->type != handlebars_opcode_type_push_string_param ) {
+            continue;
+        }
+
+        ck_assert_uint_lt(expected_index, sizeof(expected) / sizeof(expected[0]));
+        ck_assert_int_eq(opcode->op1.type, handlebars_operand_type_string);
+        ck_assert_hbs_str_eq_cstr(opcode->op1.data.string.string, expected[expected_index]);
+        ck_assert_uint_eq(
+            hbs_str_hash(opcode->op1.data.string.string),
+            handlebars_string_hash(expected[expected_index], strlen(expected[expected_index]))
+        );
+        expected_index++;
+    }
+    ck_assert_uint_eq(expected_index, sizeof(expected) / sizeof(expected[0]));
+
+    param_item = mustache->node.mustache.params->first;
+    ck_assert_hbs_str_eq_cstr(param_item->data->node.path.original, "./a/b");
+    param_item = param_item->next;
+    ck_assert_hbs_str_eq_cstr(param_item->data->node.path.original, "./plain");
+    param_item = param_item->next;
+    ck_assert_hbs_str_eq_cstr(param_item->data->node.path.original, "../c/d");
+}
+END_TEST
+
+START_TEST(test_string_params_preserves_slashes_after_embedded_nul)
+{
+    static const char input[] = {'a', '\0', '/', 'b'};
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        HBS_STRL("{{helper placeholder}}")
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_ast_node * mustache;
+    struct handlebars_ast_node * param;
+    struct handlebars_program * program;
+    struct handlebars_string * normalized = NULL;
+
+    ck_assert_ptr_nonnull(ast);
+    mustache = ast->node.program.statements->first->data;
+    param = mustache->node.mustache.params->first->data;
+    param->node.path.original = talloc_steal(
+        param,
+        handlebars_string_ctor(context, input, sizeof(input))
+    );
+    ck_assert_uint_eq(
+        hbs_str_hash(param->node.path.original),
+        handlebars_string_hash(input, sizeof(input))
+    );
+
+    handlebars_compiler_set_flags(compiler, handlebars_compiler_flag_string_params);
+    program = handlebars_compiler_compile_ex(compiler, ast);
+    ck_assert_ptr_nonnull(program);
+
+    for( size_t i = 0; i < program->opcodes_length; i++ ) {
+        if( program->opcodes[i]->type == handlebars_opcode_type_push_string_param ) {
+            normalized = program->opcodes[i]->op1.data.string.string;
+            break;
+        }
+    }
+
+    ck_assert_ptr_nonnull(normalized);
+    ck_assert_uint_eq(hbs_str_len(normalized), sizeof(input));
+    ck_assert_int_eq(memcmp(hbs_str_val(normalized), input, sizeof(input)), 0);
+    ck_assert_int_eq(
+        memcmp(hbs_str_val(param->node.path.original), input, sizeof(input)),
+        0
+    );
+}
+END_TEST
+
 START_TEST(test_alternate_decorator_compiler_inherits_state)
 {
     struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL("{{*decorator foo}}"));
@@ -1850,6 +1956,8 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");
 	REGISTER_TEST_FIXTURE(s, test_string_params_supports_implicit_partial_context, "String params with implicit partial context");
+	REGISTER_TEST_FIXTURE(s, test_string_params_normalization_preserves_sources_and_hashes, "String params normalization preserves sources and hashes");
+	REGISTER_TEST_FIXTURE(s, test_string_params_preserves_slashes_after_embedded_nul, "String params preserves slashes after embedded NUL");
 	REGISTER_TEST_FIXTURE(s, test_alternate_decorator_compiler_inherits_state, "Alternate decorator compiler state");
 #ifdef HANDLEBARS_TESTING_EXPORTS
 	REGISTER_TEST_FIXTURE(s, test_compiler_is_known_helper, "Is Known Helper");

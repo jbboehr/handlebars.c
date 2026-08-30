@@ -244,7 +244,7 @@ int regex_compare(const char * regex, const char * string, char ** error)
 
 char * normalize_template_whitespace(TALLOC_CTX *ctx, struct handlebars_string * str)
 {
-    char *i = hbs_str_val(str);
+    const char *i = hbs_str_val(str);
     char *ret = handlebars_talloc_size(context, hbs_str_len(str) + 1);
     char *j = ret;
     while (1) {

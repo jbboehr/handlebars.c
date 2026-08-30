@@ -23,12 +23,32 @@
 #include <talloc.h>
 #include <limits.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_rc.h"
 #include "handlebars_string.h"
 #include "utils.h"
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(
+    _Generic(
+        &hbs_str_val,
+        const char * (*)(const struct handlebars_string *): 1,
+        default: 0
+    ),
+    "hbs_str_val must accept a const string and expose read-only data"
+);
+_Static_assert(
+    _Generic(
+        &hbs_str_len,
+        size_t (*)(const struct handlebars_string *): 1,
+        default: 0
+    ),
+    "hbs_str_len must accept a const string"
+);
+#endif
 
 
 
@@ -42,6 +62,24 @@ START_TEST(test_handlebars_string_hash)
     ck_assert_uint_eq(1811779989ul, handlebars_string_hash(HBS_STRL("")));
     ck_assert_uint_eq(813235675ul, handlebars_string_hash(HBS_STRL("foobar\xFF")));
 #endif
+}
+END_TEST
+
+START_TEST(test_handlebars_string_read_accessors_preserve_binary_bytes)
+{
+    static const char embedded[] = {'a', '\0', 'b'};
+    const struct handlebars_string * empty = handlebars_string_ctor(context, HBS_STRL(""));
+    const struct handlebars_string * binary = handlebars_string_ctor(
+        context,
+        embedded,
+        sizeof(embedded)
+    );
+
+    ck_assert_uint_eq(hbs_str_len(empty), 0);
+    ck_assert_int_eq(hbs_str_val(empty)[0], '\0');
+    ck_assert_uint_eq(hbs_str_len(binary), sizeof(embedded));
+    ck_assert_int_eq(memcmp(hbs_str_val(binary), embedded, sizeof(embedded)), 0);
+    ck_assert_int_eq(hbs_str_val(binary)[sizeof(embedded)], '\0');
 }
 END_TEST
 
@@ -317,6 +355,34 @@ START_TEST(test_handlebars_string_reduce_3)
     struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("QQQ"));
     input = handlebars_str_reduce(input, HBS_STRL("Q"), HBS_STRL("W"));
     ck_assert_hbs_str_eq_cstr(input, "WWW");
+    handlebars_talloc_free(input);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_reduce_refreshes_cached_hash)
+{
+    static const char input_bytes[] = {'a', '/', 'b', '\0', '/', 'c'};
+    static const char expected_bytes[] = {'a', '.', 'b', '\0', '.', 'c'};
+    struct handlebars_string * input = handlebars_string_ctor(
+        context,
+        input_bytes,
+        sizeof(input_bytes)
+    );
+    uint32_t original_hash = hbs_str_hash(input);
+
+    ck_assert_uint_eq(
+        original_hash,
+        handlebars_string_hash(input_bytes, sizeof(input_bytes))
+    );
+
+    input = handlebars_str_reduce(input, HBS_STRL("/"), HBS_STRL("."));
+
+    ck_assert_uint_eq(hbs_str_len(input), sizeof(expected_bytes));
+    ck_assert_int_eq(memcmp(hbs_str_val(input), expected_bytes, sizeof(expected_bytes)), 0);
+    ck_assert_uint_eq(
+        hbs_str_hash(input),
+        handlebars_string_hash(expected_bytes, sizeof(expected_bytes))
+    );
     handlebars_talloc_free(input);
 }
 END_TEST
@@ -785,6 +851,19 @@ START_TEST(test_handlebars_string_ltrim_3)
 }
 END_TEST
 
+START_TEST(test_handlebars_string_ltrim_refreshes_cached_hash)
+{
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("."));
+
+    (void) hbs_str_hash(string);
+    string = handlebars_string_ltrim(string, HBS_STRL("./"));
+
+    ck_assert_uint_eq(hbs_str_len(string), 0);
+    ck_assert_uint_eq(hbs_str_hash(string), handlebars_string_hash(HBS_STRL("")));
+    handlebars_talloc_free(string);
+}
+END_TEST
+
 START_TEST(test_handlebars_string_rtrim_1)
 {
     struct handlebars_string * in = handlebars_string_ctor(context, HBS_STRL("test \n \r "));
@@ -812,6 +891,19 @@ START_TEST(test_handlebars_string_rtrim_3)
     ck_assert_hbs_str_eq_cstr(ret, "");
     ck_assert_ptr_eq(in, ret);
     handlebars_talloc_free(in);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_rtrim_refreshes_cached_hash)
+{
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("a."));
+
+    (void) hbs_str_hash(string);
+    string = handlebars_string_rtrim(string, HBS_STRL("./"));
+
+    ck_assert_hbs_str_eq_cstr(string, "a");
+    ck_assert_uint_eq(hbs_str_hash(string), handlebars_string_hash(HBS_STRL("a")));
+    handlebars_talloc_free(string);
 }
 END_TEST
 
@@ -895,6 +987,7 @@ static Suite * suite(void)
     Suite * s = suite_create("String");
 
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_hash, "handlebars_string_hash");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_read_accessors_preserve_binary_bytes, "read accessors preserve binary bytes");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_1, "handlebars_strnstr 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_2, "handlebars_strnstr 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_3, "handlebars_strnstr 3");
@@ -920,6 +1013,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_1, "handlebars_string_reduce 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_2, "handlebars_string_reduce 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_3, "handlebars_string_reduce 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_refreshes_cached_hash, "handlebars_string_reduce refreshes cached hash");
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_with_separation, "handlebars_string_reduce with separation");
 #endif
@@ -968,9 +1062,11 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_ltrim_1, "test_handlebars_string_ltrim 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_ltrim_2, "test_handlebars_string_ltrim 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_ltrim_3, "test_handlebars_string_ltrim 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_ltrim_refreshes_cached_hash, "handlebars_string_ltrim refreshes cached hash");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_rtrim_1, "test_handlebars_string_rtrim 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_rtrim_2, "test_handlebars_string_rtrim 2");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_rtrim_3, "test_handlebars_string_rtrim 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_rtrim_refreshes_cached_hash, "handlebars_string_rtrim refreshes cached hash");
 
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_truncate_1, "handlebars_string_truncate 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_truncate_2, "handlebars_string_truncate 2");

@@ -600,7 +600,7 @@ FIXTURE_FN(1582700088)
 FIXTURE_FN(1623791204)
 {
     struct handlebars_value * noun = map_str_find(options->hash, HBS_STRL("noun"));
-    char * tmp = hbs_str_val(VALUE_TO_STRING(noun));
+    const char * tmp = hbs_str_val(VALUE_TO_STRING(noun));
     char * res = handlebars_talloc_asprintf(
             vm,
             "Hello %s",
@@ -1419,7 +1419,7 @@ FIXTURE_FN(4112130635)
 FIXTURE_FN(4158918668)
 {
     struct handlebars_value * noun = HANDLEBARS_ARG_AT(0);
-    char * tmp = hbs_str_val(VALUE_TO_STRING(noun));
+    const char * tmp = hbs_str_val(VALUE_TO_STRING(noun));
     char * res = handlebars_talloc_asprintf(
             vm,
             "Hello %s",

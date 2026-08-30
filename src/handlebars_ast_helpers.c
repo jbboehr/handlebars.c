@@ -341,7 +341,7 @@ struct handlebars_ast_node * handlebars_ast_helper_prepare_raw_block(
 
 static inline size_t handlebars_ast_helper_strip_comment_left(struct handlebars_string * comment)
 {
-    char * c = hbs_str_val(comment);
+    const char * c = hbs_str_val(comment);
     size_t start = 0;
 
     if( *c == '{' ) {
@@ -387,8 +387,8 @@ static inline size_t handlebars_ast_helper_strip_comment_left(struct handlebars_
 
 static inline size_t handlebars_ast_helper_strip_comment_right(struct handlebars_string * comment)
 {
-    char * orig = hbs_str_val(comment);
-    char * c = orig + hbs_str_len(comment);
+    const char * orig = hbs_str_val(comment);
+    const char * c = orig + hbs_str_len(comment);
     size_t len = hbs_str_len(comment);
 
     if( hbs_str_len(comment) < 2 ) {
@@ -435,7 +435,7 @@ struct handlebars_string * handlebars_ast_helper_strip_comment(struct handlebars
 struct handlebars_string * handlebars_ast_helper_strip_id_literal(struct handlebars_string * comment)
 {
     size_t len;
-    char * val;
+    const char * val;
 
     if (!comment) {
         return comment;

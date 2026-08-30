@@ -539,6 +539,47 @@ static inline void push_program_pair(struct handlebars_compiler * compiler, long
     }
 }
 
+static struct handlebars_string * handlebars_compiler_normalize_string_param(
+    struct handlebars_context * context,
+    const struct handlebars_string * input
+)
+{
+    const char * source = hbs_str_val(input);
+    size_t length = hbs_str_len(input);
+    size_t start = 0;
+    size_t segment;
+    size_t position;
+    struct handlebars_string * output;
+
+    /* Match the historical NUL-terminated ltrim and replacement behavior. */
+    while( start < length && source[start] != '\0' &&
+            (source[start] == '.' || source[start] == '/') ) {
+        start++;
+    }
+
+    output = handlebars_string_init(context, length - start);
+    segment = start;
+    for( position = start; position < length && source[position] != '\0'; position++ ) {
+        if( source[position] == '/' ) {
+            output = handlebars_string_append(
+                context,
+                output,
+                source + segment,
+                position - segment
+            );
+            output = handlebars_string_append(context, output, HBS_STRL("."));
+            segment = position + 1;
+        }
+    }
+
+    return handlebars_string_append(
+        context,
+        output,
+        source + segment,
+        length - segment
+    );
+}
+
 static inline void handlebars_compiler_push_param(
         struct handlebars_compiler * compiler,
         struct handlebars_ast_node * param
@@ -572,14 +613,7 @@ static inline void handlebars_compiler_push_param(
         if( param->type == HANDLEBARS_AST_NODE_BOOLEAN ) {
             handlebars_operand_set_boolval(&opcode->op1, string && hbs_str_eq_strl(string, HBS_STRL("true")));
         } else {
-            // @todo should be /^(\.\.?\/)/
-            string = handlebars_string_copy_ctor(CONTEXT, string);
-            string = handlebars_string_ltrim(string, HBS_STRL("./"));
-            for( char * tmp2 = hbs_str_val(string); *tmp2; tmp2++ ) {
-                if( *tmp2 == '/' ) {
-                    *tmp2 = '.';
-                }
-            }
+            string = handlebars_compiler_normalize_string_param(CONTEXT, string);
             handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op1, string);
         }
         const char * name = handlebars_ast_node_readable_type(param->type);

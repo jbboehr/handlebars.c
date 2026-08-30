@@ -28,6 +28,10 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   `HANDLEBARS_VALUE_ITERATOR_DECL` and initialized with
   `HANDLEBARS_VALUE_ITERATOR_INIT`; the unsafe public initializer that assumed
   hidden trailing storage was removed.
+- `hbs_str_val()` now returns a read-only byte buffer. Callers that modified
+  string storage directly must use the public string mutation APIs so
+  copy-on-write state and cached hashes remain valid. String trimming now
+  invalidates cached hashes whenever it changes the string.
 - The public value iterator layout and initialization contract changed, and the
   shared-library ABI is now version 10. Downstream binaries must be rebuilt.
 - Serialized programs now retain block-parameter counts, extending the public

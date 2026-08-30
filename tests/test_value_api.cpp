@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 
 void handlebars_test_value_api_cpp(struct handlebars_value * source)
@@ -36,4 +37,10 @@ void handlebars_test_value_api_cpp(struct handlebars_value * source)
 
     HANDLEBARS_VALUE_ARRAY_UNDECL(values, 2);
     HANDLEBARS_VALUE_UNDECL(value);
+}
+
+const char * handlebars_test_string_api_cpp(const struct handlebars_string * string)
+{
+    (void) hbs_str_len(string);
+    return hbs_str_val(string);
 }

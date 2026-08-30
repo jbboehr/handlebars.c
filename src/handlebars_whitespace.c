@@ -243,8 +243,8 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
                 if( current->type == HANDLEBARS_AST_NODE_PARTIAL &&
                         prev && prev->type == HANDLEBARS_AST_NODE_CONTENT ) {
                     struct handlebars_string * start = prev->node.content.original;
-                    char * ptr;
-                    char * match = NULL;
+                    const char * ptr;
+                    const char * match = NULL;
                     for( ptr = hbs_str_val(start); *ptr; ++ptr ) {
                         if( *ptr == ' ' || *ptr == '\t' ) {
                             if( !match ) {

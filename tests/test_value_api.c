@@ -33,15 +33,22 @@
 
 #include "handlebars.h"
 #include "handlebars_stack.h"
+#include "handlebars_string.h"
 #include "handlebars_value.h"
 
 int main(void)
 {
     struct handlebars_context * context = handlebars_context_ctor();
+    const struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("api"));
+    const char * bytes = hbs_str_val(string);
     int result = 0;
     HANDLEBARS_VALUE_DECL(value);
     HANDLEBARS_VALUE_DECL(child);
     HANDLEBARS_VALUE_ITERATOR_DECL(iterator);
+
+    if( hbs_str_len(string) != 3 || bytes[0] != 'a' ) {
+        result = 3;
+    }
 
     handlebars_value_array(value, handlebars_stack_ctor(context, 1));
     handlebars_value_integer(child, 42);
@@ -58,7 +65,7 @@ int main(void)
     HANDLEBARS_VALUE_UNDECL(value);
     handlebars_context_dtor(context);
     printf(
-        "%s 1 - public iterator declaration and initialization\n1..1\n",
+        "%s 1 - public value, string, and iterator declarations\n1..1\n",
         result == 0 ? "ok" : "not ok"
     );
     return result;

@@ -136,11 +136,11 @@ static bool string_source_offset(
 
 // {{{ Accessors
 
-char * hbs_str_val(struct handlebars_string * str) {
+const char * hbs_str_val(const struct handlebars_string * str) {
     return str->val;
 }
 
-size_t hbs_str_len(struct handlebars_string * str) {
+size_t hbs_str_len(const struct handlebars_string * str) {
     return str->len;
 }
 
@@ -1027,6 +1027,7 @@ struct handlebars_string * handlebars_string_ltrim(struct handlebars_string * st
 
     if( ptr > string->val ) {
         memmove(string->val, ptr, string->len + 1);
+        string->hash = 0;
     }
 
     return string;
@@ -1035,6 +1036,7 @@ struct handlebars_string * handlebars_string_ltrim(struct handlebars_string * st
 struct handlebars_string * handlebars_string_rtrim(struct handlebars_string * string, const char * what, size_t what_length)
 {
     size_t i;
+    size_t original_len;
     char flags[256];
     char * original;
 
@@ -1045,6 +1047,7 @@ struct handlebars_string * handlebars_string_rtrim(struct handlebars_string * st
     }
 
     string = separate_string(string);
+    original_len = string->len;
 
     // Make char mask
     memset(flags, 0, sizeof(flags));
@@ -1056,6 +1059,10 @@ struct handlebars_string * handlebars_string_rtrim(struct handlebars_string * st
     while( original > string->val && flags[(unsigned char) *--original] ) {
         --string->len;
         *original = '\0';
+    }
+
+    if( string->len != original_len ) {
+        string->hash = 0;
     }
 
     return string;

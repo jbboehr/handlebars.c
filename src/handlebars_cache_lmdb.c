@@ -213,7 +213,8 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
 
     // Make key
     key.mv_size = hbs_str_len(tmpl) + 1;
-    key.mv_data = hbs_str_val(tmpl);
+    /* LMDB does not modify key bytes despite MDB_val using void *. */
+    key.mv_data = (void *) hbs_str_val(tmpl);
 
     // Fetch data
     err = mdb_get(txn, dbi, &key, &data);
@@ -301,7 +302,8 @@ static void cache_add(
 
     // Make key
     key.mv_size = hbs_str_len(tmpl) + 1;
-    key.mv_data = hbs_str_val(tmpl);
+    /* LMDB does not modify key bytes despite MDB_val using void *. */
+    key.mv_data = (void *) hbs_str_val(tmpl);
 
     // Make data
     data.mv_size = module_copy->size;

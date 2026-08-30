@@ -40,10 +40,18 @@ extern const size_t HANDLEBARS_STRING_SIZE;
 size_t handlebars_string_size(size_t length);
 
 // {{{ Accessors
-char * hbs_str_val(struct handlebars_string * str)
+/**
+ * @brief Return the string's borrowed, read-only byte buffer.
+ *
+ * The buffer is terminated by a NUL byte, but may contain embedded NUL bytes;
+ * use #hbs_str_len for its logical length. It remains valid only while @p str
+ * remains alive and unmodified. Use the string mutation APIs rather than
+ * casting away const, so copy-on-write and the cached hash remain valid.
+ */
+const char * hbs_str_val(const struct handlebars_string * str)
     HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
-size_t hbs_str_len(struct handlebars_string * str)
+size_t hbs_str_len(const struct handlebars_string * str)
     HBS_ATTR_NONNULL_ALL;
 
 uint32_t hbs_str_hash(struct handlebars_string * str)

@@ -1346,6 +1346,51 @@ START_TEST(test_lmdb_cache_reset_removes_entries)
 }
 END_TEST
 
+START_TEST(test_lmdb_cache_distinguishes_binary_and_empty_keys)
+{
+    static const char embedded_key[] = {'a', '\0', 'b'};
+    struct handlebars_cache * cache;
+    struct handlebars_string * empty = handlebars_string_ctor(context, HBS_STRL(""));
+    struct handlebars_string * prefix = handlebars_string_ctor(context, HBS_STRL("a"));
+    struct handlebars_string * embedded = handlebars_string_ctor(
+        context,
+        embedded_key,
+        sizeof(embedded_key)
+    );
+    struct handlebars_module * empty_module = serialize_template("empty");
+    struct handlebars_module * prefix_module = serialize_template("prefix");
+    struct handlebars_module * embedded_module = serialize_template("embedded");
+    struct handlebars_module * found;
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    handlebars_cache_add(cache, empty, empty_module);
+    handlebars_cache_add(cache, prefix, prefix_module);
+    handlebars_cache_add(cache, embedded, embedded_module);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 3);
+
+    handlebars_talloc_free(empty);
+    handlebars_talloc_free(prefix);
+    handlebars_talloc_free(embedded);
+    empty = handlebars_string_ctor(context, HBS_STRL(""));
+    prefix = handlebars_string_ctor(context, HBS_STRL("a"));
+    embedded = handlebars_string_ctor(context, embedded_key, sizeof(embedded_key));
+
+    found = handlebars_cache_find(cache, empty);
+    ck_assert_ptr_nonnull(found);
+    handlebars_cache_release(cache, empty, found);
+    found = handlebars_cache_find(cache, prefix);
+    ck_assert_ptr_nonnull(found);
+    handlebars_cache_release(cache, prefix, found);
+    found = handlebars_cache_find(cache, embedded);
+    ck_assert_ptr_nonnull(found);
+    handlebars_cache_release(cache, embedded, found);
+
+    handlebars_cache_dtor(cache);
+    reset_lmdb_test_files();
+}
+END_TEST
+
 START_TEST(test_lmdb_cache_does_not_hash_oversized_keys)
 {
     struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
@@ -2348,6 +2393,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset_removes_entries, "LMDB reset removes entries");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_distinguishes_binary_and_empty_keys, "LMDB distinguishes binary and empty keys");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_does_not_hash_oversized_keys, "LMDB skips oversized keys");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_rejects_invalid_records, "LMDB rejects invalid records");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc_expires_zero_age_records, "LMDB GC expires zero-age records");
