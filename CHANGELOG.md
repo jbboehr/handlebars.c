@@ -24,8 +24,12 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 ### Changed
 - Value iterators now retain their backing storage, support nested map
   iteration, and are closed when an error unwinds through the library.
-- The public value iterator layout changed and the shared-library ABI is now
-  version 10. Downstream binaries must be rebuilt.
+- Value iterators must now be declared with
+  `HANDLEBARS_VALUE_ITERATOR_DECL` and initialized with
+  `HANDLEBARS_VALUE_ITERATOR_INIT`; the unsafe public initializer that assumed
+  hidden trailing storage was removed.
+- The public value iterator layout and initialization contract changed, and the
+  shared-library ABI is now version 10. Downstream binaries must be rebuilt.
 - Serialized programs now retain block-parameter counts, extending the public
   module-table and `handlebars_options` layouts.
 - VM rendering now transfers filesystem partial-loader errors from the loader

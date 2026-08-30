@@ -2755,6 +2755,40 @@ START_TEST(test_array_iterator)
 }
 END_TEST
 
+START_TEST(test_iterator_initializer_respects_explicit_current_storage)
+{
+    struct guarded_iterator {
+        struct handlebars_value_iterator iterator;
+        unsigned char guard[sizeof(struct handlebars_value)];
+    } guarded = {0};
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(current);
+    HANDLEBARS_VALUE_DECL(tmp);
+
+    memset(guarded.guard, 0xa5, sizeof(guarded.guard));
+    handlebars_value_array(value, handlebars_stack_ctor(context, 1));
+    handlebars_value_integer(tmp, 42);
+    handlebars_value_array_push(value, tmp);
+
+    ck_assert(handlebars_value_iterator_init_internal(
+        &guarded.iterator,
+        current,
+        value
+    ));
+    ck_assert_ptr_eq(guarded.iterator.cur, current);
+    ck_assert_int_eq(handlebars_value_get_intval(guarded.iterator.cur), 42);
+    for( size_t i = 0; i < sizeof(guarded.guard); i++ ) {
+        ck_assert_uint_eq(guarded.guard[i], 0xa5);
+    }
+
+    handlebars_value_iterator_close(&guarded.iterator);
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(current);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_array_iterator_retains_stack)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -2767,7 +2801,7 @@ START_TEST(test_array_iterator_retains_stack)
     handlebars_value_integer(tmp, 2);
     handlebars_value_array_push(value, tmp);
 
-    ck_assert(handlebars_value_iterator_init(iter, value));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, value));
     handlebars_value_dtor(value);
 
     ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 1);
@@ -2892,7 +2926,7 @@ START_TEST(test_map_iterator_nested)
         (void) outer;
         outer_count++;
 
-        if( handlebars_value_iterator_init(inner_iter, value) ) {
+        if( HANDLEBARS_VALUE_ITERATOR_INIT(inner_iter, value) ) {
             do {
                 ck_assert_ptr_nonnull(inner_iter->cur);
                 current_inner_count++;
@@ -2924,7 +2958,7 @@ START_TEST(test_map_iterator_retains_map)
     map = handlebars_map_str_update(map, HBS_STRL("b"), tmp);
     handlebars_value_map(value, map);
 
-    ck_assert(handlebars_value_iterator_init(iter, value));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, value));
     handlebars_value_dtor(value);
 
     ck_assert_hbs_str_eq_cstr(iter->key, "a");
@@ -3089,7 +3123,7 @@ START_TEST(test_nested_error_boundary_preserves_outer_iterator)
         context->e->jmp = previous;
         ck_abort_msg("The inner error escaped its boundary");
     }
-    ck_assert(handlebars_value_iterator_init(iter, value));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, value));
 
     if( handlebars_setjmp_ex(context, &inner) ) {
         context->e->jmp = &outer;
@@ -3136,7 +3170,7 @@ START_TEST(test_user_iterator_longjmp_releases_owner)
         return;
     }
 
-    ck_assert(handlebars_value_iterator_init(iter, value));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, value));
     (void) handlebars_value_iterator_next(iter);
     ck_abort_msg("Expected user iterator to throw");
 }
@@ -3158,8 +3192,8 @@ START_TEST(test_map_iterator_no_refcount_guard_is_nested)
     handlebars_value_map(value, map);
     original = value->v.map;
 
-    ck_assert(handlebars_value_iterator_init(first, value));
-    ck_assert(handlebars_value_iterator_init(second, value));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(first, value));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(second, value));
 
     value->v.map = handlebars_map_rehash(value->v.map, true);
     ck_assert_ptr_eq(value->v.map, original);
@@ -3295,7 +3329,7 @@ START_TEST(test_iterator_void)
 {
     HANDLEBARS_VALUE_DECL(value);
     HANDLEBARS_VALUE_ITERATOR_DECL(iter);
-    ck_assert(!handlebars_value_iterator_init(iter, value));
+    ck_assert(!HANDLEBARS_VALUE_ITERATOR_INIT(iter, value));
     ck_assert(!handlebars_value_iterator_next(iter));
     HANDLEBARS_VALUE_UNDECL(value);
 }
@@ -3637,6 +3671,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_vm_emulates_length_for_custom_lazy_arrays, "VM emulates length for custom lazy arrays");
     REGISTER_TEST_FIXTURE(s, test_vm_length_block_param_stays_missing_after_missing_segment, "VM length block-param paths stay missing after a missing segment");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
+    REGISTER_TEST_FIXTURE(s, test_iterator_initializer_respects_explicit_current_storage, "Iterator initialization respects explicit current storage");
     REGISTER_TEST_FIXTURE(s, test_array_iterator_retains_stack, "Array iterator retains its backing stack");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");
     REGISTER_TEST_FIXTURE(s, test_map_iterator_sparse, "Map iterator (sparse)");

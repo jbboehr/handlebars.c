@@ -58,6 +58,7 @@ struct handlebars_value_traversal {
 
 static bool handlebars_value_iterator_init_ex(
     struct handlebars_value_iterator * it,
+    struct handlebars_value * current,
     struct handlebars_value * value,
     struct handlebars_context * unwind_context
 );
@@ -386,7 +387,12 @@ static void handlebars_value_convert_walk(
             HANDLEBARS_VALUE_ITERATOR_DECL(iter);
 
             handlebars_value_traversal_enter(state, value);
-            if( handlebars_value_iterator_init_ex(iter, value, state->context) ) {
+            if( handlebars_value_iterator_init_ex(
+                iter,
+                HBS_VALUE_ITERATOR_CURRENT(iter),
+                value,
+                state->context
+            ) ) {
                 do {
                     handlebars_value_convert_walk(iter->cur, recurse, state);
                 } while( handlebars_value_iterator_next(iter) );
@@ -487,7 +493,12 @@ static struct handlebars_string * handlebars_value_expression_append_array_walk(
     bool first = true;
 
     handlebars_value_traversal_enter(state, value);
-    if( handlebars_value_iterator_init_ex(iter, value, state->context) ) {
+    if( handlebars_value_iterator_init_ex(
+        iter,
+        HBS_VALUE_ITERATOR_CURRENT(iter),
+        value,
+        state->context
+    ) ) {
         do {
             if( !first ) {
                 string = handlebars_string_append(context, string, HBS_STRL(","));
@@ -978,7 +989,12 @@ static void handlebars_value_dump_append(
             handlebars_value_traversal_enter(state, value);
             count = handlebars_value_count(value);
             HANDLEBARS_VALUE_DUMP_APPEND("[%s", count ? "\n" : "");
-            if( handlebars_value_iterator_init_ex(iter, value, state->context) ) {
+            if( handlebars_value_iterator_init_ex(
+                iter,
+                HBS_VALUE_ITERATOR_CURRENT(iter),
+                value,
+                state->context
+            ) ) {
                 do {
                     HANDLEBARS_VALUE_DUMP_APPEND("%*s%zu => ", (int) ((depth + 1) * 4), "", iter->index);
                     handlebars_value_dump_append(iter->cur, state, depth + 1);
@@ -1007,7 +1023,12 @@ static void handlebars_value_dump_append(
             handlebars_value_traversal_enter(state, value);
             count = handlebars_value_count(value);
             HANDLEBARS_VALUE_DUMP_APPEND("{%s", count ? "\n" : "");
-            if( handlebars_value_iterator_init_ex(iter, value, state->context) ) {
+            if( handlebars_value_iterator_init_ex(
+                iter,
+                HBS_VALUE_ITERATOR_CURRENT(iter),
+                value,
+                state->context
+            ) ) {
                 do {
                     HANDLEBARS_VALUE_DUMP_APPEND(
                         "%*s%.*s => ",
@@ -1197,12 +1218,17 @@ static void handlebars_value_iterator_unregister(struct handlebars_value_iterato
     it->unwind_target = NULL;
 }
 
-bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struct handlebars_value * value)
+bool handlebars_value_iterator_init_internal(
+    struct handlebars_value_iterator * it,
+    struct handlebars_value * current,
+    struct handlebars_value * value
+)
 {
     struct handlebars_value * tmp;
 
-    memset(it, 0, HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE);
-    it->cur = (struct handlebars_value *) (void *) (((char *) it) + HANDLEBARS_VALUE_ITERATOR_SIZE);
+    memset(it, 0, sizeof(*it));
+    handlebars_value_init(current);
+    it->cur = current;
 
     switch( value->type ) {
         case HANDLEBARS_VALUE_TYPE_ARRAY:
@@ -1271,10 +1297,11 @@ bool handlebars_value_iterator_init(struct handlebars_value_iterator * it, struc
 
 static bool handlebars_value_iterator_init_ex(
     struct handlebars_value_iterator * it,
+    struct handlebars_value * current,
     struct handlebars_value * value,
     struct handlebars_context * unwind_context
 ) {
-    bool result = handlebars_value_iterator_init(it, value);
+    bool result = handlebars_value_iterator_init_internal(it, current, value);
 
     if( result ) {
         handlebars_value_iterator_unregister(it);

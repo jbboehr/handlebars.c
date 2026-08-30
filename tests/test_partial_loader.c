@@ -106,7 +106,7 @@ static struct handlebars_string * execute_template(const char *template, const c
         ck_assert_str_eq(partial_name, hbs_str_val(key));
         ck_assert_str_eq(partial_value, handlebars_value_get_strval(child));
 
-        if( handlebars_value_iterator_init(nested_iter, partials) ) {
+        if( HANDLEBARS_VALUE_ITERATOR_INIT(nested_iter, partials) ) {
             do {
                 ck_assert_str_eq(partial_name, hbs_str_val(nested_iter->key));
                 ck_assert_str_eq(partial_value, handlebars_value_get_strval(nested_iter->cur));
@@ -525,7 +525,7 @@ START_TEST(test_partial_loader_iteration_uses_snapshot)
     handlebars_value_partial_loader_init(context, path, extension, partials);
 
     ck_assert_ptr_nonnull(handlebars_value_map_find(partials, first, rv));
-    ck_assert(handlebars_value_iterator_init(iter, partials));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, partials));
 
     ck_assert_ptr_nonnull(handlebars_value_map_find(partials, second, rv));
     ck_assert_int_eq(handlebars_value_count(partials), 2);
@@ -558,7 +558,7 @@ START_TEST(test_partial_loader_iterator_retains_loader)
     handlebars_value_partial_loader_init(context, path, extension, partials);
 
     ck_assert_ptr_nonnull(handlebars_value_map_find(partials, key, rv));
-    ck_assert(handlebars_value_iterator_init(iter, partials));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, partials));
     handlebars_value_dtor(partials);
 
     ck_assert_hbs_str_eq_cstr(iter->key, "fixture1");

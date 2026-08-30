@@ -64,7 +64,7 @@ jobs:
             - name: Install packages
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y bats check gcc libjson-c-dev liblmdb-dev libpcre2-dev libsubunit-dev libtalloc-dev libyaml-dev make pkg-config
+                  sudo apt-get install -y bats check g++ gcc libjson-c-dev liblmdb-dev libpcre2-dev libsubunit-dev libtalloc-dev libyaml-dev make pkg-config
             - name: Normalize generated-file timestamps
               run: |
                   touch \
@@ -89,6 +89,8 @@ jobs:
             - name: Configure without regenerating Autotools outputs
               run: ./configure --disable-bison --disable-flex --disable-gperf --enable-compile-warnings=yes
             - run: make -j2
+            - name: Compile public value API as C++
+              run: g++ -std=c++11 -Wall -Wextra -Werror -pedantic-errors -I. -Isrc -c tests/test_value_api.cpp -o /tmp/test_value_api_cpp.o
             - run: make check
             - name: Verify tracked files were not regenerated
               run: git diff --exit-code

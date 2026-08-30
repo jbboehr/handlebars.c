@@ -1483,7 +1483,7 @@ static struct json_object * handlebarsc_helper_json_from_value(
                 tracked
             );
             handlebarsc_helper_json_enter(state, value);
-            if( handlebars_value_iterator_init(iterator, value) ) {
+            if( HANDLEBARS_VALUE_ITERATOR_INIT(iterator, value) ) {
                 do {
                     struct handlebarsc_tracked_json * child_tracked;
                     struct json_object * child = handlebarsc_helper_json_from_value(
@@ -1512,7 +1512,7 @@ static struct json_object * handlebarsc_helper_json_from_value(
                 tracked
             );
             handlebarsc_helper_json_enter(state, value);
-            if( handlebars_value_iterator_init(iterator, value) ) {
+            if( HANDLEBARS_VALUE_ITERATOR_INIT(iterator, value) ) {
                 do {
                     struct handlebarsc_tracked_json * child_tracked;
                     struct json_object * child;

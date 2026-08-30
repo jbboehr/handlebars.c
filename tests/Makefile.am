@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml fixture2.hbs fixture3.hbs fixture4.hbs test_executable.bats helper_executable.sh helper_executable_alt.sh helper_data.json
+EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml fixture2.hbs fixture3.hbs fixture4.hbs test_executable.bats helper_executable.sh helper_executable_alt.sh helper_data.json test_value_api.cpp
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(FUZZING_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS) $(CHECK_CFLAGS) $(PCRE_CFLAGS) $(SUBUNIT_CFLAGS)
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) $(FUZZING_LDFLAGS) -static # for valgrind
@@ -37,7 +37,8 @@ check_PROGRAMS = \
 	test_stack \
 	test_string \
 	test_token \
-	test_value
+	test_value \
+	test_value_api
 
 COMMONFILES = utils.h utils.c fixtures.c adler32.c
 
@@ -52,6 +53,7 @@ test_stack_SOURCES = $(COMMONFILES) test_stack.c
 test_string_SOURCES = $(COMMONFILES) test_string.c
 test_token_SOURCES = $(COMMONFILES) test_token.c
 test_value_SOURCES = $(COMMONFILES) test_value.c
+test_value_api_SOURCES = test_value_api.c
 
 if TESTING_EXPORTS
 test_ast_helpers_SOURCES = $(COMMONFILES) test_ast_helpers.c

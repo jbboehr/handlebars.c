@@ -172,7 +172,7 @@ START_TEST(test_array_iterator_json_retains_owner)
     HANDLEBARS_VALUE_ITERATOR_DECL(iter);
 
     handlebars_value_init_json_string(context, value, "[1, 2]");
-    ck_assert(handlebars_value_iterator_init(iter, value));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, value));
     handlebars_value_dtor(value);
 
     ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 1);
@@ -253,7 +253,7 @@ START_TEST(test_map_iterator_json_retains_owner)
     HANDLEBARS_VALUE_ITERATOR_DECL(iter);
 
     handlebars_value_init_json_string(context, value, "{\"a\": 1, \"b\": 2}");
-    ck_assert(handlebars_value_iterator_init(iter, value));
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, value));
     handlebars_value_dtor(value);
 
     ck_assert_hbs_str_eq_cstr(iter->key, "a");

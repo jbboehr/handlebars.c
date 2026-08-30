@@ -106,8 +106,9 @@ check_PROGRAMS = test_main$(EXEEXT) test_ast$(EXEEXT) \
 	test_ast_list$(EXEEXT) test_compiler$(EXEEXT) \
 	test_map$(EXEEXT) test_opcode_printer$(EXEEXT) \
 	test_opcodes$(EXEEXT) test_stack$(EXEEXT) test_string$(EXEEXT) \
-	test_token$(EXEEXT) test_value$(EXEEXT) $(am__EXEEXT_1) \
-	$(am__EXEEXT_2) $(am__EXEEXT_3) $(am__EXEEXT_4)
+	test_token$(EXEEXT) test_value$(EXEEXT) \
+	test_value_api$(EXEEXT) $(am__EXEEXT_1) $(am__EXEEXT_2) \
+	$(am__EXEEXT_3) $(am__EXEEXT_4)
 @TESTING_EXPORTS_TRUE@am__append_1 = \
 @TESTING_EXPORTS_TRUE@	test_ast_helpers \
 @TESTING_EXPORTS_TRUE@	test_scanners \
@@ -431,6 +432,14 @@ test_value_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+am_test_value_api_OBJECTS = test_value_api.$(OBJEXT)
+test_value_api_OBJECTS = $(am_test_value_api_OBJECTS)
+test_value_api_LDADD = $(LDADD)
+test_value_api_DEPENDENCIES = $(top_builddir)/src/libhandlebars.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__test_yaml_SOURCES_DIST = utils.h utils.c fixtures.c adler32.c \
 	test_yaml.c
 @YAML_TRUE@am_test_yaml_OBJECTS = $(am__objects_1) test_yaml.$(OBJEXT)
@@ -472,7 +481,8 @@ am__depfiles_remade = ./$(DEPDIR)/adler32.Po ./$(DEPDIR)/fixtures.Po \
 	./$(DEPDIR)/test_spec_mustache.Po ./$(DEPDIR)/test_stack.Po \
 	./$(DEPDIR)/test_string.Po ./$(DEPDIR)/test_token.Po \
 	./$(DEPDIR)/test_utils.Po ./$(DEPDIR)/test_value.Po \
-	./$(DEPDIR)/test_yaml.Po ./$(DEPDIR)/utils.Po
+	./$(DEPDIR)/test_value_api.Po ./$(DEPDIR)/test_yaml.Po \
+	./$(DEPDIR)/utils.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -506,7 +516,7 @@ SOURCES = $(test_ast_SOURCES) $(test_ast_helpers_SOURCES) \
 	$(test_spec_mustache_SOURCES) $(test_stack_SOURCES) \
 	$(test_string_SOURCES) $(test_token_SOURCES) \
 	$(test_utils_SOURCES) $(test_value_SOURCES) \
-	$(test_yaml_SOURCES)
+	$(test_value_api_SOURCES) $(test_yaml_SOURCES)
 DIST_SOURCES = $(test_ast_SOURCES) \
 	$(am__test_ast_helpers_SOURCES_DIST) $(test_ast_list_SOURCES) \
 	$(am__test_cache_SOURCES_DIST) $(test_compiler_SOURCES) \
@@ -523,7 +533,7 @@ DIST_SOURCES = $(test_ast_SOURCES) \
 	$(am__test_spec_mustache_SOURCES_DIST) $(test_stack_SOURCES) \
 	$(test_string_SOURCES) $(test_token_SOURCES) \
 	$(am__test_utils_SOURCES_DIST) $(test_value_SOURCES) \
-	$(am__test_yaml_SOURCES_DIST)
+	$(test_value_api_SOURCES) $(am__test_yaml_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -953,7 +963,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 valgrind_enabled_tools = @valgrind_enabled_tools@
 valgrind_tools = @valgrind_tools@
-EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml fixture2.hbs fixture3.hbs fixture4.hbs test_executable.bats helper_executable.sh helper_executable_alt.sh helper_data.json
+EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml fixture2.hbs fixture3.hbs fixture4.hbs test_executable.bats helper_executable.sh helper_executable_alt.sh helper_data.json test_value_api.cpp
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(FUZZING_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS) $(CHECK_CFLAGS) $(PCRE_CFLAGS) $(SUBUNIT_CFLAGS)
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) $(FUZZING_LDFLAGS) -static # for valgrind
@@ -975,6 +985,7 @@ test_stack_SOURCES = $(COMMONFILES) test_stack.c
 test_string_SOURCES = $(COMMONFILES) test_string.c
 test_token_SOURCES = $(COMMONFILES) test_token.c
 test_value_SOURCES = $(COMMONFILES) test_value.c
+test_value_api_SOURCES = test_value_api.c
 @TESTING_EXPORTS_TRUE@test_ast_helpers_SOURCES = $(COMMONFILES) test_ast_helpers.c
 @TESTING_EXPORTS_TRUE@test_scanners_SOURCES = $(COMMONFILES) test_scanners.c
 @TESTING_EXPORTS_TRUE@test_utils_SOURCES = $(COMMONFILES) test_utils.c
@@ -1137,6 +1148,10 @@ test_value$(EXEEXT): $(test_value_OBJECTS) $(test_value_DEPENDENCIES) $(EXTRA_te
 	@rm -f test_value$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_value_OBJECTS) $(test_value_LDADD) $(LIBS)
 
+test_value_api$(EXEEXT): $(test_value_api_OBJECTS) $(test_value_api_DEPENDENCIES) $(EXTRA_test_value_api_DEPENDENCIES)
+	@rm -f test_value_api$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_value_api_OBJECTS) $(test_value_api_LDADD) $(LIBS)
+
 test_yaml$(EXEEXT): $(test_yaml_OBJECTS) $(test_yaml_DEPENDENCIES) $(EXTRA_test_yaml_DEPENDENCIES) 
 	@rm -f test_yaml$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(test_yaml_OBJECTS) $(test_yaml_LDADD) $(LIBS)
@@ -1172,6 +1187,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_token.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_utils.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_value.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_value_api.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_yaml.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utils.Po@am__quote@ # am--include-marker
 
@@ -1486,6 +1502,13 @@ test_value.log: test_value$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+test_value_api.log: test_value_api$(EXEEXT)
+	@p='test_value_api$(EXEEXT)'; \
+	b='test_value_api'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 test_ast_helpers.log: test_ast_helpers$(EXEEXT)
 	@p='test_ast_helpers$(EXEEXT)'; \
 	b='test_ast_helpers'; \
@@ -1721,6 +1744,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/test_token.Po
 	-rm -f ./$(DEPDIR)/test_utils.Po
 	-rm -f ./$(DEPDIR)/test_value.Po
+	-rm -f ./$(DEPDIR)/test_value_api.Po
 	-rm -f ./$(DEPDIR)/test_yaml.Po
 	-rm -f ./$(DEPDIR)/utils.Po
 	-rm -f Makefile
@@ -1793,6 +1817,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/test_token.Po
 	-rm -f ./$(DEPDIR)/test_utils.Po
 	-rm -f ./$(DEPDIR)/test_value.Po
+	-rm -f ./$(DEPDIR)/test_value_api.Po
 	-rm -f ./$(DEPDIR)/test_yaml.Po
 	-rm -f ./$(DEPDIR)/utils.Po
 	-rm -f Makefile

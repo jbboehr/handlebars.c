@@ -21,8 +21,18 @@
 #include <assert.h>
 #include <string.h>
 
-#ifdef HAVE_ALLOCA_H
+#if defined(__cplusplus) || defined(__STDC_NO_VLA__) || defined(_MSC_VER)
+#if defined(__clang__) || defined(__GNUC__)
+#define HBS_VALUE_STACK_ALLOC(size) __builtin_alloca(size)
+#elif defined(_MSC_VER)
+#include <malloc.h>
+#define HBS_VALUE_STACK_ALLOC(size) _alloca(size)
+#elif defined(HAVE_ALLOCA_H)
 #include <alloca.h>
+#define HBS_VALUE_STACK_ALLOC(size) alloca(size)
+#else
+#error "handlebars_value.h requires compiler-supported stack allocation when VLAs are unavailable"
+#endif
 #endif
 
 #include "handlebars.h"
@@ -50,7 +60,9 @@ struct yaml_node_s;
 #define HANDLEBARS_VALUE_MAX_DEPTH 256
 
 /**
- * @brief Value iterator context. Should be stack allocated. Must be initialized with #handlebars_value_iterator_init
+ * @brief Value iterator context. Declare with
+ *        #HANDLEBARS_VALUE_ITERATOR_DECL and initialize with
+ *        #HANDLEBARS_VALUE_ITERATOR_INIT.
  */
 struct handlebars_value_iterator
 {
@@ -110,19 +122,27 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
 #define HANDLEBARS_VALUE_DECL_PRED(name) \
     struct handlebars_value mem_ ## name = {0}; \
     struct handlebars_value * const name HANDLEBARS_VALUE_DECL_CLEANUP = &mem_ ## name
-#elif !defined(__STDC_NO_VLA__)
+#elif !defined(__STDC_NO_VLA__) && !defined(__cplusplus) && !defined(_MSC_VER)
 // Use a char vla
 #define HANDLEBARS_VALUE_DECL_PRED(name) \
     char mem_ ## name[HANDLEBARS_VALUE_SIZE]; \
-    struct handlebars_value * const name HANDLEBARS_VALUE_DECL_CLEANUP = (void *) mem_ ## name; \
+    struct handlebars_value * const name HANDLEBARS_VALUE_DECL_CLEANUP = (struct handlebars_value *) mem_ ## name; \
     handlebars_value_init(name);
 #else
-// Use alloca
+// Use compiler-supported stack allocation; storage lasts until function return.
 #define HANDLEBARS_VALUE_DECL_PRED(name) \
-    struct handlebars_value * const name HANDLEBARS_VALUE_DECL_CLEANUP = alloca(HANDLEBARS_VALUE_SIZE); \
+    struct handlebars_value * const name HANDLEBARS_VALUE_DECL_CLEANUP = (struct handlebars_value *) HBS_VALUE_STACK_ALLOC(HANDLEBARS_VALUE_SIZE); \
     handlebars_value_init(name);
 #endif
 
+/**
+ * @def HANDLEBARS_VALUE_DECL
+ * @brief Declare automatic storage for one value.
+ *
+ * On C++, MSVC, and C implementations without VLAs, the storage is
+ * `alloca`-backed and is reclaimed when the containing function returns.
+ * Hoist declarations outside long-running loops in those builds.
+ */
 #if defined(HANDLEBARS_ENABLE_DEBUG)
 // The cleanup variable helps makes sure there is a matching pair of DECL/UNDECL
 #define HANDLEBARS_VALUE_DECL(name) \
@@ -140,22 +160,22 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
 // C does not support zero-length arrays, so reserve one slot for an empty logical array
 #define HANDLEBARS_VALUE_ARRAY_CAPACITY(num) ((num) > 0 ? (num) : 1)
 
-#if (defined(HANDLEBARS_VALUE_SIZE) && !defined(__STDC_NO_VLA__))
+#if (defined(HANDLEBARS_VALUE_SIZE) && !defined(__STDC_NO_VLA__) && !defined(__cplusplus) && !defined(_MSC_VER))
 // We know the size of value at compile-time, but we don't know if num is a constant, so we have be able to support VLA
 #define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
     struct handlebars_value name[HANDLEBARS_VALUE_ARRAY_CAPACITY(num)]; \
     memset(&name, 0, sizeof(name));
 #define HANDLEBARS_VALUE_ARRAY_AT(name, pos) (&name[pos])
-#elif !defined(__STDC_NO_VLA__)
+#elif !defined(__STDC_NO_VLA__) && !defined(__cplusplus) && !defined(_MSC_VER)
 // Use a char vla
 #define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
     char mem_ ## name[HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num)]; \
-    struct handlebars_value * name = (void *) &mem_ ## name; \
+    struct handlebars_value * name = (struct handlebars_value *) &mem_ ## name; \
     memset(name, 0, HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num));
 #else
-// Use alloca
+// Use compiler-supported stack allocation; storage lasts until function return.
 #define HANDLEBARS_VALUE_ARRAY_DECL_PRED(name, num) \
-    struct handlebars_value * name = alloca(HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num)); \
+    struct handlebars_value * name = (struct handlebars_value *) HBS_VALUE_STACK_ALLOC(HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num)); \
     memset(name, 0, HANDLEBARS_VALUE_SIZE * HANDLEBARS_VALUE_ARRAY_CAPACITY(num));
 #endif
 
@@ -170,6 +190,14 @@ extern const size_t HANDLEBARS_VALUE_INTERNALS_SIZE;
         } \
     } while (0)
 
+/**
+ * @def HANDLEBARS_VALUE_ARRAY_DECL
+ * @brief Declare automatic storage for an array of values.
+ *
+ * On C++, MSVC, and C implementations without VLAs, the storage is
+ * `alloca`-backed and is reclaimed when the containing function returns.
+ * Hoist declarations outside long-running loops in those builds.
+ */
 #if defined(HANDLEBARS_ENABLE_DEBUG)
 // The cleanup variable helps makes sure there is a matching pair of DECL/UNDECL
 #define HANDLEBARS_VALUE_ARRAY_DECL(name, num) \
@@ -568,35 +596,78 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
 #define HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP
 #endif
 
+/**
+ * @brief Declare a value iterator and its private current-value storage.
+ *
+ * On C++, MSVC, and C implementations without VLAs, this uses `alloca`-style
+ * storage that is reclaimed when the containing function returns. Repeated
+ * declarations in a long-running loop therefore accumulate stack storage;
+ * hoist the declaration outside such loops and close the iterator before
+ * reinitializing it.
+ *
+ * @param name A bare C identifier used by #HANDLEBARS_VALUE_ITERATOR_INIT.
+ */
 #if defined(HANDLEBARS_VALUE_ITERATOR_SIZE) && defined(HANDLEBARS_VALUE_SIZE)
 // We know the size at compile-time
 #define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
     struct { struct handlebars_value_iterator it; struct handlebars_value value; } mem_ ## name = {0}; \
-    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = (void *) &mem_ ## name
-#elif !defined(__STDC_NO_VLA__)
+    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = &mem_ ## name.it; \
+    struct handlebars_value * const hbs_value_iterator_current_ ## name = &mem_ ## name.value
+#elif !defined(__STDC_NO_VLA__) && !defined(__cplusplus) && !defined(_MSC_VER)
 // Use a char vla
 #define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
     char mem_ ## name[HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE]; \
-    memset(mem_ ## name, 0, sizeof(mem_ ## name)); \
-    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = (void *) mem_ ## name;
+    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = (struct handlebars_value_iterator *) mem_ ## name; \
+    struct handlebars_value * const hbs_value_iterator_current_ ## name = (struct handlebars_value *) (mem_ ## name + HANDLEBARS_VALUE_ITERATOR_SIZE); \
+    memset(mem_ ## name, 0, sizeof(mem_ ## name))
 #else
-// Use alloca
+// Use compiler-supported stack allocation; storage lasts until function return.
 #define HANDLEBARS_VALUE_ITERATOR_DECL(name) \
-    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = alloca(HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE); \
-    memset(name, 0, HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE);
+    struct handlebars_value_iterator * const name HANDLEBARS_VALUE_ITERATOR_DECL_CLEANUP = (struct handlebars_value_iterator *) HBS_VALUE_STACK_ALLOC(HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE); \
+    struct handlebars_value * const hbs_value_iterator_current_ ## name = (struct handlebars_value *) (((char *) name) + HANDLEBARS_VALUE_ITERATOR_SIZE); \
+    memset(name, 0, HANDLEBARS_VALUE_ITERATOR_SIZE + HANDLEBARS_VALUE_SIZE)
 #endif
+
+#define HBS_VALUE_ITERATOR_CURRENT(name) hbs_value_iterator_current_ ## name
+
+/**
+ * @brief Initialize an iterator declared with
+ *        #HANDLEBARS_VALUE_ITERATOR_DECL. An initialized iterator retains its
+ *        backing storage and may outlive the source value. It must be advanced
+ *        to completion or closed with #handlebars_value_iterator_close.
+ * @param name The bare identifier passed to
+ *             #HANDLEBARS_VALUE_ITERATOR_DECL.
+ * @param value The value for iteration.
+ * @return true, or false if the value is empty or of an invalid type.
+ */
+#define HANDLEBARS_VALUE_ITERATOR_INIT(name, value) \
+    handlebars_value_iterator_init_internal( \
+        name, \
+        HBS_VALUE_ITERATOR_CURRENT(name), \
+        value \
+    )
+
+/**
+ * @name Value iteration
+ *
+ * On the `alloca` fallback described by #HANDLEBARS_VALUE_ITERATOR_DECL, each
+ * foreach invocation inside an enclosing loop retains its declaration storage
+ * until the containing function returns. Use an explicitly hoisted iterator
+ * for long-running loops in those builds.
+ * @{
+ */
 
 #define HANDLEBARS_VALUE_FOREACH(value, v) \
     do { \
         HANDLEBARS_VALUE_ITERATOR_DECL(iter); \
-        if (handlebars_value_iterator_init(iter, value)) { \
+        if (HANDLEBARS_VALUE_ITERATOR_INIT(iter, value)) { \
             do { \
                 struct handlebars_value * v = iter->cur; \
 
 #define HANDLEBARS_VALUE_FOREACH_IDX(value, idx, v) \
     do { \
         HANDLEBARS_VALUE_ITERATOR_DECL(iter); \
-        if (handlebars_value_iterator_init(iter, value)) { \
+        if (HANDLEBARS_VALUE_ITERATOR_INIT(iter, value)) { \
             do { \
                 size_t idx = iter->index; \
                 struct handlebars_value * v = iter->cur;
@@ -604,7 +675,7 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
 #define HANDLEBARS_VALUE_FOREACH_KV(value, k, v) \
     do { \
         HANDLEBARS_VALUE_ITERATOR_DECL(iter); \
-        if (handlebars_value_iterator_init(iter, value)) { \
+        if (HANDLEBARS_VALUE_ITERATOR_INIT(iter, value)) { \
             do { \
                 struct handlebars_string * k = iter->key; \
                 struct handlebars_value * v = iter->cur;
@@ -612,7 +683,7 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
 #define HANDLEBARS_VALUE_FOREACH_IDX_KV(value, idx, k, v) \
     do { \
         HANDLEBARS_VALUE_ITERATOR_DECL(iter); \
-        if (handlebars_value_iterator_init(iter, value)) { \
+        if (HANDLEBARS_VALUE_ITERATOR_INIT(iter, value)) { \
             do { \
                 size_t idx = iter->index; \
                 struct handlebars_string * k = iter->key; \
@@ -624,17 +695,24 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
         handlebars_value_iterator_close(iter); \
     } while(0)
 
+/** @} */
+
 /**
- * @brief Initialize an iterator. An initialized iterator retains the backing
- *        storage and may outlive the source value. It must be advanced to
- *        completion or closed with #handlebars_value_iterator_close.
- * @param[in] it A zero-initialized iterator, normally declared with
- *               #HANDLEBARS_VALUE_ITERATOR_DECL
- * @param[in] value The value for iteration
- * @return true, or false if the value is empty or of an invalid type
+ * @internal Backend for #HANDLEBARS_VALUE_ITERATOR_INIT. This symbol is
+ *           exported only so the public macro can call it from downstream
+ *           translation units. Callers must use the declaration and
+ *           initialization macros instead.
+ * @param[in,out] it Exact-size iterator storage
+ * @param[in,out] current Uninitialized storage of at least
+ *                        `HANDLEBARS_VALUE_SIZE` bytes that overlaps neither
+ *                        @p it nor @p value; initialized by this function and
+ *                        managed by @p it until it is closed
+ * @param[in] value The value to iterate
+ * @return true, or false if @p value is empty or not iterable
  */
-bool handlebars_value_iterator_init(
+bool handlebars_value_iterator_init_internal(
     struct handlebars_value_iterator * it,
+    struct handlebars_value * current,
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL;
 
@@ -645,7 +723,7 @@ bool handlebars_value_iterator_next(
 /**
  * @brief Release iterator-owned state. Safe to call more than once after the
  *        iterator has been zero initialized or passed to
- *        #handlebars_value_iterator_init. Manually initialized iterators that
+ *        #HANDLEBARS_VALUE_ITERATOR_INIT. Manually initialized iterators that
  *        are not advanced to completion must be closed explicitly. The foreach
  *        macros close their iterator, and supported compilers also arrange
  *        scope cleanup for iterators declared with

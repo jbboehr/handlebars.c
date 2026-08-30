@@ -50,4 +50,11 @@ add_executable(test_string ${COMMON_TEST_FILES} test_string.c)
 add_executable(test_token ${COMMON_TEST_FILES} test_token.c)
 add_executable(test_utils ${COMMON_TEST_FILES} test_utils.c)
 add_executable(test_value ${COMMON_TEST_FILES} test_value.c)
+add_executable(test_value_api test_value_api.c)
+if(CMAKE_CXX_COMPILER)
+    add_library(test_value_api_cpp OBJECT test_value_api.cpp)
+    set_target_properties(test_value_api_cpp PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED YES)
+endif()
 add_executable(test_yaml ${COMMON_TEST_FILES} test_yaml.c)

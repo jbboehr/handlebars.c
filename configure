@@ -7074,9 +7074,9 @@ printf "%s\n" "#define MUSTACHE_SPEC_VERSION_STRING \"1.1.3\"" >>confdefs.h
 
 
 # Define substitutions for the libtool version numbers.
-HANDLEBARS_LT_CURRENT=11
+HANDLEBARS_LT_CURRENT=10
 HANDLEBARS_LT_REVISION=0
-HANDLEBARS_LT_AGE=1
+HANDLEBARS_LT_AGE=0
 
 
 

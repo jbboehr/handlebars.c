@@ -1,0 +1,65 @@
+/**
+ * Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+/* Exercise the installed-header path for compilers without VLA support. */
+#ifndef __STDC_NO_VLA__
+#define __STDC_NO_VLA__ 1
+#endif
+
+/* HAVE_ALLOCA_H is intentionally absent from installed handlebars_config.h. */
+#ifdef HAVE_ALLOCA_H
+#undef HAVE_ALLOCA_H
+#endif
+
+#include <stdio.h>
+
+#include "handlebars.h"
+#include "handlebars_stack.h"
+#include "handlebars_value.h"
+
+int main(void)
+{
+    struct handlebars_context * context = handlebars_context_ctor();
+    int result = 0;
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iterator);
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 1));
+    handlebars_value_integer(child, 42);
+    handlebars_value_array_push(value, child);
+
+    if( !HANDLEBARS_VALUE_ITERATOR_INIT(iterator, value) ) {
+        result = 1;
+    } else if( handlebars_value_get_intval(iterator->cur) != 42 ) {
+        result = 2;
+    }
+
+    handlebars_value_iterator_close(iterator);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_context_dtor(context);
+    printf(
+        "%s 1 - public iterator declaration and initialization\n1..1\n",
+        result == 0 ? "ok" : "not ok"
+    );
+    return result;
+}
