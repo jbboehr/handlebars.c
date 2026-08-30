@@ -217,7 +217,13 @@ struct handlebars_error
 };
 
 /**
- * @brief Common structure header, used to store error info and a `jmp_buf`
+ * @brief Common structure header for an allocation and error domain.
+ *
+ * A context owns one mutable error state. Parsers, compilers, VMs, and caches
+ * constructed directly from the same context bind to that state. A VM must not
+ * be used concurrently, and separate objects that share a context are not
+ * independent error domains. Use a separate context and VM for each concurrent
+ * request or worker.
  */
 struct handlebars_context
 {
@@ -253,7 +259,11 @@ const char * handlebars_mustache_spec_version_string(void)
     HBS_ATTR_RETURNS_NONNULL HBS_ATTR_CONST;
 
 /**
- * @brief Construct a context object. Used as the root talloc pointer.
+ * @brief Construct a context with an independent error state.
+ *
+ * @p ctx controls talloc ownership only. The new context does not share its
+ * error state with that parent.
+ *
  * @param[in] ctx The talloc memory context
  * @return the context pointer
  */
@@ -261,12 +271,19 @@ struct handlebars_context * handlebars_context_ctor_ex(void * ctx)
     HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
- * @brief Construct a root context object. Used as the root talloc pointer.
+ * @brief Construct a root context with an independent error state.
  * @return the context pointer
  */
 struct handlebars_context * handlebars_context_ctor(void)
     HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Bind a child object to its parent's error state.
+ *
+ * The child must not already have an error state. Bound objects share mutable
+ * diagnostics and an internal jump target, so their operations must not run
+ * concurrently unless the specific API documents otherwise.
+ */
 void handlebars_context_bind(
     struct handlebars_context * parent,
     struct handlebars_context * child

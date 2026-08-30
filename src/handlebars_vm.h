@@ -29,6 +29,13 @@ struct handlebars_context;
 struct handlebars_map;
 struct handlebars_module;
 struct handlebars_options;
+
+/**
+ * @brief Stateful template VM.
+ *
+ * A VM must not be used concurrently. Create a separate VM and context for
+ * each concurrent request or worker.
+ */
 struct handlebars_vm;
 
 #ifndef HANDLEBARS_VM_STACK_SIZE

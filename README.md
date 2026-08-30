@@ -101,6 +101,11 @@ the process.
 
 ### C API error handling
 
+A VM is stateful and must not be used concurrently. Give each concurrent
+request or worker its own context and VM. A parser, compiler, and VM may share
+that context when used sequentially. Objects constructed directly from the
+same context also share its mutable error state.
+
 The core construction, parse, compile, serialize, render, cache,
 partial-loader, and optional JSON/YAML conversion operations have additive
 `_try` entrypoints for applications that do not want library errors to
