@@ -52,7 +52,9 @@ int main(void)
 
     handlebars_value_array(value, handlebars_stack_ctor(context, 1));
     handlebars_value_integer(child, 42);
-    handlebars_value_array_push(value, child);
+    if( handlebars_value_array_push_try(value, child) != HANDLEBARS_SUCCESS ) {
+        result = 4;
+    }
 
     if( !HANDLEBARS_VALUE_ITERATOR_INIT(iterator, value) ) {
         result = 1;

@@ -504,16 +504,75 @@ long handlebars_value_count(struct handlebars_value * value) HBS_ATTR_NONNULL_AL
 
 // {{{ Array
 
+/**
+ * @brief Replace an element in a native stack-backed array.
+ *
+ * This legacy entry point aborts when #value is not a native array and may
+ * propagate allocation or bounds failures through `longjmp`. USER values whose
+ * effective type is ARRAY are read-only through this interface.
+ *
+ * @param[in,out] value The native array to update
+ * @param[in] index The element index, or the current count to append
+ * @param[in] child The replacement value
+ */
 void handlebars_value_array_set(
     struct handlebars_value * value,
     size_t index,
     struct handlebars_value * child
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Replace an element without allowing an internal `longjmp` to escape.
+ *
+ * Returns #HANDLEBARS_TYPE_ERROR without changing #value when it is not a
+ * native stack-backed array. USER values whose effective type is ARRAY are not
+ * mutable through this interface. A type error does not change any context's
+ * error state; captured native-container errors remain available from the
+ * container's allocation context.
+ *
+ * @param[in,out] value The native array to update
+ * @param[in] index The element index, or the current count to append
+ * @param[in] child The replacement value
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_array_set_try(
+    struct handlebars_value * value,
+    size_t index,
+    struct handlebars_value * child
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * @brief Append an element to a native stack-backed array.
+ *
+ * This legacy entry point aborts when #value is not a native array and may
+ * propagate allocation failures through `longjmp`. USER values whose effective
+ * type is ARRAY are read-only through this interface.
+ *
+ * @param[in,out] value The native array to update
+ * @param[in] child The value to append
+ */
 void handlebars_value_array_push(
     struct handlebars_value * value,
     struct handlebars_value * child
 ) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Append an element without allowing an internal `longjmp` to escape.
+ *
+ * Returns #HANDLEBARS_TYPE_ERROR without changing #value when it is not a
+ * native stack-backed array. USER values whose effective type is ARRAY are not
+ * mutable through this interface. A type error does not change any context's
+ * error state; captured native-container errors remain available from the
+ * container's allocation context.
+ *
+ * @param[in,out] value The native array to update
+ * @param[in] child The value to append
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_array_push_try(
+    struct handlebars_value * value,
+    struct handlebars_value * child
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
  * @brief Lookup an index in an array
@@ -544,11 +603,42 @@ struct handlebars_value * handlebars_value_map_str_find(
     struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Update a native map.
+ *
+ * This legacy entry point aborts when #value is not a native map and may
+ * propagate allocation failures through `longjmp`. USER values whose effective
+ * type is MAP are read-only through this interface.
+ *
+ * @param[in,out] value The native map to update
+ * @param[in] key The key to update or add
+ * @param[in] child The value to store
+ */
 void handlebars_value_map_update(
     struct handlebars_value * value,
     struct handlebars_string * key,
     struct handlebars_value * child
 ) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Update a native map without allowing an internal `longjmp` to escape.
+ *
+ * Returns #HANDLEBARS_TYPE_ERROR without changing #value when it is not a
+ * native map. USER values whose effective type is MAP are read-only through
+ * this interface. A type error does not change any context's error state;
+ * captured native-container errors remain available from the container's
+ * allocation context.
+ *
+ * @param[in,out] value The native map to update
+ * @param[in] key The key to update or add
+ * @param[in] child The value to store
+ * @return #HANDLEBARS_SUCCESS or the captured error code
+ */
+enum handlebars_error_type handlebars_value_map_update_try(
+    struct handlebars_value * value,
+    struct handlebars_string * key,
+    struct handlebars_value * child
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 // }}} Map
 

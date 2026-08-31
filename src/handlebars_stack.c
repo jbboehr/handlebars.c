@@ -206,6 +206,7 @@ static void handlebars_stack_dump(struct handlebars_stack * stack) {
 
 struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack, struct handlebars_value * value)
 {
+    struct handlebars_stack * prev_stack = NULL;
     struct handlebars_value value_copy;
 
     assert(stack != NULL);
@@ -235,15 +236,20 @@ struct handlebars_stack * handlebars_stack_push(struct handlebars_stack * stack,
         if( unlikely(capacity <= stack->capacity || handlebars_stack_size(capacity) == 0) ) {
             handlebars_throw(stack->ctx, HANDLEBARS_STACK_OVERFLOW, "Stack capacity is too large: %zu", stack->capacity);
         }
-        struct handlebars_stack * prev_stack = stack;
+        prev_stack = stack;
         stack = handlebars_stack_copy_ctor(prev_stack, capacity);
-        handlebars_stack_delref(prev_stack);
         handlebars_stack_addref(stack);
     }
 
     handlebars_value_init(&stack->v[stack->i]);
     handlebars_value_value(&stack->v[stack->i], &value_copy);
     stack->i++;
+
+    /* A self-alias in value_copy may be the last owner of prev_stack. Keep
+     * that stack alive until the appended value has retained its payload. */
+    if( unlikely(prev_stack != NULL) ) {
+        handlebars_stack_delref(prev_stack);
+    }
 
     return stack;
 }

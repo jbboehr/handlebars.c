@@ -179,7 +179,10 @@ enum handlebars_error_type
     HANDLEBARS_STACK_OVERFLOW = 7,
 
     //! A helper caused an error or exception
-    HANDELBARS_EXTERNAL_ERROR = 8
+    HANDELBARS_EXTERNAL_ERROR = 8,
+
+    //! An operation does not support the value's native storage type
+    HANDLEBARS_TYPE_ERROR = 9
 };
 
 /**

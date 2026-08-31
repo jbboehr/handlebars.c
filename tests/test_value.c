@@ -2755,6 +2755,507 @@ START_TEST(test_array_iterator)
 }
 END_TEST
 
+START_TEST(test_value_container_mutators_try_succeed)
+{
+    HANDLEBARS_VALUE_DECL(array);
+    HANDLEBARS_VALUE_DECL(map);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(found);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("answer"));
+
+    handlebars_string_addref(key);
+    handlebars_value_array(array, handlebars_stack_ctor(context, 1));
+    handlebars_value_integer(child, 41);
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(array, child),
+        HANDLEBARS_SUCCESS
+    );
+    handlebars_value_integer(child, 42);
+    ck_assert_int_eq(
+        handlebars_value_array_set_try(array, 0, child),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_int_eq(
+        handlebars_value_get_intval(handlebars_value_array_find(array, 0, found)),
+        42
+    );
+
+    handlebars_value_map(map, handlebars_map_ctor(context, 0));
+    ck_assert_int_eq(
+        handlebars_value_map_update_try(map, key, child),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_int_eq(
+        handlebars_value_get_intval(handlebars_value_map_find(map, key, found)),
+        42
+    );
+
+    handlebars_string_delref(key);
+    HANDLEBARS_VALUE_UNDECL(found);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(map);
+    HANDLEBARS_VALUE_UNDECL(array);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_container_mutators_try_reject_non_native_values)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(child);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("key"));
+
+    handlebars_string_addref(key);
+    handlebars_value_integer(child, 42);
+    handlebars_value_integer(value, 7);
+    ck_assert_int_eq(
+        handlebars_value_array_set_try(value, 0, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(
+        handlebars_value_map_update_try(value, key, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(handlebars_value_get_intval(value), 7);
+
+    test_value_lazy_array(value, 2);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_ARRAY);
+    ck_assert_int_eq(handlebars_value_get_real_type(value), HANDLEBARS_VALUE_TYPE_USER);
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(handlebars_value_count(value), 2);
+
+    test_value_lazy_map(value, true);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_MAP);
+    ck_assert_int_eq(handlebars_value_get_real_type(value), HANDLEBARS_VALUE_TYPE_USER);
+    ck_assert_int_eq(
+        handlebars_value_map_update_try(value, key, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+
+    handlebars_string_delref(key);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+static void test_seed_context_error(
+    enum handlebars_error_type type,
+    const char * message
+) {
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( !handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_throw(context, type, "%s", message);
+    }
+    context->e->jmp = previous;
+}
+
+START_TEST(test_value_container_mutators_type_error_preserves_diagnostics)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(child);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("key"));
+    jmp_buf * previous = context->e->jmp;
+
+    handlebars_string_addref(key);
+    handlebars_value_integer(child, 42);
+    handlebars_value_integer(value, 7);
+    test_seed_context_error(HANDLEBARS_PARSEERR, "sentinel diagnostic");
+
+    ck_assert_int_eq(
+        handlebars_value_array_set_try(value, 0, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(
+        handlebars_value_map_update_try(value, key, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_PARSEERR);
+    ck_assert_str_eq(handlebars_error_msg(context), "sentinel diagnostic");
+    ck_assert_ptr_eq(context->e->jmp, previous);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 7);
+    handlebars_error_clear(context);
+
+    test_value_lazy_array(value, 2);
+    test_seed_context_error(HANDLEBARS_UNKNOWN_HELPER, "lazy array sentinel");
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_UNKNOWN_HELPER);
+    ck_assert_str_eq(handlebars_error_msg(context), "lazy array sentinel");
+    ck_assert_ptr_eq(context->e->jmp, previous);
+    ck_assert_int_eq(handlebars_value_count(value), 2);
+    handlebars_error_clear(context);
+
+    test_value_lazy_map(value, true);
+    test_seed_context_error(HANDELBARS_EXTERNAL_ERROR, "lazy map sentinel");
+    ck_assert_int_eq(
+        handlebars_value_map_update_try(value, key, child),
+        HANDLEBARS_TYPE_ERROR
+    );
+    ck_assert_int_eq(handlebars_error_num(context), HANDELBARS_EXTERNAL_ERROR);
+    ck_assert_str_eq(handlebars_error_msg(context), "lazy map sentinel");
+    ck_assert_ptr_eq(context->e->jmp, previous);
+    handlebars_error_clear(context);
+
+    handlebars_string_delref(key);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_array_push_try_preserves_self_alias_during_growth)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_value * stored;
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 0));
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, value),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_int_eq(handlebars_value_count(value), 1);
+
+    stored = handlebars_stack_get(value->v.stack, 0);
+    ck_assert_ptr_nonnull(stored);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(stored),
+        HANDLEBARS_VALUE_TYPE_ARRAY
+    );
+    ck_assert_int_eq(handlebars_value_count(stored), 0);
+
+    /* Release the retained pre-growth snapshot without leaving a cycle. */
+    handlebars_value_null(stored);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_map_update_try_preserves_self_alias_during_growth)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("self"));
+    struct handlebars_value * stored;
+
+    handlebars_string_addref(key);
+    handlebars_value_map(value, handlebars_map_ctor(context, 0));
+    ck_assert_int_eq(
+        handlebars_value_map_update_try(value, key, value),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_int_eq(handlebars_value_count(value), 1);
+
+    stored = handlebars_map_find(value->v.map, key);
+    ck_assert_ptr_nonnull(stored);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(stored),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+    ck_assert_int_eq(handlebars_value_count(stored), 0);
+
+    handlebars_value_null(stored);
+    handlebars_string_delref(key);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_value_container_mutators_try_preserve_copy_on_write_aliases)
+{
+    HANDLEBARS_VALUE_DECL(array);
+    HANDLEBARS_VALUE_DECL(array_alias);
+    HANDLEBARS_VALUE_DECL(map);
+    HANDLEBARS_VALUE_DECL(map_alias);
+    HANDLEBARS_VALUE_DECL(found);
+    HANDLEBARS_VALUE_DECL(tmp);
+    struct handlebars_map * backing_map = handlebars_map_ctor(context, 2);
+    struct handlebars_string * key;
+    struct handlebars_value * source;
+
+    handlebars_value_array(array, handlebars_stack_ctor(context, 2));
+    handlebars_value_integer(tmp, 10);
+    handlebars_value_array_push(array, tmp);
+    handlebars_value_value(array_alias, array);
+    source = handlebars_stack_get(array->v.stack, 0);
+    ck_assert_ptr_nonnull(source);
+
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(array, source),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_ptr_ne(array->v.stack, array_alias->v.stack);
+    ck_assert_int_eq(handlebars_value_count(array), 2);
+    ck_assert_int_eq(handlebars_value_count(array_alias), 1);
+    ck_assert_int_eq(
+        handlebars_value_get_intval(handlebars_value_array_find(array, 1, found)),
+        10
+    );
+    ck_assert_ptr_null(handlebars_value_array_find(array_alias, 1, found));
+
+    handlebars_value_integer(tmp, 1);
+    backing_map = handlebars_map_str_update(backing_map, HBS_STRL("a"), tmp);
+    handlebars_value_integer(tmp, 2);
+    backing_map = handlebars_map_str_update(backing_map, HBS_STRL("b"), tmp);
+    handlebars_value_map(map, backing_map);
+    handlebars_value_value(map_alias, map);
+    key = handlebars_map_get_key_at_index(map->v.map, 0);
+    source = handlebars_map_str_find(map->v.map, HBS_STRL("b"));
+    ck_assert_ptr_nonnull(key);
+    ck_assert_ptr_nonnull(source);
+
+    ck_assert_int_eq(
+        handlebars_value_map_update_try(map, key, source),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_ptr_ne(map->v.map, map_alias->v.map);
+    ck_assert_int_eq(
+        handlebars_value_get_intval(
+            handlebars_value_map_str_find(map, HBS_STRL("a"), found)
+        ),
+        2
+    );
+    ck_assert_int_eq(
+        handlebars_value_get_intval(
+            handlebars_value_map_str_find(map_alias, HBS_STRL("a"), found)
+        ),
+        1
+    );
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(found);
+    HANDLEBARS_VALUE_UNDECL(map_alias);
+    HANDLEBARS_VALUE_UNDECL(map);
+    HANDLEBARS_VALUE_UNDECL(array_alias);
+    HANDLEBARS_VALUE_UNDECL(array);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
+
+START_TEST(test_value_array_push_try_stack_overflow_preserves_outer_boundary)
+{
+    HANDLEBARS_VALUE_DECL(iterable);
+    HANDLEBARS_VALUE_DECL(target);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+    struct handlebars_stack * stack = handlebars_stack_alloca(context, 1);
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf outer;
+
+    handlebars_value_integer(child, 1);
+    handlebars_value_array(iterable, handlebars_stack_ctor(context, 2));
+    handlebars_value_array_push(iterable, child);
+    handlebars_value_integer(child, 2);
+    handlebars_value_array_push(iterable, child);
+
+    handlebars_value_array(target, stack);
+    handlebars_value_integer(child, 7);
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(target, child),
+        HANDLEBARS_SUCCESS
+    );
+
+    if( handlebars_setjmp_ex(context, &outer) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_str_eq(handlebars_error_msg(context), "outer boundary remains active");
+        handlebars_value_iterator_close(iter);
+        handlebars_error_clear(context);
+        handlebars_stack_dtor(stack);
+        handlebars_value_init(target);
+        HANDLEBARS_VALUE_UNDECL(child);
+        HANDLEBARS_VALUE_UNDECL(target);
+        HANDLEBARS_VALUE_UNDECL(iterable);
+        ASSERT_INIT_BLOCKS();
+        return;
+    }
+
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(iter, iterable));
+    handlebars_value_integer(child, 8);
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(target, child),
+        HANDLEBARS_STACK_OVERFLOW
+    );
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_STACK_OVERFLOW);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Stack overflow"));
+    ck_assert_int_eq(handlebars_value_count(target), 1);
+    ck_assert_int_eq(handlebars_value_get_intval(handlebars_stack_get(stack, 0)), 7);
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 1);
+    ck_assert(handlebars_value_iterator_next(iter));
+    ck_assert_int_eq(handlebars_value_get_intval(iter->cur), 2);
+
+    handlebars_throw(context, HANDLEBARS_ERROR, "outer boundary remains active");
+    ck_abort_msg("Expected the restored outer boundary to catch the error");
+}
+END_TEST
+
+START_TEST(test_value_array_set_try_catches_bounds_errors)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(found);
+    jmp_buf * previous = context->e->jmp;
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 1));
+    handlebars_value_integer(child, 1);
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, child),
+        HANDLEBARS_SUCCESS
+    );
+
+    handlebars_value_integer(child, 2);
+    ck_assert_int_eq(
+        handlebars_value_array_set_try(value, 2, child),
+        HANDLEBARS_STACK_OVERFLOW
+    );
+    ck_assert_ptr_eq(context->e->jmp, previous);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_STACK_OVERFLOW);
+    ck_assert_int_eq(handlebars_value_count(value), 1);
+    ck_assert_int_eq(
+        handlebars_value_get_intval(handlebars_value_array_find(value, 0, found)),
+        1
+    );
+    handlebars_error_clear(context);
+
+    HANDLEBARS_VALUE_UNDECL(found);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+START_TEST(test_value_array_push_try_catches_allocation_failure)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(found);
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 1));
+    handlebars_value_integer(child, 1);
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, child),
+        HANDLEBARS_SUCCESS
+    );
+
+    handlebars_value_integer(child, 2);
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_enable();
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, child),
+        HANDLEBARS_NOMEM
+    );
+    handlebars_memory_fail_disable();
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+    ck_assert_int_eq(handlebars_value_count(value), 1);
+    ck_assert_int_eq(
+        handlebars_value_get_intval(handlebars_value_array_find(value, 0, found)),
+        1
+    );
+    handlebars_error_clear(context);
+
+    ck_assert_int_eq(
+        handlebars_value_array_push_try(value, child),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_int_eq(handlebars_value_count(value), 2);
+
+    HANDLEBARS_VALUE_UNDECL(found);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_map_update_try_catches_allocation_failure)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(found);
+    struct handlebars_map * map = handlebars_map_ctor(context, 4);
+    struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("e"));
+    jmp_buf * previous = context->e->jmp;
+    size_t blocks_before;
+    int fail_at;
+
+    handlebars_string_addref(key);
+    for( long i = 0; i < 4; i++ ) {
+        char name[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(child, i + 1);
+        map = handlebars_map_str_update(map, name, 1, child);
+    }
+    handlebars_value_map(value, map);
+    handlebars_value_integer(child, 5);
+    blocks_before = talloc_total_blocks(context);
+
+    for( fail_at = 1; fail_at < 32; fail_at++ ) {
+        enum handlebars_error_type error;
+
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        error = handlebars_value_map_update_try(value, key, child);
+        handlebars_memory_fail_disable();
+
+        ck_assert_ptr_eq(context->e->jmp, previous);
+        if( error == HANDLEBARS_SUCCESS ) {
+            break;
+        }
+
+        ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_ptr_nonnull(handlebars_error_msg(context));
+        ck_assert_int_eq(handlebars_value_count(value), 4);
+        ck_assert_int_eq(
+            handlebars_value_get_intval(
+                handlebars_value_map_str_find(value, HBS_STRL("a"), found)
+            ),
+            1
+        );
+        ck_assert_ptr_null(handlebars_value_map_find(value, key, found));
+        handlebars_error_clear(context);
+        ck_assert_msg(
+            talloc_total_blocks(context) == blocks_before,
+            "checked map update leaked at allocation %d: before=%zu after=%zu",
+            fail_at,
+            blocks_before,
+            talloc_total_blocks(context)
+        );
+    }
+
+    ck_assert_int_lt(fail_at, 32);
+    ck_assert_int_eq(handlebars_value_count(value), 5);
+    ck_assert_int_eq(
+        handlebars_value_get_intval(handlebars_value_map_find(value, key, found)),
+        5
+    );
+
+    handlebars_string_delref(key);
+    HANDLEBARS_VALUE_UNDECL(found);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
+
 START_TEST(test_iterator_initializer_respects_explicit_current_storage)
 {
     struct guarded_iterator {
@@ -3671,6 +4172,20 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_vm_emulates_length_for_custom_lazy_arrays, "VM emulates length for custom lazy arrays");
     REGISTER_TEST_FIXTURE(s, test_vm_length_block_param_stays_missing_after_missing_segment, "VM length block-param paths stay missing after a missing segment");
     REGISTER_TEST_FIXTURE(s, test_array_iterator, "Array iterator");
+    REGISTER_TEST_FIXTURE(s, test_value_container_mutators_try_succeed, "Checked container mutators succeed");
+    REGISTER_TEST_FIXTURE(s, test_value_container_mutators_try_reject_non_native_values, "Checked container mutators reject non-native values");
+    REGISTER_TEST_FIXTURE(s, test_value_container_mutators_type_error_preserves_diagnostics, "Checked container type errors preserve diagnostics");
+    REGISTER_TEST_FIXTURE(s, test_value_array_push_try_preserves_self_alias_during_growth, "Checked array push preserves a self alias during growth");
+    REGISTER_TEST_FIXTURE(s, test_value_map_update_try_preserves_self_alias_during_growth, "Checked map update preserves a self alias during growth");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_value_container_mutators_try_preserve_copy_on_write_aliases, "Checked container mutators preserve copy-on-write aliases");
+#endif
+    REGISTER_TEST_FIXTURE(s, test_value_array_push_try_stack_overflow_preserves_outer_boundary, "Checked stack-backed array overflow preserves the outer boundary");
+    REGISTER_TEST_FIXTURE(s, test_value_array_set_try_catches_bounds_errors, "Checked array set catches bounds errors");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_value_array_push_try_catches_allocation_failure, "Checked array push catches allocation failures");
+    REGISTER_TEST_FIXTURE(s, test_value_map_update_try_catches_allocation_failure, "Checked map update catches allocation failures");
+#endif
     REGISTER_TEST_FIXTURE(s, test_iterator_initializer_respects_explicit_current_storage, "Iterator initialization respects explicit current storage");
     REGISTER_TEST_FIXTURE(s, test_array_iterator_retains_stack, "Array iterator retains its backing stack");
     REGISTER_TEST_FIXTURE(s, test_map_iterator, "Map iterator");

@@ -813,16 +813,150 @@ long handlebars_value_count(struct handlebars_value * value)
 
 // {{{ Array
 
+struct handlebars_value_mutation_state {
+    struct handlebars_value * value;
+    struct handlebars_value * child;
+    struct handlebars_string * key;
+    size_t index;
+};
+
+typedef void (*handlebars_value_mutation_func)(
+    struct handlebars_value_mutation_state * state
+);
+
+static HBS_ATTR_NORETURN void handlebars_value_mutation_type_abort(
+    struct handlebars_value * value,
+    enum handlebars_value_type expected
+) {
+    fprintf(
+        stderr,
+        "Unable to mutate value of native type %s as %s\n",
+        handlebars_value_type_readable(value->type),
+        handlebars_value_type_readable(expected)
+    );
+    abort();
+}
+
+static void handlebars_value_array_set_native(
+    struct handlebars_value_mutation_state * state
+) {
+    state->value->v.stack = handlebars_stack_set(
+        state->value->v.stack,
+        state->index,
+        state->child
+    );
+}
+
+static void handlebars_value_array_push_native(
+    struct handlebars_value_mutation_state * state
+) {
+    state->value->v.stack = handlebars_stack_push(
+        state->value->v.stack,
+        state->child
+    );
+}
+
+static void handlebars_value_map_update_native(
+    struct handlebars_value_mutation_state * state
+) {
+    state->value->v.map = handlebars_map_update(
+        state->value->v.map,
+        state->key,
+        state->child
+    );
+}
+
+static HBS_ATTR_NOINLINE enum handlebars_error_type
+handlebars_value_mutation_try_guarded(
+    struct handlebars_context * context,
+    handlebars_value_mutation_func mutate,
+    struct handlebars_value_mutation_state * state
+) {
+    struct handlebars_error * error = context->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        caught = error->num;
+    } else {
+        mutate(state);
+    }
+
+    error->jmp = previous;
+    return caught;
+}
+
+static enum handlebars_error_type handlebars_value_mutation_try(
+    struct handlebars_value_mutation_state * state,
+    enum handlebars_value_type expected,
+    handlebars_value_mutation_func mutate
+) {
+    struct handlebars_context * context;
+
+    if( unlikely(state->value->type != expected) ) {
+        return HANDLEBARS_TYPE_ERROR;
+    }
+
+    if( expected == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+        context = handlebars_stack_get_context(state->value->v.stack);
+    } else {
+        assert(expected == HANDLEBARS_VALUE_TYPE_MAP);
+        context = handlebars_map_get_context(state->value->v.map);
+    }
+
+    handlebars_error_clear(context);
+    return handlebars_value_mutation_try_guarded(context, mutate, state);
+}
+
 void handlebars_value_array_set(struct handlebars_value * value, size_t index, struct handlebars_value * child)
 {
-    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
+    if( unlikely(value->type != HANDLEBARS_VALUE_TYPE_ARRAY) ) {
+        handlebars_value_mutation_type_abort(value, HANDLEBARS_VALUE_TYPE_ARRAY);
+    }
     value->v.stack = handlebars_stack_set(value->v.stack, index, child);
+}
+
+enum handlebars_error_type handlebars_value_array_set_try(
+    struct handlebars_value * value,
+    size_t index,
+    struct handlebars_value * child
+) {
+    struct handlebars_value_mutation_state state = {
+        .value = value,
+        .child = child,
+        .index = index
+    };
+
+    return handlebars_value_mutation_try(
+        &state,
+        HANDLEBARS_VALUE_TYPE_ARRAY,
+        handlebars_value_array_set_native
+    );
 }
 
 void handlebars_value_array_push(struct handlebars_value * value, struct handlebars_value * child)
 {
-    assert(value->type == HANDLEBARS_VALUE_TYPE_ARRAY);
+    if( unlikely(value->type != HANDLEBARS_VALUE_TYPE_ARRAY) ) {
+        handlebars_value_mutation_type_abort(value, HANDLEBARS_VALUE_TYPE_ARRAY);
+    }
     value->v.stack = handlebars_stack_push(value->v.stack, child);
+}
+
+enum handlebars_error_type handlebars_value_array_push_try(
+    struct handlebars_value * value,
+    struct handlebars_value * child
+) {
+    struct handlebars_value_mutation_state state = {
+        .value = value,
+        .child = child
+    };
+
+    return handlebars_value_mutation_try(
+        &state,
+        HANDLEBARS_VALUE_TYPE_ARRAY,
+        handlebars_value_array_push_native
+    );
 }
 
 struct handlebars_value * handlebars_value_array_find(
@@ -898,13 +1032,28 @@ struct handlebars_value * handlebars_value_map_str_find(struct handlebars_value 
 
 void handlebars_value_map_update(struct handlebars_value * value, struct handlebars_string * key, struct handlebars_value * child)
 {
-    if( value->type != HANDLEBARS_VALUE_TYPE_MAP ) {
-        // We don't have a context here... so just abort
-        fprintf(stderr, "Unable to update map for value of type %d", value->type);
-        abort();
+    if( unlikely(value->type != HANDLEBARS_VALUE_TYPE_MAP) ) {
+        handlebars_value_mutation_type_abort(value, HANDLEBARS_VALUE_TYPE_MAP);
     }
-
     value->v.map = handlebars_map_update(value->v.map, key, child);
+}
+
+enum handlebars_error_type handlebars_value_map_update_try(
+    struct handlebars_value * value,
+    struct handlebars_string * key,
+    struct handlebars_value * child
+) {
+    struct handlebars_value_mutation_state state = {
+        .value = value,
+        .child = child,
+        .key = key
+    };
+
+    return handlebars_value_mutation_try(
+        &state,
+        HANDLEBARS_VALUE_TYPE_MAP,
+        handlebars_value_map_update_native
+    );
 }
 
 // }}} Map
