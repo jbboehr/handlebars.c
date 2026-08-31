@@ -32,6 +32,7 @@
 #include <stdio.h>
 
 #include "handlebars.h"
+#include "handlebars_ptr.h"
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
@@ -41,6 +42,9 @@ int main(void)
     struct handlebars_context * context = handlebars_context_ctor();
     const struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("api"));
     const char * bytes = hbs_str_val(string);
+    struct handlebars_ptr * ptr;
+    void * pointer_result = NULL;
+    int payload = 7;
     int result = 0;
     HANDLEBARS_VALUE_DECL(value);
     HANDLEBARS_VALUE_DECL(child);
@@ -48,6 +52,17 @@ int main(void)
 
     if( hbs_str_len(string) != 3 || bytes[0] != 'a' ) {
         result = 3;
+    }
+
+    ptr = handlebars_ptr_ctor(context, int, &payload, true);
+    if( !handlebars_ptr_try_get(ptr, "int", &pointer_result) ||
+        pointer_result != &payload ) {
+        result = 5;
+    }
+    handlebars_value_ptr(value, ptr);
+    if( !handlebars_value_ptr_try_get(value, "int", &pointer_result) ||
+        pointer_result != &payload ) {
+        result = 6;
     }
 
     handlebars_value_array(value, handlebars_stack_ctor(context, 1));

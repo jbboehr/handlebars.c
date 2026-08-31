@@ -84,12 +84,28 @@ struct handlebars_ptr * handlebars_ptr_ctor_ex(
     return ptr;
 }
 
+bool handlebars_ptr_try_get(
+    struct handlebars_ptr * ptr,
+    const char * typ,
+    void ** result
+)
+{
+    *result = NULL;
+    if( typ == ptr->typ || 0 == strcmp(typ, ptr->typ) ) {
+        *result = ptr->uptr;
+        return true;
+    }
+    return false;
+}
+
 void * handlebars_ptr_get_ptr_ex(struct handlebars_ptr * ptr, const char * typ)
 {
-    if (typ == ptr->typ || 0 == strcmp(typ, ptr->typ)) {
-        return ptr->uptr;
-    } else {
-        fprintf(stderr, "Failed to retrieve ptr: %s != %s\n", typ, ptr->typ);
-        abort();
+    void * result;
+
+    if( handlebars_ptr_try_get(ptr, typ, &result) ) {
+        return result;
     }
+
+    fprintf(stderr, "Failed to retrieve ptr: %s != %s\n", typ, ptr->typ);
+    abort();
 }

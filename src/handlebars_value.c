@@ -235,6 +235,19 @@ struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value
     }
 }
 
+bool handlebars_value_ptr_try_get(
+    struct handlebars_value * value,
+    const char * typ,
+    void ** result
+)
+{
+    *result = NULL;
+    if( unlikely(value->type != HANDLEBARS_VALUE_TYPE_PTR) ) {
+        return false;
+    }
+    return handlebars_ptr_try_get(value->v.ptr, typ, result);
+}
+
 void * handlebars_value_get_ptr_ex(struct handlebars_value * value, const char * typ)
 {
     if (value->type == HANDLEBARS_VALUE_TYPE_PTR) {

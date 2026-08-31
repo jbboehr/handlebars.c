@@ -15,14 +15,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "handlebars_ptr.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 
-void handlebars_test_value_api_cpp(struct handlebars_value * source)
+void handlebars_test_value_api_cpp(
+    struct handlebars_value * source,
+    struct handlebars_ptr * pointer
+)
 {
+    void * pointer_result = NULL;
     HANDLEBARS_VALUE_DECL(value);
     HANDLEBARS_VALUE_ARRAY_DECL(values, 2);
     HANDLEBARS_VALUE_ITERATOR_DECL(iterator);
+
+    if( handlebars_ptr_try_get(pointer, "int", &pointer_result) ) {
+        pointer_result = NULL;
+    }
+    if( handlebars_value_ptr_try_get(source, "int", &pointer_result) ) {
+        pointer_result = NULL;
+    }
 
     if( HANDLEBARS_VALUE_ITERATOR_INIT(iterator, source) ) {
         do {

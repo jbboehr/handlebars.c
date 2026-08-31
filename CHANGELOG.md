@@ -20,6 +20,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   backed by external executables.
 - String and array values expose an emulated `length` property during template
   lookup.
+- Native array/map mutations and typed-pointer retrieval now have checked entry
+  points for callers that need recoverable type and operation failures.
 
 ### Changed
 - Value iterators now retain their backing storage, support nested map

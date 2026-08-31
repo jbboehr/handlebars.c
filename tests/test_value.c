@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <talloc.h>
@@ -43,6 +44,12 @@
 #include "handlebars_vm_private.h"
 
 #include "utils.h"
+
+#if !IS_WIN
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 
 static struct handlebars_value * test_closure_callback(
@@ -494,6 +501,33 @@ static const struct handlebars_value_handlers test_type_only_string_handlers = {
     .name = "test-type-only-string",
     .type = &test_type_only_string_type
 };
+
+static enum handlebars_value_type test_type_only_ptr_type(
+    struct handlebars_value * value
+)
+{
+    (void) value;
+    return HANDLEBARS_VALUE_TYPE_PTR;
+}
+
+static const struct handlebars_value_handlers test_type_only_ptr_handlers = {
+    .name = "test-type-only-ptr",
+    .type = &test_type_only_ptr_type
+};
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+struct test_checked_pointer_payload {
+    int * destructions;
+};
+
+static int test_checked_pointer_payload_dtor(
+    struct test_checked_pointer_payload * payload
+)
+{
+    (*payload->destructions)++;
+    return 0;
+}
+#endif
 
 static void test_value_lazy_array(
     struct handlebars_value * value,
@@ -2603,6 +2637,146 @@ START_TEST(test_value_getter_defaults)
 }
 END_TEST
 
+START_TEST(test_checked_pointer_retrieval)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_ptr * ptr;
+    struct handlebars_user * user;
+    char matching_type[] = "int";
+    int payload = 42;
+    int sentinel = 0;
+    void * result = &sentinel;
+
+    ptr = handlebars_ptr_ctor(context, int, &payload, true);
+    ck_assert(handlebars_ptr_try_get(ptr, matching_type, &result));
+    ck_assert_ptr_eq(result, &payload);
+    ck_assert_ptr_eq(handlebars_ptr_get_ptr(ptr, int), &payload);
+
+    result = &sentinel;
+    ck_assert(!handlebars_ptr_try_get(ptr, "long", &result));
+    ck_assert_ptr_null(result);
+
+    handlebars_value_ptr(value, ptr);
+    ck_assert(handlebars_value_ptr_try_get(value, matching_type, &result));
+    ck_assert_ptr_eq(result, &payload);
+    ck_assert_ptr_eq(handlebars_value_get_ptr(value, int), &payload);
+
+    result = &sentinel;
+    ck_assert(!handlebars_value_ptr_try_get(value, "long", &result));
+    ck_assert_ptr_null(result);
+
+    handlebars_value_integer(value, 7);
+    result = &sentinel;
+    ck_assert(!handlebars_value_ptr_try_get(value, matching_type, &result));
+    ck_assert_ptr_null(result);
+
+    user = handlebars_talloc_zero(context, struct handlebars_user);
+    ck_assert_ptr_nonnull(user);
+    handlebars_user_init(user, context, &test_type_only_ptr_handlers);
+    handlebars_value_user(value, user);
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_PTR);
+    ck_assert_int_eq(handlebars_value_get_real_type(value), HANDLEBARS_VALUE_TYPE_USER);
+    result = &sentinel;
+    ck_assert(!handlebars_value_ptr_try_get(value, matching_type, &result));
+    ck_assert_ptr_null(result);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_checked_pointer_retrieval_is_borrowed)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct test_checked_pointer_payload * payload;
+    struct handlebars_ptr * ptr;
+    int destructions = 0;
+    void * result = NULL;
+
+    payload = handlebars_talloc_zero(context, struct test_checked_pointer_payload);
+    payload->destructions = &destructions;
+    talloc_set_destructor(payload, test_checked_pointer_payload_dtor);
+    ptr = handlebars_ptr_ctor_ex(context, "test-payload", payload, false);
+
+    ck_assert(handlebars_ptr_try_get(ptr, "test-payload", &result));
+    ck_assert_ptr_eq(result, payload);
+    ck_assert_ptr_eq(
+        handlebars_ptr_get_ptr_ex(ptr, "test-payload"),
+        payload
+    );
+    ck_assert_int_eq(destructions, 0);
+    handlebars_ptr_delref(ptr);
+    ck_assert_int_eq(destructions, 1);
+
+    payload = handlebars_talloc_zero(context, struct test_checked_pointer_payload);
+    payload->destructions = &destructions;
+    talloc_set_destructor(payload, test_checked_pointer_payload_dtor);
+    ptr = handlebars_ptr_ctor_ex(context, "test-payload", payload, false);
+    handlebars_value_ptr(value, ptr);
+
+    ck_assert(handlebars_value_ptr_try_get(value, "test-payload", &result));
+    ck_assert_ptr_eq(result, payload);
+    ck_assert_ptr_eq(
+        handlebars_value_get_ptr_ex(value, "test-payload"),
+        payload
+    );
+    ck_assert_int_eq(destructions, 1);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ck_assert_int_eq(destructions, 2);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
+
+#if !IS_WIN
+START_TEST(test_pointer_getter_type_mismatch_aborts)
+{
+    int payload = 42;
+    struct handlebars_ptr * ptr;
+    void * unexpected_result;
+    int status;
+    pid_t pid;
+
+    ptr = handlebars_ptr_ctor(context, int, &payload, true);
+    pid = fork();
+    ck_assert_int_ne(pid, -1);
+    if( pid == 0 ) {
+        unexpected_result = handlebars_ptr_get_ptr_ex(ptr, "long");
+        (void) unexpected_result;
+        _exit(EXIT_FAILURE);
+    }
+
+    ck_assert_int_eq(waitpid(pid, &status, 0), pid);
+    ck_assert(WIFSIGNALED(status));
+    ck_assert_int_eq(WTERMSIG(status), SIGABRT);
+}
+END_TEST
+
+START_TEST(test_value_pointer_getter_non_pointer_aborts)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    void * unexpected_result;
+    int status;
+    pid_t pid;
+
+    handlebars_value_integer(value, 42);
+    pid = fork();
+    ck_assert_int_ne(pid, -1);
+    if( pid == 0 ) {
+        unexpected_result = handlebars_value_get_ptr_ex(value, "int");
+        (void) unexpected_result;
+        _exit(EXIT_FAILURE);
+    }
+
+    ck_assert_int_eq(waitpid(pid, &status, 0), pid);
+    ck_assert(WIFSIGNALED(status));
+    ck_assert_int_eq(WTERMSIG(status), SIGABRT);
+    HANDLEBARS_VALUE_UNDECL(value);
+}
+END_TEST
+#endif
+
 START_TEST(test_value_to_string_and_expression)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -4110,6 +4284,14 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_float, "Float");
     REGISTER_TEST_FIXTURE(s, test_string, "String");
     REGISTER_TEST_FIXTURE(s, test_value_getter_defaults, "Getter defaults");
+    REGISTER_TEST_FIXTURE(s, test_checked_pointer_retrieval, "Checked pointer retrieval");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_checked_pointer_retrieval_is_borrowed, "Checked pointer retrieval is borrowed");
+#endif
+#if !IS_WIN
+    REGISTER_TEST_FIXTURE(s, test_pointer_getter_type_mismatch_aborts, "Pointer getter mismatch aborts");
+    REGISTER_TEST_FIXTURE(s, test_value_pointer_getter_non_pointer_aborts, "Value pointer getter non-pointer aborts");
+#endif
     REGISTER_TEST_FIXTURE(s, test_value_to_string_and_expression, "String conversion and expression rendering");
     REGISTER_TEST_FIXTURE(s, test_value_equality, "Value equality");
     REGISTER_TEST_FIXTURE(s, test_value_self_assignment, "Value self-assignment");

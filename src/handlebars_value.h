@@ -277,6 +277,26 @@ const struct handlebars_value_handlers * handlebars_value_get_handlers(struct ha
 struct handlebars_map * handlebars_value_get_map(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Retrieve a borrowed pointer from a native pointer value.
+ *
+ * USER values whose effective type is PTR are not native pointer values. On a
+ * native-type or registered-type mismatch, #result is set to NULL. Retrieval
+ * does not transfer ownership; the pointee's lifetime follows the ownership
+ * policy of the contained pointer wrapper, including externally managed
+ * storage constructed with nofree=true.
+ *
+ * @param[in] value The value to inspect
+ * @param[in] typ The registered C type name
+ * @param[out] result The borrowed pointer, or NULL on failure
+ * @return true for a matching native pointer value, otherwise false
+ */
+bool handlebars_value_ptr_try_get(
+    struct handlebars_value * value,
+    const char * typ,
+    void ** result
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
 void * handlebars_value_get_ptr_ex(struct handlebars_value * value, const char * typ)
     HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 #define handlebars_value_get_ptr(value, typ) ((typ *) handlebars_value_get_ptr_ex(value, HBS_S1(typ)))

@@ -39,6 +39,24 @@ struct handlebars_ptr * handlebars_ptr_ctor_ex(
 
 #define handlebars_ptr_ctor(ctx, typ, uptr, nofree) handlebars_ptr_ctor_ex(ctx, HBS_S1(typ), uptr, nofree)
 
+/**
+ * @brief Retrieve a borrowed pointer when its registered type matches.
+ *
+ * On failure, #result is set to NULL. Retrieval does not transfer ownership.
+ * When #ptr was constructed with nofree=true, the pointee's lifetime remains
+ * externally managed; otherwise it ends when the wrapper releases the pointee.
+ *
+ * @param[in] ptr The pointer wrapper
+ * @param[in] typ The registered C type name
+ * @param[out] result The borrowed pointer, or NULL on failure
+ * @return true when #typ matches, otherwise false
+ */
+bool handlebars_ptr_try_get(
+    struct handlebars_ptr * ptr,
+    const char * typ,
+    void ** result
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
 void * handlebars_ptr_get_ptr_ex(struct handlebars_ptr * ptr, const char * typ)
     HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
