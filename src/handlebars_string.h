@@ -76,14 +76,34 @@ uint32_t handlebars_string_hash(const char * str, size_t len)
 // }}} Hash functions
 
 // {{{ Reference Counting
+/**
+ * @brief Retain a shared reference to a string within its talloc lifetime.
+ *
+ * This does not allow the string to outlive its talloc parent.
+ */
 void handlebars_string_addref(struct handlebars_string * string)
     HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Release a string reference.
+ *
+ * In a refcounted build, releasing the final reference frees the string. In a
+ * no-refcount build, the talloc parent remains responsible for cleanup.
+ */
 void handlebars_string_delref(struct handlebars_string * string)
     HBS_ATTR_NONNULL_ALL;
 void handlebars_string_addref_ex(struct handlebars_string * string, const char * expr, const char * loc)
     HBS_ATTR_NONNULL_ALL;
 void handlebars_string_delref_ex(struct handlebars_string * string, const char * expr, const char * loc)
     HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Prevent reference-count deletion of a string.
+ *
+ * The string remains a child of its talloc parent and is freed when that
+ * ownership tree is destroyed. This is serializer machinery, not an ownership
+ * transfer operation.
+ */
 void handlebars_string_immortalize(struct handlebars_string * string)
     HBS_ATTR_NONNULL_ALL;
 

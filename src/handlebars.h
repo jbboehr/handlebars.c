@@ -265,7 +265,9 @@ const char * handlebars_mustache_spec_version_string(void)
  * @brief Construct a context with an independent error state.
  *
  * @p ctx controls talloc ownership only. The new context does not share its
- * error state with that parent.
+ * error state with that parent. Reference counts do not allow allocations to
+ * outlive this talloc ownership tree. See `docs/ownership.md` in the source
+ * distribution for the complete ownership model.
  *
  * @param[in] ctx The talloc memory context
  * @return the context pointer

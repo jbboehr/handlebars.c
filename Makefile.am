@@ -23,7 +23,7 @@ endif
 SUBDIRS += bench
 SUBDIRS += fuzz
 
-EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor
+EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md docs spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor
 
 ACLOCAL_AMFLAGS = -I m4 --install
 

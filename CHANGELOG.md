@@ -24,6 +24,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   points for callers that need recoverable type and operation failures.
 
 ### Changed
+- Documented the talloc and reference-count lifetime model, including uniform
+  cleanup for value conversions and VM render results.
 - Value iterators now retain their backing storage, support nested map
   iteration, and are closed when an error unwinds through the library.
 - Value iterators must now be declared with

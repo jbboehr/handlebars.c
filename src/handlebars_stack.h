@@ -93,6 +93,17 @@ struct handlebars_stack * handlebars_stack_ctor(
     size_t capacity
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Construct a same-context copy of a stack.
+ *
+ * The copy uses the source stack's talloc context and shares referenced
+ * payloads with the source values. It is not an independent cross-context deep
+ * copy.
+ *
+ * @param[in] stack The stack to copy
+ * @param[in] capacity The desired number of values to be stored
+ * @return The new stack
+ */
 struct handlebars_stack * handlebars_stack_copy_ctor(
     struct handlebars_stack * stack,
     size_t capacity

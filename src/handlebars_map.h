@@ -65,6 +65,10 @@ struct handlebars_map * handlebars_map_ctor(
  * @brief Construct a new map by copying the specified map. If capacity is
           less than the specified map's capacity, it will be the
           specified map's capacity.
+ *
+ * The copy uses the source map's talloc context and shares referenced payloads
+ * with the source entries. It is not an independent cross-context deep copy.
+ *
  * @param[in] map The map to copy
  * @param[in] capacity The desired number of values to be stored
  * @return The new map

@@ -366,9 +366,9 @@ double handlebars_value_get_floatval(
  * @brief Get the value as a string (primitive types only)
  * @param[in] value The handlebars value
  * @param[in] context The handlebars memory context used for converted values
- * @return For string values, the value's retained string, which the caller must
- *         release with handlebars_string_delref(). For other primitive types,
- *         a fresh string owned by @p context, which the caller may free directly.
+ * @return A retained or newly allocated string. The caller must always release
+ *         it with #handlebars_string_delref. Its talloc lifetime is bounded by
+ *         the existing string owner or @p context, respectively.
  */
 struct handlebars_string * handlebars_value_to_string(
     struct handlebars_value * value,
@@ -743,8 +743,9 @@ const char * handlebars_value_type_readable(enum handlebars_value_type type)
 /**
  * @brief Initialize an iterator declared with
  *        #HANDLEBARS_VALUE_ITERATOR_DECL. An initialized iterator retains its
- *        backing storage and may outlive the source value. It must be advanced
- *        to completion or closed with #handlebars_value_iterator_close.
+ *        backing storage and may outlive the source value, but not the backing
+ *        storage's talloc parent. It must be advanced to completion or closed
+ *        with #handlebars_value_iterator_close.
  * @param name The bare identifier passed to
  *             #HANDLEBARS_VALUE_ITERATOR_DECL.
  * @param value The value for iteration.

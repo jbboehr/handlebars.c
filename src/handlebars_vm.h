@@ -85,12 +85,26 @@ void handlebars_vm_dtor(
     struct handlebars_vm * vm
 ) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Execute the main program in a module.
+ *
+ * The returned string is owned beneath @p vm. The caller should release it
+ * with #handlebars_string_delref after use, or copy it before destroying the
+ * VM if it must live longer.
+ */
 struct handlebars_string * handlebars_vm_execute(
     struct handlebars_vm * vm,
     struct handlebars_module * module,
     struct handlebars_value * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_NOINLINE;
 
+/**
+ * @brief Execute a selected program in a module.
+ *
+ * The returned string is owned beneath @p vm. The caller should release it
+ * with #handlebars_string_delref after use, or copy it before destroying the
+ * VM if it must live longer.
+ */
 struct handlebars_string * handlebars_vm_execute_ex(
     struct handlebars_vm * vm,
     struct handlebars_module * module,
@@ -109,7 +123,8 @@ struct handlebars_string * handlebars_vm_execute_ex(
  * @param[in] vm The VM
  * @param[in] module The serialized module
  * @param[in] context The input value
- * @param[out] result Receives the rendered VM-owned string on success
+ * @param[out] result Receives the rendered VM-owned string on success. The
+ *                    caller should release it with #handlebars_string_delref.
  * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
  */
 enum handlebars_error_type handlebars_vm_execute_try(
@@ -131,7 +146,8 @@ enum handlebars_error_type handlebars_vm_execute_try(
  * @param[in] program The program index to execute
  * @param[in] data Optional data frame
  * @param[in] block_params Optional block-parameter frame
- * @param[out] result Receives the rendered VM-owned string on success
+ * @param[out] result Receives the rendered VM-owned string on success. The
+ *                    caller should release it with #handlebars_string_delref.
  * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
  */
 enum handlebars_error_type handlebars_vm_execute_try_ex(
@@ -144,12 +160,26 @@ enum handlebars_error_type handlebars_vm_execute_try_ex(
     struct handlebars_string ** result
 ) HBS_ATTR_NONNULL(1, 2, 3, 7) HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Execute a program in the VM's current module.
+ *
+ * The returned string is owned beneath @p vm. The caller should release it
+ * with #handlebars_string_delref after use, or copy it before destroying the
+ * VM if it must live longer.
+ */
 struct handlebars_string * handlebars_vm_execute_program(
     struct handlebars_vm * vm,
     long program,
     struct handlebars_value * context
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Execute a program in the VM's current module with explicit frames.
+ *
+ * The returned string is owned beneath @p vm. The caller should release it
+ * with #handlebars_string_delref after use, or copy it before destroying the
+ * VM if it must live longer.
+ */
 struct handlebars_string * handlebars_vm_execute_program_ex(
     struct handlebars_vm * vm,
     long program,
