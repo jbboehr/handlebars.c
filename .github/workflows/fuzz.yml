@@ -50,7 +50,7 @@ jobs:
                   sudo apt-get install -y autoconf automake clang-18 libclang-rt-18-dev libjson-c-dev liblmdb-dev libtalloc-dev libtool libyaml-dev m4 make pkg-config
 
             - name: Restore generated corpus
-              uses: actions/cache@v5
+              uses: actions/cache@v6
               with:
                   path: fuzz-corpus/${{ matrix.target }}
                   key: fuzz-${{ matrix.target }}-${{ runner.os }}-${{ github.run_id }}
