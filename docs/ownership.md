@@ -83,6 +83,7 @@ the work is complete.
 | `handlebars_value_to_string()` result | Existing string owner or the supplied conversion context | Always call `handlebars_string_delref()` after use. |
 | `hbs_str_val()` buffer | Source string | Do not free it. Stop using it when the string is modified or released. |
 | Map, stack, and value accessors | Source container or value | Treat the result as borrowed unless that function documents a retained result. |
+| `handlebars_cache_find*()` hit | Cache backend | Call `handlebars_cache_release()` or `handlebars_cache_release_try()` exactly once with the same cache and key. Do not use the module afterward. |
 | `handlebars_ptr_try_get()` result | Wrapped pointee | Retrieval transfers no ownership. With `nofree=true`, the caller remains responsible for the pointee's lifetime. |
 
 Calling `handlebars_string_delref()` uniformly for
@@ -99,6 +100,33 @@ struct handlebars_string *text = handlebars_value_to_string(value, context);
 consume(hbs_str_val(text), hbs_str_len(text));
 handlebars_string_delref(text);
 ```
+
+## Cache lookup results
+
+Cache lookup has one release rule even though its implementation differs by
+backend. The simple cache returns a cache-owned module and release is currently
+a no-op. LMDB returns an allocated copy that release frees. The mmap cache
+returns a view into shared memory and release drops its active-reader count.
+
+Always pair a non-NULL result with one release call:
+
+```c
+struct handlebars_module *module = handlebars_cache_find(cache, key);
+
+if (module != NULL) {
+    use_module(module);
+    handlebars_cache_release(cache, key, module);
+}
+```
+
+A NULL result is a cache miss and must not be released. Keep the key and cache
+alive until the matching release call, and do not use the module afterward.
+
+The existing reset API has one backend-specific limitation. An mmap cache reset
+may leave the cache unchanged while lookup results are active. Neither
+`handlebars_cache_reset()` nor `handlebars_cache_reset_try()` reports that
+condition. Release every hit before resetting when the caller requires the
+cache to be empty.
 
 ## Immortal strings
 

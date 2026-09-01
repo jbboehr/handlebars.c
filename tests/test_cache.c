@@ -113,12 +113,12 @@ static struct handlebars_module * serialize_template(const char * tmpl)
     return serialize_template_with_flags(tmpl, 0);
 }
 
-static bool simple_cache_module_destroyed;
+static bool cache_test_module_destroyed;
 
-static int simple_cache_module_dtor(struct handlebars_module * module)
+static int cache_test_module_dtor(struct handlebars_module * module)
 {
     (void) module;
-    simple_cache_module_destroyed = true;
+    cache_test_module_destroyed = true;
     return 0;
 }
 
@@ -1241,16 +1241,44 @@ START_TEST(test_simple_cache_reset_releases_entries)
     struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-reset-release"));
     struct handlebars_module * module = serialize_template("reset release");
 
-    simple_cache_module_destroyed = false;
-    talloc_set_destructor(module, simple_cache_module_dtor);
+    cache_test_module_destroyed = false;
+    talloc_set_destructor(module, cache_test_module_dtor);
     handlebars_cache_add(cache, key, module);
-    ck_assert(!simple_cache_module_destroyed);
+    ck_assert(!cache_test_module_destroyed);
 
     handlebars_cache_reset(cache);
-    ck_assert(simple_cache_module_destroyed);
+    ck_assert(cache_test_module_destroyed);
     ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
 
     handlebars_cache_dtor(cache);
+}
+END_TEST
+
+START_TEST(test_simple_cache_release_preserves_owned_entry)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("simple-find-release")
+    );
+    struct handlebars_module * module = serialize_template("find release");
+    struct handlebars_module * found;
+
+    cache_test_module_destroyed = false;
+    talloc_set_destructor(module, cache_test_module_dtor);
+    handlebars_cache_add(cache, key, module);
+
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_eq(found, module);
+    handlebars_cache_release(cache, key, found);
+    ck_assert(!cache_test_module_destroyed);
+
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_eq(found, module);
+    handlebars_cache_release(cache, key, found);
+
+    handlebars_cache_dtor(cache);
+    ck_assert(cache_test_module_destroyed);
 }
 END_TEST
 
@@ -1343,6 +1371,35 @@ START_TEST(test_lmdb_cache_reset_removes_entries)
     ck_assert_int_eq(handlebars_cache_stat(cache).misses, 0);
 
     handlebars_cache_dtor(cache);
+}
+END_TEST
+
+START_TEST(test_lmdb_cache_release_frees_lookup_copy)
+{
+    struct handlebars_cache * cache;
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("lmdb-find-release")
+    );
+    struct handlebars_module * module = serialize_template("find release");
+    struct handlebars_module * found;
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    handlebars_cache_add(cache, key, module);
+
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_nonnull(found);
+    ck_assert_ptr_ne(found, module);
+    cache_test_module_destroyed = false;
+    talloc_set_destructor(found, cache_test_module_dtor);
+
+    handlebars_cache_release(cache, key, found);
+    ck_assert(cache_test_module_destroyed);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+
+    handlebars_cache_dtor(cache);
+    reset_lmdb_test_files();
 }
 END_TEST
 
@@ -1629,6 +1686,53 @@ START_TEST(test_mmap_cache_reset)
 {
     struct handlebars_cache * cache = handlebars_cache_mmap_ctor(context, 2097152, 2053);
     execute_reset_test(cache);
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
+START_TEST(test_mmap_cache_release_allows_deferred_reset)
+{
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(
+        context,
+        2097152,
+        2053
+    );
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("mmap-find-release")
+    );
+    struct handlebars_module * module = serialize_template("find release");
+    struct handlebars_module * found;
+    struct handlebars_cache_stat stat;
+    enum handlebars_error_type error;
+
+    handlebars_cache_add(cache, key, module);
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_nonnull(found);
+
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_int_eq(stat.refcount, 1);
+
+    error = handlebars_cache_reset_try(cache);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_int_eq(stat.refcount, 1);
+
+    error = handlebars_cache_release_try(cache, key, found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_int_eq(stat.refcount, 0);
+
+    error = handlebars_cache_reset_try(cache);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.current_entries, 0);
+    ck_assert_int_eq(stat.refcount, 0);
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+
     handlebars_cache_dtor(cache);
 }
 END_TEST
@@ -2387,12 +2491,14 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_simple_cache_gc, "Simple Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset, "Simple Cache (Reset)");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset_releases_entries, "Simple cache reset releases entries");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_release_preserves_owned_entry, "Simple cache release preserves owned entry");
 #ifdef HANDLEBARS_HAVE_LMDB
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_try_constructor_reports_errors, "LMDB cache try constructor errors");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_try_api, "LMDB cache try API");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc, "LMDB Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset, "LMDB Cache (Reset)");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_reset_removes_entries, "LMDB reset removes entries");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_release_frees_lookup_copy, "LMDB cache release frees lookup copy");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_distinguishes_binary_and_empty_keys, "LMDB distinguishes binary and empty keys");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_does_not_hash_oversized_keys, "LMDB skips oversized keys");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_rejects_invalid_records, "LMDB rejects invalid records");
@@ -2412,6 +2518,7 @@ static Suite * suite(void)
 #endif
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
+    REGISTER_TEST_FIXTURE(s, test_mmap_cache_release_allows_deferred_reset, "MMAP cache release allows deferred reset");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_concurrent_reset_and_find, "MMAP concurrent reset and find");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_expired_find_is_a_miss, "MMAP expired find is a miss");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_hash_collision_is_a_miss, "MMAP hash collision is a miss");

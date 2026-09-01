@@ -133,7 +133,9 @@ void handlebars_cache_dtor(
  * @brief Lookup a program from the cache.
  * @param[in] cache The cache
  * @param[in] key The cache key, Can be a filename, actual template, or arbitrary string
- * @return The cache entry, or NULL
+ * @return The cache entry, or NULL. Every non-NULL result must be passed
+ *         exactly once to handlebars_cache_release() with the same cache and
+ *         key. The result must not be used after it is released.
  */
 struct handlebars_module * handlebars_cache_find(
     struct handlebars_cache * cache,
@@ -145,7 +147,11 @@ struct handlebars_module * handlebars_cache_find(
  *        caller. A cache miss is successful and produces NULL.
  * @param[in] cache The cache
  * @param[in] key The cache key
- * @param[out] result The cache entry on a hit, otherwise NULL
+ * @param[out] result The cache entry on a hit, otherwise NULL. Every non-NULL
+ *                    result must be passed exactly once to
+ *                    handlebars_cache_release() or
+ *                    handlebars_cache_release_try() with the same cache and
+ *                    key. The result must not be used after it is released.
  * @return #HANDLEBARS_SUCCESS on a hit or miss, otherwise the error code
  */
 enum handlebars_error_type handlebars_cache_find_try(
@@ -199,7 +205,10 @@ enum handlebars_error_type handlebars_cache_gc_try(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
- * @brief Reset the cache
+ * @brief Reset the cache.
+ *
+ * The mmap backend may leave the cache unchanged while lookup results remain
+ * active. This condition is not reported to the caller.
  * @param[in] cache The cache
  * @return void
  */
@@ -209,13 +218,26 @@ void handlebars_cache_reset(
 
 /**
  * @brief Reset the cache without allowing library errors to longjmp into the
- *        caller.
- * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ *        caller. The mmap backend may return #HANDLEBARS_SUCCESS without
+ *        clearing the cache while lookup results remain active.
+ * @return #HANDLEBARS_SUCCESS when no error was raised, otherwise the error
+ *         code
  */
 enum handlebars_error_type handlebars_cache_reset_try(
     struct handlebars_cache * cache
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Release a cache entry returned by handlebars_cache_find() or
+ *        handlebars_cache_find_try().
+ * @param[in] cache The cache used for the lookup
+ * @param[in] key The key used for the lookup
+ * @param[in] module The non-NULL lookup result
+ * @return void
+ *
+ * Call this exactly once for every cache hit, even when the selected backend
+ * implements release as a no-op.
+ */
 void handlebars_cache_release(
     struct handlebars_cache * cache,
     struct handlebars_string * key,
@@ -224,7 +246,11 @@ void handlebars_cache_release(
 
 /**
  * @brief Release a cache entry without allowing library errors to longjmp into
- *        the caller.
+ *        the caller. Call this exactly once for every non-NULL result from
+ *        handlebars_cache_find_try(), using the same cache and key.
+ * @param[in] cache The cache used for the lookup
+ * @param[in] key The key used for the lookup
+ * @param[in] module The non-NULL lookup result
  * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
  */
 enum handlebars_error_type handlebars_cache_release_try(

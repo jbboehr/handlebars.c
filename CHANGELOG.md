@@ -26,6 +26,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 ### Changed
 - Documented the talloc and reference-count lifetime model, including uniform
   cleanup for value conversions and VM render results.
+- Documented that every cache hit must be paired with a cache release, along
+  with the mmap backend's existing reset behavior while hits remain active.
 - Value iterators now retain their backing storage, support nested map
   iteration, and are closed when an error unwinds through the library.
 - Value iterators must now be declared with
