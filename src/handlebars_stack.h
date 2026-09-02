@@ -224,4 +224,6 @@ void handlebars_stack_restore(
     struct handlebars_stack_save_buf buf
 ) HBS_ATTR_NONNULL_ALL;
 
+HBS_EXTERN_C_END
+
 #endif /* HANDLEBARS_STACK_H */

@@ -31,6 +31,7 @@ HBS_EXTERN_C_START
 struct handlebars_opcode;
 struct handlebars_operand;
 struct handlebars_compiler;
+struct handlebars_program;
 
 /**
  * @brief Flags to control opcode printer behaviour

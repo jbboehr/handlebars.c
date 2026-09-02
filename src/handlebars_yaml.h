@@ -22,6 +22,7 @@
 
 HBS_EXTERN_C_START
 
+struct handlebars_value;
 struct yaml_document_s;
 struct yaml_node_s;
 

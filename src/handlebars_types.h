@@ -18,9 +18,13 @@
 #ifndef HANDLEBARS_TYPES_H
 #define HANDLEBARS_TYPES_H
 
+#include "handlebars.h"
+
 HBS_EXTERN_C_START
 
 struct handlebars_options;
+struct handlebars_string;
+struct handlebars_value;
 struct handlebars_vm;
 
 // {{{ value

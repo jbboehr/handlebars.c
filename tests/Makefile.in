@@ -746,7 +746,6 @@ AM_TESTSUITE_SUMMARY_HEADER = ' for $(PACKAGE_STRING)'
 RECHECK_LOGS = $(TEST_LOGS)
 AM_RECURSIVE_TARGETS = check recheck
 TEST_SUITE_LOG = test-suite.log
-TEST_EXTENSIONS = @EXEEXT@ .test
 LOG_COMPILE = $(LOG_COMPILER) $(AM_LOG_FLAGS) $(LOG_FLAGS)
 am__set_b = \
   case '$@' in \
@@ -760,10 +759,13 @@ am__set_b = \
   esac
 am__test_logs1 = $(TESTS:=.log)
 am__test_logs2 = $(am__test_logs1:@EXEEXT@.log=.log)
-TEST_LOGS = $(am__test_logs2:.test.log=.log)
+am__test_logs3 = $(am__test_logs2:.test.log=.log)
 TEST_LOG_DRIVER = $(SHELL) $(top_srcdir)/build/test-driver
 TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
 	$(TEST_LOG_FLAGS)
+TEST_LOGS = $(am__test_logs3:.sh.log=.log)
+SH_LOG_DRIVER = $(SHELL) $(top_srcdir)/build/test-driver
+SH_LOG_COMPILE = $(SH_LOG_COMPILER) $(AM_SH_LOG_FLAGS) $(SH_LOG_FLAGS)
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/build/depcomp \
 	$(top_srcdir)/build/test-driver
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -963,7 +965,22 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 valgrind_enabled_tools = @valgrind_enabled_tools@
 valgrind_tools = @valgrind_tools@
-EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml fixture2.hbs fixture3.hbs fixture4.hbs test_executable.bats helper_executable.sh helper_executable_alt.sh helper_data.json test_value_api.cpp
+EXTRA_DIST = \
+	header_compile_probe.c \
+	helper_data.json \
+	helper_executable.sh \
+	helper_executable_alt.sh \
+	test_executable.bats \
+	test_headers.sh \
+	test_value_api.cpp \
+	utils.h \
+	fixture1.hbs \
+	fixture1.json \
+	fixture1.yaml \
+	fixture2.hbs \
+	fixture3.hbs \
+	fixture4.hbs
+
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(FUZZING_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS) $(CHECK_CFLAGS) $(PCRE_CFLAGS) $(SUBUNIT_CFLAGS)
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) $(FUZZING_LDFLAGS) -static # for valgrind
@@ -999,7 +1016,9 @@ test_value_api_SOURCES = test_value_api.c
 @YAML_TRUE@test_spec_mustache_SOURCES = $(COMMONFILES) test_spec_mustache.c
 @YAML_TRUE@test_yaml_SOURCES = $(COMMONFILES) test_yaml.c
 @HANDLEBARS_MEMORY_TRUE@test_random_alloc_fail_SOURCES = $(COMMONFILES) test_random_alloc_fail.c
-TESTS = $(check_PROGRAMS) $(am__append_5)
+TESTS = $(check_PROGRAMS) test_headers.sh $(am__append_5)
+TEST_EXTENSIONS = @EXEEXT@ .test .sh
+SH_LOG_COMPILER = $(SHELL)
 
 #if CHECK_HAS_TAP
 AM_TESTS_ENVIRONMENT = top_srcdir=$(top_srcdir) \
@@ -1012,11 +1031,17 @@ AM_TESTS_ENVIRONMENT = top_srcdir=$(top_srcdir) \
 	CK_VERBOSITY=normal \
 	HANDLEBARSC=$(top_builddir)/bin/handlebarsc \
 	TEST_DIR=$(top_srcdir)/tests BENCH_DIR=$(top_srcdir)/bench \
+	HEADER_SOURCE_DIR=$(top_srcdir)/src \
+	HEADER_BUILD_DIR=$(top_builddir)/src \
+	HEADER_PROBE=$(top_srcdir)/tests/header_compile_probe.c \
+	HEADER_CC='$(CC)' HEADER_CXX='$(CXX)' \
+	HEADER_CPPFLAGS='$(CPPFLAGS) $(TALLOC_CFLAGS)' \
+	HEADER_CFLAGS='$(CFLAGS)' HEADER_CXXFLAGS='$(CXXFLAGS)' \
 	CK_TAP_LOG_FILE_NAME=-
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .log .o .obj .test .test$(EXEEXT) .trs
+.SUFFIXES: .c .lo .log .o .obj .sh .sh$(EXEEXT) .test .test$(EXEEXT) .trs
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -1620,6 +1645,20 @@ test_executable.bats.log: test_executable.bats
 @am__EXEEXT_TRUE@	$(am__check_pre) $(TEST_LOG_DRIVER) --test-name "$$f" \
 @am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
 @am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_TEST_LOG_DRIVER_FLAGS) $(TEST_LOG_DRIVER_FLAGS) -- $(TEST_LOG_COMPILE) \
+@am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
+.sh.log:
+	@p='$<'; \
+	$(am__set_b); \
+	$(am__check_pre) $(SH_LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_SH_LOG_DRIVER_FLAGS) $(SH_LOG_DRIVER_FLAGS) -- $(SH_LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+@am__EXEEXT_TRUE@.sh$(EXEEXT).log:
+@am__EXEEXT_TRUE@	@p='$<'; \
+@am__EXEEXT_TRUE@	$(am__set_b); \
+@am__EXEEXT_TRUE@	$(am__check_pre) $(SH_LOG_DRIVER) --test-name "$$f" \
+@am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
+@am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_SH_LOG_DRIVER_FLAGS) $(SH_LOG_DRIVER_FLAGS) -- $(SH_LOG_COMPILE) \
 @am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
 distdir: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) distdir-am

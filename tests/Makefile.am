@@ -13,7 +13,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-EXTRA_DIST = utils.h fixture1.hbs fixture1.json fixture1.yaml fixture2.hbs fixture3.hbs fixture4.hbs test_executable.bats helper_executable.sh helper_executable_alt.sh helper_data.json test_value_api.cpp
+EXTRA_DIST = \
+	header_compile_probe.c \
+	helper_data.json \
+	helper_executable.sh \
+	helper_executable_alt.sh \
+	test_executable.bats \
+	test_headers.sh \
+	test_value_api.cpp \
+	utils.h \
+	fixture1.hbs \
+	fixture1.json \
+	fixture1.yaml \
+	fixture2.hbs \
+	fixture3.hbs \
+	fixture4.hbs
 AM_CPPFLAGS = $(CODE_COVERAGE_CPPFLAGS) -I$(top_builddir)/src -I$(top_srcdir)/src
 AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(FUZZING_CFLAGS) $(JSON_CFLAGS) $(LMDB_CFLAGS) $(PTHREAD_CFLAGS) $(TALLOC_CFLAGS) $(YAML_CFLAGS) $(CHECK_CFLAGS) $(PCRE_CFLAGS) $(SUBUNIT_CFLAGS)
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(CODE_COVERAGE_LIBS) $(FUZZING_LDFLAGS) -static # for valgrind
@@ -98,7 +112,9 @@ test_random_alloc_fail_SOURCES = $(COMMONFILES) test_random_alloc_fail.c
 check_PROGRAMS += test_random_alloc_fail
 endif
 
-TESTS = $(check_PROGRAMS)
+TESTS = $(check_PROGRAMS) test_headers.sh
+TEST_EXTENSIONS = @EXEEXT@ .test .sh
+SH_LOG_COMPILER = $(SHELL)
 AM_TESTS_ENVIRONMENT = \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
@@ -110,7 +126,15 @@ AM_TESTS_ENVIRONMENT = \
 	CK_VERBOSITY=normal \
 	HANDLEBARSC=$(top_builddir)/bin/handlebarsc \
 	TEST_DIR=$(top_srcdir)/tests \
-	BENCH_DIR=$(top_srcdir)/bench
+	BENCH_DIR=$(top_srcdir)/bench \
+	HEADER_SOURCE_DIR=$(top_srcdir)/src \
+	HEADER_BUILD_DIR=$(top_builddir)/src \
+	HEADER_PROBE=$(top_srcdir)/tests/header_compile_probe.c \
+	HEADER_CC='$(CC)' \
+	HEADER_CXX='$(CXX)' \
+	HEADER_CPPFLAGS='$(CPPFLAGS) $(TALLOC_CFLAGS)' \
+	HEADER_CFLAGS='$(CFLAGS)' \
+	HEADER_CXXFLAGS='$(CXXFLAGS)'
 
 if BATS
 TESTS += test_executable.bats

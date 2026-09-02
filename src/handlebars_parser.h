@@ -119,4 +119,6 @@ bool handlebars_parse(
     struct handlebars_parser * parser
 ) HBS_ATTR_NONNULL_ALL;
 
+HBS_EXTERN_C_END
+
 #endif /* HANDLEBARS_PARSER_H */

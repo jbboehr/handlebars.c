@@ -44,7 +44,7 @@ else (TALLOC_LIBRARIES AND TALLOC_INCLUDE_DIRS)
     endif (TALLOC_LIBRARY)
 
     set(TALLOC_INCLUDE_DIRS
-        ${INIPARSER_INCLUDE_DIR}
+        ${TALLOC_INCLUDE_DIR}
         )
 
     if (TALLOC_FOUND)
@@ -68,7 +68,7 @@ else (TALLOC_LIBRARIES AND TALLOC_INCLUDE_DIRS)
         endif (Talloc_FIND_REQUIRED)
     endif (TALLOC_FOUND)
 
-    # show the INIPARSER_INCLUDE_DIRS and INIPARSER_LIBRARIES variables only in the advanced view
-    mark_as_advanced(TALLOC_INCLUDE_DIRS TALLOC_LIBRARIES)
+    # Hide the implementation-level cache entries in the default CMake UI.
+    mark_as_advanced(TALLOC_INCLUDE_DIR TALLOC_LIBRARY)
 
 endif (TALLOC_LIBRARIES AND TALLOC_INCLUDE_DIRS)

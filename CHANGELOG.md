@@ -46,6 +46,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   context to the VM context.
 
 ### Fixed
+- Stable installed headers now compile independently as C and C++; generated
+  Flex/Bison headers remain unchanged.
 - JSON `null` elements no longer reuse the preceding iterator value.
 - Recursive value conversion, expression rendering, and diagnostic dumping now
   reject cyclic and excessively deep container graphs.

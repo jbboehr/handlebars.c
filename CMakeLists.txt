@@ -229,6 +229,28 @@ if (HANDLEBARS_ENABLE_TESTS)
     add_test(NAME test_utils COMMAND test_utils)
     add_test(NAME test_value COMMAND test_value)
     add_test(NAME test_value_api COMMAND test_value_api)
+    if(UNIX AND CMAKE_CXX_COMPILER)
+        set(HANDLEBARS_HEADER_CPPFLAGS "")
+        foreach(HANDLEBARS_HEADER_DEFINITION ${TALLOC_DEFINITIONS})
+            set(HANDLEBARS_HEADER_CPPFLAGS
+                "${HANDLEBARS_HEADER_CPPFLAGS} ${HANDLEBARS_HEADER_DEFINITION}")
+        endforeach()
+        foreach(HANDLEBARS_HEADER_INCLUDE_DIR ${TALLOC_INCLUDE_DIRS})
+            set(HANDLEBARS_HEADER_CPPFLAGS
+                "${HANDLEBARS_HEADER_CPPFLAGS} -I${HANDLEBARS_HEADER_INCLUDE_DIR}")
+        endforeach()
+        add_test(NAME test_headers
+            COMMAND ${CMAKE_COMMAND} -E env
+                "HEADER_SOURCE_DIR=${CMAKE_SOURCE_DIR}/src"
+                "HEADER_BUILD_DIR=${CMAKE_BINARY_DIR}/src"
+                "HEADER_PROBE=${CMAKE_SOURCE_DIR}/tests/header_compile_probe.c"
+                "HEADER_CC=${CMAKE_C_COMPILER}"
+                "HEADER_CXX=${CMAKE_CXX_COMPILER}"
+                "HEADER_CPPFLAGS=${HANDLEBARS_HEADER_CPPFLAGS}"
+                "HEADER_CFLAGS=${CMAKE_C_FLAGS}"
+                "HEADER_CXXFLAGS=${CMAKE_CXX_FLAGS}"
+                sh "${CMAKE_SOURCE_DIR}/tests/test_headers.sh")
+    endif()
     add_test(NAME test_yaml COMMAND test_yaml)
     if(BATS_EXECUTABLE)
         add_test(NAME test_executable
