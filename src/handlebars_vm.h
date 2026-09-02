@@ -208,11 +208,75 @@ struct handlebars_value * handlebars_vm_call_helper_str(
     struct handlebars_value * rv
 ) HBS_ATTR_NONNULL(1, 4, 5) HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Set the VM's execution flags.
+ *
+ * @param[in] vm The VM
+ * @param[in] flags The new flag bitmask
+ */
 void handlebars_vm_set_flags(struct handlebars_vm * vm, unsigned long flags) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Set the helpers available to the VM.
+ *
+ * The value is copied into the VM. Reference-backed payloads are shared rather
+ * than deep-copied, and remain bounded by their original talloc context. Keep
+ * that context alive while the VM may use the helpers.
+ *
+ * @param[in] vm The VM
+ * @param[in] helpers The helpers value
+ */
 void handlebars_vm_set_helpers(struct handlebars_vm * vm, struct handlebars_value * helpers) HBS_ATTR_NONNULL_ALL;
-void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * helpers) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Set the partials available to the VM.
+ *
+ * The value is copied into the VM. Reference-backed payloads are shared rather
+ * than deep-copied, and remain bounded by their original talloc context. Keep
+ * that context alive while the VM may use the partials.
+ *
+ * @param[in] vm The VM
+ * @param[in] partials The partials value
+ */
+void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_value * partials) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Set the default data available to the VM.
+ *
+ * The value is copied into the VM. Reference-backed payloads are shared rather
+ * than deep-copied, and remain bounded by their original talloc context. Keep
+ * that context alive while the VM may use the data.
+ *
+ * @param[in] vm The VM
+ * @param[in] data The data value
+ */
 void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data) HBS_ATTR_NONNULL_ALL;
-void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Set or clear the VM's cache.
+ *
+ * The cache is borrowed: the setter does not adopt, reparent, or explicitly
+ * destroy it, and its existing talloc parent remains its lifetime ceiling. A
+ * non-NULL cache must remain alive until it is replaced or cleared and every
+ * VM call that may have used it has returned. Pass NULL to disable caching.
+ *
+ * @param[in] vm The VM
+ * @param[in] cache The borrowed cache, or NULL to disable caching
+ */
+void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache) HBS_ATTR_NONNULL(1);
+
+/**
+ * @brief Set the VM's logger callback and context.
+ *
+ * The VM borrows both arguments. The setter does not adopt, reparent, or
+ * explicitly destroy @p log_ctx, and its existing talloc parent remains its
+ * lifetime ceiling. The context may be NULL; otherwise it must remain valid
+ * while the VM can call @p log_func.
+ *
+ * @param[in] vm The VM
+ * @param[in] log_func The logger callback
+ * @param[in] log_ctx The borrowed callback context, or NULL
+ */
 void handlebars_vm_set_logger(struct handlebars_vm * vm, handlebars_func log_func, void * log_ctx) HBS_ATTR_NONNULL(1, 2);
 
 handlebars_func handlebars_vm_get_log_func(struct handlebars_vm * vm);

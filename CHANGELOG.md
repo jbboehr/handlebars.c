@@ -26,6 +26,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 ### Changed
 - Documented the talloc and reference-count lifetime model, including uniform
   cleanup for value conversions and VM render results.
+- Documented VM setter ownership and made passing NULL to the cache setter an
+  explicit way to disable caching.
 - Documented that every cache hit must be paired with a cache release, along
   with the mmap backend's existing reset behavior while hits remain active.
 - Value iterators now retain their backing storage, support nested map
@@ -57,6 +59,10 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
 - LMDB cache statistics report the correct backend name.
 - Failed map copy-on-write mutations now release unpublished replacement maps
   and temporary string keys while preserving the original map.
+- Cached runtime templates are released through the cache that produced them
+  when a helper changes the VM's cache during rendering.
+- Runtime-template cache errors now remain inside VM `_try` boundaries when
+  the borrowed cache has an independent error context.
 
 ## [1.0.0]
 

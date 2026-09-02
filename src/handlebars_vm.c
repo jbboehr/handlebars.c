@@ -37,6 +37,7 @@
 #include "handlebars_vm_private.h"
 
 #include "handlebars_cache.h"
+#include "handlebars_cache_private.h"
 #include "handlebars_closure.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
@@ -661,6 +662,207 @@ static inline struct handlebars_value * merge_hash(struct handlebars_context * c
     return input;
 }
 
+struct handlebars_vm_error_snapshot {
+    enum handlebars_error_type num;
+    struct handlebars_locinfo loc;
+    const char * msg;
+    bool detached;
+};
+
+static bool handlebars_vm_error_snapshot_begin(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_error_snapshot * snapshot
+)
+{
+    struct handlebars_error * vm_error = HBSCTX(vm)->e;
+
+    memset(snapshot, 0, sizeof(*snapshot));
+    if( vm_error->num == HANDLEBARS_SUCCESS ) {
+        return false;
+    }
+
+    snapshot->num = vm_error->num;
+    snapshot->loc = vm_error->loc;
+    snapshot->msg = vm_error->msg;
+    vm_error->num = HANDLEBARS_SUCCESS;
+    memset(&vm_error->loc, 0, sizeof(vm_error->loc));
+    vm_error->msg = NULL;
+    snapshot->detached = true;
+    return true;
+}
+
+static void handlebars_vm_error_snapshot_discard(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_error_snapshot * snapshot
+)
+{
+    struct handlebars_error * vm_error = HBSCTX(vm)->e;
+    enum handlebars_error_type cache_error = vm_error->num;
+    struct handlebars_locinfo cache_loc = vm_error->loc;
+    const char * cache_message = vm_error->msg;
+
+    vm_error->msg = snapshot->msg;
+    handlebars_error_clear(HBSCTX(vm));
+    vm_error->num = cache_error;
+    vm_error->loc = cache_loc;
+    vm_error->msg = cache_message;
+    snapshot->detached = false;
+}
+
+static void handlebars_vm_error_snapshot_restore(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_error_snapshot * snapshot
+)
+{
+    struct handlebars_error * vm_error = HBSCTX(vm)->e;
+
+    handlebars_error_clear(HBSCTX(vm));
+    vm_error->num = snapshot->num;
+    vm_error->loc = snapshot->loc;
+    vm_error->msg = snapshot->msg;
+    snapshot->detached = false;
+}
+
+static void handlebars_vm_execution_error_snapshot_finish(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_error_snapshot * snapshot
+)
+{
+    if( !snapshot->detached ) {
+        return;
+    }
+    if( HBSCTX(vm)->e->num == HANDLEBARS_SUCCESS ) {
+        handlebars_vm_error_snapshot_restore(vm, snapshot);
+    } else {
+        handlebars_vm_error_snapshot_discard(vm, snapshot);
+    }
+}
+
+static enum handlebars_error_type handlebars_vm_cache_error_snapshot_finish(
+    struct handlebars_vm * vm,
+    struct handlebars_vm_error_snapshot * snapshot,
+    enum handlebars_error_type cache_error
+)
+{
+    handlebars_vm_error_snapshot_restore(vm, snapshot);
+    return cache_error == HANDLEBARS_SUCCESS
+        ? HANDLEBARS_SUCCESS
+        : snapshot->num;
+}
+
+static enum handlebars_error_type handlebars_vm_cache_find_try(
+    struct handlebars_vm * vm,
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl,
+    struct handlebars_module ** result
+)
+{
+    struct handlebars_vm_error_snapshot snapshot;
+    enum handlebars_error_type cache_error;
+
+    if( HBSCTX(cache)->e != HBSCTX(vm)->e
+            || !handlebars_vm_error_snapshot_begin(vm, &snapshot) ) {
+        if( HBSCTX(vm)->e->num != HANDLEBARS_SUCCESS ) {
+            cache_error = handlebars_cache_find_try(cache, tmpl, result);
+            return cache_error == HANDLEBARS_SUCCESS
+                ? HANDLEBARS_SUCCESS
+                : HBSCTX(vm)->e->num;
+        }
+        return handlebars_cache_find_try_with_error_context(
+            cache,
+            tmpl,
+            result,
+            HBSCTX(vm)
+        );
+    }
+
+    cache_error = handlebars_cache_find_try(cache, tmpl, result);
+    return handlebars_vm_cache_error_snapshot_finish(
+        vm,
+        &snapshot,
+        cache_error
+    );
+}
+
+static enum handlebars_error_type handlebars_vm_cache_add_try(
+    struct handlebars_vm * vm,
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl,
+    struct handlebars_module * module
+)
+{
+    struct handlebars_vm_error_snapshot snapshot;
+    enum handlebars_error_type cache_error;
+
+    if( HBSCTX(cache)->e != HBSCTX(vm)->e
+            || !handlebars_vm_error_snapshot_begin(vm, &snapshot) ) {
+        if( HBSCTX(vm)->e->num != HANDLEBARS_SUCCESS ) {
+            cache_error = handlebars_cache_add_try(cache, tmpl, module);
+            return cache_error == HANDLEBARS_SUCCESS
+                ? HANDLEBARS_SUCCESS
+                : HBSCTX(vm)->e->num;
+        }
+        return handlebars_cache_add_try_with_error_context(
+            cache,
+            tmpl,
+            module,
+            HBSCTX(vm)
+        );
+    }
+
+    cache_error = handlebars_cache_add_try(cache, tmpl, module);
+    return handlebars_vm_cache_error_snapshot_finish(
+        vm,
+        &snapshot,
+        cache_error
+    );
+}
+
+static enum handlebars_error_type handlebars_vm_cache_release_try(
+    struct handlebars_vm * vm,
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl,
+    struct handlebars_module * module
+)
+{
+    struct handlebars_vm_error_snapshot snapshot;
+    enum handlebars_error_type release_error;
+
+    if( HBSCTX(vm)->e->num == HANDLEBARS_SUCCESS ) {
+        return handlebars_cache_release_try_with_error_context(
+            cache,
+            tmpl,
+            module,
+            HBSCTX(vm)
+        );
+    }
+    if( HBSCTX(cache)->e != HBSCTX(vm)->e ) {
+        release_error = handlebars_cache_release_try(
+            cache,
+            tmpl,
+            module
+        );
+        return release_error == HANDLEBARS_SUCCESS
+            ? HANDLEBARS_SUCCESS
+            : HBSCTX(vm)->e->num;
+    }
+    if( !handlebars_vm_error_snapshot_begin(vm, &snapshot) ) {
+        return handlebars_cache_release_try_with_error_context(
+            cache,
+            tmpl,
+            module,
+            HBSCTX(vm)
+        );
+    }
+
+    release_error = handlebars_cache_release_try(cache, tmpl, module);
+    return handlebars_vm_cache_error_snapshot_finish(
+        vm,
+        &snapshot,
+        release_error
+    );
+}
+
 HBS_ATTR_NONNULL(1, 2)
 static struct handlebars_string * execute_template(
     struct handlebars_vm * vm,
@@ -670,6 +872,7 @@ static struct handlebars_string * execute_template(
     int escape,
     bool use_delimiters
 ) {
+    struct handlebars_cache * cache = vm->cache;
     struct handlebars_context * context = handlebars_talloc_zero(
         vm,
         struct handlebars_context
@@ -677,6 +880,7 @@ static struct handlebars_string * execute_template(
     struct handlebars_string * volatile retval = NULL;
     struct handlebars_module * volatile module = NULL;
     bool volatile from_cache = false;
+    bool volatile caught_error = false;
     long prev_depth = vm->depth;
     jmp_buf * prev_jmp = HBSCTX(vm)->e->jmp;
     jmp_buf buf;
@@ -691,9 +895,9 @@ static struct handlebars_string * execute_template(
     if (!hbs_str_len(tmpl)) {
         goto done;
     }
-
     // Save jmp buf
     if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught_error = true;
         goto done;
     }
 
@@ -710,7 +914,24 @@ static struct handlebars_string * execute_template(
     }
 
     // Check for cached template, if available
-    module = vm->cache ? handlebars_cache_find(vm->cache, tmpl) : NULL;
+    if( cache ) {
+        struct handlebars_module * found;
+        enum handlebars_error_type cache_error = handlebars_vm_cache_find_try(
+            vm,
+            cache,
+            (struct handlebars_string *) tmpl,
+            &found
+        );
+
+        if( unlikely(cache_error != HANDLEBARS_SUCCESS) ) {
+            handlebars_vm_rethrow_caught(
+                vm,
+                HBSCTX(vm)->e->jmp,
+                cache_error
+            );
+        }
+        module = found;
+    }
     from_cache = module != NULL;
     if( !from_cache ) {
         // Parse
@@ -726,8 +947,21 @@ static struct handlebars_string * execute_template(
         module = handlebars_program_serialize(context, program);
 
         // Save cache entry
-        if( vm->cache ) {
-            handlebars_cache_add(vm->cache, tmpl, module);
+        if( cache ) {
+            enum handlebars_error_type cache_error = handlebars_vm_cache_add_try(
+                vm,
+                cache,
+                (struct handlebars_string *) tmpl,
+                (struct handlebars_module *) module
+            );
+
+            if( unlikely(cache_error != HANDLEBARS_SUCCESS) ) {
+                handlebars_vm_rethrow_caught(
+                    vm,
+                    HBSCTX(vm)->e->jmp,
+                    cache_error
+                );
+            }
         }
 
         // Cleanup parser
@@ -744,13 +978,34 @@ static struct handlebars_string * execute_template(
     }
 
 done:
-    HBSCTX(vm)->e->jmp = prev_jmp;
-    vm->depth = prev_depth;
-    if( from_cache ) {
-        handlebars_cache_release(vm->cache, tmpl, module);
+    {
+        enum handlebars_error_type release_error = HANDLEBARS_SUCCESS;
+        bool has_primary_error = caught_error
+            || HBSCTX(vm)->e->num != HANDLEBARS_SUCCESS;
+
+        HBSCTX(vm)->e->jmp = prev_jmp;
+        vm->depth = prev_depth;
+        if( from_cache ) {
+            release_error = handlebars_vm_cache_release_try(
+                vm,
+                cache,
+                (struct handlebars_string *) tmpl,
+                (struct handlebars_module *) module
+            );
+        }
+        handlebars_string_delref(tmpl);
+        handlebars_context_dtor(context);
+        if( !has_primary_error && release_error != HANDLEBARS_SUCCESS ) {
+            if( retval != NULL ) {
+                handlebars_string_delref((struct handlebars_string *) retval);
+            }
+            handlebars_vm_rethrow_caught(
+                vm,
+                prev_jmp,
+                release_error
+            );
+        }
     }
-    handlebars_string_delref(tmpl);
-    handlebars_context_dtor(context);
     if (retval) {
         return retval;
     } else {
@@ -2775,6 +3030,7 @@ struct handlebars_string * handlebars_vm_execute_ex(
 
     struct handlebars_string * volatile buffer = NULL;
     enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    struct handlebars_vm_error_snapshot previous_error;
     bool volatile setup_last_context = false;
     bool volatile setup_stacks = false;
     jmp_buf buf;
@@ -2815,6 +3071,11 @@ struct handlebars_string * handlebars_vm_execute_ex(
         setup_last_context = true;
     } else {
         handlebars_value_value(prev_last_context_value, vm->last_context);
+    }
+
+    memset(&previous_error, 0, sizeof(previous_error));
+    if( setup_stacks ) {
+        handlebars_vm_error_snapshot_begin(vm, &previous_error);
     }
 
     // Always install a local boundary. Callers may catch the rethrown error,
@@ -2884,6 +3145,10 @@ done:
     vm->module = prev_module;
     vm->flags = prev_flags;
     vm->depth = prev_depth;
+
+    if( setup_stacks ) {
+        handlebars_vm_execution_error_snapshot_finish(vm, &previous_error);
+    }
 
     HANDLEBARS_VALUE_UNDECL(prev_last_context_value);
     HANDLEBARS_VALUE_UNDECL(prev_data);

@@ -371,23 +371,68 @@ static enum handlebars_error_type handlebars_cache_try_guarded(
     return caught;
 }
 
+static enum handlebars_error_type handlebars_cache_try_copy_error(
+    struct handlebars_context * cache_context,
+    struct handlebars_context * error_context,
+    enum handlebars_error_type error,
+    const char * fallback
+)
+{
+    struct handlebars_locinfo loc;
+    const char * message;
+
+    if( error_context == NULL || cache_context->e == error_context->e ) {
+        return error;
+    }
+
+    loc = cache_context->e->loc;
+    message = cache_context->e->msg;
+    handlebars_error_set(
+        error_context,
+        error,
+        "%s",
+        message != NULL ? message : fallback
+    );
+    error_context->e->loc = loc;
+    return error_context->e->num;
+}
+
 static enum handlebars_error_type handlebars_cache_try(
     struct handlebars_cache * cache,
-    struct handlebars_cache_try_state * state
+    struct handlebars_cache_try_state * state,
+    struct handlebars_context * error_context,
+    const char * fallback
 ) {
+    struct handlebars_context * cache_context = HBSCTX(cache);
     struct handlebars_cache_try_guard guard;
     enum handlebars_error_type error;
     enum handlebars_error_type guard_error;
 
-    error = handlebars_cache_try_guard_begin(HBSCTX(cache)->e, &guard);
+    error = handlebars_cache_try_guard_begin(cache_context->e, &guard);
     if( error != HANDLEBARS_SUCCESS ) {
+        if( error_context != NULL && cache_context->e != error_context->e ) {
+            handlebars_error_set(error_context, error, "%s", fallback);
+            return error_context->e->num;
+        }
         return error;
     }
-    handlebars_error_clear(HBSCTX(cache));
+    handlebars_error_clear(cache_context);
     error = handlebars_cache_try_guarded(cache, state);
+    if( error != HANDLEBARS_SUCCESS ) {
+        error = handlebars_cache_try_copy_error(
+            cache_context,
+            error_context,
+            error,
+            fallback
+        );
+    }
     guard_error = handlebars_cache_try_guard_end(&guard);
     if( error == HANDLEBARS_SUCCESS ) {
         error = guard_error;
+        if( error != HANDLEBARS_SUCCESS && error_context != NULL ) {
+            handlebars_error_set(error_context, error, "%s", fallback);
+            error = error_context->e->num;
+        }
     }
     return error;
 }
@@ -404,7 +449,7 @@ enum handlebars_error_type handlebars_cache_find_try(
     enum handlebars_error_type error;
 
     *result = NULL;
-    error = handlebars_cache_try(cache, &state);
+    error = handlebars_cache_try(cache, &state, NULL, NULL);
     if( error == HANDLEBARS_SUCCESS ) {
         *result = state.found;
     }
@@ -422,7 +467,7 @@ enum handlebars_error_type handlebars_cache_add_try(
         .module = module
     };
 
-    return handlebars_cache_try(cache, &state);
+    return handlebars_cache_try(cache, &state, NULL, NULL);
 }
 
 enum handlebars_error_type handlebars_cache_gc_try(
@@ -432,7 +477,12 @@ enum handlebars_error_type handlebars_cache_gc_try(
     struct handlebars_cache_try_state state = {
         .operation = handlebars_cache_try_gc
     };
-    enum handlebars_error_type error = handlebars_cache_try(cache, &state);
+    enum handlebars_error_type error = handlebars_cache_try(
+        cache,
+        &state,
+        NULL,
+        NULL
+    );
 
     if( error == HANDLEBARS_SUCCESS ) {
         *removed = state.removed;
@@ -447,7 +497,7 @@ enum handlebars_error_type handlebars_cache_reset_try(
         .operation = handlebars_cache_try_reset
     };
 
-    return handlebars_cache_try(cache, &state);
+    return handlebars_cache_try(cache, &state, NULL, NULL);
 }
 
 enum handlebars_error_type handlebars_cache_release_try(
@@ -461,7 +511,7 @@ enum handlebars_error_type handlebars_cache_release_try(
         .module = module
     };
 
-    return handlebars_cache_try(cache, &state);
+    return handlebars_cache_try(cache, &state, NULL, NULL);
 }
 
 enum handlebars_error_type handlebars_cache_stat_try(
@@ -471,10 +521,83 @@ enum handlebars_error_type handlebars_cache_stat_try(
     struct handlebars_cache_try_state state = {
         .operation = handlebars_cache_try_stat
     };
-    enum handlebars_error_type error = handlebars_cache_try(cache, &state);
+    enum handlebars_error_type error = handlebars_cache_try(
+        cache,
+        &state,
+        NULL,
+        NULL
+    );
 
     if( error == HANDLEBARS_SUCCESS ) {
         *result = state.stat;
     }
     return error;
+}
+
+enum handlebars_error_type handlebars_cache_find_try_with_error_context(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
+    struct handlebars_module ** result,
+    struct handlebars_context * error_context
+)
+{
+    struct handlebars_cache_try_state state = {
+        .operation = handlebars_cache_try_find,
+        .key = key
+    };
+    enum handlebars_error_type error;
+
+    *result = NULL;
+    error = handlebars_cache_try(
+        cache,
+        &state,
+        error_context,
+        "Cache lookup error"
+    );
+    if( error == HANDLEBARS_SUCCESS ) {
+        *result = state.found;
+    }
+    return error;
+}
+
+enum handlebars_error_type handlebars_cache_add_try_with_error_context(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
+    struct handlebars_module * module,
+    struct handlebars_context * error_context
+)
+{
+    struct handlebars_cache_try_state state = {
+        .operation = handlebars_cache_try_add,
+        .key = key,
+        .module = module
+    };
+
+    return handlebars_cache_try(
+        cache,
+        &state,
+        error_context,
+        "Cache add error"
+    );
+}
+
+enum handlebars_error_type handlebars_cache_release_try_with_error_context(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
+    struct handlebars_module * module,
+    struct handlebars_context * error_context
+)
+{
+    struct handlebars_cache_try_state state = {
+        .operation = handlebars_cache_try_release,
+        .key = key,
+        .module = module
+    };
+
+    return handlebars_cache_try(
+        cache,
+        &state,
+        error_context,
+        "Cache release error"
+    );
 }

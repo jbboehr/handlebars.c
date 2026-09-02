@@ -104,6 +104,27 @@ HBS_LOCAL enum handlebars_error_type handlebars_cache_try_guard_end(
     struct handlebars_cache_try_guard * guard
 );
 
+HBS_LOCAL enum handlebars_error_type handlebars_cache_find_try_with_error_context(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
+    struct handlebars_module ** result,
+    struct handlebars_context * error_context
+) HBS_ATTR_NONNULL_ALL;
+
+HBS_LOCAL enum handlebars_error_type handlebars_cache_add_try_with_error_context(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
+    struct handlebars_module * module,
+    struct handlebars_context * error_context
+) HBS_ATTR_NONNULL_ALL;
+
+HBS_LOCAL enum handlebars_error_type handlebars_cache_release_try_with_error_context(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
+    struct handlebars_module * module,
+    struct handlebars_context * error_context
+) HBS_ATTR_NONNULL_ALL;
+
 #if defined(HANDLEBARS_HAVE_PTHREAD) && defined(HANDLEBARS_TESTING_EXPORTS)
 HBS_TEST_PUBLIC extern int (*handlebars_cache_mmap_mprotect)(
     void * address,

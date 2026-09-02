@@ -75,6 +75,43 @@ operations are no-ops. Objects then remain allocated until their talloc context
 is destroyed. Use a bounded context for each request or VM and destroy it after
 the work is complete.
 
+## VM configuration
+
+The VM setters use two different ownership models:
+
+| Setter | VM ownership | Caller responsibility |
+| --- | --- | --- |
+| `handlebars_vm_set_helpers()` | Copies the value and shares its reference-backed payloads. | Keep the payloads' original talloc context alive while the VM may use them. |
+| `handlebars_vm_set_partials()` | Copies the value and shares its reference-backed payloads. | Keep the payloads' original talloc context alive while the VM may use them. |
+| `handlebars_vm_set_data()` | Copies the value and shares its reference-backed payloads. | Keep the payloads' original talloc context alive while the VM may use them. |
+| `handlebars_vm_set_cache()` | Borrows without adopting or reparenting. | Keep it alive until it is replaced or cleared and every VM call that may have used it has returned. Pass `NULL` to disable caching. |
+| `handlebars_vm_set_logger()` | Borrows the callback context without adopting or reparenting. | A non-NULL context must remain valid while the callback can run. |
+
+These setters do not explicitly destroy the cache or logger context. Existing
+talloc ownership still applies: an object allocated beneath the VM is freed
+recursively when the VM is destroyed, while an object owned elsewhere is not.
+Do not destroy an object again after its talloc parent has freed it.
+
+Clear an externally owned cache before destroying it if the VM will remain in
+use:
+
+```c
+handlebars_vm_set_cache(vm, cache);
+/* Render using cache. */
+
+handlebars_vm_set_cache(vm, NULL);
+handlebars_cache_dtor(cache);
+```
+
+Changing the cache during a VM call does not end an active cache lookup. The
+previous cache must remain alive until that call returns so the VM can release
+the lookup through the backend that produced it.
+
+Copying a helpers, partials, or data value into the VM is not a cross-context
+deep copy. In a refcounted build the shared payload is retained, but its talloc
+parent remains its lifetime ceiling. In a no-refcount build the VM's copied
+value instead relies entirely on that ownership tree.
+
 ## Common return values
 
 | Value | Lifetime ceiling | Caller action |

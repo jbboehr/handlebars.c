@@ -8,3 +8,10 @@
  */
 
 int handlebars_header_compile_probe;
+
+#ifdef HANDLEBARS_VM_H
+void handlebars_vm_cache_clear_compile_probe(struct handlebars_vm * vm)
+{
+    handlebars_vm_set_cache(vm, NULL);
+}
+#endif
