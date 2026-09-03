@@ -279,7 +279,7 @@ static const char * vm_cache_fault_name(enum vm_cache_fault_operation operation)
     }
 }
 
-static void vm_cache_fault_throw(
+static HBS_ATTR_NORETURN void vm_cache_fault_throw(
     struct handlebars_cache * cache,
     struct handlebars_string * tmpl,
     enum vm_cache_fault_operation operation

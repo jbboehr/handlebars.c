@@ -259,21 +259,6 @@ enum handlebars_error_type handlebars_cache_release_try(
     struct handlebars_module * module
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
-struct handlebars_cache_stat handlebars_cache_stat(
-    struct handlebars_cache * cache
-) HBS_ATTR_NONNULL_ALL;
-
-/**
- * @brief Read cache statistics without allowing library errors to longjmp into
- *        the caller. The output is modified only on success.
- * @param[out] result The cache statistics
- * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
- */
-enum handlebars_error_type handlebars_cache_stat_try(
-    struct handlebars_cache * cache,
-    struct handlebars_cache_stat * result
-) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
-
 struct handlebars_cache_stat {
     const char * name;
 
@@ -313,6 +298,21 @@ struct handlebars_cache_stat {
     //! The number of hash table collisions
     size_t collisions;
 };
+
+struct handlebars_cache_stat handlebars_cache_stat(
+    struct handlebars_cache * cache
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Read cache statistics without allowing library errors to longjmp into
+ *        the caller. The output is modified only on success.
+ * @param[out] result The cache statistics
+ * @return #HANDLEBARS_SUCCESS on success, otherwise the error code
+ */
+enum handlebars_error_type handlebars_cache_stat_try(
+    struct handlebars_cache * cache,
+    struct handlebars_cache_stat * result
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 HBS_EXTERN_C_END
 
