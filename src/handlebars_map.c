@@ -67,9 +67,8 @@ struct handlebars_map {
     uint32_t vec_capacity;
 
     bool is_in_iteration;
-#ifdef HANDLEBARS_NO_REFCOUNT
+    size_t active_iteration_locks;
     size_t active_iterators;
-#endif
 
     struct handlebars_map_entry data[];
 };
@@ -318,12 +317,11 @@ void handlebars_map_delref(struct handlebars_map * map)
 
 void handlebars_map_iterator_acquire(struct handlebars_map * map)
 {
-#ifdef HANDLEBARS_NO_REFCOUNT
     if( unlikely(map->active_iterators == SIZE_MAX) ) {
         handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Too many active map iterators");
     }
     map->active_iterators++;
-#else
+#ifndef HANDLEBARS_NO_REFCOUNT
     assert(handlebars_rc_refcount(&map->rc) >= 1);
     handlebars_map_addref(map);
 #endif
@@ -331,11 +329,40 @@ void handlebars_map_iterator_acquire(struct handlebars_map * map)
 
 void handlebars_map_iterator_release(struct handlebars_map * map)
 {
-#ifdef HANDLEBARS_NO_REFCOUNT
     assert(map->active_iterators > 0);
     map->active_iterators--;
-#else
+#ifndef HANDLEBARS_NO_REFCOUNT
     handlebars_map_delref(map);
+#endif
+}
+
+bool handlebars_map_iteration_acquire(struct handlebars_map * map)
+{
+    if( unlikely(map->active_iteration_locks == SIZE_MAX) ) {
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Too many active map iterations");
+    }
+    map->active_iteration_locks++;
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+    if( handlebars_rc_refcount(&map->rc) >= 1 ) {
+        handlebars_map_addref(map);
+        return true;
+    }
+#endif
+
+    return false;
+}
+
+void handlebars_map_iteration_release(struct handlebars_map * map, bool retained)
+{
+    assert(map->active_iteration_locks > 0);
+    map->active_iteration_locks--;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    if( retained ) {
+        handlebars_map_delref(map);
+    }
+#else
+    (void) retained;
 #endif
 }
 
@@ -548,26 +575,51 @@ void handlebars_map_dtor(struct handlebars_map * map)
     handlebars_talloc_free(map);
 }
 
+static bool map_direct_iteration_is_locked(struct handlebars_map * map)
+{
+    return map->is_in_iteration
+        || map->active_iteration_locks > 0;
+}
+
+static bool map_in_place_mutation_is_locked(struct handlebars_map * map)
+{
+    return map->is_in_iteration
+        || map->active_iteration_locks > 0
+        || map->active_iterators > 0;
+}
+
 static bool map_rehash_required(
     struct handlebars_map * map,
     bool force
 )
 {
-    /* The low-level foreach macro permits in-place removal by explicitly
-     * locking the backing vector for the duration of its loop. Without
-     * refcounts, value iterators also guard the live backing vector because
-     * they cannot retain an immutable snapshot for copy-on-write updates. */
-    if (map->is_in_iteration
-#ifdef HANDLEBARS_NO_REFCOUNT
-        || map->active_iterators > 0
-#endif
-    ) {
+    /* Direct iteration preserves the legacy contract that removal and value
+     * replacement happen in place, including when the map has multiple value
+     * owners. A value iterator instead retains an immutable snapshot in
+     * refcounted builds. Mutating while both iterator kinds are active cannot
+     * satisfy both contracts, so reject it before either map is changed. */
+    if( map_direct_iteration_is_locked(map) ) {
+        if( unlikely(map->active_iterators > 0) ) {
+            handlebars_throw(
+                map->ctx,
+                HANDLEBARS_ERROR,
+                "Cannot mutate a map while direct and value iterators are both active"
+            );
+        }
         return false;
     }
 
 #ifndef HANDLEBARS_NO_REFCOUNT
-    if (handlebars_rc_refcount(&map->rc) > 1) {
-        force = true;
+    if( handlebars_rc_refcount(&map->rc) > 1 ) {
+        return true;
+    }
+#endif
+
+#ifdef HANDLEBARS_NO_REFCOUNT
+    /* Without refcounts, a value iterator cannot retain an immutable snapshot,
+     * so keep its live backing vector stable instead. */
+    if( map->active_iterators > 0 ) {
+        return false;
     }
 #endif
 
@@ -872,6 +924,10 @@ struct handlebars_map * handlebars_map_rehash(struct handlebars_map * map, bool 
 
 void handlebars_map_sparse_array_compact(struct handlebars_map * map)
 {
+    if( map_in_place_mutation_is_locked(map) ) {
+        return;
+    }
+
     // nothing to do
     if (map->i == map->vec_offset) {
         return;
@@ -938,6 +994,9 @@ static int map_entry_compare(const void * ptr1, const void * ptr2, void * arg)
 
 struct handlebars_map * handlebars_map_sort(struct handlebars_map * map, handlebars_map_kv_compare_func compare)
 {
+    if( unlikely(map_in_place_mutation_is_locked(map)) ) {
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Cannot sort a map during iteration");
+    }
     map = handlebars_map_rehash(map, handlebars_map_is_sparse(map));
 
     struct handlebars_map_entry * vec = map_vec(map);
@@ -975,6 +1034,9 @@ struct handlebars_map * handlebars_map_sort_r(
     handlebars_map_kv_compare_r_func compare,
     const void * arg
 ) {
+    if( unlikely(map_in_place_mutation_is_locked(map)) ) {
+        handlebars_throw(map->ctx, HANDLEBARS_ERROR, "Cannot sort a map during iteration");
+    }
     map = handlebars_map_rehash(map, handlebars_map_is_sparse(map));
 
     struct map_sort_r_arg sort_r_arg = {compare, arg};

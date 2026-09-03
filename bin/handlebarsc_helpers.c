@@ -33,10 +33,11 @@
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
 #include "handlebars_json.h"
+#include "handlebars_value_private.h"
+
 #include "handlebars_map.h"
 #include "handlebars_memory.h"
 #include "handlebars_string.h"
-#include "handlebars_value_private.h"
 #include "handlebars_value.h"
 #include "handlebars_vm.h"
 

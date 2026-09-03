@@ -53,6 +53,224 @@ static struct handlebars_map * make_full_map(void)
     return map;
 }
 
+static struct handlebars_value * map_foreach_return_first(
+    struct handlebars_map * map
+)
+{
+    handlebars_map_foreach(map, index, key, value) {
+        (void) index;
+        (void) key;
+        return value;
+    } handlebars_map_foreach_end(map);
+
+    return NULL;
+}
+
+static void map_foreach_goto_after_first(struct handlebars_map * map)
+{
+    handlebars_map_foreach(map, index, key, value) {
+        (void) index;
+        (void) key;
+        (void) value;
+        goto done;
+    } handlebars_map_foreach_end(map);
+
+done:
+    return;
+}
+
+START_TEST(test_map_foreach_cleans_up_after_return)
+{
+    struct handlebars_map * map = make_full_map();
+    struct handlebars_map * original = map;
+    struct handlebars_value * value = map_foreach_return_first(map);
+
+    ck_assert_ptr_nonnull(value);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 1);
+    map = handlebars_map_rehash(map, true);
+    ck_assert_ptr_ne(map, original);
+
+    handlebars_map_delref(map);
+}
+END_TEST
+
+START_TEST(test_map_foreach_cleans_up_after_goto)
+{
+    struct handlebars_map * map = make_full_map();
+    struct handlebars_map * original = map;
+
+    map_foreach_goto_after_first(map);
+    map = handlebars_map_rehash(map, true);
+    ck_assert_ptr_ne(map, original);
+
+    handlebars_map_delref(map);
+}
+END_TEST
+
+START_TEST(test_map_foreach_cleans_up_after_longjmp)
+{
+    struct handlebars_map * map = make_full_map();
+    struct handlebars_map * original = map;
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_ptr_null(context->e->iterator_cleanup);
+        clear_intentional_error();
+        map = handlebars_map_rehash(map, true);
+        ck_assert_ptr_ne(map, original);
+        handlebars_map_delref(map);
+        return;
+    }
+
+    handlebars_map_foreach(map, index, key, value) {
+        (void) index;
+        (void) key;
+        (void) value;
+        handlebars_throw(context, HANDLEBARS_ERROR, "Intentional map iterator failure");
+    } handlebars_map_foreach_end(map);
+    ck_abort_msg("Expected map iteration to throw");
+}
+END_TEST
+
+START_TEST(test_map_iterator_api_skips_sparse_entries)
+{
+    struct handlebars_map_iterator iterator = {0};
+    struct handlebars_map * map = handlebars_map_ctor(context, 3);
+    struct handlebars_map * original;
+    struct handlebars_string * key = (struct handlebars_string *) 1;
+    struct handlebars_value * child = (struct handlebars_value *) 1;
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_integer(value, 1);
+    map = handlebars_map_str_add(map, HBS_STRL("a"), value);
+    handlebars_value_integer(value, 2);
+    map = handlebars_map_str_add(map, HBS_STRL("b"), value);
+    handlebars_value_integer(value, 3);
+    map = handlebars_map_str_add(map, HBS_STRL("c"), value);
+    map = handlebars_map_str_remove(map, HBS_STRL("b"));
+    original = map;
+
+    ck_assert(handlebars_map_iterator_init(&iterator, map));
+    ck_assert(handlebars_map_iterator_next(&iterator, &key, &child));
+    ck_assert_uint_eq(iterator.iterator.index, 0);
+    ck_assert_hbs_str_eq_cstr(key, "a");
+    ck_assert_int_eq(handlebars_value_get_intval(child), 1);
+    ck_assert(handlebars_map_iterator_next(&iterator, &key, &child));
+    ck_assert_uint_eq(iterator.iterator.index, 2);
+    ck_assert_hbs_str_eq_cstr(key, "c");
+    ck_assert_int_eq(handlebars_value_get_intval(child), 3);
+    ck_assert(!handlebars_map_iterator_next(&iterator, &key, &child));
+    ck_assert_ptr_null(key);
+    ck_assert_ptr_null(child);
+    map = handlebars_map_rehash(map, true);
+    ck_assert_ptr_ne(map, original);
+    handlebars_map_iterator_close(&iterator);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_map_delref(map);
+}
+END_TEST
+
+START_TEST(test_empty_map_iterator_api_is_closed)
+{
+    struct handlebars_map_iterator iterator = {0};
+    struct handlebars_map * map = handlebars_map_ctor(context, 0);
+    struct handlebars_string * key = (struct handlebars_string *) 1;
+    struct handlebars_value * value = (struct handlebars_value *) 1;
+
+    ck_assert(!handlebars_map_iterator_init(&iterator, map));
+    ck_assert(!handlebars_map_iterator_next(&iterator, &key, &value));
+    ck_assert_ptr_null(key);
+    ck_assert_ptr_null(value);
+    handlebars_map_iterator_close(&iterator);
+    handlebars_map_iterator_close(&iterator);
+
+    handlebars_map_delref(map);
+}
+END_TEST
+
+START_TEST(test_nested_map_iterators_keep_outer_lock)
+{
+    struct handlebars_map_iterator outer = {0};
+    struct handlebars_map_iterator inner = {0};
+    struct handlebars_map * map = make_full_map();
+    struct handlebars_map * original = map;
+    struct handlebars_string * key;
+    struct handlebars_value * value;
+
+    ck_assert(handlebars_map_iterator_init(&outer, map));
+    ck_assert(handlebars_map_iterator_next(&outer, &key, &value));
+    ck_assert(handlebars_map_iterator_init(&inner, map));
+    ck_assert(handlebars_map_iterator_next(&inner, &key, &value));
+    handlebars_map_iterator_close(&inner);
+
+    map = handlebars_map_rehash(map, true);
+    ck_assert_ptr_eq(map, original);
+    ck_assert(handlebars_map_iterator_next(&outer, &key, &value));
+    handlebars_map_iterator_close(&outer);
+
+    map = handlebars_map_rehash(map, true);
+    ck_assert_ptr_ne(map, original);
+    handlebars_map_delref(map);
+}
+END_TEST
+
+START_TEST(test_nested_map_iterators_close_out_of_order_keep_inner_lock)
+{
+    struct handlebars_map_iterator outer = {0};
+    struct handlebars_map_iterator inner = {0};
+    struct handlebars_map * map = make_full_map();
+
+    ck_assert(handlebars_map_iterator_init(&outer, map));
+    ck_assert(handlebars_map_iterator_init(&inner, map));
+    handlebars_map_iterator_close(&outer);
+
+    ck_assert_ptr_eq(handlebars_map_rehash(map, true), map);
+
+    handlebars_map_iterator_close(&inner);
+    handlebars_map_dtor(map);
+}
+END_TEST
+
+START_TEST(test_map_compaction_is_deferred_during_iteration)
+{
+    struct handlebars_map_iterator iterator = {0};
+    struct handlebars_map * map = handlebars_map_ctor(context, 3);
+    struct handlebars_string * key;
+    struct handlebars_value * child;
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_integer(value, 1);
+    map = handlebars_map_str_add(map, HBS_STRL("a"), value);
+    handlebars_value_integer(value, 2);
+    map = handlebars_map_str_add(map, HBS_STRL("b"), value);
+    handlebars_value_integer(value, 3);
+    map = handlebars_map_str_add(map, HBS_STRL("c"), value);
+    map = handlebars_map_str_remove(map, HBS_STRL("a"));
+
+    ck_assert(handlebars_map_iterator_init(&iterator, map));
+    ck_assert(handlebars_map_iterator_next(&iterator, &key, &child));
+    ck_assert_hbs_str_eq_cstr(key, "b");
+    ck_assert_int_eq(handlebars_value_get_intval(child), 2);
+
+    handlebars_map_sparse_array_compact(map);
+    ck_assert(handlebars_map_is_sparse(map));
+    ck_assert_hbs_str_eq_cstr(key, "b");
+    ck_assert_int_eq(handlebars_value_get_intval(child), 2);
+    ck_assert(handlebars_map_iterator_next(&iterator, &key, &child));
+    ck_assert_hbs_str_eq_cstr(key, "c");
+    ck_assert_int_eq(handlebars_value_get_intval(child), 3);
+    handlebars_map_iterator_close(&iterator);
+
+    handlebars_map_sparse_array_compact(map);
+    ck_assert(!handlebars_map_is_sparse(map));
+    HANDLEBARS_VALUE_UNDECL(value);
+    handlebars_map_delref(map);
+}
+END_TEST
+
 START_TEST(test_map)
 {
 #define STRSIZE 128
@@ -154,6 +372,32 @@ int map_sort_test_compare_r(const struct handlebars_map_kv_pair * kv_pair1, cons
     ck_assert_ptr_eq(arg, COMPARE_R_ARG);
     return handlebars_value_get_intval(kv_pair1->value) - handlebars_value_get_intval(kv_pair2->value);
 }
+
+START_TEST(test_map_sort_rejects_active_iterator)
+{
+    struct handlebars_map_iterator iterator = {0};
+    struct handlebars_map * map = make_full_map();
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+        ck_assert_ptr_null(context->e->iterator_cleanup);
+        clear_intentional_error();
+        map = handlebars_map_sort(map, map_sort_test_compare);
+        handlebars_map_delref(map);
+        return;
+    }
+
+    ck_assert(handlebars_map_iterator_init(&iterator, map));
+    map = handlebars_map_sort(map, map_sort_test_compare);
+    context->e->jmp = previous;
+    handlebars_map_iterator_close(&iterator);
+    handlebars_map_delref(map);
+    ck_abort_msg("Expected sorting during map iteration to throw");
+}
+END_TEST
 
 START_TEST(test_map_sort)
 {
@@ -841,6 +1085,15 @@ static Suite * suite(void)
 
     REGISTER_TEST_FIXTURE(s, test_map, "Map");
     tcase_set_timeout(tc_test_map, 30);
+    REGISTER_TEST_FIXTURE(s, test_map_foreach_cleans_up_after_return, "Map foreach cleans up after return");
+    REGISTER_TEST_FIXTURE(s, test_map_foreach_cleans_up_after_goto, "Map foreach cleans up after goto");
+    REGISTER_TEST_FIXTURE(s, test_map_foreach_cleans_up_after_longjmp, "Map foreach cleans up after longjmp");
+    REGISTER_TEST_FIXTURE(s, test_map_iterator_api_skips_sparse_entries, "Map iterator API skips sparse entries");
+    REGISTER_TEST_FIXTURE(s, test_empty_map_iterator_api_is_closed, "Empty map iterator API is closed");
+    REGISTER_TEST_FIXTURE(s, test_nested_map_iterators_keep_outer_lock, "Nested map iterators keep the outer lock");
+    REGISTER_TEST_FIXTURE(s, test_nested_map_iterators_close_out_of_order_keep_inner_lock, "Out-of-order nested iterator close keeps the inner lock");
+    REGISTER_TEST_FIXTURE(s, test_map_compaction_is_deferred_during_iteration, "Map compaction is deferred during iteration");
+    REGISTER_TEST_FIXTURE(s, test_map_sort_rejects_active_iterator, "Map sorting rejects an active iterator");
     REGISTER_TEST_FIXTURE(s, test_map_sort, "handlebars_map_sort");
     REGISTER_TEST_FIXTURE(s, test_map_copy_ctor, "Map copy constructor");
 #ifndef HANDLEBARS_NO_REFCOUNT

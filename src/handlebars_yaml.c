@@ -27,10 +27,11 @@
 #include "handlebars.h"
 #include "handlebars_private.h"
 #include "handlebars_memory.h"
+#include "handlebars_value_private.h"
+
 #include "handlebars_map.h"
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
-#include "handlebars_value_private.h"
 #include "handlebars_value.h"
 #include "handlebars_yaml.h"
 

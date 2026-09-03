@@ -3708,6 +3708,150 @@ START_TEST(test_map_iterator_mutation_uses_snapshot)
 }
 END_TEST
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_map_foreach_removal_preserves_value_owned_map)
+{
+    struct handlebars_map * map = handlebars_map_ctor(context, 3);
+    bool owner_still_points_to_map;
+    HANDLEBARS_VALUE_DECL(owner);
+    HANDLEBARS_VALUE_DECL(tmp);
+
+    for( long i = 0; i < 3; i++ ) {
+        char key[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(tmp, i + 1);
+        map = handlebars_map_str_update(map, key, 1, tmp);
+    }
+    handlebars_value_map(owner, map);
+    map = handlebars_value_get_map(owner);
+
+    handlebars_map_foreach(map, index, key, child) {
+        (void) index;
+        (void) child;
+        map = handlebars_map_remove(map, key);
+        break;
+    } handlebars_map_foreach_end(map);
+
+    owner_still_points_to_map = handlebars_value_get_map(owner) == map;
+    if( !owner_still_points_to_map ) {
+        /* Repair the pre-fix ownership mismatch before fixture cleanup. */
+        owner->v.map = map;
+    }
+
+    ck_assert_msg(
+        owner_still_points_to_map,
+        "foreach removal detached the map from its owning value"
+    );
+    ck_assert_uint_eq(handlebars_map_count(map), 2);
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(owner);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_map_foreach_removal_preserves_shared_value_owned_map)
+{
+    struct handlebars_map * map = handlebars_map_ctor(context, 3);
+    bool owners_still_point_to_map;
+    HANDLEBARS_VALUE_DECL(first_owner);
+    HANDLEBARS_VALUE_DECL(second_owner);
+    HANDLEBARS_VALUE_DECL(tmp);
+
+    for( long i = 0; i < 3; i++ ) {
+        char key[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(tmp, i + 1);
+        map = handlebars_map_str_update(map, key, 1, tmp);
+    }
+    handlebars_value_map(first_owner, map);
+    handlebars_value_map(second_owner, map);
+    map = handlebars_value_get_map(first_owner);
+
+    handlebars_map_foreach(map, entry_index, key, child) {
+        (void) entry_index;
+        (void) child;
+        map = handlebars_map_remove(map, key);
+        break;
+    } handlebars_map_foreach_end(map);
+
+    owners_still_point_to_map = handlebars_value_get_map(first_owner) == map
+        && handlebars_value_get_map(second_owner) == map;
+    if( !owners_still_point_to_map ) {
+        /* Repair the pre-fix ownership mismatch before fixture cleanup. */
+        first_owner->v.map = map;
+    }
+
+    ck_assert_msg(
+        owners_still_point_to_map,
+        "foreach removal detached the map from its shared owning values"
+    );
+    ck_assert_uint_eq(handlebars_map_count(map), 2);
+
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(second_owner);
+    HANDLEBARS_VALUE_UNDECL(first_owner);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
+
+START_TEST(test_mixed_map_iterators_reject_mutation)
+{
+    struct handlebars_map_iterator map_iterator = {0};
+    struct handlebars_map * map = handlebars_map_ctor(context, 3);
+    struct handlebars_string * mutation_key;
+    struct handlebars_string * map_key;
+    struct handlebars_value * map_child;
+    struct handlebars_value * found;
+    HANDLEBARS_VALUE_DECL(value);
+    HANDLEBARS_VALUE_DECL(tmp);
+    HANDLEBARS_VALUE_DECL(result);
+    HANDLEBARS_VALUE_ITERATOR_DECL(value_iterator);
+
+    for( long i = 0; i < 3; i++ ) {
+        char key[2] = {(char) ('a' + i), '\0'};
+        handlebars_value_integer(tmp, i + 1);
+        map = handlebars_map_str_update(map, key, 1, tmp);
+    }
+    handlebars_value_map(value, map);
+
+    ck_assert(HANDLEBARS_VALUE_ITERATOR_INIT(value_iterator, value));
+    ck_assert_hbs_str_eq_cstr(value_iterator->key, "a");
+    ck_assert(handlebars_map_iterator_init(&map_iterator, value->v.map));
+
+    handlebars_value_integer(tmp, 99);
+    mutation_key = handlebars_string_ctor(context, HBS_STRL("b"));
+    handlebars_string_addref(mutation_key);
+    ck_assert_int_eq(
+        handlebars_value_map_update_try(value, mutation_key, tmp),
+        HANDLEBARS_ERROR
+    );
+    handlebars_string_delref(mutation_key);
+    ck_assert_ptr_nonnull(strstr(
+        handlebars_error_msg(context),
+        "direct and value iterators are both active"
+    ));
+
+    found = handlebars_value_map_str_find(value, HBS_STRL("b"), result);
+    ck_assert_ptr_nonnull(found);
+    ck_assert_int_eq(handlebars_value_get_intval(found), 2);
+
+    ck_assert(handlebars_value_iterator_next(value_iterator));
+    ck_assert_hbs_str_eq_cstr(value_iterator->key, "b");
+    ck_assert_int_eq(handlebars_value_get_intval(value_iterator->cur), 2);
+
+    handlebars_value_iterator_close(value_iterator);
+    ck_assert(handlebars_map_iterator_next(&map_iterator, &map_key, &map_child));
+    ck_assert_hbs_str_eq_cstr(map_key, "a");
+    ck_assert_int_eq(handlebars_value_get_intval(map_child), 1);
+    handlebars_map_iterator_close(&map_iterator);
+    clear_intentional_error();
+    HANDLEBARS_VALUE_UNDECL(result);
+    HANDLEBARS_VALUE_UNDECL(tmp);
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_map_iterator_longjmp_releases_snapshot)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -4376,6 +4520,11 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_iterator_retains_map, "Map iterator retains its backing map");
     REGISTER_TEST_FIXTURE(s, test_map_iterator_break_releases_snapshot, "Breaking map iteration releases its snapshot");
     REGISTER_TEST_FIXTURE(s, test_map_iterator_mutation_uses_snapshot, "Map mutation preserves the active iterator snapshot");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_map_foreach_removal_preserves_value_owned_map, "Map foreach removal preserves its value-owned map");
+    REGISTER_TEST_FIXTURE(s, test_map_foreach_removal_preserves_shared_value_owned_map, "Map foreach removal preserves its shared value-owned map");
+#endif
+    REGISTER_TEST_FIXTURE(s, test_mixed_map_iterators_reject_mutation, "Mixed map iterators reject mutation");
     REGISTER_TEST_FIXTURE(s, test_map_iterator_longjmp_releases_snapshot, "Map iterator releases its snapshot during error unwind");
     REGISTER_TEST_FIXTURE(s, test_array_iterator_longjmp_releases_snapshot, "Array iterator releases its snapshot during error unwind");
     REGISTER_TEST_FIXTURE(s, test_nested_error_boundary_preserves_outer_iterator, "Nested error boundaries preserve outer iterators");

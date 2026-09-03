@@ -22,6 +22,8 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   lookup.
 - Native array/map mutations and typed-pointer retrieval now have checked entry
   points for callers that need recoverable type and operation failures.
+- Maps now have a closeable iterator API that keeps their backing vector stable
+  and participates in library error unwinding.
 
 ### Changed
 - Documented the talloc and reference-count lifetime model, including uniform
@@ -32,6 +34,11 @@ Updates should follow the [Keep a CHANGELOG](http://keepachangelog.com/) princip
   with the mmap backend's existing reset behavior while hits remain active.
 - Value iterators now retain their backing storage, support nested map
   iteration, and are closed when an error unwinds through the library.
+- The legacy map foreach macro now uses the closeable map iterator, so library
+  error unwinds and, on supported compilers, early lexical exits no longer
+  leave the map locked against rehashing. Its existing in-place mutation
+  behavior is preserved for shared maps; mutation is rejected only when a
+  value-iterator snapshot of the same map is simultaneously active.
 - Value iterators must now be declared with
   `HANDLEBARS_VALUE_ITERATOR_DECL` and initialized with
   `HANDLEBARS_VALUE_ITERATOR_INIT`; the unsafe public initializer that assumed

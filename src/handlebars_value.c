@@ -1345,6 +1345,47 @@ static bool handlebars_value_iterator_next_map(struct handlebars_value_iterator 
     return false;
 }
 
+static void handlebars_map_iterator_close_entries(
+    struct handlebars_value_iterator * it
+)
+{
+    struct handlebars_map_iterator * iterator =
+        (struct handlebars_map_iterator *) it;
+
+    if( it->usr != NULL ) {
+        handlebars_map_iteration_release(
+            (struct handlebars_map *) it->usr,
+            iterator->retains_map
+        );
+        iterator->retains_map = false;
+        it->usr = NULL;
+    }
+    it->key = NULL;
+    it->value = NULL;
+}
+
+static bool handlebars_map_iterator_next_entry(
+    struct handlebars_value_iterator * it
+)
+{
+    struct handlebars_map * map = (struct handlebars_map *) it->usr;
+    size_t count;
+
+    assert(map != NULL);
+
+    count = handlebars_map_sparse_array_count(map);
+    for( size_t position = it->position; position < count; position++ ) {
+        handlebars_map_get_kv_at_index(map, position, &it->key, &it->value);
+        it->position = position + 1;
+        if( it->key != NULL && it->value != NULL ) {
+            it->index = position;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static void handlebars_value_iterator_register(
     struct handlebars_value_iterator * it,
     struct handlebars_context * context
@@ -1455,6 +1496,60 @@ bool handlebars_value_iterator_init_internal(
     }
 
     return false;
+}
+
+bool handlebars_map_iterator_init(
+    struct handlebars_map_iterator * iterator,
+    struct handlebars_map * map
+)
+{
+    struct handlebars_value_iterator * it = &iterator->iterator;
+
+    memset(iterator, 0, sizeof(*iterator));
+    it->next = &handlebars_value_iterator_next_void;
+    if( handlebars_map_count(map) == 0 ) {
+        return false;
+    }
+
+    iterator->retains_map = handlebars_map_iteration_acquire(map);
+    it->usr = map;
+    it->next = &handlebars_map_iterator_next_entry;
+    it->close = &handlebars_map_iterator_close_entries;
+    handlebars_value_iterator_register(it, handlebars_map_get_context(map));
+    return true;
+}
+
+bool handlebars_map_iterator_next(
+    struct handlebars_map_iterator * iterator,
+    struct handlebars_string ** key,
+    struct handlebars_value ** value
+)
+{
+    bool result = handlebars_value_iterator_next(&iterator->iterator);
+
+    if( !result ) {
+        *key = NULL;
+        *value = NULL;
+        return false;
+    }
+
+    *key = iterator->iterator.key;
+    *value = iterator->iterator.value;
+    return true;
+}
+
+void handlebars_map_iterator_close(struct handlebars_map_iterator * iterator)
+{
+    handlebars_value_iterator_close(&iterator->iterator);
+}
+
+void handlebars_map_iterator_cleanup(
+    struct handlebars_map_iterator * const * iterator
+)
+{
+    if( iterator != NULL && *iterator != NULL ) {
+        handlebars_map_iterator_close(*iterator);
+    }
 }
 
 static bool handlebars_value_iterator_init_ex(

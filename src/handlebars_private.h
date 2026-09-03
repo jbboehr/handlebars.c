@@ -33,6 +33,15 @@ HBS_LOCAL struct handlebars_context * handlebars_map_get_context(
     struct handlebars_map * map
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+HBS_LOCAL bool handlebars_map_iteration_acquire(
+    struct handlebars_map * map
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+HBS_LOCAL void handlebars_map_iteration_release(
+    struct handlebars_map * map,
+    bool retained
+) HBS_ATTR_NONNULL_ALL;
+
 HBS_LOCAL struct handlebars_context * handlebars_stack_get_context(
     struct handlebars_stack * stack
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;

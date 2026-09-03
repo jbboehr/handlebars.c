@@ -32,10 +32,25 @@
 #include <stdio.h>
 
 #include "handlebars.h"
+#include "handlebars_map.h"
 #include "handlebars_ptr.h"
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
+
+static size_t count_map_entries(struct handlebars_map * _hbs_map_iterator)
+{
+    size_t count = 0;
+
+    handlebars_map_foreach(_hbs_map_iterator, entry_index, key, value) {
+        (void) entry_index;
+        (void) key;
+        (void) value;
+        count++;
+    } handlebars_map_foreach_end(_hbs_map_iterator);
+
+    return count;
+}
 
 int main(void)
 {
@@ -43,12 +58,16 @@ int main(void)
     const struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("api"));
     const char * bytes = hbs_str_val(string);
     struct handlebars_ptr * ptr;
+    struct handlebars_map * map;
+    struct handlebars_string * map_key = NULL;
+    struct handlebars_value * map_value = NULL;
     void * pointer_result = NULL;
     int payload = 7;
     int result = 0;
     HANDLEBARS_VALUE_DECL(value);
     HANDLEBARS_VALUE_DECL(child);
     HANDLEBARS_VALUE_ITERATOR_DECL(iterator);
+    HANDLEBARS_MAP_ITERATOR_DECL(map_iterator);
 
     if( hbs_str_len(string) != 3 || bytes[0] != 'a' ) {
         result = 3;
@@ -78,6 +97,20 @@ int main(void)
     }
 
     handlebars_value_iterator_close(iterator);
+
+    map = handlebars_map_ctor(context, 1);
+    map = handlebars_map_str_add(map, HBS_STRL("answer"), child);
+    if( !handlebars_map_iterator_init(map_iterator, map) ||
+        !handlebars_map_iterator_next(map_iterator, &map_key, &map_value) ||
+        handlebars_value_get_intval(map_value) != 42 ) {
+        result = 7;
+    }
+    handlebars_map_iterator_close(map_iterator);
+    if( count_map_entries(map) != 1 ) {
+        result = 8;
+    }
+    handlebars_map_delref(map);
+
     HANDLEBARS_VALUE_UNDECL(child);
     HANDLEBARS_VALUE_UNDECL(value);
     handlebars_context_dtor(context);

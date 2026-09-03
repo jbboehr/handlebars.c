@@ -16,6 +16,7 @@
  */
 
 #include "handlebars.h"
+#include "handlebars_value.h"
 
 #ifndef HANDLEBARS_MAP_H
 #define HANDLEBARS_MAP_H
@@ -24,12 +25,30 @@ HBS_EXTERN_C_START
 
 struct handlebars_context;
 struct handlebars_map;
+struct handlebars_map_iterator;
 struct handlebars_string;
 struct handlebars_value;
 
 struct handlebars_map_kv_pair {
     struct handlebars_string * key;
     struct handlebars_value * value;
+};
+
+/**
+ * @brief Closeable iterator over a map's stable backing vector.
+ *
+ * Declare with #HANDLEBARS_MAP_ITERATOR_DECL and initialize with
+ * #handlebars_map_iterator_init. Values returned by
+ * #handlebars_map_iterator_next are borrowed from the map and remain valid
+ * until the iterator is advanced, closed, or the caller mutates that entry.
+ * See #handlebars_map_iterator_init for the map-lifetime requirements.
+ */
+struct handlebars_map_iterator {
+    /** Internal iterator state. Callers must not modify this member. */
+    struct handlebars_value_iterator iterator;
+
+    /** Internal conditional map-reference ownership. */
+    bool retains_map;
 };
 
 typedef int (*handlebars_map_kv_compare_func)(
@@ -266,6 +285,14 @@ struct handlebars_map * handlebars_map_rehash(
     bool force
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
+/**
+ * @brief Compact the map's sparse backing vector when no iterator is active.
+ *
+ * If any map or value iterator is active, compaction is deferred and this
+ * function leaves the map unchanged.
+ *
+ * @param[in] map
+ */
 void handlebars_map_sparse_array_compact(
     struct handlebars_map * map
 ) HBS_ATTR_NONNULL_ALL;
@@ -288,15 +315,107 @@ bool handlebars_map_set_is_in_iteration(
     bool is_in_iteration
 ) HBS_ATTR_NONNULL_ALL;
 
+// {{{ Iteration
+
+/**
+ * @brief Initialize a zero-initialized map iterator.
+ *
+ * The iterator keeps the backing vector it traverses stable. It must be
+ * advanced to completion or closed with #handlebars_map_iterator_close before
+ * it is reinitialized. In refcounted builds it retains a map that already has
+ * an owner; raw zero-refcount maps, and all maps in no-refcount builds, must
+ * otherwise outlive the iterator.
+ *
+ * @param[in,out] iterator A zero-initialized iterator
+ * @param[in] map The map to iterate
+ * @return true if the map contains an entry, otherwise false
+ *
+ * @code{.c}
+ * HANDLEBARS_MAP_ITERATOR_DECL(iterator);
+ * struct handlebars_string *key;
+ * struct handlebars_value *value;
+ *
+ * if (handlebars_map_iterator_init(iterator, map)) {
+ *     while (handlebars_map_iterator_next(iterator, &key, &value)) {
+ *         // use key and value
+ *     }
+ * }
+ * handlebars_map_iterator_close(iterator);
+ * @endcode
+ */
+bool handlebars_map_iterator_init(
+    struct handlebars_map_iterator * iterator,
+    struct handlebars_map * map
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Yield the next map entry.
+ *
+ * Both output pointers are cleared when the iterator is exhausted. Advancing
+ * an iterator to exhaustion closes it automatically.
+ *
+ * @param[in,out] iterator An initialized iterator
+ * @param[out] key The borrowed key
+ * @param[out] value The borrowed value
+ * @return true if an entry was yielded, otherwise false
+ */
+bool handlebars_map_iterator_next(
+    struct handlebars_map_iterator * iterator,
+    struct handlebars_string ** key,
+    struct handlebars_value ** value
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Release iterator-owned state.
+ *
+ * Safe to call more than once on an iterator that was zero initialized or
+ * initialized with #handlebars_map_iterator_init.
+ *
+ * @param[in,out] iterator The iterator to close
+ */
+void handlebars_map_iterator_close(
+    struct handlebars_map_iterator * iterator
+) HBS_ATTR_NONNULL_ALL;
+
+/** @internal Scope-cleanup backend for #HANDLEBARS_MAP_ITERATOR_DECL. */
+void handlebars_map_iterator_cleanup(
+    struct handlebars_map_iterator * const * iterator
+);
+
+#if defined(HBS_HAVE_ATTR_CLEANUP)
+#define HANDLEBARS_MAP_ITERATOR_DECL_CLEANUP HBS_ATTR_CLEANUP(handlebars_map_iterator_cleanup)
+#else
+#define HANDLEBARS_MAP_ITERATOR_DECL_CLEANUP
+#endif
+
+/**
+ * @brief Declare zero-initialized automatic storage for a map iterator.
+ *
+ * Supported compilers close the iterator automatically on ordinary lexical
+ * exits. Library errors unwinding through the map's context also close active
+ * iterators. Portable callers should still close manually when leaving an
+ * iteration early.
+ *
+ * @param name A bare C identifier
+ */
+#define HANDLEBARS_MAP_ITERATOR_DECL(name) \
+    struct handlebars_map_iterator mem_ ## name; \
+    memset(&mem_ ## name, 0, sizeof(mem_ ## name)); \
+    struct handlebars_map_iterator * const name \
+        HANDLEBARS_MAP_ITERATOR_DECL_CLEANUP = &mem_ ## name
+
+// }}} Iteration
+
 /**
  * @brief Sort the map's backing vector using a specified compare function. Will rehash
  *        if the backing vector is sparse. In the future, may reallocate the map itself
  *        if the backing vector is sparse. This function WILL ABORT if qsort_r was not
  *        available at compile-time. Calling any map functions on the map being sorted
- *        IS PROBABLY going to EXPLODE.
+ *        IS PROBABLY going to EXPLODE. Sorting while any iterator is active raises a
+ *        #HANDLEBARS_ERROR instead of invalidating borrowed iterator entries.
  * @param[in] map
  * @param[in] compare
- * @return true if the backing vector is sparse.
+ * @return The sorted map, which may be a replacement allocation.
  */
 struct handlebars_map * handlebars_map_sort(
     struct handlebars_map * map,
@@ -316,19 +435,32 @@ struct handlebars_map * handlebars_map_sort_r(
     const void * arg
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
-#define handlebars_map_foreach(map, index, key, value) \
+/**
+ * @brief Iterate over map entries in sparse-array order.
+ *
+ * Normal completion, `continue`, and `break` always close the hidden iterator.
+ * On compilers with cleanup attributes, `return` and outward `goto` do too;
+ * library errors unwinding through the map's context are also handled. Use the
+ * explicit map iterator API when portable early lexical exits are required.
+ * Removal and value replacement through the iterated map happen in place. A
+ * mutation is rejected if a value iterator snapshot of the same map is also
+ * active, because the direct and snapshot iteration contracts conflict.
+ */
+#define handlebars_map_foreach(map, index_var, key, value) \
     do { \
-        size_t index = 0; \
+        struct handlebars_map_iterator old_is_in_iteration \
+            HBS_ATTR_CLEANUP(handlebars_map_iterator_close); \
+        memset(&old_is_in_iteration, 0, sizeof(old_is_in_iteration)); \
         struct handlebars_string * key; \
         struct handlebars_value * value; \
-        bool old_is_in_iteration = handlebars_map_set_is_in_iteration(map, true); \
-        for (; index < handlebars_map_sparse_array_count(map); index++) { \
-            handlebars_map_get_kv_at_index(map, index, &key, &value); \
-            if (key == NULL || value == NULL) continue;
+        if( handlebars_map_iterator_init(&old_is_in_iteration, map) ) { \
+            while( handlebars_map_iterator_next(&old_is_in_iteration, &key, &value) ) { \
+                size_t index_var HBS_ATTR_UNUSED = old_is_in_iteration.iterator.index;
 
 #define handlebars_map_foreach_end(map) \
+            } \
         } \
-        handlebars_map_set_is_in_iteration(map, old_is_in_iteration); \
+        handlebars_map_iterator_close(&old_is_in_iteration); \
     } while(0)
 
 HBS_EXTERN_C_END
