@@ -35,29 +35,28 @@ struct handlebars_stack_save_buf {
     size_t count;
 };
 
-#ifdef HANDLEBARS_HAVE_STATEMENT_EXPRESSIONS
-#define handlebars_stack_alloca(ctx, capacity) ({ \
-        size_t HANDLEBARS_STACK_ALLOC_CAPACITY = (capacity); \
-        size_t HANDLEBARS_STACK_ALLOC_SIZE = handlebars_stack_size(HANDLEBARS_STACK_ALLOC_CAPACITY); \
-        void * HANDLEBARS_STACK_ALLOC_PTR = alloca(HANDLEBARS_STACK_ALLOC_SIZE ? HANDLEBARS_STACK_ALLOC_SIZE : 1); \
-        handlebars_stack_init(ctx, HANDLEBARS_STACK_ALLOC_PTR, HANDLEBARS_STACK_ALLOC_CAPACITY); \
-        HANDLEBARS_STACK_ALLOC_PTR; \
-    })
-#else
-// @TODO can we do better than this?
-extern void *HANDLEBARS_STACK_ALLOC_PTR;
-extern size_t HANDLEBARS_STACK_ALLOC_CAPACITY;
-#define handlebars_stack_alloca(ctx, capacity) ( \
-        HANDLEBARS_STACK_ALLOC_CAPACITY = (capacity), \
-        HANDLEBARS_STACK_ALLOC_PTR = alloca( \
-            handlebars_stack_size(HANDLEBARS_STACK_ALLOC_CAPACITY) \
-                ? handlebars_stack_size(HANDLEBARS_STACK_ALLOC_CAPACITY) \
-                : 1 \
-        ), \
-        handlebars_stack_init(ctx, HANDLEBARS_STACK_ALLOC_PTR, HANDLEBARS_STACK_ALLOC_CAPACITY), \
-        HANDLEBARS_STACK_ALLOC_PTR \
-    )
-#endif
+/**
+ * @def handlebars_stack_alloca
+ * @brief Allocate and initialize a stack in the calling function's frame.
+ * @param[out] stack Destination for the initialized stack pointer
+ * @param[in] ctx The handlebars context
+ * @param[in] capacity The desired number of elements; evaluated once
+ */
+#define handlebars_stack_alloca(stack, ctx, capacity) \
+    do { \
+        size_t hbs_stack_alloca_capacity_ = (capacity); \
+        size_t hbs_stack_alloca_size_ = \
+            handlebars_stack_size(hbs_stack_alloca_capacity_); \
+        struct handlebars_stack * hbs_stack_alloca_ptr_ = \
+            (struct handlebars_stack *) alloca( \
+                hbs_stack_alloca_size_ ? hbs_stack_alloca_size_ : 1 \
+            ); \
+        (stack) = handlebars_stack_init( \
+            (ctx), \
+            hbs_stack_alloca_ptr_, \
+            hbs_stack_alloca_capacity_ \
+        ); \
+    } while (0)
 
 /**
  * @brief Calculate the size of a stack for a given #capacity

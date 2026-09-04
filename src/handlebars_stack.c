@@ -60,9 +60,6 @@ struct handlebars_stack {
     struct handlebars_value v[];
 };
 
-void * HANDLEBARS_STACK_ALLOC_PTR = NULL;
-size_t HANDLEBARS_STACK_ALLOC_CAPACITY = 0;
-
 size_t handlebars_stack_size(size_t capacity) {
     const size_t max_values = (SIZE_MAX - sizeof(struct handlebars_stack)) / sizeof(struct handlebars_value);
 

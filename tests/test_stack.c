@@ -19,7 +19,12 @@
 #include "config.h"
 #endif
 
+#define HANDLEBARS_NO_STATEMENT_EXPRESSIONS 1
+
 #include <check.h>
+#ifdef HANDLEBARS_HAVE_PTHREAD
+#include <pthread.h>
+#endif
 #include <setjmp.h>
 #include <stdio.h>
 #include <talloc.h>
@@ -92,14 +97,147 @@ START_TEST(test_stack_ctor_rejects_overflow)
 }
 END_TEST
 
+#ifdef HANDLEBARS_HAVE_PTHREAD
+struct stack_alloca_thread_test_state {
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    int phase;
+};
+
+struct stack_alloca_thread_test_arg {
+    struct stack_alloca_thread_test_state * state;
+    int thread_number;
+    size_t capacity;
+    struct handlebars_stack * initialized;
+    struct handlebars_stack * result;
+    bool result_matches_initialized;
+};
+
+static struct handlebars_stack * stack_alloca_thread_test_init(
+    struct handlebars_context * ctx,
+    struct handlebars_stack * stack,
+    size_t capacity
+) {
+    struct stack_alloca_thread_test_arg * arg = (struct stack_alloca_thread_test_arg *) ctx;
+    struct stack_alloca_thread_test_state * state = arg->state;
+
+    arg->initialized = stack;
+    ck_assert_uint_eq(capacity, arg->capacity);
+    ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+    state->phase = arg->thread_number;
+    ck_assert_int_eq(pthread_cond_broadcast(&state->cond), 0);
+    while( state->phase < arg->thread_number + 1 ) {
+        ck_assert_int_eq(pthread_cond_wait(&state->cond, &state->lock), 0);
+    }
+    ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+
+    return stack;
+}
+
+#define handlebars_stack_init stack_alloca_thread_test_init
+static void * stack_alloca_thread_test_run(void * ptr)
+{
+    struct stack_alloca_thread_test_arg * arg = ptr;
+    struct stack_alloca_thread_test_state * state = arg->state;
+
+    if( arg->thread_number == 2 ) {
+        ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+        while( state->phase < 1 ) {
+            ck_assert_int_eq(pthread_cond_wait(&state->cond, &state->lock), 0);
+        }
+        ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+    }
+
+    handlebars_stack_alloca(
+        arg->result,
+        (struct handlebars_context *) arg,
+        arg->capacity
+    );
+    arg->result_matches_initialized = arg->result == arg->initialized;
+
+    if( arg->thread_number == 1 ) {
+        ck_assert_int_eq(pthread_mutex_lock(&state->lock), 0);
+        state->phase = 3;
+        ck_assert_int_eq(pthread_cond_broadcast(&state->cond), 0);
+        ck_assert_int_eq(pthread_mutex_unlock(&state->lock), 0);
+    }
+
+    return NULL;
+}
+#undef handlebars_stack_init
+
+START_TEST(test_stack_alloca_keeps_concurrent_results_local)
+{
+    struct stack_alloca_thread_test_state state;
+    struct stack_alloca_thread_test_arg first = {&state, 1, 1, NULL, NULL, false};
+    struct stack_alloca_thread_test_arg second = {&state, 2, 2, NULL, NULL, false};
+    pthread_t first_thread;
+    pthread_t second_thread;
+
+    state.phase = 0;
+    ck_assert_int_eq(pthread_mutex_init(&state.lock, NULL), 0);
+    ck_assert_int_eq(pthread_cond_init(&state.cond, NULL), 0);
+    ck_assert_int_eq(pthread_create(&first_thread, NULL, stack_alloca_thread_test_run, &first), 0);
+    ck_assert_int_eq(pthread_create(&second_thread, NULL, stack_alloca_thread_test_run, &second), 0);
+    ck_assert_int_eq(pthread_join(first_thread, NULL), 0);
+    ck_assert_int_eq(pthread_join(second_thread, NULL), 0);
+
+    ck_assert(first.result_matches_initialized);
+    ck_assert(second.result_matches_initialized);
+
+    ck_assert_int_eq(pthread_cond_destroy(&state.cond), 0);
+    ck_assert_int_eq(pthread_mutex_destroy(&state.lock), 0);
+}
+END_TEST
+#endif
+
 START_TEST(test_stack_alloca_evaluates_capacity_once)
 {
     size_t capacity = 1;
-    struct handlebars_stack * stack = handlebars_stack_alloca(context, capacity++);
+    struct handlebars_stack * stack;
+
+    handlebars_stack_alloca(stack, context, capacity++);
 
     ck_assert_uint_eq(capacity, 2);
     ck_assert_uint_eq(handlebars_stack_count(stack), 0);
     handlebars_stack_dtor(stack);
+}
+END_TEST
+
+START_TEST(test_stack_alloca_evaluates_destination_and_context_once)
+{
+    struct handlebars_stack * destinations[2] = {NULL, NULL};
+    size_t destination_index = 0;
+    size_t context_evaluations = 0;
+
+    handlebars_stack_alloca(
+        destinations[destination_index++],
+        (context_evaluations++, context),
+        0
+    );
+
+    ck_assert_uint_eq(destination_index, 1);
+    ck_assert_uint_eq(context_evaluations, 1);
+    ck_assert_ptr_nonnull(destinations[0]);
+    ck_assert_uint_eq(handlebars_stack_count(destinations[0]), 0);
+    handlebars_stack_dtor(destinations[0]);
+}
+END_TEST
+
+START_TEST(test_stack_alloca_does_not_capture_caller_identifiers)
+{
+    size_t handlebars_stack_alloca_capacity_ = 1;
+    struct handlebars_stack * handlebars_stack_alloca_ptr_ = NULL;
+
+    handlebars_stack_alloca(
+        handlebars_stack_alloca_ptr_,
+        context,
+        handlebars_stack_alloca_capacity_
+    );
+
+    ck_assert_ptr_nonnull(handlebars_stack_alloca_ptr_);
+    ck_assert_uint_eq(handlebars_stack_count(handlebars_stack_alloca_ptr_), 0);
+    handlebars_stack_dtor(handlebars_stack_alloca_ptr_);
 }
 END_TEST
 
@@ -261,7 +399,12 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_stack_copy_ctor, "Stack copy constructor");
     REGISTER_TEST(s, test_stack_size_rejects_overflow, "Stack size rejects overflowing capacities");
     REGISTER_TEST_FIXTURE(s, test_stack_ctor_rejects_overflow, "Stack constructor rejects overflowing capacities");
+#ifdef HANDLEBARS_HAVE_PTHREAD
+    REGISTER_TEST_FIXTURE(s, test_stack_alloca_keeps_concurrent_results_local, "Stack alloca keeps concurrent results local");
+#endif
     REGISTER_TEST_FIXTURE(s, test_stack_alloca_evaluates_capacity_once, "Stack alloca evaluates capacity once");
+    REGISTER_TEST_FIXTURE(s, test_stack_alloca_evaluates_destination_and_context_once, "Stack alloca evaluates destination and context once");
+    REGISTER_TEST_FIXTURE(s, test_stack_alloca_does_not_capture_caller_identifiers, "Stack alloca does not capture caller identifiers");
     REGISTER_TEST_FIXTURE(s, test_stack_push_preserves_aliased_value_during_resize, "Stack push preserves aliased values during resize");
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_stack_set_error_preserves_shared_stack, "Stack update errors preserve shared ownership");

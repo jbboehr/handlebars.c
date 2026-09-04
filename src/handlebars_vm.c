@@ -3049,12 +3049,12 @@ struct handlebars_string * handlebars_vm_execute_ex(
     // Allocate alloca-backed state before setjmp so it remains valid while
     // cleaning up after a longjmp from a helper or closure.
     if (vm->stack == NULL) {
-        vm->stack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
-        vm->contextStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
-        vm->hashStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
-        vm->blockParamStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
-        vm->partialBlockStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
-        vm->partialScopeStack = handlebars_stack_alloca(HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+        handlebars_stack_alloca(vm->stack, HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+        handlebars_stack_alloca(vm->contextStack, HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+        handlebars_stack_alloca(vm->hashStack, HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+        handlebars_stack_alloca(vm->blockParamStack, HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+        handlebars_stack_alloca(vm->partialBlockStack, HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
+        handlebars_stack_alloca(vm->partialScopeStack, HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
         setup_stacks = true;
     }
 

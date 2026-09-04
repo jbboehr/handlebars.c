@@ -3229,9 +3229,11 @@ START_TEST(test_value_array_push_try_stack_overflow_preserves_outer_boundary)
     HANDLEBARS_VALUE_DECL(target);
     HANDLEBARS_VALUE_DECL(child);
     HANDLEBARS_VALUE_ITERATOR_DECL(iter);
-    struct handlebars_stack * stack = handlebars_stack_alloca(context, 1);
+    struct handlebars_stack * stack;
     jmp_buf * volatile previous = context->e->jmp;
     jmp_buf outer;
+
+    handlebars_stack_alloca(stack, context, 1);
 
     handlebars_value_integer(child, 1);
     handlebars_value_array(iterable, handlebars_stack_ctor(context, 2));
