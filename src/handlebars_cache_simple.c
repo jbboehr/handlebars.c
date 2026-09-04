@@ -99,6 +99,13 @@ static int cache_gc_for(struct handlebars_cache * cache, size_t reserve_size, si
     struct handlebars_cache_stat * stat = &intern->stat;
     int removed = 0;
     time_t now;
+
+    /* A lookup result borrows its module from this map until release. Keep the
+     * whole map stable while any result is active. */
+    if( stat->refcount > 0 ) {
+        return 0;
+    }
+
     time(&now);
 
     intern->map = map = handlebars_map_sort(map, cache_compare);
@@ -166,6 +173,7 @@ static struct handlebars_module * cache_find(struct handlebars_cache * cache, st
         assert(talloc_get_type_abort(module, struct handlebars_module) != NULL);
         time(&module->ts);
         intern->stat.hits++;
+        intern->stat.refcount++;
     } else {
         intern->stat.misses++;
     }
@@ -193,7 +201,7 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
 
     /* Do not evict synchronously while admitting an entry. An existing cache
      * entry may be the module executing the nested compilation that reached
-     * this function, and the simple cache does not pin active modules. */
+     * this function. Active lookups protect the cache only until release. */
     if( exceeds_limits(cache, module->size, 1) ) {
         return;
     }
@@ -232,7 +240,10 @@ static void cache_add(struct handlebars_cache * cache, struct handlebars_string 
 
 static void cache_release(struct handlebars_cache * cache, struct handlebars_string * tmpl, struct handlebars_module * module)
 {
-    ;
+    struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
+
+    assert(intern->stat.refcount > 0);
+    intern->stat.refcount--;
 }
 
 static struct handlebars_cache_stat cache_stat(struct handlebars_cache * cache)
@@ -248,6 +259,10 @@ static void cache_reset(struct handlebars_cache * cache)
 {
     struct handlebars_cache_simple * intern = (struct handlebars_cache_simple *) cache->internal;
     struct handlebars_map * old_map = intern->map;
+
+    if( intern->stat.refcount > 0 ) {
+        return;
+    }
 
     /* Allocate before changing the cache so a failed reset leaves the existing
      * entries and accounting intact. */

@@ -185,7 +185,8 @@ enum handlebars_error_type handlebars_cache_add_try(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
 
 /**
- * @brief Garbage collect the cache
+ * @brief Garbage collect the cache. A backend may retain otherwise eligible
+ *        entries while lookup results remain active.
  * @param[in] cache The cache
  * @return The number of entries removed
  */
@@ -207,8 +208,8 @@ enum handlebars_error_type handlebars_cache_gc_try(
 /**
  * @brief Reset the cache.
  *
- * The mmap backend may leave the cache unchanged while lookup results remain
- * active. This condition is not reported to the caller.
+ * A backend may leave the cache unchanged while lookup results remain active.
+ * This condition is not reported to the caller.
  * @param[in] cache The cache
  * @return void
  */
@@ -218,8 +219,8 @@ void handlebars_cache_reset(
 
 /**
  * @brief Reset the cache without allowing library errors to longjmp into the
- *        caller. The mmap backend may return #HANDLEBARS_SUCCESS without
- *        clearing the cache while lookup results remain active.
+ *        caller. A backend may return #HANDLEBARS_SUCCESS without clearing the
+ *        cache while lookup results remain active.
  * @return #HANDLEBARS_SUCCESS when no error was raised, otherwise the error
  *         code
  */

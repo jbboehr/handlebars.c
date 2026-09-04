@@ -747,6 +747,8 @@ START_TEST(test_simple_cache_try_api)
     ck_assert_ptr_eq(found, module);
     ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
     ck_assert_ptr_null(handlebars_error_msg(context));
+    error = handlebars_cache_release_try(cache, key, found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
 
     cache->max_age = 0;
     error = handlebars_cache_gc_try(cache, &removed);
@@ -1104,6 +1106,7 @@ static void lmdb_put_misaligned_module(
 START_TEST(test_cache_gc_entries)
 {
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_module * found;
     size_t expected_size = sizeof(struct handlebars_module);
 
     struct cache_test_ctx * ctx0 = make_cache_test_ctx(0, cache);
@@ -1124,7 +1127,9 @@ START_TEST(test_cache_gc_entries)
 
     ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
     ck_assert_uint_eq(handlebars_cache_stat(cache).current_size, expected_size);
-    ck_assert_ptr_ne(NULL, handlebars_cache_find(cache, ctx0->tmpl));
+    found = handlebars_cache_find(cache, ctx0->tmpl);
+    ck_assert_ptr_ne(NULL, found);
+    handlebars_cache_release(cache, ctx0->tmpl, found);
     ck_assert_ptr_eq(NULL, handlebars_cache_find(cache, ctx1->tmpl));
     ck_assert_ptr_eq(NULL, handlebars_cache_find(cache, ctx2->tmpl));
 }
@@ -1136,12 +1141,15 @@ START_TEST(test_simple_cache_owns_key)
     struct handlebars_context * key_context = handlebars_context_ctor_ex(context);
     struct handlebars_string * key = handlebars_string_ctor(key_context, HBS_STRL("temporary key"));
     struct handlebars_module * module = serialize_template("test");
+    struct handlebars_module * found;
 
     handlebars_cache_add(cache, key, module);
     handlebars_context_dtor(key_context);
 
     key = handlebars_string_ctor(context, HBS_STRL("temporary key"));
-    ck_assert_ptr_ne(handlebars_cache_find(cache, key), NULL);
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_ne(found, NULL);
+    handlebars_cache_release(cache, key, found);
 
     handlebars_cache_dtor(cache);
 }
@@ -2420,6 +2428,7 @@ START_TEST(test_simple_cache_refuses_entry_over_capacity)
     struct handlebars_string * key2 = handlebars_string_ctor(context, HBS_STRL("simple-limit-two"));
     struct handlebars_module * module1 = serialize_template("one");
     struct handlebars_module * module2 = serialize_template("two");
+    struct handlebars_module * found;
     void * module2_parent = talloc_parent(module2);
 
     cache->max_entries = 1;
@@ -2428,7 +2437,9 @@ START_TEST(test_simple_cache_refuses_entry_over_capacity)
 
     handlebars_cache_add(cache, key2, module2);
     ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
-    ck_assert_ptr_eq(handlebars_cache_find(cache, key1), module1);
+    found = handlebars_cache_find(cache, key1);
+    ck_assert_ptr_eq(found, module1);
+    handlebars_cache_release(cache, key1, found);
     ck_assert_ptr_null(handlebars_cache_find(cache, key2));
     ck_assert_ptr_eq(talloc_parent(module2), module2_parent);
 
@@ -2464,9 +2475,12 @@ START_TEST(test_simple_cache_does_not_evict_executing_module)
     cached_parent = handlebars_cache_find(cache, parent_key);
     ck_assert_ptr_eq(cached_parent, parent);
     output = handlebars_vm_execute(vm, cached_parent, input);
+    handlebars_cache_release(cache, parent_key, cached_parent);
 
     ck_assert_hbs_str_eq_cstr(output, "foo=YX");
-    ck_assert_ptr_eq(handlebars_cache_find(cache, parent_key), parent);
+    cached_parent = handlebars_cache_find(cache, parent_key);
+    ck_assert_ptr_eq(cached_parent, parent);
+    handlebars_cache_release(cache, parent_key, cached_parent);
     ck_assert_ptr_null(handlebars_cache_find(cache, partial_key));
     ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
 
@@ -2502,6 +2516,7 @@ START_TEST(test_simple_cache_duplicate_preserves_module_ownership)
     struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-duplicate"));
     struct handlebars_module * original = serialize_template("original");
     struct handlebars_module * duplicate = serialize_template("duplicate");
+    struct handlebars_module * found;
     void * duplicate_parent = talloc_parent(duplicate);
     jmp_buf * prev = context->e->jmp;
     jmp_buf buf;
@@ -2512,7 +2527,9 @@ START_TEST(test_simple_cache_duplicate_preserves_module_ownership)
         ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
         ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
         ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
-        ck_assert_ptr_eq(handlebars_cache_find(cache, key), original);
+        found = handlebars_cache_find(cache, key);
+        ck_assert_ptr_eq(found, original);
+        handlebars_cache_release(cache, key, found);
         handlebars_cache_dtor(cache);
         ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
         return;
@@ -2637,6 +2654,7 @@ START_TEST(test_simple_cache_add_nomem_preserves_module_ownership)
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
     struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-add-nomem"));
     struct handlebars_module * module = serialize_template("add nomem");
+    struct handlebars_module * found;
     void * module_parent = talloc_parent(module);
     jmp_buf * prev = context->e->jmp;
     jmp_buf buf;
@@ -2649,7 +2667,9 @@ START_TEST(test_simple_cache_add_nomem_preserves_module_ownership)
         ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
 
         handlebars_cache_add(cache, key, module);
-        ck_assert_ptr_eq(handlebars_cache_find(cache, key), module);
+        found = handlebars_cache_find(cache, key);
+        ck_assert_ptr_eq(found, module);
+        handlebars_cache_release(cache, key, found);
         handlebars_cache_dtor(cache);
         return;
     }
@@ -2677,6 +2697,7 @@ static void assert_simple_cache_consistent(
         if( module ) {
             current_entries++;
             current_size += module->size;
+            handlebars_cache_release(cache, keys[i], module);
         }
     }
 
@@ -2737,6 +2758,7 @@ START_TEST(test_simple_cache_reset_nomem_preserves_entries)
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
     struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("simple-reset-nomem"));
     struct handlebars_module * module = serialize_template("reset nomem");
+    struct handlebars_module * found;
     jmp_buf * prev = context->e->jmp;
     jmp_buf buf;
 
@@ -2746,7 +2768,9 @@ START_TEST(test_simple_cache_reset_nomem_preserves_entries)
         context->e->jmp = prev;
         ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
         ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
-        ck_assert_ptr_eq(handlebars_cache_find(cache, key), module);
+        found = handlebars_cache_find(cache, key);
+        ck_assert_ptr_eq(found, module);
+        handlebars_cache_release(cache, key, found);
 
         handlebars_cache_reset(cache);
         ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
@@ -2950,6 +2974,133 @@ START_TEST(test_simple_cache_release_preserves_owned_entry)
 
     handlebars_cache_dtor(cache);
     ck_assert(cache_test_module_destroyed);
+}
+END_TEST
+
+START_TEST(test_simple_cache_reset_preserves_active_entry)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("simple-active-reset")
+    );
+    struct handlebars_module * module = serialize_template("active reset");
+    struct handlebars_module * found;
+    struct handlebars_cache_stat stat;
+
+    cache_test_module_destroyed = false;
+    talloc_set_destructor(module, cache_test_module_dtor);
+    handlebars_cache_add(cache, key, module);
+
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_eq(found, module);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.refcount, 1);
+
+    handlebars_cache_reset(cache);
+    stat = handlebars_cache_stat(cache);
+    ck_assert(!cache_test_module_destroyed);
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_uint_eq(stat.refcount, 1);
+
+    handlebars_cache_release(cache, key, found);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.refcount, 0);
+
+    handlebars_cache_reset(cache);
+    ck_assert(cache_test_module_destroyed);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
+START_TEST(test_simple_cache_gc_preserves_active_entry)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("simple-active-gc")
+    );
+    struct handlebars_module * module = serialize_template("active gc");
+    struct handlebars_module * found;
+    struct handlebars_cache_stat stat;
+
+    cache->max_age = 0;
+    cache_test_module_destroyed = false;
+    talloc_set_destructor(module, cache_test_module_dtor);
+    handlebars_cache_add(cache, key, module);
+
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_eq(found, module);
+    ck_assert_int_eq(handlebars_cache_gc(cache), 0);
+    ck_assert(!cache_test_module_destroyed);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_uint_eq(stat.refcount, 1);
+
+    handlebars_cache_release(cache, key, found);
+    ck_assert_int_eq(handlebars_cache_gc(cache), 1);
+    ck_assert(cache_test_module_destroyed);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.current_entries, 0);
+    ck_assert_uint_eq(stat.refcount, 0);
+
+    handlebars_cache_dtor(cache);
+}
+END_TEST
+
+START_TEST(test_simple_cache_preserves_second_active_hit)
+{
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("simple-two-active-hits")
+    );
+    struct handlebars_module * module = serialize_template("two active hits");
+    struct handlebars_module * first;
+    struct handlebars_module * second;
+    struct handlebars_string * output;
+    struct handlebars_cache_stat stat;
+    HANDLEBARS_VALUE_DECL(input);
+
+    cache->max_age = 0;
+    cache_test_module_destroyed = false;
+    talloc_set_destructor(module, cache_test_module_dtor);
+    handlebars_cache_add(cache, key, module);
+
+    first = handlebars_cache_find(cache, key);
+    second = handlebars_cache_find(cache, key);
+    ck_assert_ptr_eq(first, module);
+    ck_assert_ptr_eq(second, module);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).refcount, 2);
+
+    handlebars_cache_release(cache, key, first);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).refcount, 1);
+
+    handlebars_cache_reset(cache);
+    ck_assert(!cache_test_module_destroyed);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_uint_eq(stat.refcount, 1);
+
+    ck_assert_int_eq(handlebars_cache_gc(cache), 0);
+    ck_assert(!cache_test_module_destroyed);
+    stat = handlebars_cache_stat(cache);
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_uint_eq(stat.refcount, 1);
+
+    output = handlebars_vm_execute(vm, second, input);
+    ck_assert_hbs_str_eq_cstr(output, "two active hits");
+
+    handlebars_cache_release(cache, key, second);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).refcount, 0);
+    ck_assert_int_eq(handlebars_cache_gc(cache), 1);
+    ck_assert(cache_test_module_destroyed);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    handlebars_cache_dtor(cache);
 }
 END_TEST
 
@@ -4187,6 +4338,9 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset, "Simple Cache (Reset)");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_reset_releases_entries, "Simple cache reset releases entries");
     REGISTER_TEST_FIXTURE(s, test_simple_cache_release_preserves_owned_entry, "Simple cache release preserves owned entry");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_reset_preserves_active_entry, "Simple cache reset preserves active entries");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_gc_preserves_active_entry, "Simple cache GC preserves active entries");
+    REGISTER_TEST_FIXTURE(s, test_simple_cache_preserves_second_active_hit, "Simple cache preserves a second active hit");
 #ifdef HANDLEBARS_HAVE_LMDB
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_try_constructor_reports_errors, "LMDB cache try constructor errors");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_try_api, "LMDB cache try API");
