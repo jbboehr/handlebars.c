@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 and R02 are addressed. The remaining priorities are CMake's exported target, inline-partial handling, cache compilation settings, and the test-runner gaps.
+R01, R02, and R03 are addressed. The remaining priorities include optional CMake dependencies, inline-partial handling, cache compilation settings, and the test-runner gaps.
 
 ## Verification and coverage limits
 
@@ -76,13 +76,21 @@ Independent correctness and test reviews of the feature and header changes found
 
 ### R03. P2: the exported CMake target lacks its public include requirements
 
-Source: [src/CMakeLists.txt:100](../../src/CMakeLists.txt#L100).
+Sources: [src/CMakeLists.txt](../../src/CMakeLists.txt), [CMakeLists.txt](../../CMakeLists.txt), [tests/CMakeLists.txt](../../tests/CMakeLists.txt).
 
-A consumer included the installed handlebars.cmake export and linked its executable to the handlebars target. Configuration succeeded, but compiling a source file containing #include <handlebars.h> failed because the target exports no include directory.
+At the reviewed commit, a consumer included the installed handlebars.cmake export and linked its executable to the handlebars target. Configuration succeeded, but compiling a source file containing #include <handlebars.h> failed because the target exported no include directory.
 
-The generated interface also carries test dependencies such as Check and PCRE into consumer link requirements when tests are enabled. That dependency leakage was observed in the installed export; failure on a machine without those libraries was not separately tested.
+The generated interface also carried test dependencies such as Check and PCRE into consumer link requirements when tests were enabled. That dependency leakage was observed in the installed export; failure on a machine without those libraries was not separately tested during the original review.
 
-Set target-scoped public include directories for build and install use. Keep test dependencies on test targets. Add an installed-target consumer test that compiles and links a minimal application.
+**Status: addressed.** Both exported targets now publish their build and installation header directories and the talloc include directory required by handlebars_memory.h. Required runtime libraries remain transitive. Check and PCRE include paths and link libraries are scoped to the tests.
+
+The consumer first failed because handlebars.h was missing from its include path. After the include fix, a separate check rejected Check in the imported target's link interface. The corrected exports passed both checks for shared and static consumers. Independent consumer builds also passed with ambient dependency paths removed from the environment, including probes that link JSON, LMDB, YAML, and allocation functions.
+
+The existing installed-header probe is retained. New [target probes](../../tests/installed_config/target.c) compile and run using only each imported target's usage requirements. A temporary mutation removing json-c from the static target's link requirements failed with unresolved JSON symbols, confirming the probe exercises transitive linkage.
+
+Absolute installation directories require care in the test harness: CMake records those fixed destinations in its export, so the export cannot be loaded directly from a DESTDIR staging tree. The harness keeps the header probe for all installation layouts and adds the imported-target probes when include and library destinations are relative. Absolute include-only, library-only, and combined cases passed without creating the configured destination. Both targets also passed a separate direct-install check at configured absolute paths under the temporary test directory.
+
+Fresh GCC verification passed 27 Release CTest programs, 28 with allocation-failure testing enabled and no explicit build type, and 28 with AddressSanitizer and UndefinedBehaviorSanitizer. All three consumers passed against a tests-disabled installation. Both build-tree target consumers passed, and the existing Autotools suite passed 2,266 checks. Independent review identified the absolute-path staging issue described above; the corrected harness passed its focused regressions. Runtime dependency paths still come from configure-time discovery; rediscovering dependencies on another machine is outside this slice. Older CMake versions, Windows, macOS, and multi-config generators were not tested locally.
 
 ### R04. P2: missing optional LMDB prevents CMake configuration
 

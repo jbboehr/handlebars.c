@@ -16,6 +16,8 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/..)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../src)
+include_directories(${CHECK_INCLUDE_DIRS} ${PCRE2_INCLUDE_DIRS})
+add_definitions(-DPCRE2_CODE_UNIT_WIDTH=8)
 
 SET(COMMON_TEST_FILES
         adler32.c
@@ -23,7 +25,7 @@ SET(COMMON_TEST_FILES
         utils.c
         utils.h)
 
-link_libraries(${LIBS} handlebars_static)
+link_libraries(${LIBS} handlebars_static ${CHECK_LIBRARIES} ${PCRE2_LIBRARIES})
 
 add_executable(test_ast ${COMMON_TEST_FILES} test_ast.c)
 add_executable(test_ast_helpers ${COMMON_TEST_FILES} test_ast_helpers.c)

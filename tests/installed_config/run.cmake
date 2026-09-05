@@ -19,6 +19,15 @@ run_checked("${CMAKE_COMMAND}" -E env "DESTDIR=${stage}" "${CMAKE_COMMAND}"
     "-DCMAKE_INSTALL_CONFIG_NAME=${CONFIG}"
     -P "${BUILD_DIR}/cmake_install.cmake")
 
+set(consumer_args)
+if(IS_ABSOLUTE "${INCLUDEDIR}" OR IS_ABSOLUTE "${LIBDIR}")
+    # Exported absolute paths cannot be relocated into the staging directory.
+    message(STATUS "Absolute install paths: checking staged headers; imported-target checks require relative include and library destinations")
+else()
+    list(APPEND consumer_args
+        "-DHANDLEBARS_EXPORT=${stage}/handlebars-test/${INCLUDEDIR}/cmake/handlebars.cmake")
+endif()
+
 foreach(dir INCLUDEDIR LIBDIR)
     if(IS_ABSOLUTE "${${dir}}")
         set(${dir} "${stage}${${dir}}")
@@ -32,7 +41,6 @@ if(NOT installed_library)
     message(FATAL_ERROR "The installed handlebars library is missing")
 endif()
 
-set(consumer_args)
 foreach(feature JSON LMDB PCRE PTHREAD YAML MEMORY TESTING_EXPORTS)
     list(APPEND consumer_args "-DEXPECT_${feature}=${EXPECT_${feature}}")
 endforeach()

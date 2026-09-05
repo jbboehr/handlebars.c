@@ -68,8 +68,6 @@ ENDIF(WIN32)
 if(HANDLEBARS_ENABLE_TESTS)
     find_package(Check REQUIRED)
     find_program(BATS_EXECUTABLE NAMES bats)
-    include_directories(${CHECK_INCLUDE_DIRS})
-    set(LIBS ${LIBS} ${CHECK_LIBRARIES})
 endif()
 
 find_package(Libjsonc)
@@ -88,9 +86,6 @@ endif()
 
 if(HANDLEBARS_ENABLE_TESTS)
     find_package(PCRE2 REQUIRED)
-    include_directories(${PCRE2_INCLUDE_DIRS})
-    set(LIBS ${LIBS} ${PCRE2_LIBRARIES})
-    add_definitions(-DPCRE2_CODE_UNIT_WIDTH=8)
     set(HANDLEBARS_HAVE_PCRE 1)
 endif()
 

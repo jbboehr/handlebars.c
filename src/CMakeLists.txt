@@ -98,11 +98,18 @@ set(HEADERS
 # handlebars_whitespace.h
 # handlebars_value_private.h
 
-link_libraries(${LIBS})
-
 add_library(handlebars SHARED ${SOURCE_FILES} ${HEADERS})
 add_library(handlebars_static STATIC ${SOURCE_FILES} ${HEADERS})
 set_target_properties(handlebars PROPERTIES SOVERSION 10)
+
+foreach(library handlebars handlebars_static)
+    target_include_directories(${library} PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/handlebars>"
+        ${TALLOC_INCLUDE_DIRS})
+    target_link_libraries(${library} PUBLIC ${LIBS})
+endforeach()
 
 install(TARGETS handlebars handlebars_static
     EXPORT handlebars
