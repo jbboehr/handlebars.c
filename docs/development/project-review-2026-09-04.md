@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 is addressed. The remaining priorities are CMake's installed interface, inline-partial handling, cache compilation settings, and the test-runner gaps.
+R01 and R02 are addressed. The remaining priorities are CMake's exported target, inline-partial handling, cache compilation settings, and the test-runner gaps.
 
 ## Verification and coverage limits
 
@@ -58,15 +58,21 @@ The regression failed before the fix with unresolved allocation-wrapper symbols 
 
 ### R02. P1: CMake publishes incorrect version and feature information
 
-Sources: [CMakeLists.txt:24](../../CMakeLists.txt#L24), [CMakeLists.txt:75](../../CMakeLists.txt#L75), [cmake/handlebars_config.h.in](../../cmake/handlebars_config.h.in), [configure.ac:20](../../configure.ac#L20).
+Sources: [CMakeLists.txt](../../CMakeLists.txt), [cmake/handlebars_config.h.in](../../cmake/handlebars_config.h.in), [configure.ac:20](../../configure.ac#L20).
 
-CMake still reports version 0.7.2 and specification version 4.7.6, while Autotools reports 1.0.0 and 4.7.7. CMake also enables features through compiler definitions without setting the variables used by the installed header's configuration directives.
+At the reviewed commit, CMake reported version 0.7.2 and specification version 4.7.6, while Autotools reported 1.0.0 and 4.7.7. CMake also enabled features through compiler definitions without setting the variables used by the installed header's configuration directives.
 
 The fresh CMake CLI reported JSON and YAML support enabled, but its installed header left the JSON, YAML, LMDB, pthread, PCRE, and testing-export macros undefined. An installed-header consumer calling handlebars_cache_lmdb_ctor failed compilation with an implicit-function-declaration error even though the library was built with LMDB.
 
 The CMake tests inherit build-wide definitions, which explains why all 26 programs can pass while the installed interface is wrong.
 
-Use one authoritative version definition and derive both compiler definitions and the public header from resolved feature variables. Test a consumer against an installation prefix without inheriting the library build's definitions.
+**Status: addressed.** CMake now declares the correct release and specification versions explicitly. Releases must update these constants and the installed-consumer expectations alongside configure.ac. The compiler definitions and installed header use the same resolved feature settings. Enabled feature macros have the value 1, and the header includes both specification-version strings.
+
+The new [installed consumer test](../../tests/installed_config/main.c) failed before the fix because feature macros, specification versions, and cache declarations were missing. It now compiles and runs using a temporary installation. Local GCC verification passed all 27 Release CTest programs, all 28 programs with allocation-failure testing enabled and no explicit build type, and all 28 programs with AddressSanitizer and UndefinedBehaviorSanitizer. All three CMake configurations also built and passed their tests with configure.ac absent from an isolated source copy. The existing Autotools suite passed 2,266 checks. A separate tests-disabled installation correctly omitted the PCRE feature macro.
+
+These checks cover the public configuration header; R03's exported-target requirements and R04's missing optional dependencies remain separate. Windows, macOS, and the full platform/compiler matrix were not tested locally.
+
+Independent correctness and test reviews of the feature and header changes found no actionable defects. Additional checks passed from paths containing spaces and after toggling allocation-failure testing off, on, and off in the same build. The consumer also checks that enabled feature macros equal 1 and that a memory-enabled installation links its allocation-failure implementation. Older CMake versions and multi-config generators remain untested.
 
 ### R03. P2: the exported CMake target lacks its public include requirements
 

@@ -21,17 +21,19 @@ include(GNUInstallDirs)
 include(CheckSymbolExists)
 include(Utils)
 
-set(HANDLEBARS_VERSION_MAJOR 0)
-set(HANDLEBARS_VERSION_MINOR 7)
-set(HANDLEBARS_VERSION_PATCH 2)
+# Keep these versions and the installed-consumer expectations in sync with configure.ac.
+set(HANDLEBARS_VERSION_MAJOR 1)
+set(HANDLEBARS_VERSION_MINOR 0)
+set(HANDLEBARS_VERSION_PATCH 0)
+set(HANDLEBARS_SPEC_VERSION "4.7.7")
+set(MUSTACHE_SPEC_VERSION "1.1.3")
 
 add_definitions(-DHANDLEBARS_VERSION_MAJOR=${HANDLEBARS_VERSION_MAJOR})
 add_definitions(-DHANDLEBARS_VERSION_MINOR=${HANDLEBARS_VERSION_MINOR})
 add_definitions(-DHANDLEBARS_VERSION_PATCH=${HANDLEBARS_VERSION_PATCH})
 add_definitions(-DHANDLEBARS_VERSION_STRING="${HANDLEBARS_VERSION_MAJOR}.${HANDLEBARS_VERSION_MINOR}.${HANDLEBARS_VERSION_PATCH}")
-add_definitions(-DHANDLEBARS_SPEC_VERSION_STRING="4.7.6")
-add_definitions(-DMUSTACHE_SPEC_VERSION_STRING="1.1.3")
-add_definitions(-DHANDLEBARS_TESTING_EXPORTS="1")
+add_definitions(-DHANDLEBARS_SPEC_VERSION_STRING="${HANDLEBARS_SPEC_VERSION}")
+add_definitions(-DMUSTACHE_SPEC_VERSION_STRING="${MUSTACHE_SPEC_VERSION}")
 
 option(HANDLEBARS_ENABLE_TESTS
         "Enable the compilation and running of unit tests" ON)
@@ -40,10 +42,11 @@ option(HANDLEBARS_ENABLE_FUZZING
 option(HANDLEBARS_ENABLE_MEMORY
         "Enable memory allocation failure testing functions" OFF)
 
-if(HANDLEBARS_ENABLE_MEMORY)
-    set(HANDLEBARS_MEMORY 1)
-    add_definitions(-DHANDLEBARS_MEMORY)
-endif()
+set(HANDLEBARS_MEMORY ${HANDLEBARS_ENABLE_MEMORY})
+set(HANDLEBARS_TESTING_EXPORTS 1)
+foreach(feature JSON LMDB PCRE PTHREAD YAML)
+    set(HANDLEBARS_HAVE_${feature} 0)
+endforeach()
 
 if(HANDLEBARS_ENABLE_FUZZING)
     if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -73,14 +76,14 @@ find_package(Libjsonc)
 include_directories(${LIBJSONC_INCLUDE_DIR} ${LIBJSONC_INCLUDE_DIR}/json-c ${LIBJSONC_INCLUDE_DIR}/json)
 set(LIBS ${LIBS} ${LIBJSONC_LIBRARY})
 if(LIBJSONC_LIBRARY)
-    add_definitions(-DHANDLEBARS_HAVE_JSON)
+    set(HANDLEBARS_HAVE_JSON 1)
 endif()
 
 find_package(LMDB)
 include_directories(${LMDB_INCLUDE_DIR})
 set(LIBS ${LIBS} ${LMDB_LIBRARIES})
 if(LMDB_LIBRARIES)
-    add_definitions(-DHANDLEBARS_HAVE_LMDB)
+    set(HANDLEBARS_HAVE_LMDB 1)
 endif()
 
 if(HANDLEBARS_ENABLE_TESTS)
@@ -88,6 +91,7 @@ if(HANDLEBARS_ENABLE_TESTS)
     include_directories(${PCRE2_INCLUDE_DIRS})
     set(LIBS ${LIBS} ${PCRE2_LIBRARIES})
     add_definitions(-DPCRE2_CODE_UNIT_WIDTH=8)
+    set(HANDLEBARS_HAVE_PCRE 1)
 endif()
 
 find_package(Talloc REQUIRED)
@@ -97,15 +101,25 @@ set(LIBS ${LIBS} ${TALLOC_LIBRARIES})
 find_package(Threads)
 set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
 if(CMAKE_USE_PTHREADS_INIT)
-    add_definitions(-DHANDLEBARS_HAVE_PTHREAD)
+    set(HANDLEBARS_HAVE_PTHREAD 1)
 endif()
 
 find_package(LibYaml)
 include_directories(${LIBYAML_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${LIBYAML_LIBRARIES})
 if(LIBYAML_LIBRARIES)
-    add_definitions(-DHANDLEBARS_HAVE_YAML)
+    set(HANDLEBARS_HAVE_YAML 1)
 endif()
+
+# These definitions are needed before some source files include handlebars.h.
+# Use the same resolved values when configuring the installed header below.
+foreach(feature HANDLEBARS_MEMORY HANDLEBARS_TESTING_EXPORTS
+        HANDLEBARS_HAVE_JSON HANDLEBARS_HAVE_LMDB HANDLEBARS_HAVE_PCRE
+        HANDLEBARS_HAVE_PTHREAD HANDLEBARS_HAVE_YAML)
+    if(${feature})
+        add_definitions(-D${feature}=1)
+    endif()
+endforeach()
 
 if(NOT MSVC)
     check_symbol_exists(pow math.h HAVE_POW)
@@ -229,6 +243,28 @@ if (HANDLEBARS_ENABLE_TESTS)
     add_test(NAME test_utils COMMAND test_utils)
     add_test(NAME test_value COMMAND test_value)
     add_test(NAME test_value_api COMMAND test_value_api)
+    if(UNIX)
+        add_test(NAME test_installed_config
+            COMMAND ${CMAKE_COMMAND}
+                "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+                "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+                "-DINCLUDEDIR=${CMAKE_INSTALL_INCLUDEDIR}"
+                "-DLIBDIR=${CMAKE_INSTALL_LIBDIR}"
+                "-DGENERATOR=${CMAKE_GENERATOR}"
+                "-DCC=${CMAKE_C_COMPILER}"
+                "-DCFLAGS=${CMAKE_C_FLAGS}"
+                "-DLDFLAGS=${CMAKE_EXE_LINKER_FLAGS}"
+                "-DCTEST=${CMAKE_CTEST_COMMAND}"
+                "-DCONFIG=$<CONFIG>"
+                "-DEXPECT_JSON=$<BOOL:${LIBJSONC_LIBRARY}>"
+                "-DEXPECT_LMDB=$<BOOL:${LMDB_LIBRARIES}>"
+                "-DEXPECT_PCRE=$<BOOL:${PCRE2_FOUND}>"
+                "-DEXPECT_PTHREAD=$<BOOL:${CMAKE_USE_PTHREADS_INIT}>"
+                "-DEXPECT_YAML=$<BOOL:${LIBYAML_LIBRARIES}>"
+                "-DEXPECT_MEMORY=$<BOOL:${HANDLEBARS_ENABLE_MEMORY}>"
+                "-DEXPECT_TESTING_EXPORTS=1"
+                -P "${CMAKE_SOURCE_DIR}/tests/installed_config/run.cmake")
+    endif()
     if(UNIX AND CMAKE_CXX_COMPILER)
         set(HANDLEBARS_HEADER_CPPFLAGS "")
         foreach(HANDLEBARS_HEADER_DEFINITION ${TALLOC_DEFINITIONS})
