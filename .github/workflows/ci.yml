@@ -29,7 +29,7 @@ jobs:
             - name: Install packages
               run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre2-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev ${{ matrix.CC }}
             - run: autoreconf -i
-            - run: ./configure
+            - run: ./configure --enable-handlebars-memory
               env:
                   CC: ${{ matrix.CC }}
                   # json-c undeprecated json_object_object_get, but the version in xenial
@@ -37,7 +37,8 @@ jobs:
                   CFLAGS: "-Wno-deprecated-declarations -Wno-error=deprecated-declarations"
             - run: make
             - run: make check
-            - run: make distcheck
+            - name: Verify distribution with allocation-failure testing disabled
+              run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--disable-handlebars-memory"
             - name: dump logs
               if: ${{ failure() }}
               run: |

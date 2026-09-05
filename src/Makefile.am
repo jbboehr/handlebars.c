@@ -73,6 +73,8 @@ YAMLSOURCES =
 endif
 
 # Main
+nodist_pkginclude_HEADERS = handlebars_config.h
+
 pkginclude_HEADERS = \
 	handlebars.h \
 	handlebars.lex.h \
@@ -83,7 +85,6 @@ pkginclude_HEADERS = \
 	handlebars_cache.h \
 	handlebars_closure.h \
 	handlebars_compiler.h \
-	handlebars_config.h \
 	handlebars_delimiters.h \
 	handlebars_helpers.h \
 	handlebars_json.h \
