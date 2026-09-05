@@ -24,7 +24,6 @@ set(SOURCE_FILES
     handlebars_ast_list.c
     handlebars_ast_printer.c
     handlebars_cache.c
-    handlebars_cache_lmdb.c
     handlebars_cache_mmap.c
     handlebars_cache_simple.c
     handlebars_closure.c
@@ -51,6 +50,10 @@ set(SOURCE_FILES
     handlebars_vm.c
     handlebars_whitespace.c
     handlebars_yaml.c)
+
+if(LMDB_FOUND)
+    list(APPEND SOURCE_FILES handlebars_cache_lmdb.c)
+endif()
 
 if(HANDLEBARS_ENABLE_MEMORY)
     list(APPEND SOURCE_FILES handlebars_memory.c)

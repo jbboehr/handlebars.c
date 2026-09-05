@@ -78,9 +78,9 @@ if(LIBJSONC_LIBRARY)
 endif()
 
 find_package(LMDB)
-include_directories(${LMDB_INCLUDE_DIR})
-set(LIBS ${LIBS} ${LMDB_LIBRARIES})
-if(LMDB_LIBRARIES)
+if(LMDB_FOUND)
+    include_directories(${LMDB_INCLUDE_DIR})
+    set(LIBS ${LIBS} ${LMDB_LIBRARIES})
     set(HANDLEBARS_HAVE_LMDB 1)
 endif()
 
@@ -252,7 +252,7 @@ if (HANDLEBARS_ENABLE_TESTS)
                 "-DCTEST=${CMAKE_CTEST_COMMAND}"
                 "-DCONFIG=$<CONFIG>"
                 "-DEXPECT_JSON=$<BOOL:${LIBJSONC_LIBRARY}>"
-                "-DEXPECT_LMDB=$<BOOL:${LMDB_LIBRARIES}>"
+                "-DEXPECT_LMDB=$<BOOL:${LMDB_FOUND}>"
                 "-DEXPECT_PCRE=$<BOOL:${PCRE2_FOUND}>"
                 "-DEXPECT_PTHREAD=$<BOOL:${CMAKE_USE_PTHREADS_INIT}>"
                 "-DEXPECT_YAML=$<BOOL:${LIBYAML_LIBRARIES}>"

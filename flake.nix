@@ -134,6 +134,11 @@
             memoryTestingSupport = true;
           }
           {
+            attr = "handlebars-c-cmake-no-lmdb";
+            cmakeSupport = true;
+            lmdbSupport = false;
+          }
+          {
             attr = "handlebars-c-norc";
             noRefcountingSupport = true;
           }

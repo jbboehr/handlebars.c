@@ -47,7 +47,7 @@ jobs:
             - name: Install packages
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y autoconf automake clang-18 libclang-rt-18-dev libjson-c-dev liblmdb-dev libtalloc-dev libtool libyaml-dev m4 make pkg-config
+                  sudo apt-get install -y autoconf automake clang-18 cmake libclang-rt-18-dev libjson-c-dev liblmdb-dev libtalloc-dev libtool libyaml-dev m4 make pkg-config
 
             - name: Restore generated corpus
               uses: actions/cache@v5
@@ -56,6 +56,19 @@ jobs:
                   key: fuzz-${{ matrix.target }}-${{ runner.os }}-${{ github.run_id }}
                   restore-keys: |
                       fuzz-${{ matrix.target }}-${{ runner.os }}-
+
+            - name: Verify CMake LMDB reconfiguration
+              if: matrix.target == 'lmdb'
+              run: |
+                  cmake -S . -B "$RUNNER_TEMP/cmake-lmdb" \
+                      -DCMAKE_C_COMPILER=clang-18 \
+                      -DHANDLEBARS_ENABLE_FUZZING=ON \
+                      -DHANDLEBARS_ENABLE_TESTS=OFF
+                  cmake --build "$RUNNER_TEMP/cmake-lmdb" --target fuzz_lmdb -j2
+                  cmake -S . -B "$RUNNER_TEMP/cmake-lmdb" -DCMAKE_DISABLE_FIND_PACKAGE_LMDB=ON
+                  cmake --build "$RUNNER_TEMP/cmake-lmdb" -j2
+                  cmake -S . -B "$RUNNER_TEMP/cmake-lmdb" -DCMAKE_DISABLE_FIND_PACKAGE_LMDB=OFF
+                  cmake --build "$RUNNER_TEMP/cmake-lmdb" --target fuzz_lmdb -j2
 
             - name: Create configure
               run: autoreconf -i

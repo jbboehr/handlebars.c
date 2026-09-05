@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01, R02, and R03 are addressed. The remaining priorities include optional CMake dependencies, inline-partial handling, cache compilation settings, and the test-runner gaps.
+R01 through R04 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial handling, cache compilation settings, and the test-runner gaps.
 
 ## Verification and coverage limits
 
@@ -94,11 +94,19 @@ Fresh GCC verification passed 27 Release CTest programs, 28 with allocation-fail
 
 ### R04. P2: missing optional LMDB prevents CMake configuration
 
-Sources: [CMakeLists.txt:79](../../CMakeLists.txt#L79), [cmake/FindLMDB.cmake](../../cmake/FindLMDB.cmake).
+Sources: [CMakeLists.txt](../../CMakeLists.txt), [src/CMakeLists.txt](../../src/CMakeLists.txt), [fuzz/CMakeLists.txt](../../fuzz/CMakeLists.txt), [cmake/FindLMDB.cmake](../../cmake/FindLMDB.cmake).
 
-With only the LMDB include and library directories excluded from discovery, and HANDLEBARS_ENABLE_TESTS=OFF, configuration failed because LMDB_INCLUDE_DIR-NOTFOUND and LMDB_LIBRARIES-NOTFOUND were added to targets unconditionally.
+At the reviewed commit, with only the LMDB include and library directories excluded from discovery and HANDLEBARS_ENABLE_TESTS=OFF, configuration failed because LMDB_INCLUDE_DIR-NOTFOUND and LMDB_LIBRARIES-NOTFOUND were added to targets unconditionally.
 
-Guard optional include directories and libraries on successful discovery. Exercise a CMake configuration with each optional dependency absent. The experiment here establishes the LMDB case, not every optional dependency.
+**Status: addressed.** LMDB include paths, link libraries, feature metadata, backend source selection, and the LMDB fuzz target now depend on successful discovery of both its header and library. The installed-header test also uses the discovery result, so finding a library without its header does not falsely imply that LMDB support is enabled.
+
+The new handlebars-c-cmake-no-lmdb configuration in [flake.nix](../../flake.nix) omits LMDB from its build dependencies and runs the existing CMake suite. It is included in the generated CI matrix. Running nix build .#handlebars-c-cmake-no-lmdb --no-link first reproduced the configuration error. Guarding the paths exposed a second failure: CMake still compiled handlebars_cache_lmdb.c without LMDB's types. Conditional source selection, matching Autotools, fixed that build failure as well. The same Nix check then passed all 27 CTest programs and installed the package.
+
+Local GCC verification passed all 27 Release CTest programs with LMDB available, all 28 programs with allocation-failure testing enabled and LMDB absent, and all 28 under AddressSanitizer and UndefinedBehaviorSanitizer with LMDB absent. A tests-disabled build without LMDB also passed the three installed-header and shared/static target consumers. Separate configurations with only the header absent or only the library absent passed builds and the cache, public-header, and installed-consumer checks. Disabling LMDB discovery with cached paths present, then re-enabling it in the same build directory, passed those checks and updated the feature macro correctly. Other platforms and older CMake versions were not tested locally.
+
+Review identified a missed consumer of the discovery result: the LMDB fuzz target still depended on the cached library path. A Clang build with fuzzing enabled succeeded initially, then failed to compile fuzz_lmdb after disabling LMDB discovery because the backend constructor was no longer declared. Gating that target on LMDB_FOUND fixed the regression. The [fuzz workflow](../../.github/workflows/fuzz.yml) now checks CMake builds with discovery enabled, disabled, and re-enabled in the same directory. This sequence passed locally with Clang 21.1.8; the workflow uses Clang 18. No fuzz inputs were needed to reproduce the build failure.
+
+Related follow-up: separately excluding json-c or libyaml reproduced analogous NOTFOUND configuration errors. Their source files and tests are also selected unconditionally. Making those dependencies optional requires its own slice; this change addresses LMDB only.
 
 ### R05. P3: Autotools release archives omit CMake support
 
