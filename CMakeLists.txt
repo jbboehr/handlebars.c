@@ -232,6 +232,16 @@ if (HANDLEBARS_ENABLE_TESTS)
         ENVIRONMENT "handlebars_tokenizer_spec=${HANDLEBARS_TOKENIZER_SPEC}")
     set_tests_properties(test_spec_mustache PROPERTIES
         ENVIRONMENT "mustache_spec_dir=${MUSTACHE_SPEC_DIR}")
+    if(UNIX)
+        add_test(NAME test_spec_runners
+            COMMAND ${CMAKE_COMMAND} -E env
+                "SPEC_COMPILER=$<TARGET_FILE:test_spec_handlebars_compiler>"
+                "SPEC_PARSER=$<TARGET_FILE:test_spec_handlebars_parser>"
+                "SPEC_TOKENIZER=$<TARGET_FILE:test_spec_handlebars_tokenizer>"
+                "SPEC_RUNTIME=$<TARGET_FILE:test_spec_handlebars>"
+                "SPEC_RUNTIME_SOURCE=${HANDLEBARS_SPEC_DIR}"
+                sh "${CMAKE_SOURCE_DIR}/tests/test_spec_runners.sh")
+    endif()
     add_test(NAME test_stack COMMAND test_stack)
     add_test(NAME test_string COMMAND test_string)
     add_test(NAME test_token COMMAND test_token)

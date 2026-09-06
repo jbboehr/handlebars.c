@@ -725,7 +725,7 @@ static Suite * suite(void)
 
     TCase * tc_handlebars_spec_compiler = tcase_create(title);
     tcase_add_checked_fixture(tc_handlebars_spec_compiler, default_setup, default_teardown);
-    tcase_add_loop_test(tc_handlebars_spec_compiler, handlebars_spec_compiler, 0, tests_len - 1);
+    tcase_add_loop_test(tc_handlebars_spec_compiler, handlebars_spec_compiler, 0, tests_len);
     suite_add_tcase(s, tc_handlebars_spec_compiler);
 
     return s;

@@ -287,14 +287,14 @@ static int loadSpec(const char * spec)
     result = json_tokener_parse(data);
     // @todo: parsing errors seem to cause segfaults....
     if( result == NULL ) {
-        fprintf(stderr, "Failed so parse JSON\n");
+        fprintf(stderr, "Failed to parse JSON in spec file: %s\n", filename);
         error = 1;
         goto error;
     }
 
     // Root object should be array
     if( json_object_get_type(result) != json_type_array ) {
-        fprintf(stderr, "Root JSON value was not array\n");
+        fprintf(stderr, "Root JSON value was not array in spec file: %s\n", filename);
         error = 1;
         goto error;
     }
@@ -593,19 +593,17 @@ END_TEST
 static Suite * suite(void);
 static Suite * suite(void)
 {
-    // Load the spec
-    loadSpec("basic");
-    loadSpec("blocks");
-    loadSpec("builtins");
-    loadSpec("data");
-    loadSpec("helpers");
-    loadSpec("partials");
-    loadSpec("regressions");
-    loadSpec("strict");
-    //loadSpec("string-params");
-    loadSpec("subexpressions");
-    //loadSpec("track-ids");
-    loadSpec("whitespace-control");
+    // Every listed suite is required. string-params and track-ids are not
+    // currently part of the runtime suite.
+    const char * specs[] = {
+        "basic", "blocks", "builtins", "data", "helpers", "partials",
+        "regressions", "strict", "subexpressions", "whitespace-control"
+    };
+    for( size_t i = 0; i < sizeof(specs) / sizeof(specs[0]); i++ ) {
+        if( loadSpec(specs[i]) != 0 ) {
+            exit(EXIT_FAILURE);
+        }
+    }
     fprintf(stderr, "Loaded %zu test cases\n", tests_len);
 
     // Setup the suite

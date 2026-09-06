@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R06 and R08 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial module printing, and the test-runner gaps.
+R01 through R06, R08, R31, and R32 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial module printing, and the test-assertion gaps.
 
 ## Verification and coverage limits
 
@@ -529,7 +529,7 @@ Complete the reverse mapping and implement or retire the ineffective option. Add
 
 Sources: [tests/test_spec_handlebars_compiler.c:728](../../tests/test_spec_handlebars_compiler.c#L728), [tests/test_spec_handlebars_parser.c:280](../../tests/test_spec_handlebars_parser.c#L280), [tests/test_spec_handlebars_tokenizer.c:250](../../tests/test_spec_handlebars_tokenizer.c#L250).
 
-Each runner supplies tests_len - 1 as the exclusive loop-test end.
+At the reviewed commit, each runner supplied tests_len - 1 as the exclusive loop-test end.
 
 Fresh baseline logs reported:
 
@@ -541,7 +541,9 @@ Fresh baseline logs reported:
 
 For a stronger control, a temporary copy of the compiler exports changed the last fixture's expected appendContent operand to REVIEW_SENTINEL. All 460 checks still passed. Moving that same modified fixture one position earlier produced one failure.
 
-Use tests_len as the exclusive end and assert registered/executed counts against loaded fixtures. The omitted parser and tokenizer entries were “should fail if directives have inverse” and the last “tokenizes raw blocks” case.
+**Status: addressed.** All three runners now use tests_len as the exclusive end. Fresh full runs loaded and executed 461 compiler, 79 parser, and 78 tokenizer fixtures, with no failures. The formerly omitted parser fixture, “should fail if directives have inverse,” and the final “tokenizes raw blocks” tokenizer fixture both pass.
+
+The new [tests/test_spec_runners.sh](../../tests/test_spec_runners.sh) invokes the actual runners with independent, minimal fixtures. For each runner, it checks that a singleton executes exactly once, then adds a deliberately incorrect final fixture and requires exactly two checks with one failure identifying that fixture. Before the fix, all six checks failed: singleton inputs ran zero checks, and incorrect final fixtures were omitted. All six pass after the fix.
 
 ### R32. P2: a missing runtime fixture file silently reduces coverage
 
@@ -558,7 +560,13 @@ Handlebars spec exclusions: 11 runtime, 40 AST-inapplicable
 
 The process exited zero. The baseline loaded 449 fixtures and executed 848 checks, so 72 checks disappeared while the exclusion budget remained satisfied.
 
-Require every expected fixture file to load successfully and validate the fixture inventory. The existing exclusion budget catches some missing-fixture scenarios, including broad losses, but it does not catch this one.
+**Status: addressed.** The runtime runner now checks every load result for its ten required fixture files and exits unsuccessfully before starting Check when any load fails. JSON parse errors detected by the existing loader and non-array roots also stop the run, with diagnostics identifying the file. The required file inventory and existing runtime/AST exclusion budgets are unchanged.
+
+The runner regression script starts with a complete fixture copy, then removes each required file separately and requires failure before test execution. It also checks an incomplete JSON document and a non-array root. Before the fix, all twelve negative cases failed these assertions; whitespace-control.json omissions and these invalid contents still produced successful runs. Independent test review added an unreadable-file check and a stronger TEST_NUM selection assertion. The complete 20-case script passes, including the R31 cases and the successful startup control. The permission check skips explicitly if the current user can still read the restricted file. The script clears inherited Check selection/logging overrides and modifies only temporary fixture copies.
+
+CTest runs the script on Unix platforms, and Autotools runs it when JSON support enables these specification runners. The script is distributed in release archives and uses the existing executables and standard shell tools. Fresh Linux verification passed all 29 CTest programs in Release and Debug ASan/UBSan builds, both with allocation-failure testing enabled. The memory-disabled Autotools build and distcheck each passed 2,304 checks. An extracted archive passed all five affected CTest tests. The script also passed with read-only source fixtures, temporary paths containing spaces, and a reordered valid fixture set whose first case expects an error. ShellCheck and shell syntax validation passed.
+
+**Separate follow-up confirmed during review:** the existing json_tokener_parse call accepts a valid array followed by non-whitespace text. Both the base revision for this slice, 6daccd0, and the patched runner loaded all 449 fixtures and exited zero when ordinary text was appended to whitespace-control.json; TEST_NUM=0 executed three checks in each control. Both independent reviews found this pre-existing behavior. Whole-file JSON validation is a separate follow-up; its failing regression is retained with the temporary review evidence. Reliability verdict: PASS_WITH_RESIDUAL_RISK. Non-Linux execution remains unverified.
 
 ### R33. P2: floating-point tests discard fractional precision
 

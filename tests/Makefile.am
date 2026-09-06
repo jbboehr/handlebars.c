@@ -25,6 +25,7 @@ EXTRA_DIST = \
 	helper_executable_alt.sh \
 	test_executable.bats \
 	test_headers.sh \
+	test_spec_runners.sh \
 	test_value_api.cpp \
 	utils.h \
 	fixture1.hbs \
@@ -118,6 +119,9 @@ check_PROGRAMS += test_random_alloc_fail
 endif
 
 TESTS = $(check_PROGRAMS) test_headers.sh
+if JSON
+TESTS += test_spec_runners.sh
+endif
 TEST_EXTENSIONS = @EXEEXT@ .test .sh
 SH_LOG_COMPILER = $(SHELL)
 AM_TESTS_ENVIRONMENT = \
@@ -131,6 +135,11 @@ AM_TESTS_ENVIRONMENT = \
 	CK_VERBOSITY=normal \
 	HANDLEBARSC=$(top_builddir)/bin/handlebarsc \
 	TEST_DIR=$(top_srcdir)/tests \
+	SPEC_COMPILER='$(abs_builddir)/test_spec_handlebars_compiler$(EXEEXT)' \
+	SPEC_PARSER='$(abs_builddir)/test_spec_handlebars_parser$(EXEEXT)' \
+	SPEC_TOKENIZER='$(abs_builddir)/test_spec_handlebars_tokenizer$(EXEEXT)' \
+	SPEC_RUNTIME='$(abs_builddir)/test_spec_handlebars$(EXEEXT)' \
+	SPEC_RUNTIME_SOURCE='$(HANDLEBARS_SPEC_DIR)/spec' \
 	BENCH_DIR=$(top_srcdir)/bench \
 	HEADER_SOURCE_DIR=$(top_srcdir)/src \
 	HEADER_BUILD_DIR=$(top_builddir)/src \
