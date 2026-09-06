@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R11 and R30 through R34 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, rendering semantics, data conversion, and ownership contracts.
+R01 through R11, R30 through R34, and R36 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, rendering semantics, data conversion, and ownership contracts.
 
 ## Verification and coverage limits
 
@@ -641,6 +641,22 @@ Lengths 300 and 513 also disagreed. Controls at 256, 320, and 512 agreed.
 The project uses the one-update streaming path for string hashing. This experiment demonstrates an algorithm-equivalence defect, not a cryptographic or collision-security claim. The project's consistent use of one update can hide the dependency inconsistency.
 
 Do not patch the vendored implementation locally. Consider updating to a newer upstream release, with equivalence tests across chunk boundaries. Consider persisted hash/cache compatibility when changing the algorithm.
+
+### R36. P2: a third nested each retains its data frame after an allocation failure
+
+Sources: [src/handlebars_helpers.c:167](../../src/handlebars_helpers.c#L167), [src/handlebars_vm.c:1903](../../src/handlebars_vm.c#L1903).
+
+An allocation-failure probe rendered this template repeatedly with a reusable VM, failing each successive allocation:
+
+~~~handlebars
+{{#each outer}}{{#each this}}{{#each this}}x{{/each}}{{/each}}{{/each}}
+~~~
+
+Single- and double-nested controls exhausted the same injection range without retaining VM allocations. At the reviewed revision, the third nested block failed at allocation 20 and left eight VM-owned blocks instead of the three-block baseline. A talloc tree showed one 288-byte data-frame map and four strings. A debugger located the failed allocation in `accept_empty_hash` while entering the innermost helper. Context destruction eventually releases these allocations, but reusing the VM after this error retains them for its remaining lifetime.
+
+Add the three-level case to the existing helper allocation-failure loop, then ensure program execution releases its saved data reference if a nested call fails before normal cleanup.
+
+**Status: addressed.** Program execution now keeps cleanup state outside the `longjmp` target and uses the existing VM call checkpoint to restore stacks, buffer, data, and depth before rethrowing an error. The three-level case is part of the allocation-failure loop and returns to the three-block VM baseline after every injected failure. An additional direct-call regression catches a failing nested program inside a helper, verifies the complete boundary state, continues the outer render, and repeats the render on the same VM.
 
 ## Improvements supported by these results
 

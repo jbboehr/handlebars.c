@@ -2921,15 +2921,31 @@ static void handlebars_vm_accept(struct handlebars_vm * vm, struct handlebars_mo
     END_ACCEPT
 }
 
-struct handlebars_string * handlebars_vm_execute_program_ex(
+struct handlebars_vm_program_call_state {
+    struct handlebars_value previous_data;
+    struct handlebars_string * result;
+    struct handlebars_vm_call_checkpoint checkpoint;
+};
+
+static void handlebars_vm_program_call_state_deinit(
+    struct handlebars_vm_program_call_state * state
+)
+{
+    handlebars_value_dtor(&state->previous_data);
+}
+
+HBS_ATTR_NOINLINE
+static void handlebars_vm_execute_program_inner(
     struct handlebars_vm * vm,
     long program_num,
     struct handlebars_value * context,
     struct handlebars_value * data,
-    struct handlebars_value * block_params
+    struct handlebars_value * block_params,
+    struct handlebars_vm_program_call_state * state
 ) {
     if( program_num < 0 ) {
-        return handlebars_string_init(CONTEXT, 0);
+        state->result = handlebars_string_init(CONTEXT, 0);
+        return;
     } else if( unlikely(program_num >= (long) vm->module->program_count) ) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid program: %ld", program_num);
     }
@@ -2981,9 +2997,8 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     }
 
     // Save and set data
-    HANDLEBARS_VALUE_DECL(prev_data);
     if( data ) {
-        handlebars_value_value(prev_data, &vm->data);
+        handlebars_value_value(&state->previous_data, &vm->data);
         handlebars_value_value(&vm->data, data);
     }
 
@@ -3018,9 +3033,8 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
 
     // Restore data
     if (data) {
-        handlebars_value_value(&vm->data, prev_data);
+        handlebars_value_value(&vm->data, &state->previous_data);
     }
-    HANDLEBARS_VALUE_UNDECL(prev_data);
 
     // Restore buffer
     struct handlebars_string * buffer = vm->buffer;
@@ -3029,7 +3043,69 @@ struct handlebars_string * handlebars_vm_execute_program_ex(
     HANDLEBARS_VALUE_UNDECL(empty_block_params);
     vm->depth--;
 
-    return buffer;
+    state->result = buffer;
+}
+
+HBS_ATTR_NOINLINE
+static void handlebars_vm_execute_program_guarded(
+    struct handlebars_vm * vm,
+    long program_num,
+    struct handlebars_value * context,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params,
+    struct handlebars_vm_program_call_state * state
+)
+{
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    jmp_buf buf;
+
+    handlebars_vm_call_checkpoint_begin(vm, &state->checkpoint);
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+    } else {
+        handlebars_vm_execute_program_inner(
+            vm,
+            program_num,
+            context,
+            data,
+            block_params,
+            state
+        );
+    }
+
+    error->jmp = previous;
+    handlebars_vm_call_checkpoint_finish(vm, &state->checkpoint, caught);
+    if( caught != HANDLEBARS_SUCCESS ) {
+        handlebars_vm_program_call_state_deinit(state);
+        handlebars_vm_rethrow_caught(vm, previous, caught);
+    }
+}
+
+struct handlebars_string * handlebars_vm_execute_program_ex(
+    struct handlebars_vm * vm,
+    long program_num,
+    struct handlebars_value * context,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params
+)
+{
+    struct handlebars_vm_program_call_state state = {0};
+    struct handlebars_string * result;
+
+    handlebars_value_init(&state.previous_data);
+    handlebars_vm_execute_program_guarded(
+        vm,
+        program_num,
+        context,
+        data,
+        block_params,
+        &state
+    );
+    result = state.result;
+    handlebars_vm_program_call_state_deinit(&state);
+    return result;
 }
 
 struct handlebars_string * handlebars_vm_execute_program(struct handlebars_vm * vm, long program, struct handlebars_value * context)

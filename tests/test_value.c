@@ -276,6 +276,104 @@ static struct handlebars_value * test_catch_if_helper(
     );
 }
 
+static struct handlebars_value * test_direct_program_boundary_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    HANDLEBARS_VALUE_DECL(replacement_data);
+    HANDLEBARS_VALUE_DECL(saved_data);
+    struct handlebars_error * error = HBSCTX(callback_vm)->e;
+    struct handlebars_string * saved_buffer = callback_vm->buffer;
+    struct handlebars_string * output;
+    long saved_depth = callback_vm->depth;
+    jmp_buf * volatile previous = error->jmp;
+    jmp_buf buf;
+
+    (void) argv;
+    ck_assert_int_eq(argc, 0);
+    handlebars_value_integer(replacement_data, 99);
+    handlebars_value_value(saved_data, &callback_vm->data);
+
+    output = handlebars_vm_execute_program_ex(
+        callback_vm,
+        -1,
+        options->scope,
+        replacement_data,
+        NULL
+    );
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
+    ck_assert(handlebars_value_eq(&callback_vm->data, saved_data));
+    ck_assert_ptr_eq(callback_vm->buffer, saved_buffer);
+    ck_assert_int_eq(callback_vm->depth, saved_depth);
+
+    if( handlebars_setjmp_ex(callback_vm, &buf) ) {
+        error->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(HBSCTX(callback_vm)), HANDLEBARS_ERROR);
+        ck_assert_ptr_nonnull(
+            strstr(handlebars_error_msg(HBSCTX(callback_vm)), "Invalid program")
+        );
+        clear_intentional_error();
+    } else {
+        output = handlebars_vm_execute_program_ex(
+            callback_vm,
+            999999,
+            options->scope,
+            replacement_data,
+            NULL
+        );
+        error->jmp = previous;
+        if( output != NULL ) {
+            handlebars_string_delref(output);
+        }
+        ck_abort_msg("Expected invalid program to throw");
+    }
+    ck_assert(handlebars_value_eq(&callback_vm->data, saved_data));
+    ck_assert_int_eq(callback_vm->depth, saved_depth);
+    ck_assert_ptr_eq(callback_vm->buffer, saved_buffer);
+
+    if( handlebars_setjmp_ex(callback_vm, &buf) ) {
+        error->jmp = previous;
+        ck_assert_int_eq(handlebars_error_num(HBSCTX(callback_vm)), HANDLEBARS_ERROR);
+        ck_assert_ptr_nonnull(
+            strstr(
+                handlebars_error_msg(HBSCTX(callback_vm)),
+                "partial missing could not be found"
+            )
+        );
+        clear_intentional_error();
+    } else {
+        output = handlebars_vm_execute_program_ex(
+            callback_vm,
+            options->program,
+            options->scope,
+            replacement_data,
+            NULL
+        );
+        error->jmp = previous;
+        if( output != NULL ) {
+            handlebars_string_delref(output);
+        }
+        ck_abort_msg("Expected nested program to throw");
+    }
+    ck_assert(handlebars_value_eq(&callback_vm->data, saved_data));
+    ck_assert_int_eq(callback_vm->depth, saved_depth);
+    ck_assert_ptr_eq(callback_vm->buffer, saved_buffer);
+
+    handlebars_value_str(
+        rv,
+        handlebars_string_ctor(HBSCTX(callback_vm), HBS_STRL("caught"))
+    );
+    HANDLEBARS_VALUE_UNDECL(saved_data);
+    HANDLEBARS_VALUE_UNDECL(replacement_data);
+    return rv;
+}
+
 #if !defined(HANDLEBARS_NO_REFCOUNT) || defined(HANDLEBARS_MEMORY)
 static struct handlebars_value * test_with_context_helper(
     int argc,
@@ -1727,6 +1825,50 @@ START_TEST(test_caught_if_errors_restore_outer_data_and_vm_reuse)
 }
 END_TEST
 
+START_TEST(test_execute_program_ex_direct_boundaries_restore_vm)
+{
+    HANDLEBARS_VALUE_DECL(item);
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_stack * item_stack;
+    struct handlebars_map * input_map;
+    struct handlebars_module * module;
+
+    handlebars_value_boolean(item, true);
+    item_stack = handlebars_stack_ctor(context, 2);
+    item_stack = handlebars_stack_push(item_stack, item);
+    item_stack = handlebars_stack_push(item_stack, item);
+    handlebars_value_array(items, item_stack);
+    input_map = handlebars_map_ctor(context, 1);
+    input_map = handlebars_map_str_add(input_map, HBS_STRL("items"), items);
+    handlebars_value_map(input, input_map);
+    test_register_helper(
+        HBS_STRL("programBoundary"),
+        test_direct_program_boundary_helper
+    );
+    module = test_compile_template(
+        "{{#each items}}"
+            "{{#programBoundary}}{{> missing}}{{/programBoundary}}"
+            "after={{@index}};"
+        "{{/each}}"
+    );
+
+    for( int i = 0; i < 2; i++ ) {
+        struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+        ck_assert_ptr_nonnull(output);
+        ck_assert_hbs_str_eq_cstr(
+            output,
+            "caughtafter=0;caughtafter=1;"
+        );
+        handlebars_string_delref(output);
+    }
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(items);
+    HANDLEBARS_VALUE_UNDECL(item);
+}
+END_TEST
+
 #ifndef HANDLEBARS_NO_REFCOUNT
 static void assert_block_helper_error_releases_vm_temporaries(
     const char * tmpl,
@@ -2149,6 +2291,36 @@ START_TEST(test_each_helper_allocation_failures_unwind_vm)
     HANDLEBARS_VALUE_UNDECL(input);
     HANDLEBARS_VALUE_UNDECL(items);
     HANDLEBARS_VALUE_UNDECL(item);
+}
+END_TEST
+
+START_TEST(test_three_nested_each_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_stack * inner = handlebars_stack_ctor(context, 1);
+    struct handlebars_stack * middle = handlebars_stack_ctor(context, 1);
+    struct handlebars_stack * outer = handlebars_stack_ctor(context, 1);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+
+    handlebars_value_boolean(value, true);
+    inner = handlebars_stack_push(inner, value);
+    handlebars_value_array(value, inner);
+    middle = handlebars_stack_push(middle, value);
+    handlebars_value_array(value, middle);
+    outer = handlebars_stack_push(outer, value);
+    handlebars_value_array(value, outer);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("outer"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#each outer}}{{#each this}}{{#each this}}x{{/each}}{{/each}}{{/each}}",
+        input,
+        "x"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
 }
 END_TEST
 
@@ -5092,6 +5264,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_vm_reusable_after_helper_error, "VM reuse after helper error");
     REGISTER_TEST_FIXTURE(s, test_caught_each_error_restores_outer_data, "Caught each errors restore outer data");
     REGISTER_TEST_FIXTURE(s, test_caught_if_errors_restore_outer_data_and_vm_reuse, "Caught if errors restore outer data and VM reuse");
+    REGISTER_TEST_FIXTURE(s, test_execute_program_ex_direct_boundaries_restore_vm, "Direct execute_program_ex boundaries restore VM state");
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_with_helper_error_releases_vm_temporaries, "With helper errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_with_callable_error_releases_vm_temporaries, "With callable errors release VM temporaries");
@@ -5111,6 +5284,7 @@ static Suite * suite(void)
 #ifdef HANDLEBARS_MEMORY
     REGISTER_TEST_FIXTURE(s, test_with_helper_allocation_failures_unwind_vm, "With helper allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_each_helper_allocation_failures_unwind_vm, "Each helper allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_three_nested_each_allocation_failures_unwind_vm, "Three nested each allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_each_map_allocation_failures_unwind_vm, "Each map allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_with_callable_allocation_failures_unwind_vm, "With callable allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_conditional_callable_allocation_failures_unwind_vm, "Conditional callable allocation failures unwind VM state");
