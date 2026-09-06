@@ -37,6 +37,11 @@ HBS_LOCAL struct handlebars_value * handlebars_vm_lookup_property(
     struct handlebars_value * rv
 ) HBS_ATTR_NONNULL_ALL;
 
+HBS_LOCAL size_t handlebars_vm_program_block_params(
+    struct handlebars_vm * vm,
+    long program
+) HBS_ATTR_NONNULL(1);
+
 struct handlebars_vm {
     struct handlebars_context ctx;
     struct handlebars_cache * cache;

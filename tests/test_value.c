@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <math.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,6 +31,9 @@
 #include "handlebars_closure.h"
 #include "handlebars_compiler.h"
 #include "handlebars_helpers.h"
+#ifdef HANDLEBARS_HAVE_JSON
+#include "handlebars_json.h"
+#endif
 #include "handlebars_memory.h"
 
 #include "handlebars_map.h"
@@ -502,6 +506,25 @@ static const struct handlebars_value_handlers test_type_only_string_handlers = {
     .type = &test_type_only_string_type
 };
 
+struct test_counted_string_user {
+    struct handlebars_user user;
+    long count;
+};
+
+static long test_counted_string_count(struct handlebars_value * value)
+{
+    struct test_counted_string_user * user = (struct test_counted_string_user *)
+        handlebars_value_get_user(value);
+
+    return user->count;
+}
+
+static const struct handlebars_value_handlers test_counted_string_handlers = {
+    .name = "test-counted-string",
+    .type = &test_type_only_string_type,
+    .count = &test_counted_string_count
+};
+
 static enum handlebars_value_type test_type_only_ptr_type(
     struct handlebars_value * value
 )
@@ -577,6 +600,27 @@ static void test_value_lazy_map(
     handlebars_value_init(&user->item);
     user->has_length = has_length;
     handlebars_user_init(&user->user, context, &test_lazy_map_handlers);
+    handlebars_value_user(value, &user->user);
+}
+
+static void test_value_user_string(
+    struct handlebars_value * value,
+    long count,
+    bool has_count
+)
+{
+    struct test_counted_string_user * user = handlebars_talloc_zero(
+        context,
+        struct test_counted_string_user
+    );
+
+    ck_assert_ptr_nonnull(user);
+    user->count = count;
+    handlebars_user_init(
+        &user->user,
+        context,
+        has_count ? &test_counted_string_handlers : &test_type_only_string_handlers
+    );
     handlebars_value_user(value, &user->user);
 }
 
@@ -883,6 +927,323 @@ done:
     HANDLEBARS_VALUE_UNDECL(rv);
     HANDLEBARS_VALUE_UNDECL(argv);
 }
+
+struct conditional_value_case {
+    enum handlebars_value_type type;
+    double number;
+    const char * text;
+    const char * branches;
+    const char * option_branches;
+};
+
+static const struct conditional_value_case conditional_value_cases[] = {
+    {HANDLEBARS_VALUE_TYPE_NULL, 0, NULL, "FTFTFT|outer|outer", "FT"},
+    {HANDLEBARS_VALUE_TYPE_FALSE, 0, NULL, "FTFTFT|outer|outer", "FT"},
+    {HANDLEBARS_VALUE_TYPE_TRUE, 0, NULL, "TFTFTF|T|outer", "TF"},
+    {HANDLEBARS_VALUE_TYPE_INTEGER, 0, NULL, "FTFTTF|T|outer", "FT"},
+    {HANDLEBARS_VALUE_TYPE_INTEGER, 1, NULL, "TFTFTF|T|outer", "TF"},
+    {HANDLEBARS_VALUE_TYPE_FLOAT, 0.0, NULL, "FTFTTF|T|outer", "FT"},
+    {HANDLEBARS_VALUE_TYPE_FLOAT, -0.0, NULL, "FTFTTF|T|outer", "FT"},
+    {HANDLEBARS_VALUE_TYPE_FLOAT, 0.5, NULL, "TFTFTF|T|outer", "TF"},
+    {HANDLEBARS_VALUE_TYPE_FLOAT, NAN, NULL, "FTFTFT|outer|outer", "FT"},
+    {HANDLEBARS_VALUE_TYPE_STRING, 0, "", "FTFTFT|outer|outer", "FT"},
+    {HANDLEBARS_VALUE_TYPE_STRING, 0, "0", "TFTFTF|T|outer", "TF"},
+    {HANDLEBARS_VALUE_TYPE_STRING, 0, "value", "TFTFTF|T|outer", "TF"},
+    {HANDLEBARS_VALUE_TYPE_ARRAY, 0, NULL, "FTFTFT|outer|outer", "TF"},
+    {HANDLEBARS_VALUE_TYPE_ARRAY, 1, NULL, "TFTFTF|T|outer", "TF"},
+    {HANDLEBARS_VALUE_TYPE_MAP, 0, NULL, "TFTFTF|T|outer", "TF"},
+    {HANDLEBARS_VALUE_TYPE_MAP, 1, NULL, "TFTFTF|T|outer", "TF"},
+};
+
+static void conditional_map_update(
+    struct handlebars_value * map,
+    const char * name,
+    size_t length,
+    struct handlebars_value * value
+)
+{
+    struct handlebars_string * key = handlebars_string_ctor(context, name, length);
+    handlebars_string_addref(key);
+    handlebars_value_map_update(map, key, value);
+    handlebars_string_delref(key);
+}
+
+static void init_conditional_value(struct handlebars_value * value, int index)
+{
+    const struct conditional_value_case * test = &conditional_value_cases[index];
+    HANDLEBARS_VALUE_DECL(item);
+    handlebars_value_boolean(item, true);
+    switch( test->type ) {
+        case HANDLEBARS_VALUE_TYPE_NULL: handlebars_value_null(value); break;
+        case HANDLEBARS_VALUE_TYPE_FALSE: handlebars_value_boolean(value, false); break;
+        case HANDLEBARS_VALUE_TYPE_TRUE: handlebars_value_boolean(value, true); break;
+        case HANDLEBARS_VALUE_TYPE_INTEGER: handlebars_value_integer(value, (long) test->number); break;
+        case HANDLEBARS_VALUE_TYPE_FLOAT: handlebars_value_float(value, test->number); break;
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            handlebars_value_str(value, handlebars_string_ctor(context, test->text, strlen(test->text)));
+            break;
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            handlebars_value_array(value, handlebars_stack_ctor(context, 1));
+            if( test->number != 0 ) {
+                handlebars_value_array_push(value, item);
+            }
+            break;
+        case HANDLEBARS_VALUE_TYPE_MAP:
+            handlebars_value_map(value, handlebars_map_ctor(context, 1));
+            if( test->number != 0 ) {
+                conditional_map_update(value, HBS_STRL("item"), item);
+            }
+            break;
+        default: ck_abort_msg("Unexpected conditional test type");
+    }
+    HANDLEBARS_VALUE_UNDECL(item);
+}
+
+static void assert_conditional_render(
+    const char * tmpl,
+    struct handlebars_value * input,
+    const char * expected
+)
+{
+    struct handlebars_module * module = test_compile_template(tmpl);
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(context));
+    ck_assert_hbs_str_eq_cstr(output, expected);
+    handlebars_string_delref(output);
+}
+
+static const char conditional_branches_template[] =
+    "{{#if n}}T{{else}}F{{/if}}{{#unless n}}T{{else}}F{{/unless}}"
+    "{{#if n includeZero=false}}T{{else}}F{{/if}}"
+    "{{#unless n includeZero=false}}T{{else}}F{{/unless}}"
+    "{{#if n includeZero=true}}T{{else}}F{{/if}}"
+    "{{#unless n includeZero=true}}T{{else}}F{{/unless}}"
+    "|{{#with n}}T{{else}}{{name}}{{/with}}|{{name}}";
+
+START_TEST(test_conditional_helpers_value_matrix)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_map(input, handlebars_map_ctor(context, 2));
+    init_conditional_value(value, _i);
+    conditional_map_update(input, HBS_STRL("n"), value);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("outer")));
+    conditional_map_update(input, HBS_STRL("name"), value);
+    assert_conditional_render(conditional_branches_template, input, conditional_value_cases[_i].branches);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_conditional_helpers_include_zero_value)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_map(input, handlebars_map_ctor(context, 2));
+    init_conditional_value(value, _i);
+    conditional_map_update(input, HBS_STRL("include"), value);
+    handlebars_value_float(value, -0.0);
+    conditional_map_update(input, HBS_STRL("n"), value);
+    assert_conditional_render(
+        "{{#if n includeZero=include}}T{{else}}F{{/if}}"
+        "{{#unless n includeZero=include}}T{{else}}F{{/unless}}",
+        input,
+        conditional_value_cases[_i].option_branches
+    );
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+#ifdef HANDLEBARS_HAVE_JSON
+START_TEST(test_conditional_helpers_lazy_collections)
+{
+    static const char * json[] = {"[]", "[true]", "{}", "{\"item\":true}"};
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_map(input, handlebars_map_ctor(context, 2));
+    handlebars_value_init_json_string(context, value, json[_i]);
+    ck_assert_int_eq(handlebars_value_get_real_type(value), HANDLEBARS_VALUE_TYPE_USER);
+    conditional_map_update(input, HBS_STRL("n"), value);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("outer")));
+    conditional_map_update(input, HBS_STRL("name"), value);
+    assert_conditional_render(conditional_branches_template, input, conditional_value_cases[12 + _i].branches);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+#endif
+
+START_TEST(test_with_lazy_array_without_count_uses_array_contents)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_map(input, handlebars_map_ctor(context, 1));
+    test_value_lazy_array_without_count(value, 2);
+    conditional_map_update(input, HBS_STRL("n"), value);
+    assert_conditional_render(
+        "{{#with n}}{{this.[0]}}{{else}}empty{{/with}}",
+        input,
+        "10"
+    );
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_conditional_helpers_user_strings)
+{
+    static const struct {
+        long count;
+        bool has_count;
+        const char * expected;
+    } cases[] = {
+        {0, true, "FTFTFT|outer|outer"},
+        {5, true, "TFTFTF|T|outer"},
+        {0, false, "TFTFTF|T|outer"}
+    };
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_map(input, handlebars_map_ctor(context, 2));
+    test_value_user_string(value, cases[_i].count, cases[_i].has_count);
+    conditional_map_update(input, HBS_STRL("n"), value);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("outer")));
+    conditional_map_update(input, HBS_STRL("name"), value);
+    assert_conditional_render(conditional_branches_template, input, cases[_i].expected);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+static int conditional_callable_calls;
+
+static struct handlebars_value * test_conditional_callable(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * helper_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) helper_vm;
+    ck_assert_int_eq(argc, 1);
+    ck_assert_ptr_eq(handlebars_value_get_map(&argv[0]), handlebars_value_get_map(options->scope));
+    conditional_callable_calls++;
+    handlebars_value_value(rv, handlebars_value_map_str_find(options->scope, HBS_STRL("result"), rv));
+    return rv;
+}
+
+START_TEST(test_conditional_helpers_callables)
+{
+    static const char * expected[] = {"FTouter", "FTouter", "TFtrue", "TF0"};
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    handlebars_value_map(input, handlebars_map_ctor(context, 3));
+    init_conditional_value(value, _i);
+    conditional_map_update(input, HBS_STRL("result"), value);
+    handlebars_value_helper(value, test_conditional_callable);
+    conditional_map_update(input, HBS_STRL("n"), value);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("outer")));
+    conditional_map_update(input, HBS_STRL("name"), value);
+    conditional_callable_calls = 0;
+    assert_conditional_render(
+        "{{#if n includeZero=true}}T{{else}}F{{/if}}"
+        "{{#unless n includeZero=true}}T{{else}}F{{/unless}}"
+        "{{#with n}}{{this}}{{else}}{{name}}{{/with}}",
+        input,
+        expected[_i]
+    );
+    ck_assert_int_eq(conditional_callable_calls, 3);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+static struct handlebars_value * test_unless_if_override(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * helper_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) helper_vm;
+    ck_assert_int_eq(argc, 1);
+    ck_assert_int_eq(handlebars_value_get_type(argv), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(argv), 42);
+    ck_assert_int_eq(options->program, -2);
+    ck_assert_int_eq(options->inverse, -1);
+    ck_assert_uint_eq(options->program_block_params, 0);
+    handlebars_value_boolean(rv, true);
+    return rv;
+}
+
+START_TEST(test_unless_preserves_arguments_and_options)
+{
+    HANDLEBARS_VALUE_DECL(helpers);
+    HANDLEBARS_VALUE_DECL(helper);
+    HANDLEBARS_VALUE_DECL(argv);
+    HANDLEBARS_VALUE_DECL(rv);
+    struct handlebars_options options = {0};
+    options.program = -1;
+    options.inverse = -2;
+    options.program_block_params = 1;
+    handlebars_value_map(helpers, handlebars_map_ctor(context, 1));
+    handlebars_value_helper(helper, test_unless_if_override);
+    conditional_map_update(helpers, HBS_STRL("if"), helper);
+    handlebars_vm_set_helpers(vm, helpers);
+    handlebars_value_integer(argv, 42);
+    ck_assert_ptr_eq(handlebars_builtin_unless(1, argv, &options, vm, rv), rv);
+    ck_assert_int_eq(handlebars_value_get_type(argv), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(argv), 42);
+    ck_assert_int_eq(options.program, -1);
+    ck_assert_int_eq(options.inverse, -2);
+    ck_assert_uint_eq(options.program_block_params, 1);
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(argv);
+    HANDLEBARS_VALUE_UNDECL(helper);
+    HANDLEBARS_VALUE_UNDECL(helpers);
+}
+END_TEST
+
+static struct handlebars_value * test_unless_if_override_inverse_block_params(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * helper_vm,
+    struct handlebars_value * rv
+)
+{
+    (void) argv;
+    (void) helper_vm;
+    ck_assert_int_eq(argc, 1);
+    ck_assert_int_ge(options->program, 0);
+    ck_assert_uint_eq(options->program_block_params, 1);
+    handlebars_value_integer(rv, 1);
+    return rv;
+}
+
+START_TEST(test_unless_reports_inverse_program_block_params_to_if_override)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(helpers);
+    HANDLEBARS_VALUE_DECL(helper);
+
+    handlebars_value_map(input, handlebars_map_ctor(context, 0));
+    handlebars_value_map(helpers, handlebars_map_ctor(context, 1));
+    handlebars_value_helper(helper, test_unless_if_override_inverse_block_params);
+    conditional_map_update(helpers, HBS_STRL("if"), helper);
+    handlebars_vm_set_helpers(vm, helpers);
+
+    assert_conditional_render("{{^unless n as |x|}}body{{/unless}}", input, "1");
+
+    HANDLEBARS_VALUE_UNDECL(helper);
+    HANDLEBARS_VALUE_UNDECL(helpers);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
 
 START_TEST(test_idle_vm_builtins_reject_bad_arity)
 {
@@ -1353,7 +1714,7 @@ START_TEST(test_if_helper_error_releases_vm_temporaries)
 }
 END_TEST
 
-START_TEST(test_if_callable_selected_program_error_releases_vm_temporaries)
+START_TEST(test_conditional_callable_selected_program_error_releases_vm_temporaries)
 {
     HANDLEBARS_VALUE_DECL(holder);
     HANDLEBARS_VALUE_DECL(input);
@@ -1370,6 +1731,10 @@ START_TEST(test_if_callable_selected_program_error_releases_vm_temporaries)
 
     assert_block_helper_error_releases_vm_temporaries(
         "{{#if holder}}{{> missing}}{{/if}}",
+        input
+    );
+    assert_block_helper_error_releases_vm_temporaries(
+        "{{#unless holder}}unexpected{{else}}{{> missing}}{{/unless}}",
         input
     );
 
@@ -1735,7 +2100,7 @@ START_TEST(test_with_callable_allocation_failures_unwind_vm)
 }
 END_TEST
 
-START_TEST(test_if_callable_allocation_failures_unwind_vm)
+START_TEST(test_conditional_callable_allocation_failures_unwind_vm)
 {
     HANDLEBARS_VALUE_DECL(holder);
     HANDLEBARS_VALUE_DECL(input);
@@ -1752,6 +2117,11 @@ START_TEST(test_if_callable_allocation_failures_unwind_vm)
 
     assert_block_helper_allocation_failures_unwind_vm(
         "{{#if holder}}success{{/if}}",
+        input,
+        "success"
+    );
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{#unless holder}}unexpected{{else}}success{{/unless}}",
         input,
         "success"
     );
@@ -2136,7 +2506,8 @@ START_TEST(test_inline_partial_error_after_stack_growth_unwinds_vm)
     struct handlebars_module * succeeding = test_compile_template("ok");
     struct handlebars_string * output;
 
-    handlebars_value_map(node, handlebars_map_ctor(context, 0));
+    /* Keep the recursion depth fixed without relying on empty objects being falsey. */
+    handlebars_value_null(node);
     for( unsigned int i = 0; i < 47; i++ ) {
         struct handlebars_map * parent = handlebars_map_ctor(context, 1);
         parent = handlebars_map_str_add(parent, HBS_STRL("next"), node);
@@ -4422,6 +4793,21 @@ static Suite * suite(void);
 static Suite * suite(void)
 {
     Suite * s = suite_create("Value");
+    TCase * conditional = tcase_create("Conditional helpers");
+    tcase_add_checked_fixture(conditional, default_setup, default_teardown);
+    tcase_add_loop_test(conditional, test_conditional_helpers_value_matrix, 0,
+        sizeof(conditional_value_cases) / sizeof(conditional_value_cases[0]));
+    tcase_add_loop_test(conditional, test_conditional_helpers_include_zero_value, 0,
+        sizeof(conditional_value_cases) / sizeof(conditional_value_cases[0]));
+    tcase_add_loop_test(conditional, test_conditional_helpers_callables, 0, 4);
+#ifdef HANDLEBARS_HAVE_JSON
+    tcase_add_loop_test(conditional, test_conditional_helpers_lazy_collections, 0, 4);
+#endif
+    tcase_add_test(conditional, test_with_lazy_array_without_count_uses_array_contents);
+    tcase_add_loop_test(conditional, test_conditional_helpers_user_strings, 0, 3);
+    tcase_add_test(conditional, test_unless_preserves_arguments_and_options);
+    tcase_add_test(conditional, test_unless_reports_inverse_program_block_params_to_if_override);
+    suite_add_tcase(s, conditional);
 
     REGISTER_TEST_FIXTURE(s, test_boolean_true, "Boolean - true");
     REGISTER_TEST_FIXTURE(s, test_boolean_false, "Boolean - false");
@@ -4458,7 +4844,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_with_helper_error_releases_vm_temporaries, "With helper errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_with_callable_error_releases_vm_temporaries, "With callable errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_if_helper_error_releases_vm_temporaries, "If helper errors release VM temporaries");
-    REGISTER_TEST_FIXTURE(s, test_if_callable_selected_program_error_releases_vm_temporaries, "If callable selected-program errors release VM temporaries");
+    REGISTER_TEST_FIXTURE(s, test_conditional_callable_selected_program_error_releases_vm_temporaries, "Conditional callable selected-program errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_unless_helper_error_releases_vm_temporaries, "Unless helper errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_each_helper_error_releases_vm_temporaries, "Each helper errors release VM temporaries");
     REGISTER_TEST_FIXTURE(s, test_each_callable_error_releases_vm_temporaries, "Each callable errors release VM temporaries");
@@ -4475,7 +4861,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_each_helper_allocation_failures_unwind_vm, "Each helper allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_each_map_allocation_failures_unwind_vm, "Each map allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_with_callable_allocation_failures_unwind_vm, "With callable allocation failures unwind VM state");
-    REGISTER_TEST_FIXTURE(s, test_if_callable_allocation_failures_unwind_vm, "If callable allocation failures unwind VM state");
+    REGISTER_TEST_FIXTURE(s, test_conditional_callable_allocation_failures_unwind_vm, "Conditional callable allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_each_callable_allocation_failures_unwind_vm, "Each callable allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_ambiguous_block_value_allocation_failures_unwind_vm, "Ambiguous block value allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_block_value_allocation_failures_unwind_vm, "Block value allocation failures unwind VM state");

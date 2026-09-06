@@ -4448,7 +4448,8 @@ START_TEST(test_inline_partial_reuses_full_captured_block_param_stack)
     HANDLEBARS_VALUE_DECL(recurse_partial);
     HANDLEBARS_VALUE_DECL(partials);
 
-    handlebars_value_map(node, handlebars_map_ctor(context, 0));
+    /* Keep the recursion depth fixed without relying on empty objects being falsey. */
+    handlebars_value_null(node);
     for( unsigned int i = 0; i < 47; i++ ) {
         struct handlebars_map * parent = handlebars_map_ctor(context, 1);
         parent = handlebars_map_str_add(parent, HBS_STRL("next"), node);
@@ -4509,7 +4510,8 @@ START_TEST(test_partial_block_grows_captured_block_param_stack)
     HANDLEBARS_VALUE_DECL(layout_partial);
     HANDLEBARS_VALUE_DECL(partials);
 
-    handlebars_value_map(node, handlebars_map_ctor(context, 0));
+    /* Keep the recursion depth fixed without relying on empty objects being falsey. */
+    handlebars_value_null(node);
     for( unsigned int i = 0; i < 47; i++ ) {
         struct handlebars_map * parent = handlebars_map_ctor(context, 1);
         parent = handlebars_map_str_add(parent, HBS_STRL("next"), node);

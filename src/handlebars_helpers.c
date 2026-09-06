@@ -20,6 +20,7 @@
 #endif
 
 #include <assert.h>
+#include <math.h>
 #include <string.h>
 
 #include "handlebars.h"
@@ -33,6 +34,7 @@
 #include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
+#include "handlebars_value_handlers.h"
 #include "handlebars_vm.h"
 
 #pragma GCC diagnostic push
@@ -381,12 +383,50 @@ struct handlebars_value * handlebars_builtin_lookup(HANDLEBARS_HELPER_ARGS)
     return result != NULL ? result : rv;
 }
 
+/* Handlebars emptiness differs from the general value conversion API. */
+static bool handlebars_conditional_is_empty(
+    struct handlebars_value * value,
+    bool include_zero
+)
+{
+    switch( handlebars_value_get_type(value) ) {
+        case HANDLEBARS_VALUE_TYPE_NULL:
+        case HANDLEBARS_VALUE_TYPE_FALSE:
+            return true;
+        case HANDLEBARS_VALUE_TYPE_INTEGER:
+            return !include_zero && handlebars_value_get_intval(value) == 0;
+        case HANDLEBARS_VALUE_TYPE_FLOAT: {
+            double number = handlebars_value_get_floatval(value);
+            return isnan(number) || (!include_zero && number == 0);
+        }
+        case HANDLEBARS_VALUE_TYPE_STRING:
+            if( handlebars_value_get_real_type(value) == HANDLEBARS_VALUE_TYPE_USER ) {
+                if( handlebars_value_get_handlers(value)->count == NULL ) {
+                    /* Keep custom strings truthy when their length is unavailable. */
+                    return false;
+                }
+                return handlebars_value_count(value) == 0;
+            }
+            return handlebars_value_get_strlen(value) == 0;
+        case HANDLEBARS_VALUE_TYPE_ARRAY:
+            if( handlebars_value_get_real_type(value) == HANDLEBARS_VALUE_TYPE_USER &&
+                    handlebars_value_get_handlers(value)->count == NULL ) {
+                /* Keep lazy arrays truthy when their length is unavailable. */
+                return false;
+            }
+            return handlebars_value_count(value) == 0;
+        default:
+            return false;
+    }
+}
+
 struct handlebars_if_call_state {
     int argc;
     struct handlebars_options * options;
     struct handlebars_value * rv;
     struct handlebars_value * conditional;
     struct handlebars_value rv2;
+    struct handlebars_value include_zero;
     struct handlebars_value lambda_argv[1];
     struct handlebars_vm_call_checkpoint checkpoint;
 };
@@ -397,6 +437,7 @@ static void handlebars_if_call_state_deinit(
 {
     handlebars_value_dtor(&state->lambda_argv[0]);
     handlebars_value_dtor(&state->rv2);
+    handlebars_value_dtor(&state->include_zero);
 }
 
 HBS_ATTR_NOINLINE HBS_ATTR_NONNULL_ALL
@@ -409,6 +450,7 @@ static void handlebars_builtin_if_guarded(
     jmp_buf * volatile prev_jmp = error->jmp;
     enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
     struct handlebars_value * conditional;
+    bool include_zero = false;
     long program;
     struct handlebars_string * result_str = NULL;
     jmp_buf buf;
@@ -441,19 +483,20 @@ static void handlebars_builtin_if_guarded(
         );
     }
 
-    if( !handlebars_value_is_empty(conditional) ) {
-        program = state->options->program;
-    } else if( handlebars_value_get_type(conditional) == HANDLEBARS_VALUE_TYPE_INTEGER &&
-            handlebars_value_get_intval(conditional) == 0 &&
-            NULL != handlebars_value_map_str_find(
-                state->options->hash,
-                HBS_STRL("includeZero"),
-                &state->rv2
-            ) ) {
-        program = state->options->program;
-    } else {
-        program = state->options->inverse;
+    if( state->options->hash != NULL ) {
+        struct handlebars_value * option = handlebars_value_map_str_find(
+            state->options->hash,
+            HBS_STRL("includeZero"),
+            &state->include_zero
+        );
+        if( option != NULL ) {
+            /* Arrays, including empty arrays, are truthy as option values. */
+            include_zero = handlebars_value_get_type(option) == HANDLEBARS_VALUE_TYPE_ARRAY ||
+                !handlebars_conditional_is_empty(option, false);
+        }
     }
+    program = handlebars_conditional_is_empty(conditional, include_zero) ?
+        state->options->inverse : state->options->program;
 
     result_str = handlebars_vm_execute_program(
         vm,
@@ -487,18 +530,19 @@ struct handlebars_value * handlebars_builtin_if(HANDLEBARS_HELPER_ARGS)
 
 struct handlebars_value * handlebars_builtin_unless(HANDLEBARS_HELPER_ARGS)
 {
-    struct handlebars_value * conditional;
-
     if (argc != 1) {
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "#unless requires exactly one argument");
     }
 
-    conditional = &argv[0];
-    assert(conditional != NULL);
+    struct handlebars_options inverted = *options;
+    inverted.program = options->inverse;
+    inverted.inverse = options->program;
+    inverted.program_block_params = handlebars_vm_program_block_params(
+        vm,
+        inverted.program
+    );
 
-    handlebars_value_boolean(conditional, handlebars_value_is_empty(conditional));
-
-    return handlebars_vm_call_helper_str(HBS_STRL("if"), HANDLEBARS_HELPER_ARGS_PASSTHRU);
+    return handlebars_vm_call_helper_str(HBS_STRL("if"), argc, argv, &inverted, vm, rv);
 }
 
 struct handlebars_with_call_state {
@@ -565,11 +609,11 @@ static void handlebars_builtin_with_guarded(
 
     assert(state->context != NULL);
 
-    if( handlebars_value_get_type(state->context) == HANDLEBARS_VALUE_TYPE_NULL ) {
+    if( handlebars_conditional_is_empty(state->context, true) ) {
         state->result = handlebars_vm_execute_program(
             vm,
             state->options->inverse,
-            state->context
+            state->options->scope
         );
     } else {
         handlebars_value_array(

@@ -451,7 +451,10 @@ struct handlebars_value * handlebars_vm_call_helper_str(const char * name, unsig
     return rv;
 }
 
-static inline size_t program_block_params(struct handlebars_vm * vm, long program)
+HBS_LOCAL size_t handlebars_vm_program_block_params(
+    struct handlebars_vm * vm,
+    long program
+)
 {
     struct handlebars_module_table_entry * entry;
 
@@ -509,7 +512,10 @@ static void setup_options(struct handlebars_vm * vm, int argc, struct handlebars
     }
     if (program) {
         options->program = handlebars_value_get_intval(program);
-        options->program_block_params = program_block_params(vm, options->program);
+        options->program_block_params = handlebars_vm_program_block_params(
+            vm,
+            options->program
+        );
         handlebars_value_dtor(program);
     } else {
         options->program = -1;

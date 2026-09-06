@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R08 and R30 through R34 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, rendering semantics, data conversion, and ownership contracts.
+R01 through R08, R10–R11, and R30 through R34 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, rendering semantics, data conversion, and ownership contracts.
 
 ## Verification and coverage limits
 
@@ -218,7 +218,9 @@ With data {"n":0}:
 
 The if implementation tests whether the option exists rather than its value. Unless converts its argument to a boolean before delegating, losing the zero-specific behavior.
 
-Evaluate the option's value and implement unless by reversing the branch selection of the same conditional evaluation. Callable-argument behavior was a source-review concern but was not experimentally checked here.
+**Status: addressed.** The helpers now use Handlebars-compatible emptiness locally. Both integer and floating-point zero honor the value of includeZero; NaN stays empty, while nonempty strings (including "0") and objects stay truthy. Unless delegates to the registered if helper with the original argument and swapped branches, preserving caller arguments and options. Callable conditions are evaluated once with the original scope. These rules follow the [4.7.9 conditional helpers](https://github.com/handlebars-lang/handlebars.js/blob/v4.7.9/lib/handlebars/helpers/if.js) and [emptiness utility](https://github.com/handlebars-lang/handlebars.js/blob/v4.7.9/lib/handlebars/utils.js).
+
+The new Conditional helpers group checks native scalar and collection values, lazy JSON collections, option truthiness, callable results and call counts, and registered-if delegation. Against cc527fff, 26 of its initial 41 cases failed; extending the existing callable cleanup tests to unless produced two additional failures. All now pass. Numeric inputs are constructed through the C value API so these tests do not depend on the literal-compilation behavior tracked by R09. The public conversion API remains a separate R26 task.
 
 ### R11. P2: with uses the wrong empty-value and inverse-context rules
 
@@ -234,7 +236,19 @@ For {"n":null,"name":"outer"}, this template rendered fallback= instead of fallb
 
 Only null selects the inverse branch, and that branch executes with the null value rather than the original scope.
 
-Use the intended emptiness predicate and preserve the caller's scope for the inverse branch. Add tests for each empty type and for an inverse that actually reads its context.
+**Status: addressed.** With now selects its inverse for null, false, NaN, empty strings, and empty arrays, preserving the original scope there. Zero and empty objects select the main block, following the [4.7.9 with helper](https://github.com/handlebars-lang/handlebars.js/blob/v4.7.9/lib/handlebars/helpers/with.js). The shared helper regressions cover these distinctions and callable results.
+
+Three existing stack-boundary fixtures now terminate recursion with null instead of an empty object. They retain their original recursion depth and assertions under the corrected truthiness rules; retaining the empty-object terminator added an unintended level of recursion and produced stack-overflow errors.
+
+Independent correctness and test reviews identified the same regression in the initial patch: checking a custom array's emptiness unconditionally called its optional count callback. The added regression uses the existing indexed-array fixture without that callback; it passed at cc527fff and failed with the initial helper patch. The helper now checks callback availability and preserves the positive branch when a custom array's size is unavailable, while arrays reporting a count of zero still select the inverse. The regression passes after the repair.
+
+A follow-up review found the equivalent custom-string defect: the native string-length getter returned zero for every custom value advertising an effective string type, even when its count callback reported a nonzero length. The conditional predicate now uses that callback when available and, as with custom arrays, preserves the positive branch when length is unavailable. The regression covers empty, nonempty, and unknown-length custom strings across if, unless, and with.
+
+An adversarial test review then found that unless reset the swapped program's block-parameter metadata to zero. Inverse-form blocks can declare parameters, so an overridden if helper received a valid child program paired with the wrong declaration count. Unless now obtains metadata through the VM's existing validated program lookup after swapping branches, and a rendered inverse-form regression covers the override contract.
+
+Final verification for R10–R11 used Linux GCC 15.2.0. The focused group, `CK_RUN_CASE='Conditional helpers' <build>/tests/test_value`, passes all 46 cases. CMake Release and Debug ASan/UBSan builds with allocation-failure testing enabled each pass all 29 CTest programs, using `cmake --build <build> -j4` followed by `ctest --test-dir <build> --output-on-failure -j4`. Sanitizer runs use `CK_FORK=no`, `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1`, and `UBSAN_OPTIONS=halt_on_error=1`, with no sanitizer diagnostics. Autotools `make -j4 all` followed by `make -j4 check`, with allocation-failure testing disabled, passes all 2,358 checks without failures or skips. All nine Linux Nix package checks pass, including Debug with warnings as errors, no-refcount, minimal, static, memory-testing, CMake, and no-LMDB configurations. The repository-wide flake check remains blocked by pre-existing Markdown errors in the vendored Mustache specification; the changed report passes its configured Markdown hook.
+
+Reliability verdict: PASS_WITH_RESIDUAL_RISK. The demonstrated review regressions are fixed and covered by retained tests. Hosted CI and non-Linux platforms were not run for this slice.
 
 ### R12. P2: root and parent data references resolve to the current frame
 
