@@ -49,6 +49,38 @@ jobs:
                       echo "-- END";
                   done
 
+    linux_lmdb_versions:
+        name: linux (LMDB ${{ matrix.lmdb }})
+        runs-on: ubuntu-24.04
+        strategy:
+            fail-fast: false
+            matrix:
+                lmdb: ["0.9.35", "1.0.1"]
+        steps:
+            - uses: actions/checkout@v6
+              with:
+                  submodules: recursive
+            - uses: actions/checkout@v6
+              with:
+                  repository: LMDB/lmdb
+                  ref: LMDB_${{ matrix.lmdb }}
+                  path: .lmdb
+            - name: Install packages
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y bats check cmake gcc g++ libjson-c-dev libpcre2-dev libsubunit-dev libtalloc-dev libyaml-dev make pkg-config
+            - name: Build selected LMDB version
+              run: make -C .lmdb/libraries/liblmdb liblmdb.a CFLAGS="-O2 -g -fPIC" -j2
+            - name: Configure with selected LMDB version
+              run: |
+                  cmake -S . -B build-lmdb \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DHANDLEBARS_ENABLE_MEMORY=ON \
+                      -DLMDB_INCLUDE_DIR="$GITHUB_WORKSPACE/.lmdb/libraries/liblmdb" \
+                      -DLMDB_LIBRARIES="$GITHUB_WORKSPACE/.lmdb/libraries/liblmdb/liblmdb.a"
+            - run: cmake --build build-lmdb -j2
+            - run: ctest --test-dir build-lmdb --output-on-failure
+
     linux_committed_autotools:
         name: linux (committed Autotools outputs)
         runs-on: ubuntu-24.04

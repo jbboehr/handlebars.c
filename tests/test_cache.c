@@ -1025,7 +1025,7 @@ static void lmdb_put_raw(const char * key_string, const void * bytes, size_t siz
 
     err = mdb_env_create(&env);
     ck_assert_int_eq(err, 0);
-    err = mdb_env_open(env, lmdb_db_file, MDB_WRITEMAP | MDB_MAPASYNC | MDB_NOSUBDIR, 0644);
+    err = mdb_env_open(env, lmdb_db_file, MDB_NOSUBDIR, 0644);
     ck_assert_int_eq(err, 0);
     err = mdb_txn_begin(env, NULL, 0, &txn);
     ck_assert_int_eq(err, 0);
@@ -1059,7 +1059,7 @@ static void lmdb_put_misaligned_module(
 
     err = mdb_env_create(&env);
     ck_assert_int_eq(err, 0);
-    err = mdb_env_open(env, lmdb_db_file, MDB_WRITEMAP | MDB_MAPASYNC | MDB_NOSUBDIR, 0644);
+    err = mdb_env_open(env, lmdb_db_file, MDB_NOSUBDIR, 0644);
     ck_assert_int_eq(err, 0);
     err = mdb_txn_begin(env, NULL, 0, &txn);
     ck_assert_int_eq(err, 0);
@@ -3272,16 +3272,48 @@ END_TEST
 
 START_TEST(test_lmdb_cache_does_not_hash_oversized_keys)
 {
+    MDB_env * env;
+    int max_key_size;
+
+    unlink(lmdb_db_file);
+    unlink(lmdb_db_lock_file);
+    ck_assert_int_eq(mdb_env_create(&env), 0);
+    ck_assert_int_eq(mdb_env_open(env, lmdb_db_file, MDB_NOSUBDIR, 0644), 0);
+    max_key_size = mdb_env_get_maxkeysize(env);
+    mdb_env_close(env);
+    ck_assert_int_gt(max_key_size, 1);
+
     struct handlebars_cache * cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
-    char key_buf[1024];
-    memset(key_buf, 'a', sizeof(key_buf));
-    struct handlebars_string * key = handlebars_string_ctor(context, key_buf, sizeof(key_buf));
+    char * key_buf = handlebars_talloc_array(context, char, max_key_size);
+    ck_assert_ptr_nonnull(key_buf);
+    memset(key_buf, 'a', max_key_size);
+    // Cache keys include a trailing NUL in the bytes stored by LMDB.
+    struct handlebars_string * key = handlebars_string_ctor(context, key_buf, max_key_size);
+    struct handlebars_string * fitting_key = handlebars_string_ctor(context, key_buf, max_key_size - 1);
     struct handlebars_module * module = serialize_template("test");
+    struct handlebars_module * found;
 
     handlebars_cache_add(cache, key, module);
     ck_assert_ptr_eq(handlebars_cache_find(cache, key), NULL);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+
+    handlebars_cache_add(cache, fitting_key, module);
+    found = handlebars_cache_find(cache, fitting_key);
+    ck_assert_ptr_nonnull(found);
+    handlebars_cache_release(cache, fitting_key, found);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    ck_assert_ptr_eq(handlebars_cache_find(cache, key), NULL);
 
     handlebars_cache_dtor(cache);
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    found = handlebars_cache_find(cache, fitting_key);
+    ck_assert_ptr_nonnull(found);
+    handlebars_cache_release(cache, fitting_key, found);
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    handlebars_cache_dtor(cache);
+    unlink(lmdb_db_file);
+    unlink(lmdb_db_lock_file);
 }
 END_TEST
 
@@ -3329,11 +3361,19 @@ START_TEST(test_lmdb_cache_gc_expires_zero_age_records)
 {
     struct handlebars_cache * cache;
     struct handlebars_module * module = serialize_template("expired");
+    struct handlebars_module * found;
     struct handlebars_string * key = handlebars_string_ctor(context, HBS_STRL("lmdb-expired"));
 
     reset_lmdb_test_files();
     cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
     handlebars_cache_add(cache, key, module);
+
+    // An ordinary entry must survive a clean reopen before GC removes it.
+    handlebars_cache_dtor(cache);
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_nonnull(found);
+    handlebars_cache_release(cache, key, found);
     cache->max_age = 0;
 
     ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
@@ -3341,6 +3381,25 @@ START_TEST(test_lmdb_cache_gc_expires_zero_age_records)
     ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
 
     handlebars_cache_dtor(cache);
+
+    // The deletion must survive reopening, and the database must remain writable.
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    handlebars_cache_add(cache, key, module);
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_nonnull(found);
+    handlebars_cache_release(cache, key, found);
+    cache->max_age = 0;
+    ck_assert_int_eq(handlebars_cache_gc(cache), 1);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+    handlebars_cache_dtor(cache);
+
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    handlebars_cache_dtor(cache);
+    reset_lmdb_test_files();
 }
 END_TEST
 

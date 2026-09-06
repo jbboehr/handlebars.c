@@ -422,7 +422,9 @@ static void handlebars_cache_lmdb_ctor_init(
     HANDLE_RC(err);
     talloc_set_destructor(cache, cache_dtor);
 
-    err = mdb_env_open(intern->env, path, MDB_WRITEMAP | MDB_MAPASYNC | MDB_NOSUBDIR, 0644);
+    // LMDB 1.0.1 can abort when GC commits deletions with MDB_WRITEMAP.
+    // Use the default write mode and synchronous commits on all versions.
+    err = mdb_env_open(intern->env, path, MDB_NOSUBDIR, 0644);
     HANDLE_RC(err);
 }
 
