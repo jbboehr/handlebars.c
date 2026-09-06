@@ -115,6 +115,13 @@ static struct handlebars_module * serialize_template(const char * tmpl)
     return serialize_template_with_flags(tmpl, 0);
 }
 
+// Only fault-injection fixtures preload the VM's internal key format.
+static struct handlebars_string * vm_cache_test_key(const char * source)
+{
+    struct handlebars_string * key = handlebars_string_ctor(context, source, strlen(source));
+    return handlebars_string_asprintf_append(context, key, "%c%lx", 0, 0UL);
+}
+
 static struct handlebars_value * clear_vm_cache_helper(
     int argc,
     struct handlebars_value * argv,
@@ -285,11 +292,14 @@ static HBS_ATTR_NORETURN void vm_cache_fault_throw(
     enum vm_cache_fault_operation operation
 )
 {
+    // Use the readable source prefix for synthetic diagnostics, excluding
+    // the VM's binary cache-key metadata.
+    int source_len = (int) strlen(hbs_str_val(tmpl));
     struct handlebars_locinfo loc = {
         .first_line = 100 + operation,
-        .first_column = (int) hbs_str_len(tmpl),
+        .first_column = source_len,
         .last_line = 200 + operation,
-        .last_column = (int) hbs_str_len(tmpl) + 1
+        .last_column = source_len + 1
     };
 
     handlebars_throw_ex(
@@ -298,7 +308,7 @@ static HBS_ATTR_NORETURN void vm_cache_fault_throw(
         &loc,
         "Injected cache %s failure: %.*s",
         vm_cache_fault_name(operation),
-        (int) hbs_str_len(tmpl),
+        source_len,
         hbs_str_val(tmpl)
     );
 }
@@ -1263,11 +1273,7 @@ START_TEST(test_vm_cache_release_preserves_nonthrowing_vm_error)
 
     handlebars_cache_add(
         cache,
-        handlebars_string_ctor(
-            context,
-            partial_source,
-            strlen(partial_source)
-        ),
+        vm_cache_test_key(partial_source),
         serialize_template(partial_source)
     );
 
@@ -1330,11 +1336,7 @@ START_TEST(test_vm_cache_lookup_preserves_nonthrowing_vm_error)
 
     handlebars_cache_add(
         cache,
-        handlebars_string_ctor(
-            context,
-            partial_source,
-            strlen(partial_source)
-        ),
+        vm_cache_test_key(partial_source),
         serialize_template(partial_source)
     );
 
@@ -1392,11 +1394,7 @@ START_TEST(test_vm_cache_stale_error_allows_dynamic_partial)
 
     handlebars_cache_add(
         cache,
-        handlebars_string_ctor(
-            context,
-            partial_source,
-            strlen(partial_source)
-        ),
+        vm_cache_test_key(partial_source),
         serialize_template(partial_source)
     );
     handlebars_value_str(
@@ -1587,11 +1585,7 @@ START_TEST(test_vm_cache_stale_error_does_not_mask_release_failure)
     for( size_t i = 0; i < 2; i++ ) {
         handlebars_cache_add(
             caches[i],
-            handlebars_string_ctor(
-                context,
-                partial_source,
-                strlen(partial_source)
-            ),
+            vm_cache_test_key(partial_source),
             serialize_template(partial_source)
         );
         caches[i]->hnd = &fault_handlers;
@@ -1896,11 +1890,7 @@ START_TEST(test_vm_same_context_cache_release_failure_preserves_primary_error)
     handlebars_vm_set_cache(vm, cache);
     handlebars_cache_add(
         cache,
-        handlebars_string_ctor(
-            context,
-            partial_source,
-            strlen(partial_source)
-        ),
+        vm_cache_test_key(partial_source),
         serialize_template(partial_source)
     );
     vm_cache_set_string_partial(context, vm, partial_source);
@@ -1966,12 +1956,12 @@ START_TEST(test_vm_cache_replacement_preserves_nested_active_hits)
 
     handlebars_cache_add(
         old_cache,
-        handlebars_string_ctor(context, outer_source, strlen(outer_source)),
+        vm_cache_test_key(outer_source),
         serialize_template(outer_source)
     );
     handlebars_cache_add(
         new_cache,
-        handlebars_string_ctor(context, inner_source, strlen(inner_source)),
+        vm_cache_test_key(inner_source),
         serialize_template(inner_source)
     );
 
@@ -2053,11 +2043,7 @@ START_TEST(test_vm_cache_replacement_releases_hit_after_helper_error)
 
     handlebars_cache_add(
         old_cache,
-        handlebars_string_ctor(
-            context,
-            partial_source,
-            strlen(partial_source)
-        ),
+        vm_cache_test_key(partial_source),
         serialize_template(partial_source)
     );
 
@@ -2198,11 +2184,7 @@ START_TEST(test_vm_foreign_cache_propagates_operation_errors)
     );
 
     vm_cache_fault_current = vm_cache_fault_op_none;
-    key = handlebars_string_ctor(
-        context,
-        release_source,
-        strlen(release_source)
-    );
+    key = vm_cache_test_key(release_source);
     handlebars_cache_add(cache, key, serialize_template(release_source));
     vm_cache_assert_operation_failure(
         vm,
@@ -2223,11 +2205,7 @@ START_TEST(test_vm_foreign_cache_propagates_operation_errors)
     handlebars_vm_set_helpers(vm, helpers);
 
     vm_cache_fault_current = vm_cache_fault_op_none;
-    key = handlebars_string_ctor(
-        context,
-        primary_source,
-        strlen(primary_source)
-    );
+    key = vm_cache_test_key(primary_source);
     handlebars_cache_add(cache, key, serialize_template(primary_source));
     vm_cache_set_string_partial(context, vm, primary_source);
     vm_cache_fault_current = vm_cache_fault_op_release;
@@ -3786,6 +3764,191 @@ START_TEST(test_mmap_cache_rejects_invalid_geometry)
 END_TEST
 #endif
 
+#ifdef HANDLEBARS_HAVE_PTHREAD
+static struct handlebars_cache * vm_flags_test_mmap_cache(struct handlebars_context * ctx)
+{
+    return handlebars_cache_mmap_ctor(ctx, 2097152, 2053);
+}
+#endif
+
+#ifdef HANDLEBARS_HAVE_LMDB
+static struct handlebars_cache * vm_flags_test_lmdb_cache(struct handlebars_context * ctx)
+{
+    reset_lmdb_test_files();
+    return handlebars_cache_lmdb_ctor(ctx, lmdb_db_file);
+}
+#endif
+
+static struct handlebars_cache * (*const vm_flags_test_cache_ctors[])(struct handlebars_context *) = {
+    handlebars_cache_simple_ctor,
+#ifdef HANDLEBARS_HAVE_PTHREAD
+    vm_flags_test_mmap_cache,
+#endif
+#ifdef HANDLEBARS_HAVE_LMDB
+    vm_flags_test_lmdb_cache,
+#endif
+};
+
+static const struct {
+    const char * partial_source;
+    unsigned long flag;
+    const char * default_output;
+    const char * flagged_output;
+} vm_inherited_flags_test_cases[] = {
+    {
+        "{{value}}",
+        handlebars_compiler_flag_no_escape,
+        "a &amp; b",
+        "a & b"
+    },
+    {
+        "A\n{{! cached comment}}\nB",
+        handlebars_compiler_flag_ignore_standalone,
+        "A\nB",
+        "A\n\nB"
+    }
+};
+
+START_TEST(test_vm_partial_cache_respects_compile_flags)
+{
+    struct handlebars_cache * cache = vm_flags_test_cache_ctors[_i / 4](context);
+    bool shared = (_i % 4) >= 2;
+    bool start_unescaped = (_i % 2) != 0;
+    struct handlebars_vm * machines[2] = {vm, shared ? handlebars_vm_ctor(context) : vm};
+    struct handlebars_module * module = serialize_template("{{> cached}}");
+    HANDLEBARS_VALUE_DECL(input);
+
+    handlebars_value_init_json_string(context, input, "{\"value\":\"a & b\"}");
+    handlebars_value_convert(input);
+    for( size_t i = 0; i < 2; i++ ) {
+        vm_cache_set_string_partial(context, machines[i], "{{value}}");
+        handlebars_vm_set_cache(machines[i], cache);
+    }
+
+    for( size_t step = 0; step < 4; step++ ) {
+        struct handlebars_vm * machine = machines[step % 2];
+        bool unescaped = start_unescaped != ((step % 2) != 0);
+        struct handlebars_string * output = NULL;
+        handlebars_vm_set_flags(machine, unescaped ? handlebars_compiler_flag_no_escape : 0);
+
+        enum handlebars_error_type error = handlebars_vm_execute_try(machine, module, input, &output);
+        ck_assert_msg(error == HANDLEBARS_SUCCESS, "%s", handlebars_error_msg(HBSCTX(machine)));
+        ck_assert_hbs_str_eq_cstr(output, unescaped ? "a & b" : "a &amp; b");
+        handlebars_string_delref(output);
+    }
+
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 2);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).hits, 2);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).refcount, 0);
+    handlebars_vm_set_cache(machines[0], NULL);
+    handlebars_vm_set_cache(machines[1], NULL);
+    if( shared ) {
+        handlebars_vm_dtor(machines[1]);
+    }
+    handlebars_cache_dtor(cache);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_partial_cache_respects_inherited_compile_flags)
+{
+    const size_t case_count = sizeof(vm_inherited_flags_test_cases)
+        / sizeof(vm_inherited_flags_test_cases[0]);
+    const size_t case_index = (size_t) _i % case_count;
+    const size_t cache_index = (size_t) _i / case_count;
+    const unsigned long flag = vm_inherited_flags_test_cases[case_index].flag;
+    struct handlebars_cache * cache = vm_flags_test_cache_ctors[cache_index](context);
+    struct handlebars_module * modules[2] = {
+        serialize_template_with_flags("{{> cached}}", 0),
+        serialize_template_with_flags("{{> cached}}", flag)
+    };
+    const struct {
+        size_t module_index;
+        unsigned long vm_flags;
+        const char * expected;
+    } steps[] = {
+        {1, 0, vm_inherited_flags_test_cases[case_index].flagged_output},
+        {0, flag, vm_inherited_flags_test_cases[case_index].flagged_output},
+        {0, 0, vm_inherited_flags_test_cases[case_index].default_output},
+        {1, 0, vm_inherited_flags_test_cases[case_index].flagged_output}
+    };
+    HANDLEBARS_VALUE_DECL(input);
+
+    handlebars_value_init_json_string(context, input, "{\"value\":\"a & b\"}");
+    handlebars_value_convert(input);
+    vm_cache_set_string_partial(
+        context,
+        vm,
+        vm_inherited_flags_test_cases[case_index].partial_source
+    );
+    handlebars_vm_set_cache(vm, cache);
+
+    for( size_t step = 0; step < sizeof(steps) / sizeof(steps[0]); step++ ) {
+        struct handlebars_string * output = NULL;
+        handlebars_vm_set_flags(vm, steps[step].vm_flags);
+
+        enum handlebars_error_type error = handlebars_vm_execute_try(
+            vm,
+            modules[steps[step].module_index],
+            input,
+            &output
+        );
+        ck_assert_msg(error == HANDLEBARS_SUCCESS, "%s", handlebars_error_msg(HBSCTX(vm)));
+        ck_assert_hbs_str_eq_cstr(output, steps[step].expected);
+        handlebars_string_delref(output);
+    }
+
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 2);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).hits, 2);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).refcount, 0);
+    handlebars_vm_set_cache(vm, NULL);
+    handlebars_cache_dtor(cache);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_vm_runtime_cache_ignores_legacy_raw_key)
+{
+    struct handlebars_cache * cache = vm_flags_test_cache_ctors[_i](context);
+    struct handlebars_module * parent = serialize_template("{{> cached}}");
+    struct handlebars_string * raw_key = handlebars_string_ctor(
+        context,
+        HBS_STRL("fresh")
+    );
+    HANDLEBARS_VALUE_DECL(input);
+
+    handlebars_cache_add(cache, raw_key, serialize_template("stale"));
+    vm_cache_set_string_partial(context, vm, "fresh");
+    handlebars_vm_set_cache(vm, cache);
+
+    for( size_t step = 0; step < 2; step++ ) {
+        struct handlebars_string * output = NULL;
+        enum handlebars_error_type error = handlebars_vm_execute_try(
+            vm,
+            parent,
+            input,
+            &output
+        );
+        ck_assert_msg(error == HANDLEBARS_SUCCESS, "%s", handlebars_error_msg(HBSCTX(vm)));
+        ck_assert_hbs_str_eq_cstr(output, "fresh");
+        handlebars_string_delref(output);
+
+        if( step == 0 ) {
+            struct handlebars_module * found = handlebars_cache_find(cache, raw_key);
+            ck_assert_ptr_ne(found, NULL);
+            handlebars_cache_release(cache, raw_key, found);
+        }
+    }
+
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 2);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).hits, 2);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).refcount, 0);
+    handlebars_vm_set_cache(vm, NULL);
+    handlebars_cache_dtor(cache);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 START_TEST(test_compat_partial_cache_uses_processed_template_key)
 {
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
@@ -4490,6 +4653,17 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_hash_collision_is_a_miss, "MMAP hash collision is a miss");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_rejects_invalid_geometry, "MMAP rejects invalid geometry");
 #endif
+    TCase * compile_flags = tcase_create("Partial cache compilation settings");
+    tcase_add_checked_fixture(compile_flags, default_setup, default_teardown);
+    tcase_add_loop_test(compile_flags, test_vm_partial_cache_respects_compile_flags,
+        0, 4 * sizeof(vm_flags_test_cache_ctors) / sizeof(vm_flags_test_cache_ctors[0]));
+    tcase_add_loop_test(compile_flags, test_vm_partial_cache_respects_inherited_compile_flags,
+        0,
+        sizeof(vm_inherited_flags_test_cases) / sizeof(vm_inherited_flags_test_cases[0])
+            * sizeof(vm_flags_test_cache_ctors) / sizeof(vm_flags_test_cache_ctors[0]));
+    tcase_add_loop_test(compile_flags, test_vm_runtime_cache_ignores_legacy_raw_key,
+        0, sizeof(vm_flags_test_cache_ctors) / sizeof(vm_flags_test_cache_ctors[0]));
+    suite_add_tcase(s, compile_flags);
     REGISTER_TEST_FIXTURE(s, test_compat_partial_cache_uses_processed_template_key, "Compat partial cache key");
     REGISTER_TEST_FIXTURE(s, test_vm_rejects_empty_opcode_range, "VM rejects empty opcode range");
     REGISTER_TEST_FIXTURE(s, test_vm_error_returns_null_without_outer_handler, "VM error returns NULL without outer handler");

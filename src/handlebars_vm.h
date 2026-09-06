@@ -260,6 +260,10 @@ void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value *
  * non-NULL cache must remain alive until it is replaced or cleared and every
  * VM call that may have used it has returned. Pass NULL to disable caching.
  *
+ * Runtime cache keys include the processed template and compilation flags.
+ * Their encoding is internal; raw template keys added through the cache API
+ * do not preload the VM's runtime cache.
+ *
  * @param[in] vm The VM
  * @param[in] cache The borrowed cache, or NULL to disable caching
  */

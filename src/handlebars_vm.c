@@ -878,6 +878,7 @@ static struct handlebars_string * execute_template(
         struct handlebars_context
     );
     struct handlebars_string * volatile retval = NULL;
+    struct handlebars_string * volatile cache_key = NULL;
     struct handlebars_module * volatile module = NULL;
     bool volatile from_cache = false;
     bool volatile caught_error = false;
@@ -915,11 +916,21 @@ static struct handlebars_string * execute_template(
 
     // Check for cached template, if available
     if( cache ) {
+        // Preserve the processed source and compilation settings for the
+        // entire lookup/add/release lifecycle. The NUL separates the fields.
+        cache_key = handlebars_string_copy_ctor(context, tmpl);
+        cache_key = handlebars_string_asprintf_append(
+            context,
+            cache_key,
+            "%c%lx",
+            0,
+            vm->flags & handlebars_compiler_flag_all
+        );
         struct handlebars_module * found;
         enum handlebars_error_type cache_error = handlebars_vm_cache_find_try(
             vm,
             cache,
-            (struct handlebars_string *) tmpl,
+            (struct handlebars_string *) cache_key,
             &found
         );
 
@@ -951,7 +962,7 @@ static struct handlebars_string * execute_template(
             enum handlebars_error_type cache_error = handlebars_vm_cache_add_try(
                 vm,
                 cache,
-                (struct handlebars_string *) tmpl,
+                (struct handlebars_string *) cache_key,
                 (struct handlebars_module *) module
             );
 
@@ -989,7 +1000,7 @@ done:
             release_error = handlebars_vm_cache_release_try(
                 vm,
                 cache,
-                (struct handlebars_string *) tmpl,
+                (struct handlebars_string *) cache_key,
                 (struct handlebars_module *) module
             );
         }

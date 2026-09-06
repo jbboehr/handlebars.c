@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R06 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial module printing, cache compilation settings, and the test-runner gaps.
+R01 through R06 and R08 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial module printing, and the test-runner gaps.
 
 ## Verification and coverage limits
 
@@ -162,7 +162,7 @@ Update the opcode metadata and its consumers together. Test serialized module pr
 
 Source: [src/handlebars_vm.c:919](../../src/handlebars_vm.c#L919).
 
-The runtime cache uses template text as its key, although compilation also depends on VM flags.
+At the reviewed commit, the runtime cache used template text as its key, although compilation also depends on VM flags.
 
 A C API probe rendered a partial containing {{value}} with the ordinary value “a & b”:
 
@@ -174,7 +174,19 @@ A C API probe rendered a partial containing {{value}} with the ordinary value �
 
 Thus changing compilation settings does not reliably change rendering when a cache entry already exists. A strict-mode comparison did behave correctly and is not evidence for a strict-mode failure.
 
-Include compilation-affecting settings in cache identity, or explicitly enforce one immutable configuration per cache. Test shared-cache use across different VM configurations. Any impact on an application's handling of untrusted content depends on that application's configuration and was not tested.
+**Status: addressed.** Runtime cache keys now combine the processed template bytes, a NUL separator, and the effective compiler flags. Lookup, insertion, and release use the same temporary key. This preserves compatibility-mode preprocessing and allows different compilation settings to coexist in one cache. The key uses the flags active during execution, including flags inherited from the calling module.
+
+Twelve regression cases cover simple, mmap, and LMDB caches, both orders of escaped/unescaped rendering, and a single VM changing flags or two VMs sharing a cache. All twelve failed before the fix with stale escaping and passed afterward. Each case also checks that both variants remain cached, subsequent renders hit those entries, and no lookup references remain active. Existing cache error and ownership fixtures still exercise preloaded hits using the internal key format.
+
+Independent test review added nine cases covering inherited no_escape and ignore_standalone flags, reuse when equivalent settings come from the VM or calling module, and separation from legacy raw-template entries. The complete focused group passes all 21 cases.
+
+The direct cache API still accepts caller-provided keys. Old entries keyed only by template text are no longer used by the VM and will be rebuilt on demand. The VM setter documentation now states that its key encoding is internal and that raw template keys do not preload its runtime cache.
+
+The separator and flags add 2–5 bytes to LMDB keys, slightly reducing the maximum cacheable template length. Two focused boundary checks confirmed that a template just inside the new limit is cached and one just outside still renders correctly on repeated calls without caching.
+
+Fresh Linux verification passed all 28 CTest programs in both Release and Debug ASan/UBSan builds with allocation-failure testing enabled. The Autotools build with allocation-failure testing disabled passed 2,300 checks. Verification used `cmake --build <build> -j4` followed by `ctest --test-dir <build> --output-on-failure`, and `make -j4 all` followed by `make -j4 check`. The focused group runs with `CK_RUN_CASE='Partial cache compilation settings' <build>/tests/test_cache`.
+
+Independent correctness and test reviews found no actionable production regressions. Reliability verdict: PASS_WITH_RESIDUAL_RISK. Other platforms, no-refcount builds, and individual behavior checks for the remaining compiler flags were not tested for this slice.
 
 ### R09. P2: some numeric literals reach helpers as strings
 
