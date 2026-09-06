@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R05 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial handling, cache compilation settings, and the test-runner gaps.
+R01 through R06 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial module printing, cache compilation settings, and the test-runner gaps.
 
 ## Verification and coverage limits
 
@@ -140,7 +140,13 @@ prefix{{#if true}}T{{/if}}{{#*inline "p"}}P{{/inline}}{{>p}}
 
 The expected output is prefixTP. The serializer scans forward from an earlier literal-producing opcode to a later inline registration and treats the entire range as one declaration. The VM repeats that inference and can derive the declaration name from the earlier expression.
 
-Represent an inline declaration's boundaries explicitly, or validate its exact opcode structure. Keep serializer, verifier, and VM recognition consistent. Add a regression with ordinary expressions before, between, and after inline declarations.
+**Status: addressed.** The serializer, module verifier, and VM now share a private statement-boundary predicate. Their declaration scans stop at output instructions, another decorator registration, or the end of a program, including when scanning a hash argument. An earlier expression can no longer be moved into the declaration prologue or supply its name. Supported positional arguments and nested hashes remain within the declaration.
+
+The new regression tests cover the reported conditional, escaped and unescaped helper output, expressions before/between/after multiple declarations, use before definition, extra arguments, and nested scopes. All six cases failed with the original implementation in both default and alternate-decorator modes: 12 failures reporting a missing partial. All 12 passed after the fix, including module verification, and the reported CLI template now renders prefixTP.
+
+Independent correctness and test reviews found no actionable defects. The test review added a round-trip regression covering numeric and boolean partial names interleaved with ordinary expressions. It copies, normalizes, verifies, relocates, and executes a compiler-produced module in both decorator modes. The test passed with the fix and failed with a missing partial in a temporary copy with the boundary checks reverted.
+
+Final GCC verification used cmake --build and ctest --output-on-failure: all 28 Release CTest programs and all 28 Debug programs with AddressSanitizer, UndefinedBehaviorSanitizer, and allocation-failure testing enabled passed. Autotools make -j4 all followed by make -j4 check passed all 2,279 checks with allocation-failure testing disabled. The sanitizer runs used CK_FORK=no and reported no sanitizer diagnostics. Markdown linting passed. Reliability verdict: PASS_WITH_RESIDUAL_RISK; hosted CI and other platforms were not run.
 
 ### R07. P2: printing a valid inline-partial module aborts in a debug build
 

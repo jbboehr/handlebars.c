@@ -259,6 +259,22 @@ struct handlebars_opcode {
     struct handlebars_locinfo loc;
 };
 
+// Inline-partial argument scans must not cross an output statement or
+// another decorator registration.
+static inline bool handlebars_opcode_is_statement_boundary(enum handlebars_opcode_type type)
+{
+    switch( type ) {
+        case handlebars_opcode_type_append:
+        case handlebars_opcode_type_append_escaped:
+        case handlebars_opcode_type_append_content:
+        case handlebars_opcode_type_register_decorator:
+        case handlebars_opcode_type_return:
+            return true;
+        default:
+            return false;
+    }
+}
+
 #endif /* HANDLEBARS_OPCODES_PRIVATE */
 
 HBS_EXTERN_C_END

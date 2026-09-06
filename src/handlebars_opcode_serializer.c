@@ -684,6 +684,10 @@ static size_t inline_partial_opcode_range_length(
         size_t hash_offset;
         size_t registration_offset;
 
+        if( handlebars_opcode_is_statement_boundary(opcodes[program_offset]->type) ) {
+            return 0;
+        }
+
         if( opcodes[program_offset]->type != handlebars_opcode_type_push_program
                 || opcodes[program_offset]->op1.type != handlebars_operand_type_long
                 || opcodes[program_offset]->op1.data.longval < 0
@@ -700,6 +704,9 @@ static size_t inline_partial_opcode_range_length(
             bool found_pop_hash = false;
 
             for( size_t i = hash_offset + 1; i < opcode_count; i++ ) {
+                if( handlebars_opcode_is_statement_boundary(opcodes[i]->type) ) {
+                    return 0;
+                }
                 if( opcodes[i]->type == handlebars_opcode_type_push_hash ) {
                     hash_depth++;
                 } else if( opcodes[i]->type == handlebars_opcode_type_pop_hash ) {
@@ -1554,6 +1561,10 @@ static size_t module_inline_partial_opcode_range_length(
         size_t hash_offset;
         size_t registration_offset;
 
+        if( handlebars_opcode_is_statement_boundary(opcodes[program_offset].type) ) {
+            return 0;
+        }
+
         if( opcodes[program_offset].type != handlebars_opcode_type_push_program
                 || opcodes[program_offset].op1.type != handlebars_operand_type_long
                 || opcodes[program_offset].op1.data.longval < 0
@@ -1571,6 +1582,9 @@ static size_t module_inline_partial_opcode_range_length(
             bool found_pop_hash = false;
 
             for( size_t i = hash_offset + 1; i < opcode_count; i++ ) {
+                if( handlebars_opcode_is_statement_boundary(opcodes[i].type) ) {
+                    return 0;
+                }
                 if( opcodes[i].type == handlebars_opcode_type_push_hash ) {
                     hash_depth++;
                 } else if( opcodes[i].type == handlebars_opcode_type_pop_hash ) {

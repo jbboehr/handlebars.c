@@ -1540,6 +1540,49 @@ START_TEST(test_serialized_inline_partial_prologue)
 }
 END_TEST
 
+START_TEST(test_inline_partial_round_trip_preserves_scalar_names_and_statements)
+{
+    static const unsigned long flags[] = {
+        0,
+        handlebars_compiler_flag_alternate_decorators
+    };
+    const char * source =
+        "{{> 7}}|{{#if true}}A{{/if}}{{#*inline 7}}seven{{/inline}}"
+        "{{#if true}}B{{/if}}{{#*inline false}}false{{/inline}}"
+        "{{#if true}}C{{/if}}|{{> false}}";
+    HANDLEBARS_VALUE_DECL(input);
+
+    for( size_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++ ) {
+        struct handlebars_module * module = serialize_for_verification_flags(
+            source,
+            flags[i]
+        );
+        struct handlebars_module * copy = handlebars_talloc_size(
+            context,
+            module->size
+        );
+
+        ck_assert_ptr_nonnull(copy);
+        memcpy(copy, module, module->size);
+        handlebars_module_patch_pointers(copy);
+        handlebars_module_normalize_pointers(copy, (void *) 0);
+        handlebars_module_generate_hash(copy);
+        ck_assert(handlebars_module_verify(copy, NULL));
+
+        handlebars_module_patch_pointers(copy);
+        struct handlebars_string * output = handlebars_vm_execute(
+            vm,
+            copy,
+            input
+        );
+        ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+        ck_assert_hbs_str_eq_cstr(output, "seven|ABC|false");
+    }
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 START_TEST(test_serialized_module_rejects_invalid_layout)
 {
     struct handlebars_module * module = serialize_for_verification("{{foo.bar}}");
@@ -1953,6 +1996,7 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_serialized_strings_zero_representation_padding, "Zero serialized string representation padding");
 	REGISTER_TEST_FIXTURE(s, test_serialize_preserves_block_param_counts, "Preserve serialized block parameter counts");
 	REGISTER_TEST_FIXTURE(s, test_serialized_inline_partial_prologue, "Verify serialized inline partial prologues");
+	REGISTER_TEST_FIXTURE(s, test_inline_partial_round_trip_preserves_scalar_names_and_statements, "Round-trip scalar inline partial declarations with surrounding statements");
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");
 	REGISTER_TEST_FIXTURE(s, test_string_params_supports_implicit_partial_context, "String params with implicit partial context");

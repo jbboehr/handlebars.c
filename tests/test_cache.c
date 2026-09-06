@@ -4026,6 +4026,64 @@ START_TEST(test_inline_partial_scalar_name)
 }
 END_TEST
 
+static const struct {
+    const char * source;
+    const char * expected;
+} inline_partial_expression_cases[] = {
+    {
+        "prefix{{#if true}}T{{/if}}{{#*inline \"p\"}}P{{/inline}}{{>p}}",
+        "prefixTP"
+    },
+    {
+        "{{lookup this \"value\"}}{{#*inline \"p\"}}P{{/inline}}{{>p}}",
+        "&lt;x&gt;P"
+    },
+    {
+        "{{{lookup this \"value\"}}}{{#*inline \"p\"}}P{{/inline}}{{>p}}",
+        "<x>P"
+    },
+    {
+        "{{>p}}/{{#if true}}A{{/if}}{{#*inline \"p\"}}P{{/inline}}"
+        "{{#if true}}B{{/if}}{{#*inline \"q\"}}Q{{/inline}}"
+        "{{#if true}}C{{/if}}/{{>q}}",
+        "P/ABC/Q"
+    },
+    {
+        "{{#if true}}T{{/if}}"
+        "{{#*inline \"p\" \"extra\" value unused=(lookup this \"value\")}}"
+        "P{{/inline}}{{>p}}",
+        "TP"
+    },
+    {
+        "{{#with this}}{{#if true}}T{{/if}}"
+        "{{#*inline \"p\"}}P{{/inline}}{{>p}}{{/with}}",
+        "TP"
+    }
+};
+
+START_TEST(test_inline_partial_preserves_surrounding_expressions)
+{
+    const size_t case_count = sizeof(inline_partial_expression_cases) / sizeof(inline_partial_expression_cases[0]);
+    const size_t index = (size_t) _i % case_count;
+    const unsigned long flags = (size_t) _i < case_count ? 0 : handlebars_compiler_flag_alternate_decorators;
+    HANDLEBARS_VALUE_DECL(input);
+    handlebars_value_init_json_string(context, input, "{\"value\":\"<x>\"}");
+    handlebars_value_convert(input);
+
+    struct handlebars_module * module = serialize_template_with_flags(
+        inline_partial_expression_cases[index].source, flags
+    );
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, inline_partial_expression_cases[index].expected);
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 START_TEST(test_partial_block_installs_inline_partials)
 {
     struct handlebars_module * module = serialize_template(
@@ -4442,6 +4500,11 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_partial_block_preserves_all_lexical_block_params, "Partial blocks preserve all lexical block parameters");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_definition, "Inline partial definitions");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_scalar_name, "Inline partial scalar names");
+    TCase * inline_expressions = tcase_create("Inline partials preserve surrounding expressions");
+    tcase_add_checked_fixture(inline_expressions, default_setup, default_teardown);
+    tcase_add_loop_test(inline_expressions, test_inline_partial_preserves_surrounding_expressions,
+        0, 2 * sizeof(inline_partial_expression_cases) / sizeof(inline_partial_expression_cases[0]));
+    suite_add_tcase(s, inline_expressions);
     REGISTER_TEST_FIXTURE(s, test_partial_block_installs_inline_partials, "Partial blocks install inline partials");
     REGISTER_TEST_FIXTURE(s, test_partial_block_inline_partial_preserves_caller_depths, "Partial-block inline partials preserve caller depths");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_with_alternate_decorators, "Inline partials with alternate decorators");
