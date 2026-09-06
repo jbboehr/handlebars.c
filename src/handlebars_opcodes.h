@@ -213,10 +213,10 @@ enum handlebars_opcode_type handlebars_opcode_reverse_readable_type(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_CONST;
 
 /**
- * @brief Get the number of operands a particular opcode type should have
+ * @brief Get the maximum number of operands a particular opcode type may have
  *
  * @param[in] type The opcode type
- * @return The number of operands
+ * @return The maximum number of operands, including optional operands
  */
 short handlebars_opcode_num_operands(
     enum handlebars_opcode_type type

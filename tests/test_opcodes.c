@@ -77,6 +77,7 @@ START_TEST(test_opcode_readable_type)
 			const char * expected = _RTYPE_STR(name); \
 			const char * actual = handlebars_opcode_readable_type(_RTYPE_MK(type)); \
 			ck_assert_str_eq(expected, actual); \
+			ck_assert_int_eq(_RTYPE_MK(type), handlebars_opcode_reverse_readable_type(expected)); \
 		} while(0)
 
     _RTYPE_TEST(nil, nil);
@@ -112,6 +113,9 @@ START_TEST(test_opcode_readable_type)
     _RTYPE_TEST(lookup_on_context, lookupOnContext);
 
     _RTYPE_TEST(lookup_data, lookupData);
+    _RTYPE_TEST(lookup_block_param, lookupBlockParam);
+    _RTYPE_TEST(register_decorator, registerDecorator);
+    _RTYPE_TEST(return, return);
 
     _RTYPE_TEST(invalid, invalid);
 

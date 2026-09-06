@@ -43,7 +43,7 @@ enum handlebars_opcode_printer_flag {
     handlebars_opcode_printer_flag_none = 0,
 
     /**
-     * @brief Join with spaces instead of newlines
+     * @brief Join program entries with spaces instead of newlines
      */
     handlebars_opcode_printer_flag_no_newlines = (1 << 0),
 

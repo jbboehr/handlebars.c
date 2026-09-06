@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R06, R08, and R31 through R34 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial module printing, and rendering semantics.
+R01 through R08 and R30 through R34 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, rendering semantics, data conversion, and ownership contracts.
 
 ## Verification and coverage limits
 
@@ -152,11 +152,13 @@ Final GCC verification used cmake --build and ctest --output-on-failure: all 28 
 
 Sources: [src/handlebars_opcodes.c:317](../../src/handlebars_opcodes.c#L317), [src/handlebars_opcode_serializer.c:620](../../src/handlebars_opcode_serializer.c#L620), [src/handlebars_opcode_printer.c:144](../../src/handlebars_opcode_printer.c#L144).
 
-Serializing an inline declaration sets a third operand on registerDecorator, but its operand-count metadata still says two. Running --module on the simple inline template from R06 in the fresh CMake Debug build terminated with SIGABRT at the printer's assertion that operand three is null.
+At the reviewed commit, serializing an inline declaration set a third operand on registerDecorator, but its operand-count metadata still said two. Running --module on the simple inline template from R06 in the fresh CMake Debug build terminated with SIGABRT at the printer's assertion that operand three is null.
 
 The Release build completed but omitted that operand from the printed representation.
 
-Update the opcode metadata and its consumers together. Test serialized module printing with assertions enabled. A shared opcode-description table would reduce drift between operand counts, printers, and name mappings.
+**Status: addressed.** The opcode metadata now allows three operands for registerDecorator, and its API documentation identifies the count as a maximum including optional operands. Printing includes a present third operand and preserves the existing two-operand compiler representation when that operand is absent.
+
+The direct printer test covers an absent marker and both boolean values. An integration test compiles and serializes an ordinary inline partial, verifies the module, and checks that printing includes both the true registration marker and the partial body. Before the fix, this integration test reproduced the missing marker in Release and the assertion abort in Debug. Both builds now pass the affected compiler, opcode, and printer suites.
 
 ### R08. P1: cached partials reuse bytecode compiled with different flags
 
@@ -521,7 +523,11 @@ Two direct API probes found:
 - The valid return opcode mapped from enum value 27 to the name return, but reverse mapping returned -1.
 - Printing the same program with and without handlebars_opcode_printer_flag_no_newlines produced identical output containing a newline.
 
-Complete the reverse mapping and implement or retire the ineffective option. Add round-trip checks over every supported opcode name and direct assertions on printer flags.
+**Status: addressed.** The reverse mapper now recognizes return. The existing opcode-name test checks both directions for all 28 valid opcode types and the invalid sentinel, including the previously untested lookupBlockParam, registerDecorator, and return names. Before the fix, the return assertion failed with -1 instead of 27.
+
+Program printing now honors no_newlines for the separators after opcodes, program boundaries, and decorator headings. It uses spaces while preserving indentation and operand content. New tests cover default and compact output for child and decorator programs, empty programs, and combining the flag with location output. A string operand containing a newline retains its escaped representation. All three separator tests failed before the fix and pass afterward.
+
+Independent correctness and test reviews found no actionable defects in R07 or R30. The test review strengthened the recursive separator test to include a nonempty decorator program. Fresh final Linux verification passed all 29 CTest programs in Release and Debug ASan/UBSan builds with allocation-failure testing enabled. The memory-disabled Autotools build and distcheck each passed all 2,309 checks. Focused Debug suites also passed. Six CLI checks across Release and Debug printed inline, nested, and forward partial declarations with their registration markers intact. Markdown lint passed. Reliability verdict: PASS_WITH_RESIDUAL_RISK; hosted CI and non-Linux builds remain unverified.
 
 ## Test comprehensiveness and dependency maintenance
 

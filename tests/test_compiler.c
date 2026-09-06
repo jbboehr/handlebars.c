@@ -1540,6 +1540,24 @@ START_TEST(test_serialized_inline_partial_prologue)
 }
 END_TEST
 
+START_TEST(test_module_print_inline_partial_registration)
+{
+    struct handlebars_module * module = serialize_for_verification(
+        "{{#*inline \"myPartial\"}}body{{/inline}}{{> myPartial}}"
+    );
+    struct handlebars_string * printed;
+
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+    printed = handlebars_module_print(context, module);
+    ck_assert_ptr_nonnull(strstr(hbs_str_val(printed),
+        "registerDecorator[LONG:1][STRING:inline][BOOLEAN:1]\n"));
+    ck_assert_ptr_nonnull(strstr(hbs_str_val(printed), "appendContent[STRING:body]\n"));
+    handlebars_talloc_free(printed);
+    handlebars_talloc_free(module);
+}
+END_TEST
+
 START_TEST(test_inline_partial_round_trip_preserves_scalar_names_and_statements)
 {
     static const unsigned long flags[] = {
@@ -1996,6 +2014,7 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_serialized_strings_zero_representation_padding, "Zero serialized string representation padding");
 	REGISTER_TEST_FIXTURE(s, test_serialize_preserves_block_param_counts, "Preserve serialized block parameter counts");
 	REGISTER_TEST_FIXTURE(s, test_serialized_inline_partial_prologue, "Verify serialized inline partial prologues");
+	REGISTER_TEST_FIXTURE(s, test_module_print_inline_partial_registration, "Print serialized inline partial registration");
 	REGISTER_TEST_FIXTURE(s, test_inline_partial_round_trip_preserves_scalar_names_and_statements, "Round-trip scalar inline partial declarations with surrounding statements");
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");

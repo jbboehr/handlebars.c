@@ -134,10 +134,10 @@ struct handlebars_string * handlebars_opcode_print_append(
         assert(opcode->op2.type == handlebars_operand_type_null);
     }
     if( num >= 3 ) {
-        // hack for invoke_ambiguous
-        if (opcode->type == handlebars_opcode_type_invoke_ambiguous && opcode->op3.type == handlebars_operand_type_null) {
-            // ignore
-        } else {
+        // Omit absent optional operands from the compiler's representation.
+        if( opcode->op3.type != handlebars_operand_type_null
+                || (opcode->type != handlebars_opcode_type_invoke_ambiguous
+                    && opcode->type != handlebars_opcode_type_register_decorator) ) {
             string = handlebars_operand_print_append(context, string, &opcode->op3);
         }
     } else {
@@ -171,6 +171,12 @@ struct handlebars_string * handlebars_opcode_print(
 #undef CONTEXT
 #define CONTEXT printer->ctx
 
+static void append_separator(struct handlebars_opcode_printer * printer)
+{
+    const char * separator = printer->flags & handlebars_opcode_printer_flag_no_newlines ? " " : "\n";
+    printer->output = handlebars_string_append(CONTEXT, printer->output, separator, 1);
+}
+
 static void handlebars_opcode_printer_array_print(struct handlebars_opcode_printer * printer)
 {
     struct handlebars_opcode ** opcodes = printer->opcodes;
@@ -180,11 +186,12 @@ static void handlebars_opcode_printer_array_print(struct handlebars_opcode_print
     for( i = 0; i < count; i++, opcodes++ ) {
         printer->output = append_indent(CONTEXT, printer->output, printer->indent);
         printer->output = handlebars_opcode_print_append(CONTEXT, printer->output, *opcodes, printer->flags);
-        printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("\n"));
+        append_separator(printer);
     }
 
     printer->output = append_indent(CONTEXT, printer->output, printer->indent);
-    printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("-----\n"));
+    printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("-----"));
+    append_separator(printer);
 }
 
 static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * printer, struct handlebars_program * program)
@@ -202,7 +209,8 @@ static void handlebars_opcode_printer_print(struct handlebars_opcode_printer * p
     // Print decorators
     for( i = 0; i < program->decorators_length; i++ ) {
         printer->output = append_indent(CONTEXT, printer->output, (size_t) printer->indent);
-        printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("DECORATOR\n"));
+        printer->output = handlebars_string_append(CONTEXT, printer->output, HBS_STRL("DECORATOR"));
+        append_separator(printer);
         child = *(program->decorators + i);
         handlebars_opcode_printer_print(printer, child);
     }
