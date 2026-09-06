@@ -8,6 +8,12 @@
       url = "github:numtide/flake-utils";
       inputs.systems.follows = "systems";
     };
+    agent-badge = {
+      url = "github:jbboehr/agent-badge.ts/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.gitignore.follows = "gitignore";
+    };
     mustache_spec = {
       url = "github:mustache/spec/v1.1.3";
       flake = false;
@@ -38,6 +44,7 @@
     self,
     nixpkgs,
     flake-utils,
+    agent-badge,
     mustache_spec,
     handlebars_spec,
     gitignore,
@@ -86,6 +93,7 @@
             stdenv = package.stdenv;
           }) {
             inputsFrom = [package];
+            packages = [agent-badge.packages.${system}.default];
             buildInputs = with pkgs; [
               actionlint
               autoconf

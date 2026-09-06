@@ -3,6 +3,7 @@
 [![GitHub Build Status](https://github.com/jbboehr/handlebars.c/workflows/ci/badge.svg)](https://github.com/jbboehr/handlebars.c/actions?query=workflow%3Aci)
 [![Coverage Status](https://coveralls.io/repos/jbboehr/handlebars.c/badge.svg?branch=master&service=github)](https://coveralls.io/github/jbboehr/handlebars.c?branch=master)
 [![License](https://img.shields.io/badge/license-LGPLv2.1-brightgreen.svg)](LICENSE.md)
+[![AI burn](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Fjbboehr%2F02ff5982afe9650c31827b393fb55f07%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)
 
 C implementation of [handlebars.js](https://github.com/wycats/handlebars.js/),
 developed in conjunction with [php-handlebars](https://github.com/jbboehr/php-handlebars)
