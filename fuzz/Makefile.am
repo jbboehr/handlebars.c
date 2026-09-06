@@ -18,7 +18,7 @@ AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_BIN_CFLAGS) $(FUZZING_CFLAGS) $(JSON_CFLA
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_BIN_LDFLAGS) $(FUZZER_LDFLAGS)
 LDADD = $(top_builddir)/src/libhandlebars.la $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(YAML_LIBS)
 
-EXTRA_DIST = README.md handlebars.dict json.dict lmdb.dict module.dict yaml.dict corpus/template corpus/json corpus/lmdb corpus/module corpus/yaml
+EXTRA_DIST = CMakeLists.txt README.md handlebars.dict json.dict lmdb.dict module.dict yaml.dict corpus/template corpus/json corpus/lmdb corpus/module corpus/yaml
 
 if FUZZING
 noinst_PROGRAMS = fuzz_template fuzz_module

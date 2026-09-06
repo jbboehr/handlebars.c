@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R04 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial handling, cache compilation settings, and the test-runner gaps.
+R01 through R05 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial handling, cache compilation settings, and the test-runner gaps.
 
 ## Verification and coverage limits
 
@@ -110,11 +110,13 @@ Related follow-up: separately excluding json-c or libyaml reproduced analogous N
 
 ### R05. P3: Autotools release archives omit CMake support
 
-Sources: [Makefile.am:33](../../Makefile.am#L33), the root and subdirectory CMakeLists.txt files.
+Sources: [Makefile.am](../../Makefile.am), the root and subdirectory CMakeLists.txt files.
 
 The generated handlebars-1.0.0.tar.gz contained 383 members and no CMakeLists.txt or cmake/ files. Consequently, the repository's CMake workflow cannot be used from that source archive.
 
-Include the CMake build definitions and helper modules in the distribution, and configure CMake against an extracted release archive in CI.
+**Status: addressed.** The distribution lists now include the root and subdirectory CMakeLists.txt files, all CMake helper modules and configuration templates, and the installed-consumer test files. The affected Makefile.in files were regenerated with Automake 1.16.5. After distcheck, the Linux CI job extracts the archive into a separate directory, builds it with CMake and allocation-failure testing enabled, and runs CTest. It clears fixture-path overrides so the tests use the archived fixtures.
+
+The new CI step failed against the original archive because CMakeLists.txt was missing, then passed all 28 CTest programs against the corrected archive. A separate Release build with default feature options passed all 27 programs. These runs include installed-header, shared/static target, public-header, and CLI checks. Autotools distcheck passed all 2,266 checks with allocation-failure testing disabled. A tests-disabled Clang build also compiled all five optional fuzz targets from the archive. Archive inspection confirmed all 21 CMake support files are present and the generated src/handlebars_config.h remains excluded; the installed-consumer checks confirm the header is still installed. Workflow linting passed. Local verification used GCC 15.2.0, Clang 21.1.8, and CMake 4.1.6 on Linux; hosted CI and other platforms were not run.
 
 ## Rendering, compilation, and parsing
 

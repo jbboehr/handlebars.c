@@ -27,7 +27,7 @@ jobs:
               with:
                   submodules: recursive
             - name: Install packages
-              run: sudo apt-get install -y autotools-dev autoconf automake bats libtool m4 make pkg-config check libpcre2-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev ${{ matrix.CC }}
+              run: sudo apt-get install -y autotools-dev autoconf automake bats cmake g++ libtool m4 make pkg-config check libpcre2-dev libtalloc-dev libsubunit-dev lcov libjson-c-dev liblmdb-dev libyaml-dev ${{ matrix.CC }}
             - run: autoreconf -i
             - run: ./configure --enable-handlebars-memory
               env:
@@ -39,6 +39,21 @@ jobs:
             - run: make check
             - name: Verify distribution with allocation-failure testing disabled
               run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--disable-handlebars-memory"
+            - name: Build and test the release archive with CMake
+              env:
+                  CC: ${{ matrix.CC }}
+              run: |
+                  set -- handlebars-*.tar.gz
+                  test "$#" -eq 1
+                  test -f "$1"
+                  mkdir -p "$RUNNER_TEMP/cmake-dist/source"
+                  tar -xzf "$1" --strip-components=1 -C "$RUNNER_TEMP/cmake-dist/source"
+                  unset handlebars_export_dir handlebars_spec_dir handlebars_tokenizer_spec handlebars_parser_spec mustache_spec_dir
+                  cmake -S "$RUNNER_TEMP/cmake-dist/source" -B "$RUNNER_TEMP/cmake-dist/build" \
+                      -DCMAKE_BUILD_TYPE=Release \
+                      -DHANDLEBARS_ENABLE_MEMORY=ON
+                  cmake --build "$RUNNER_TEMP/cmake-dist/build" -j2
+                  ctest --test-dir "$RUNNER_TEMP/cmake-dist/build" --output-on-failure
             - name: dump logs
               if: ${{ failure() }}
               run: |

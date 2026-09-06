@@ -14,6 +14,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 EXTRA_DIST = \
+	CMakeLists.txt \
+	installed_config/CMakeLists.txt \
+	installed_config/main.c \
+	installed_config/target.c \
+	installed_config/run.cmake \
 	header_compile_probe.c \
 	helper_data.json \
 	helper_executable.sh \

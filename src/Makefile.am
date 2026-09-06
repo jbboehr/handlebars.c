@@ -18,7 +18,7 @@ AM_CFLAGS = $(WARN_CFLAGS) $(HARDENING_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(FUZZING
 AM_LDFLAGS = $(WARN_LDFLAGS) $(HARDENING_LDFLAGS) $(CODE_COVERAGE_LIBS) $(FUZZING_LDFLAGS)
 LIBADD = $(JSON_LIBS) $(LMDB_LIBS) $(PTHREAD_LIBS) $(TALLOC_LIBS) $(VALGRIND_LIBS) $(YAML_LIBS)
 
-EXTRA_DIST = handlebars.l handlebars.y handlebars_scanners.re handlebars_helpers_ht.gperf
+EXTRA_DIST = CMakeLists.txt handlebars.l handlebars.y handlebars_scanners.re handlebars_helpers_ht.gperf
 GENSOURCE = handlebars_config.h
 GENSOURCE2 =
 

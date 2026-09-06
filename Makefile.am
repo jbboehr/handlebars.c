@@ -24,6 +24,20 @@ SUBDIRS += bench
 SUBDIRS += fuzz
 
 EXTRA_DIST = LICENSE.md LICENSE-AGPL.md LICENSE-GPL.md README.md CHANGELOG.md docs spec/handlebars/export spec/handlebars/spec spec/mustache/specs vendor
+EXTRA_DIST += \
+	CMakeLists.txt \
+	cmake/FindCheck.cmake \
+	cmake/FindLMDB.cmake \
+	cmake/FindLibCheck.cmake \
+	cmake/FindLibYaml.cmake \
+	cmake/FindLibcompat.cmake \
+	cmake/FindLibjsonc.cmake \
+	cmake/FindPCRE2.cmake \
+	cmake/FindPthreads.cmake \
+	cmake/FindTalloc.cmake \
+	cmake/Utils.cmake \
+	cmake/config.h.in \
+	cmake/handlebars_config.h.in
 
 ACLOCAL_AMFLAGS = -I m4 --install
 
