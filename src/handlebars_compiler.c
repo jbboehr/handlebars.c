@@ -20,6 +20,7 @@
 #endif
 
 #include <assert.h>
+#include <errno.h>
 #include <limits.h>
 #include <string.h>
 #include <talloc.h>
@@ -60,6 +61,12 @@
 #define __OPL(type, arg) do { \
         struct handlebars_opcode * ____opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
         handlebars_operand_set_longval(&____opcode->op1, arg); \
+        __PUSH(____opcode); \
+    } while(0)
+
+#define __OPD(type, arg) do { \
+        struct handlebars_opcode * ____opcode = handlebars_opcode_ctor(CONTEXT, __MK(type)); \
+        handlebars_operand_set_doubleval(&____opcode->op1, arg); \
         __PUSH(____opcode); \
     } while(0)
 
@@ -802,6 +809,25 @@ static inline bool handlebars_compiler_block_param_index(
     return 0;
 }
 
+static void handlebars_compiler_parse_number(
+    struct handlebars_compiler * compiler,
+    const struct handlebars_string * string,
+    long * long_value,
+    double * double_value,
+    bool * is_long
+) {
+    bool long_in_range;
+
+    errno = 0;
+    *long_value = strtol(hbs_str_val(string), NULL, 10);
+    long_in_range = errno != ERANGE;
+
+    if( unlikely(!handlebars_string_parse_number(CONTEXT, string, double_value)) ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid numeric literal");
+    }
+    *is_long = long_in_range && *double_value == (double) *long_value;
+}
+
 
 
 // Acceptors
@@ -1007,17 +1033,24 @@ static inline void _handlebars_compiler_accept_partial(
         handlebars_operand_set_boolval(&opcode->op1, is_dynamic);
         if( !is_dynamic ) {
             struct handlebars_string * string = handlebars_ast_node_get_string_mode_value(CONTEXT, name);
-            long lv = 0;
-        	double fv;
             if( name->type == HANDLEBARS_AST_NODE_NUMBER ) {
-                fv = strtod(hbs_str_val(string), NULL);
-                lv = strtol(hbs_str_val(string), NULL, 10);
-                if( !fv || !lv || fv != (double) lv ) {
-                    lv = 0;
+                long long_value;
+                double double_value;
+                bool is_long;
+
+                handlebars_compiler_parse_number(
+                    compiler,
+                    string,
+                    &long_value,
+                    &double_value,
+                    &is_long
+                );
+                if( is_long ) {
+                    handlebars_operand_set_longval(&opcode->op2, long_value);
+                } else {
+                    string = handlebars_string_from_double(CONTEXT, double_value);
+                    handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, string);
                 }
-            }
-            if( lv ) {
-                handlebars_operand_set_longval(&opcode->op2, lv);
             } else {
                 handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, string);
             }
@@ -1389,26 +1422,24 @@ static inline void handlebars_compiler_accept_number(
         struct handlebars_ast_node * number
 ) {
     struct handlebars_string * val = number->node.number.value;
-	double fv;
-	long lv;
+    long long_value;
+    double double_value;
+    bool is_long;
 
     assert(number != NULL);
     assert(number->type == HANDLEBARS_AST_NODE_NUMBER);
 
-    if (hbs_str_eq_strl(val, HBS_STRL("0"))) {
-    	__OPL(push_literal, 0);
-        return;
-    }
-
-    // Convert to float and long
-    fv = strtod(hbs_str_val(val), NULL);
-    lv = strtol(hbs_str_val(val), NULL, 10);
-
-    if( fv && lv && fv == (double) lv ) {
-    	// It's a long - @todo do we need to do float too?
-    	__OPL(push_literal, lv);
+    handlebars_compiler_parse_number(
+        compiler,
+        val,
+        &long_value,
+        &double_value,
+        &is_long
+    );
+    if( is_long ) {
+        __OPL(push_literal, long_value);
     } else {
-        __OPS(push_literal, number->node.number.value);
+        __OPD(push_literal, double_value);
     }
 }
 

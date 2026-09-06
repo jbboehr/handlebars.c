@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <locale.h>
 #include <limits.h>
 #include <string.h>
 #include <talloc.h>
@@ -1272,6 +1273,90 @@ static struct handlebars_module * serialize_for_verification(const char * source
     return serialize_for_verification_flags(source, 0);
 }
 
+START_TEST(test_serialize_preserves_numeric_literal_types)
+{
+    struct handlebars_module * module = serialize_for_verification(
+        "{{numeric 12 0.0 -0 1.25 -0.5}}"
+    );
+    bool saw_integer = false;
+    bool saw_positive_double = false;
+    bool saw_negative_double = false;
+    size_t zero_count = 0;
+    size_t literal_count = 0;
+
+    for( size_t i = 0; i < module->opcode_count; i++ ) {
+        struct handlebars_opcode * opcode = &module->opcodes[i];
+
+        if( opcode->type != handlebars_opcode_type_push_literal ) {
+            continue;
+        }
+        literal_count++;
+        if( opcode->op1.type == handlebars_operand_type_long ) {
+            if( opcode->op1.data.longval == 0 ) {
+                zero_count++;
+            } else {
+                ck_assert_int_eq(opcode->op1.data.longval, 12);
+                saw_integer = true;
+            }
+        } else {
+            ck_assert_int_eq(opcode->op1.type, handlebars_operand_type_double);
+            if( opcode->op1.data.doubleval > 0 ) {
+                ck_assert_double_eq(opcode->op1.data.doubleval, 1.25);
+                saw_positive_double = true;
+            } else {
+                ck_assert_double_eq(opcode->op1.data.doubleval, -0.5);
+                saw_negative_double = true;
+            }
+        }
+    }
+
+    ck_assert_uint_eq(literal_count, 5);
+    ck_assert_uint_eq(zero_count, 2);
+    ck_assert(saw_integer);
+    ck_assert(saw_positive_double);
+    ck_assert(saw_negative_double);
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+}
+END_TEST
+
+START_TEST(test_numeric_literal_parsing_ignores_process_locale)
+{
+    struct handlebars_string * tmpl;
+    struct handlebars_ast_node * ast;
+    struct handlebars_program * program = NULL;
+    enum handlebars_error_type error;
+    bool found_double = false;
+
+    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+        return;
+    }
+    ck_assert_str_eq(localeconv()->decimal_point, ",");
+
+    tmpl = handlebars_string_ctor(context, HBS_STRL("{{numeric 1.25}}"));
+    ast = handlebars_parse_ex(parser, tmpl, 0);
+    error = handlebars_compiler_compile_try(compiler, ast, &program);
+    ck_assert_msg(
+        error == HANDLEBARS_SUCCESS,
+        "decimal literal failed under comma-decimal locale: %s",
+        handlebars_error_msg(context) != NULL
+            ? handlebars_error_msg(context)
+            : "(no error message)"
+    );
+
+    for( size_t i = 0; i < program->opcodes_length; i++ ) {
+        struct handlebars_opcode * opcode = program->opcodes[i];
+
+        if( opcode->type == handlebars_opcode_type_push_literal ) {
+            ck_assert_int_eq(opcode->op1.type, handlebars_operand_type_double);
+            ck_assert_double_eq(opcode->op1.data.doubleval, 1.25);
+            found_double = true;
+        }
+    }
+    ck_assert(found_double);
+}
+END_TEST
+
 static size_t poison_string_representation_padding(struct handlebars_string * string)
 {
     /* Test-only access beyond the public logical byte buffer. */
@@ -1565,7 +1650,8 @@ START_TEST(test_inline_partial_round_trip_preserves_scalar_names_and_statements)
         handlebars_compiler_flag_alternate_decorators
     };
     const char * source =
-        "{{> 7}}|{{#if true}}A{{/if}}{{#*inline 7}}seven{{/inline}}"
+        "{{> 7}}|{{> 1.5}}|{{#if true}}A{{/if}}{{#*inline 7}}seven{{/inline}}"
+        "{{#*inline 1.5}}one-point-five{{/inline}}"
         "{{#if true}}B{{/if}}{{#*inline false}}false{{/inline}}"
         "{{#if true}}C{{/if}}|{{> false}}";
     HANDLEBARS_VALUE_DECL(input);
@@ -1594,10 +1680,161 @@ START_TEST(test_inline_partial_round_trip_preserves_scalar_names_and_statements)
             input
         );
         ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
-        ck_assert_hbs_str_eq_cstr(output, "seven|ABC|false");
+        ck_assert_hbs_str_eq_cstr(output, "seven|one-point-five|ABC|false");
     }
 
     HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_fractional_inline_partial_names_use_handlebars_stringification)
+{
+    const char * source =
+        "{{> \"1.23456789\"}}"
+        "{{#*inline 1.23456789}}precise{{/inline}}";
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_module * module = serialize_for_verification(source);
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "precise");
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+static const struct {
+    const char * quoted_source;
+    const char * numeric_source;
+    const char * expected;
+} inline_partial_number_stringification_cases[] = {
+    {
+        "{{> \"1e-7\"}}{{#*inline 0.0000001}}small{{/inline}}",
+        "{{> 0.0000001}}{{#*inline 0.0000001}}small{{/inline}}",
+        "small"
+    },
+    {
+        "{{> \"0.000001\"}}{{#*inline 0.000001}}threshold{{/inline}}",
+        "{{> 0.000001}}{{#*inline 0.000001}}threshold{{/inline}}",
+        "threshold"
+    },
+    {
+        "{{> \"100000000000000000000\"}}"
+            "{{#*inline 100000000000000000000}}large{{/inline}}",
+        "{{> 100000000000000000000}}"
+            "{{#*inline 100000000000000000000}}large{{/inline}}",
+        "large"
+    }
+};
+
+START_TEST(test_inline_partial_names_use_handlebars_number_stringification_thresholds)
+{
+    const size_t index = (size_t) _i;
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_module * module = serialize_for_verification(
+        inline_partial_number_stringification_cases[index].quoted_source
+    );
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_msg(
+        output != NULL,
+        "case %zu: %s",
+        index,
+        handlebars_error_msg(HBSCTX(vm))
+    );
+    ck_assert_hbs_str_eq_cstr(
+        output,
+        inline_partial_number_stringification_cases[index].expected
+    );
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_inline_partial_matching_numeric_names_remain_consistent)
+{
+    const size_t index = (size_t) _i;
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_module * module = serialize_for_verification(
+        inline_partial_number_stringification_cases[index].numeric_source
+    );
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_msg(
+        output != NULL,
+        "case %zu: %s",
+        index,
+        handlebars_error_msg(HBSCTX(vm))
+    );
+    ck_assert_hbs_str_eq_cstr(
+        output,
+        inline_partial_number_stringification_cases[index].expected
+    );
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_fractional_zero_inline_partial_name_round_trip)
+{
+    const char * source =
+        "{{> 0.0}}"
+        "{{#*inline 0.0}}zero{{/inline}}";
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_module * module = serialize_for_verification(source);
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "zero");
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_fractional_inline_partial_names_ignore_process_locale)
+{
+    const char * source =
+        "{{> \"1.5\"}}"
+        "{{#*inline 1.5}}fraction{{/inline}}";
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_module * module = serialize_for_verification(source);
+    struct handlebars_string * output;
+
+    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+        HANDLEBARS_VALUE_UNDECL(input);
+        return;
+    }
+    ck_assert_str_eq(localeconv()->decimal_point, ",");
+    output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "fraction");
+    handlebars_string_delref(output);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_serialized_module_rejects_double_in_nonliteral_operand)
+{
+    struct handlebars_module * module = serialize_for_verification(
+        "{{numeric 1.25}}"
+    );
+    struct handlebars_opcode * literal = NULL;
+
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+    for( size_t i = 0; i < module->opcode_count; i++ ) {
+        if( module->opcodes[i].type == handlebars_opcode_type_push_literal
+                && module->opcodes[i].op1.type == handlebars_operand_type_double ) {
+            literal = &module->opcodes[i];
+            break;
+        }
+    }
+    ck_assert_ptr_nonnull(literal);
+
+    handlebars_operand_set_doubleval(&literal->op2, 2.5);
+    handlebars_module_generate_hash(module);
+    ck_assert(!handlebars_module_verify(module, NULL));
 }
 END_TEST
 
@@ -2011,11 +2248,37 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_serialize_traversal_allocation_failures, "Serialized module traversal allocation failures");
 #endif
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_verification, "Verify serialized module layout");
+	REGISTER_TEST_FIXTURE(s, test_serialize_preserves_numeric_literal_types, "Preserve serialized numeric literal types");
+	REGISTER_TEST_FIXTURE(s, test_numeric_literal_parsing_ignores_process_locale, "Parse numeric literals independently of process locale");
 	REGISTER_TEST_FIXTURE(s, test_serialized_strings_zero_representation_padding, "Zero serialized string representation padding");
 	REGISTER_TEST_FIXTURE(s, test_serialize_preserves_block_param_counts, "Preserve serialized block parameter counts");
 	REGISTER_TEST_FIXTURE(s, test_serialized_inline_partial_prologue, "Verify serialized inline partial prologues");
 	REGISTER_TEST_FIXTURE(s, test_module_print_inline_partial_registration, "Print serialized inline partial registration");
 	REGISTER_TEST_FIXTURE(s, test_inline_partial_round_trip_preserves_scalar_names_and_statements, "Round-trip scalar inline partial declarations with surrounding statements");
+	REGISTER_TEST_FIXTURE(s, test_fractional_inline_partial_names_use_handlebars_stringification, "Stringify fractional inline partial names compatibly");
+	TCase * tc_inline_partial_number_stringification = tcase_create("Handlebars inline partial number stringification thresholds");
+	tcase_add_checked_fixture(tc_inline_partial_number_stringification, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_inline_partial_number_stringification,
+		test_inline_partial_names_use_handlebars_number_stringification_thresholds,
+		0,
+		(int) (sizeof(inline_partial_number_stringification_cases)
+			/ sizeof(inline_partial_number_stringification_cases[0]))
+	);
+	suite_add_tcase(s, tc_inline_partial_number_stringification);
+	TCase * tc_inline_partial_matching_numeric_names = tcase_create("Matching numeric inline partial names");
+	tcase_add_checked_fixture(tc_inline_partial_matching_numeric_names, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_inline_partial_matching_numeric_names,
+		test_inline_partial_matching_numeric_names_remain_consistent,
+		0,
+		(int) (sizeof(inline_partial_number_stringification_cases)
+			/ sizeof(inline_partial_number_stringification_cases[0]))
+	);
+	suite_add_tcase(s, tc_inline_partial_matching_numeric_names);
+	REGISTER_TEST_FIXTURE(s, test_fractional_zero_inline_partial_name_round_trip, "Round-trip fractional zero inline partial names");
+	REGISTER_TEST_FIXTURE(s, test_fractional_inline_partial_names_ignore_process_locale, "Stringify fractional inline partial names independently of process locale");
+	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_double_in_nonliteral_operand, "Reject double in nonliteral operand slot");
 	REGISTER_TEST_FIXTURE(s, test_serialized_module_rejects_invalid_layout, "Reject invalid serialized module layout");
 	REGISTER_TEST_FIXTURE(s, test_known_helpers_only_rejects_parent_path, "Reject parent path as unknown helper");
 	REGISTER_TEST_FIXTURE(s, test_string_params_supports_implicit_partial_context, "String params with implicit partial context");

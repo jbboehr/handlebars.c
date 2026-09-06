@@ -371,7 +371,7 @@ struct handlebars_string * handlebars_value_to_string(
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             return handlebars_string_asprintf(context, "%ld", value->v.lval);
         case HANDLEBARS_VALUE_TYPE_FLOAT:
-            return handlebars_string_asprintf(context, "%g", value->v.dval);
+            return handlebars_string_from_double(context, value->v.dval);
         case HANDLEBARS_VALUE_TYPE_TRUE:
             return handlebars_string_ctor(context, HBS_STRL("true"));
         case HANDLEBARS_VALUE_TYPE_FALSE:
@@ -541,9 +541,15 @@ static struct handlebars_string * handlebars_value_expression_append_walk(
             string = handlebars_string_append(context, string, HBS_STRL("false"));
             break;
 
-        case HANDLEBARS_VALUE_TYPE_FLOAT:
-            string = handlebars_string_asprintf_append(context, string, "%g", value->v.dval);
+        case HANDLEBARS_VALUE_TYPE_FLOAT: {
+            struct handlebars_string * formatted = handlebars_string_from_double(
+                context,
+                value->v.dval
+            );
+            string = handlebars_string_append_str(context, string, formatted);
+            handlebars_talloc_free(formatted);
             break;
+        }
 
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             string = handlebars_string_asprintf_append(context, string, "%ld", value->v.lval);
@@ -1128,9 +1134,20 @@ static void handlebars_value_dump_append(
         case HANDLEBARS_VALUE_TYPE_FALSE:
             HANDLEBARS_VALUE_DUMP_APPEND("boolean(false)");
             break;
-        case HANDLEBARS_VALUE_TYPE_FLOAT:
-            HANDLEBARS_VALUE_DUMP_APPEND("float(%g)", value->v.dval);
+        case HANDLEBARS_VALUE_TYPE_FLOAT: {
+            struct handlebars_string * formatted = handlebars_string_from_double(
+                state->context,
+                value->v.dval
+            );
+            formatted = talloc_steal(state->output, formatted);
+            HANDLEBARS_VALUE_DUMP_APPEND(
+                "float(%.*s)",
+                (int) hbs_str_len(formatted),
+                hbs_str_val(formatted)
+            );
+            handlebars_talloc_free(formatted);
             break;
+        }
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             HANDLEBARS_VALUE_DUMP_APPEND("integer(%ld)", value->v.lval);
             break;

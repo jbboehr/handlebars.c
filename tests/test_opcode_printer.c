@@ -20,6 +20,8 @@
 #endif
 
 #include <check.h>
+#include <locale.h>
+#include <stdlib.h>
 #include <string.h>
 #include <talloc.h>
 
@@ -68,6 +70,56 @@ START_TEST(test_operand_print_append_long)
     string = handlebars_operand_print(context, &op);
     ck_assert_ptr_ne(NULL, string);
     ck_assert_str_eq("[LONG:2358]", hbs_str_val(string));
+    handlebars_talloc_free(string);
+}
+END_TEST
+
+START_TEST(test_operand_print_append_double)
+{
+    struct handlebars_operand op;
+    struct handlebars_string * string;
+    handlebars_operand_set_doubleval(&op, -12.5);
+    string = handlebars_operand_print(context, &op);
+    ck_assert_ptr_ne(NULL, string);
+    ck_assert_str_eq("[DOUBLE:-12.5]", hbs_str_val(string));
+    handlebars_talloc_free(string);
+}
+END_TEST
+
+START_TEST(test_operand_print_append_double_preserves_round_trip_value)
+{
+    const double expected = 1.234567890123456;
+    struct handlebars_operand op;
+    struct handlebars_string * string;
+    char * end;
+    double actual;
+
+    ck_assert_ptr_nonnull(setlocale(LC_NUMERIC, "C"));
+    handlebars_operand_set_doubleval(&op, expected);
+    string = handlebars_operand_print(context, &op);
+    ck_assert_ptr_nonnull(string);
+    ck_assert_uint_ge(hbs_str_len(string), sizeof("[DOUBLE:]") - 1);
+    ck_assert_int_eq(strncmp(hbs_str_val(string), "[DOUBLE:", 8), 0);
+    actual = strtod(hbs_str_val(string) + 8, &end);
+    ck_assert_int_eq(*end, ']');
+    ck_assert_double_eq(actual, expected);
+    handlebars_talloc_free(string);
+}
+END_TEST
+
+START_TEST(test_operand_print_append_double_ignores_process_locale)
+{
+    struct handlebars_operand op;
+    struct handlebars_string * string;
+
+    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+        return;
+    }
+    ck_assert_str_eq(localeconv()->decimal_point, ",");
+    handlebars_operand_set_doubleval(&op, 1.25);
+    string = handlebars_operand_print(context, &op);
+    ck_assert_ptr_ne(NULL, string);
+    ck_assert_str_eq("[DOUBLE:1.25]", hbs_str_val(string));
     handlebars_talloc_free(string);
 }
 END_TEST
@@ -255,6 +307,9 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_operand_print_append_null, "Operand Print Append (null)");
     REGISTER_TEST_FIXTURE(s, test_operand_print_append_boolean, "Operand Print Append (boolean)");
     REGISTER_TEST_FIXTURE(s, test_operand_print_append_long, "Operand Print Append (long)");
+    REGISTER_TEST_FIXTURE(s, test_operand_print_append_double, "Operand Print Append (double)");
+    REGISTER_TEST_FIXTURE(s, test_operand_print_append_double_preserves_round_trip_value, "Operand Print Append (double round trip)");
+    REGISTER_TEST_FIXTURE(s, test_operand_print_append_double_ignores_process_locale, "Operand Print Append (double, non-C locale)");
     REGISTER_TEST_FIXTURE(s, test_operand_print_append_string, "Operand Print Append (string)");
     REGISTER_TEST_FIXTURE(s, test_operand_print_append_array, "Operand Print Append (array)");
     REGISTER_TEST_FIXTURE(s, test_opcode_print_1, "Opcode Print (1)");

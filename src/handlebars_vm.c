@@ -1248,6 +1248,7 @@ static bool handlebars_vm_inline_partial_name_opcode_is_valid(
     }
     return opcode->op1.type == handlebars_operand_type_boolean
         || opcode->op1.type == handlebars_operand_type_long
+        || opcode->op1.type == handlebars_operand_type_double
         || opcode->op1.type == handlebars_operand_type_string;
 }
 
@@ -1362,6 +1363,14 @@ static struct handlebars_string * handlebars_vm_inline_partial_name(
 
     if( opcode->op1.type == handlebars_operand_type_string ) {
         return opcode->op1.data.string.string;
+    }
+    if( opcode->op1.type == handlebars_operand_type_double ) {
+        state->temporary_name = handlebars_string_from_double(
+            CONTEXT,
+            opcode->op1.data.doubleval
+        );
+        handlebars_string_addref(state->temporary_name);
+        return state->temporary_name;
     }
     if( opcode->op1.type == handlebars_operand_type_boolean ) {
         if( opcode->op1.data.boolval ) {
@@ -2781,6 +2790,9 @@ ACCEPT_FUNCTION(push_literal)
             break;
         case handlebars_operand_type_long:
             handlebars_value_integer(value, opcode->op1.data.longval);
+            break;
+        case handlebars_operand_type_double:
+            handlebars_value_float(value, opcode->op1.data.doubleval);
             break;
         case handlebars_operand_type_null:
             break;

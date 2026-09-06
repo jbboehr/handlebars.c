@@ -133,14 +133,9 @@ static int loadTestOpcodeOperand(
             handlebars_operand_set_arrayval(test_context, opcode, operand, (const char **) arr);
             break;
         }
-        case json_type_double: {
-            char tmp[64];
-            snprintf(tmp, 63, "%g", json_object_get_double(object));
-            str = handlebars_string_ctor(test_context, tmp, strlen(tmp));
-            handlebars_operand_set_stringval(test_context, opcode, operand, str);
-            //handlebars_operand_set_stringval(opcode, operand, json_object_get_string(object));
+        case json_type_double:
+            handlebars_operand_set_doubleval(operand, json_object_get_double(object));
             break;
-        }
         default:
             return 1;
             break;

@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R08, R10–R11, and R30 through R34 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, rendering semantics, data conversion, and ownership contracts.
+R01 through R11 and R30 through R34 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, rendering semantics, data conversion, and ownership contracts.
 
 ## Verification and coverage limits
 
@@ -203,6 +203,14 @@ Sources: [src/handlebars_compiler.c:1404](../../src/handlebars_compiler.c#L1404)
 Some numeric spellings are stored as string operands and pushed into the VM as string values. This changes helper-visible types and truthiness.
 
 Preserve numeric type information through compilation and execution. Restore meaningful type assertions in the ported helper fixtures, including the disabled checks in tests/fixtures.c, and cover equivalent zero spellings.
+
+**Status: addressed.** Numeric compilation now emits the existing long operand for integral values and a dedicated double operand for fractional values. The VM pushes doubles as floating-point values, and module serialization, shape verification, hashing, printing, and upstream compiler-fixture loading understand the new scalar type. Existing operand enum values remain unchanged. The previously disabled helper-fixture type checks now require integer or floating-point values.
+
+Numeric parsing and formatting use a shared ASCII-decimal policy instead of depending on the process locale. This keeps templates with `.` decimal syntax valid under comma-decimal locales and gives rendered values, lookup keys, value dumps, numeric inline-partial declarations and invocations, and printed opcodes the same round-tripping representation. Partial-name formatting follows the JavaScript fixed/exponent thresholds at 10^-6 and 10^21 and normalizes exponent spelling. Matching declarations and invocations now work for fractional zero, longer fractional values, and values around both thresholds.
+
+The initial focused run failed both new numeric-literal cases: `-0` reached a helper as a string, and five of six zero spellings selected the true branch. Re-enabling the upstream fixture assertions also made the decimal-helper case render `NaN` values. A later review found that runtime coercion still used six-digit, locale-sensitive `%g`; focused regressions reproduced precision loss in rendered values and lookup keys and a comma decimal in rendered output. After the fixes, the focused group passes all cases, the runtime specification passes all 850 checks, and the compiler specification passes all 462 checks. Additional tests cover serialized operand types and verifier rejection, enum stability, exact printer and value-dump round trips, comma-decimal compilation and formatting, inline-partial module copying and pointer normalization, and Handlebars-compatible numeric partial names.
+
+Fresh final Linux verification passed all 29 CTest programs in Release and Debug ASan/UBSan builds with allocation-failure testing enabled. The compiler and opcode-printer suites also passed under `de_DE.utf8`. All ten x86_64-linux flake checks passed, including Autotools, CMake, allocation-failure, no-refcount, minimal, static, and no-LMDB variants. Independent correctness and adversarial test reviews reproduced locale and numeric-name defects in the first implementation; those regressions were fixed, their focused tests pass, and the final re-review found no actionable defect. Reliability verdict: PASS_WITH_RESIDUAL_RISK. macOS, Windows, 32-bit `long`, and applications that concurrently mutate the process-global locale remain unverified.
 
 ### R10. P2: conditional helpers mishandle includeZero
 

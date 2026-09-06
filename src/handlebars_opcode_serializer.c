@@ -250,6 +250,7 @@ static void calculate_size_operand(
         case handlebars_operand_type_null:
         case handlebars_operand_type_boolean:
         case handlebars_operand_type_long:
+        case handlebars_operand_type_double:
             break;
         default:
             handlebars_throw(context, HANDLEBARS_ERROR, "Invalid operand type: %d", operand->type);
@@ -590,6 +591,7 @@ static void serialize_operand(
         case handlebars_operand_type_null:
         case handlebars_operand_type_boolean:
         case handlebars_operand_type_long:
+        case handlebars_operand_type_double:
             break;
         default:
             handlebars_throw(state->context, HANDLEBARS_ERROR, "Invalid operand type: %d", operand->type);
@@ -656,6 +658,7 @@ static bool inline_partial_name_opcode_is_valid(
     }
     return opcode->op1.type == handlebars_operand_type_boolean
         || opcode->op1.type == handlebars_operand_type_long
+        || opcode->op1.type == handlebars_operand_type_double
         || opcode->op1.type == handlebars_operand_type_string;
 }
 
@@ -1312,6 +1315,7 @@ static bool module_verify_operand(
     switch( operand->type ) {
         case handlebars_operand_type_null:
         case handlebars_operand_type_long:
+        case handlebars_operand_type_double:
             return true;
 
         case handlebars_operand_type_boolean:
@@ -1351,7 +1355,7 @@ static bool module_operand_type_is(
     unsigned int allowed_types
 ) {
     return operand->type >= handlebars_operand_type_null
-        && operand->type <= handlebars_operand_type_array
+        && operand->type <= handlebars_operand_type_double
         && (allowed_types & OPERAND_TYPE_MASK(operand->type)) != 0;
 }
 
@@ -1364,6 +1368,7 @@ static bool module_verify_opcode_shape(
     static const unsigned int long_type = OPERAND_TYPE_MASK(handlebars_operand_type_long);
     static const unsigned int string_type = OPERAND_TYPE_MASK(handlebars_operand_type_string);
     static const unsigned int array_type = OPERAND_TYPE_MASK(handlebars_operand_type_array);
+    static const unsigned int double_type = OPERAND_TYPE_MASK(handlebars_operand_type_double);
     unsigned int allowed[4] = {null_type, null_type, null_type, null_type};
     struct handlebars_operand * operands[4] = {
         &opcode->op1, &opcode->op2, &opcode->op3, &opcode->op4
@@ -1402,7 +1407,7 @@ static bool module_verify_opcode_shape(
             break;
 
         case handlebars_opcode_type_push_literal:
-            allowed[0] |= bool_type | long_type | string_type;
+            allowed[0] |= bool_type | long_type | string_type | double_type;
             break;
 
         case handlebars_opcode_type_invoke_partial:

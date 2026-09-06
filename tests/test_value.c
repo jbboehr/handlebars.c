@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <locale.h>
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
@@ -1157,6 +1158,122 @@ START_TEST(test_conditional_helpers_callables)
     );
     ck_assert_int_eq(conditional_callable_calls, 3);
     HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+static struct handlebars_value * test_numeric_literal_types(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * helper_vm,
+    struct handlebars_value * rv
+)
+{
+    static const double expected[] = {
+        0.0, -0.0, 0.0, -0.0, 0.0, 0.0, -1.25, 1.25, -12.0, 12.0
+    };
+
+    (void) options;
+    ck_assert_int_eq(argc, (int) (sizeof(expected) / sizeof(expected[0])));
+    for( int i = 0; i < argc; i++ ) {
+        enum handlebars_value_type type = handlebars_value_get_type(&argv[i]);
+        double actual;
+
+        ck_assert_msg(
+            type == HANDLEBARS_VALUE_TYPE_INTEGER || type == HANDLEBARS_VALUE_TYPE_FLOAT,
+            "argument %d has nonnumeric type %s",
+            i,
+            handlebars_value_type_readable(type)
+        );
+        actual = type == HANDLEBARS_VALUE_TYPE_INTEGER
+            ? (double) handlebars_value_get_intval(&argv[i])
+            : handlebars_value_get_floatval(&argv[i]);
+        ck_assert_double_eq_tol(actual, expected[i], 0.000001);
+    }
+
+    handlebars_value_str(rv, handlebars_string_ctor(HBSCTX(helper_vm), HBS_STRL("numbers")));
+    return rv;
+}
+
+START_TEST(test_compiled_numeric_literal_types)
+{
+    HANDLEBARS_VALUE_DECL(input);
+
+    test_register_helper(HBS_STRL("numeric"), test_numeric_literal_types);
+    assert_conditional_render(
+        "{{numeric 0 -0 0.0 -0.0 00 00.0 -1.25 1.25 -12 12}}",
+        input,
+        "numbers"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_compiled_zero_literal_truthiness)
+{
+    HANDLEBARS_VALUE_DECL(input);
+
+    assert_conditional_render(
+        "{{#if 0}}T{{else}}F{{/if}}"
+        "{{#if -0}}T{{else}}F{{/if}}"
+        "{{#if 0.0}}T{{else}}F{{/if}}"
+        "{{#if -0.0}}T{{else}}F{{/if}}"
+        "{{#if 00}}T{{else}}F{{/if}}"
+        "{{#if 00.0}}T{{else}}F{{/if}}",
+        input,
+        "FFFFFF"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_compiled_float_literal_string_coercion)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * values = handlebars_map_ctor(context, 1);
+
+    test_register_helper(HBS_STRL("identity"), test_passthrough_helper);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("found")));
+    values = handlebars_map_str_update(values, HBS_STRL("1.23456789"), value);
+    handlebars_value_map(value, values);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("values"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render(
+        "{{identity 1.23456789}}|{{lookup values 1.23456789}}",
+        input,
+        "1.23456789|found"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_compiled_float_literal_rendering_ignores_process_locale)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    char * saved_locale = handlebars_talloc_strdup(
+        context,
+        setlocale(LC_NUMERIC, NULL)
+    );
+
+    ck_assert_ptr_nonnull(saved_locale);
+    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+        HANDLEBARS_VALUE_UNDECL(input);
+        return;
+    }
+    ck_assert_str_eq(localeconv()->decimal_point, ",");
+    test_register_helper(HBS_STRL("identity"), test_passthrough_helper);
+
+    assert_conditional_render("{{identity 1.25}}", input, "1.25");
+
+    ck_assert_ptr_nonnull(setlocale(LC_NUMERIC, saved_locale));
     HANDLEBARS_VALUE_UNDECL(input);
 }
 END_TEST
@@ -3198,6 +3315,127 @@ START_TEST(test_value_to_string_and_expression)
 }
 END_TEST
 
+static const struct {
+    double value;
+    const char * expected;
+} float_stringification_cases[] = {
+    {1.234567890123456, "1.234567890123456"},
+    {0.0000001, "1e-7"},
+    {0.000001, "0.000001"},
+    {100000000000000000000.0, "100000000000000000000"},
+    {1e21, "1e+21"},
+    {1000000000000000128.0, "1000000000000000100"},
+    {0x1.fffffffffffffp+1023, "1.7976931348623157e+308"},
+    {0x0.0000000000001p-1022, "5e-324"},
+    {-0.0, "0"},
+    {NAN, "NaN"},
+    {INFINITY, "Infinity"},
+    {-INFINITY, "-Infinity"}
+};
+
+static void assert_float_stringification_paths(double number, const char * expected)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_string * converted;
+    char expected_dump[128];
+    char * dumped;
+    int length;
+
+    handlebars_value_float(value, number);
+    converted = handlebars_value_to_string(value, context);
+    ck_assert_hbs_str_eq_cstr(converted, expected);
+    handlebars_talloc_free(converted);
+
+    assert_value_expression_result(value, false, expected);
+
+    length = snprintf(expected_dump, sizeof(expected_dump), "float(%s)", expected);
+    ck_assert_msg(
+        length >= 0 && (size_t) length < sizeof(expected_dump),
+        "Expected dump is too long"
+    );
+    dumped = handlebars_value_dump(value, context, 0);
+    ck_assert_str_eq(dumped, expected_dump);
+    handlebars_talloc_free(dumped);
+    HANDLEBARS_VALUE_UNDECL(value);
+}
+
+START_TEST(test_float_stringification_paths)
+{
+    const size_t count = sizeof(float_stringification_cases)
+        / sizeof(float_stringification_cases[0]);
+
+    for( size_t i = 0; i < count; i++ ) {
+        assert_float_stringification_paths(
+            float_stringification_cases[i].value,
+            float_stringification_cases[i].expected
+        );
+    }
+}
+END_TEST
+
+START_TEST(test_float_stringification_paths_ignore_process_locale)
+{
+    const size_t count = sizeof(float_stringification_cases)
+        / sizeof(float_stringification_cases[0]);
+    char * saved_locale = handlebars_talloc_strdup(
+        context,
+        setlocale(LC_NUMERIC, NULL)
+    );
+
+    ck_assert_ptr_nonnull(saved_locale);
+    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+        return;
+    }
+    ck_assert_str_eq(localeconv()->decimal_point, ",");
+    for( size_t i = 0; i < count; i++ ) {
+        assert_float_stringification_paths(
+            float_stringification_cases[i].value,
+            float_stringification_cases[i].expected
+        );
+    }
+    ck_assert_ptr_nonnull(setlocale(LC_NUMERIC, saved_locale));
+}
+END_TEST
+
+START_TEST(test_float_lookup_keys_use_ecmascript_stringification)
+{
+    const size_t count = sizeof(float_stringification_cases)
+        / sizeof(float_stringification_cases[0]);
+    HANDLEBARS_VALUE_ARRAY_DECL(args, 2);
+    HANDLEBARS_VALUE_DECL(stored);
+    HANDLEBARS_VALUE_DECL(rv);
+    struct handlebars_options options = {0};
+    struct handlebars_map * map = handlebars_map_ctor(context, count);
+
+    for( size_t i = 0; i < count; i++ ) {
+        handlebars_value_integer(stored, (long) i + 1);
+        map = handlebars_map_str_update(
+            map,
+            float_stringification_cases[i].expected,
+            strlen(float_stringification_cases[i].expected),
+            stored
+        );
+    }
+    handlebars_value_map(HANDLEBARS_VALUE_ARRAY_AT(args, 0), map);
+
+    for( size_t i = 0; i < count; i++ ) {
+        struct handlebars_value * found;
+
+        handlebars_value_float(
+            HANDLEBARS_VALUE_ARRAY_AT(args, 1),
+            float_stringification_cases[i].value
+        );
+        found = handlebars_builtin_lookup(2, args, &options, vm, rv);
+        ck_assert_ptr_nonnull(found);
+        ck_assert_int_eq(handlebars_value_get_intval(found), (long) i + 1);
+    }
+
+    HANDLEBARS_VALUE_UNDECL(rv);
+    HANDLEBARS_VALUE_UNDECL(stored);
+    HANDLEBARS_VALUE_ARRAY_UNDECL(args, 2);
+}
+END_TEST
+
 START_TEST(test_value_equality)
 {
     HANDLEBARS_VALUE_DECL(left);
@@ -4809,6 +5047,17 @@ static Suite * suite(void)
     tcase_add_test(conditional, test_unless_reports_inverse_program_block_params_to_if_override);
     suite_add_tcase(s, conditional);
 
+    TCase * numeric_literals = tcase_create("Numeric literals");
+    tcase_add_checked_fixture(numeric_literals, default_setup, default_teardown);
+    tcase_add_test(numeric_literals, test_compiled_numeric_literal_types);
+    tcase_add_test(numeric_literals, test_compiled_zero_literal_truthiness);
+    tcase_add_test(numeric_literals, test_compiled_float_literal_string_coercion);
+    tcase_add_test(
+        numeric_literals,
+        test_compiled_float_literal_rendering_ignores_process_locale
+    );
+    suite_add_tcase(s, numeric_literals);
+
     REGISTER_TEST_FIXTURE(s, test_boolean_true, "Boolean - true");
     REGISTER_TEST_FIXTURE(s, test_boolean_false, "Boolean - false");
     REGISTER_TEST_FIXTURE(s, test_int, "Integer");
@@ -4824,6 +5073,9 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_value_pointer_getter_non_pointer_aborts, "Value pointer getter non-pointer aborts");
 #endif
     REGISTER_TEST_FIXTURE(s, test_value_to_string_and_expression, "String conversion and expression rendering");
+    REGISTER_TEST_FIXTURE(s, test_float_stringification_paths, "Float stringification paths");
+    REGISTER_TEST_FIXTURE(s, test_float_stringification_paths_ignore_process_locale, "Float stringification paths under a comma-decimal locale");
+    REGISTER_TEST_FIXTURE(s, test_float_lookup_keys_use_ecmascript_stringification, "Float lookup-key stringification");
     REGISTER_TEST_FIXTURE(s, test_value_equality, "Value equality");
     REGISTER_TEST_FIXTURE(s, test_value_self_assignment, "Value self-assignment");
     REGISTER_TEST_FIXTURE(s, test_closure_rejects_negative_local_count, "Closure local count bounds");

@@ -28,6 +28,18 @@ struct handlebars_context;
 struct handlebars_error;
 struct handlebars_map;
 struct handlebars_stack;
+struct handlebars_string;
+
+HBS_LOCAL bool handlebars_string_parse_number(
+    struct handlebars_context * context,
+    const struct handlebars_string * string,
+    double * value
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
+
+HBS_LOCAL struct handlebars_string * handlebars_string_from_double(
+    struct handlebars_context * context,
+    double value
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT;
 
 HBS_LOCAL struct handlebars_context * handlebars_map_get_context(
     struct handlebars_map * map

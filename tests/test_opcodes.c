@@ -159,6 +159,27 @@ START_TEST(test_operand_set_longval)
 }
 END_TEST
 
+START_TEST(test_operand_set_doubleval)
+{
+    struct handlebars_operand op;
+
+    handlebars_operand_set_doubleval(&op, -12.5);
+    ck_assert_int_eq(handlebars_operand_type_double, op.type);
+    ck_assert_double_eq(-12.5, op.data.doubleval);
+}
+END_TEST
+
+START_TEST(test_operand_type_numeric_values_stable)
+{
+    ck_assert_int_eq(handlebars_operand_type_null, 0);
+    ck_assert_int_eq(handlebars_operand_type_boolean, 1);
+    ck_assert_int_eq(handlebars_operand_type_long, 2);
+    ck_assert_int_eq(handlebars_operand_type_string, 3);
+    ck_assert_int_eq(handlebars_operand_type_array, 4);
+    ck_assert_int_eq(handlebars_operand_type_double, 5);
+}
+END_TEST
+
 START_TEST(test_operand_set_stringval)
 {
     struct handlebars_operand op;
@@ -321,6 +342,8 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_operand_set_null, "Set operand null");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_boolval, "Set operand boolval");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_longval, "Set operand longval");
+	REGISTER_TEST_FIXTURE(s, test_operand_set_doubleval, "Set operand doubleval");
+	REGISTER_TEST_FIXTURE(s, test_operand_type_numeric_values_stable, "Operand type numeric values remain stable");
 	REGISTER_TEST_FIXTURE(s, test_operand_set_stringval, "Set operand stringval");
 	//REGISTER_TEST_FIXTURE(s, test_operand_set_stringval_failed_alloc, "Set operand stringval (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_operand_set_arrayval, "Set operand arrayval");

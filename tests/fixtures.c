@@ -238,13 +238,14 @@ FIXTURE_FN(620640779)
     // "function (times, times2) {\n      if (typeof times !== 'number') { times = 'NaN'; }\n      if (typeof times2 !== 'number') { times2 = 'NaN'; }\n      return 'Hello ' + times + ' ' + times2 + ' times';\n    }"
     struct handlebars_value * times = HANDLEBARS_ARG_AT(0);
     struct handlebars_value * times2 = HANDLEBARS_ARG_AT(1);
-    // @todo this should be a float perhaps?
-    /* if( times->type != HANDLEBARS_VALUE_TYPE_FLOAT || times->type != HANDLEBARS_VALUE_TYPE_INTEGER ) {
+    if( handlebars_value_get_type(times) != HANDLEBARS_VALUE_TYPE_FLOAT &&
+            handlebars_value_get_type(times) != HANDLEBARS_VALUE_TYPE_INTEGER ) {
         handlebars_value_cstrl(times, HBS_STRL("NaN"));
     }
-    if( times2->type != HANDLEBARS_VALUE_TYPE_FLOAT || times2->type != HANDLEBARS_VALUE_TYPE_INTEGER ) {
+    if( handlebars_value_get_type(times2) != HANDLEBARS_VALUE_TYPE_FLOAT &&
+            handlebars_value_get_type(times2) != HANDLEBARS_VALUE_TYPE_INTEGER ) {
         handlebars_value_cstrl(times2, HBS_STRL("NaN"));
-    } */
+    }
     char * tmp = handlebars_talloc_asprintf(
             vm,
             "Hello %s %s times",
@@ -1328,10 +1329,10 @@ FIXTURE_FN(3781305181)
 {
     // "function (times) {\n      if (typeof times !== 'number') { times = 'NaN'; }\n      return 'Hello ' + times + ' times';\n    }"
     struct handlebars_value * times = HANDLEBARS_ARG_AT(0);
-    // @todo this should be a float perhaps?
-    /* if( times->type != HANDLEBARS_VALUE_TYPE_FLOAT || times->type != HANDLEBARS_VALUE_TYPE_INTEGER ) {
+    if( handlebars_value_get_type(times) != HANDLEBARS_VALUE_TYPE_FLOAT &&
+            handlebars_value_get_type(times) != HANDLEBARS_VALUE_TYPE_INTEGER ) {
         handlebars_value_cstrl(times, HBS_STRL("NaN"));
-    }*/
+    }
     char * tmp = handlebars_talloc_asprintf(
             vm,
             "Hello %s times",

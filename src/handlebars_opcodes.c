@@ -70,6 +70,14 @@ void handlebars_operand_set_longval(struct handlebars_operand * operand, long ar
     operand->data.longval = arg;
 }
 
+void handlebars_operand_set_doubleval(struct handlebars_operand * operand, double arg)
+{
+    assert(operand != NULL);
+
+    operand->type = handlebars_operand_type_double;
+    operand->data.doubleval = arg;
+}
+
 void handlebars_operand_set_stringval(
     struct handlebars_context * context,
     struct handlebars_opcode * opcode,

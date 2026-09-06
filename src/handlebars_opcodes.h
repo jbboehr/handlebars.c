@@ -99,7 +99,8 @@ enum handlebars_operand_type {
     handlebars_operand_type_boolean = 1,
     handlebars_operand_type_long = 2,
     handlebars_operand_type_string = 3,
-    handlebars_operand_type_array = 4
+    handlebars_operand_type_array = 4,
+    handlebars_operand_type_double = 5
 };
 
 extern const size_t HANDLEBARS_OPCODE_SIZE;
@@ -150,6 +151,18 @@ void handlebars_operand_set_boolval(
 void handlebars_operand_set_longval(
     struct handlebars_operand * operand,
     long arg
+) HBS_ATTR_NONNULL_ALL;
+
+/**
+ * @brief Set the value of an operand to a double
+ *
+ * @param[in] operand The operand of which to change the value
+ * @param[in] arg The double value
+ * @return void
+ */
+void handlebars_operand_set_doubleval(
+    struct handlebars_operand * operand,
+    double arg
 ) HBS_ATTR_NONNULL_ALL;
 
 /**
@@ -241,6 +254,7 @@ struct handlebars_operand_array {
 union handlebars_operand_internals {
     bool boolval;
     long longval;
+    double doubleval;
     struct handlebars_operand_string string;
     struct handlebars_operand_array array;
 };
