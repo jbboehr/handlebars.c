@@ -85,32 +85,30 @@
     },
     "handlebars_spec": {
       "inputs": {
-        "flake-utils": [
-          "flake-utils"
+        "agent-badge": [
+          "agent-badge"
         ],
-        "gitignore": [
-          "gitignore"
+        "git-hooks": [
+          "pre-commit-hooks"
         ],
         "nixpkgs": [
           "nixpkgs"
-        ],
-        "pre-commit-hooks": [
-          "pre-commit-hooks"
         ],
         "systems": [
           "systems"
         ]
       },
       "locked": {
-        "lastModified": 1727508389,
-        "narHash": "sha256-1RdK24zzzYpY/u/R+kTktIjgBpfig8s5dxGx2mr8jRs=",
+        "lastModified": 1788711980,
+        "narHash": "sha256-j/vUhgwxJiLYZbkAQ1GrJZoY/wWTSvfSo+hbpjP1XGU=",
         "owner": "jbboehr",
         "repo": "handlebars-spec",
-        "rev": "0fbf7ecdcd7ed789139f475fd40bfcf0520b0e9a",
+        "rev": "af6d944d3a750d3ef3b6bca3791fd06322826e6d",
         "type": "github"
       },
       "original": {
         "owner": "jbboehr",
+        "ref": "master",
         "repo": "handlebars-spec",
         "type": "github"
       }

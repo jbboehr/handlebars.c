@@ -19,12 +19,11 @@
       flake = false;
     };
     handlebars_spec = {
-      url = "github:jbboehr/handlebars-spec";
+      url = "github:jbboehr/handlebars-spec/master";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.systems.follows = "systems";
-      inputs.gitignore.follows = "gitignore";
-      inputs.pre-commit-hooks.follows = "pre-commit-hooks";
-      inputs.flake-utils.follows = "flake-utils";
+      inputs.agent-badge.follows = "agent-badge";
+      inputs.git-hooks.follows = "pre-commit-hooks";
     };
     gitignore = {
       url = "github:hercules-ci/gitignore.nix";

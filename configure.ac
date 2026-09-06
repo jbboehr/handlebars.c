@@ -25,7 +25,7 @@ m4_define([HANDLEBARS_REVISION], 0)
 m4_define([HANDLEBARS_AGE], 0)
 
 # Define the version of the specs
-m4_define([HANDLEBARS_SPEC_VERSION], [4.7.7])
+m4_define([HANDLEBARS_SPEC_VERSION], [4.7.9])
 m4_define([MUSTACHE_SPEC_VERSION], [1.1.3])
 
 # Initialize autoconf & automake.

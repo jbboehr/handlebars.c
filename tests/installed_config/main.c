@@ -75,7 +75,7 @@ int main(void)
             || strcmp(HANDLEBARS_VERSION_STRING, "1.0.0")
             || handlebars_version() != HANDLEBARS_VERSION_INT
             || strcmp(handlebars_version_string(), HANDLEBARS_VERSION_STRING)
-            || strcmp(HANDLEBARS_SPEC_VERSION_STRING, "4.7.7")
+            || strcmp(HANDLEBARS_SPEC_VERSION_STRING, "4.7.9")
             || strcmp(handlebars_spec_version_string(), HANDLEBARS_SPEC_VERSION_STRING)
             || strcmp(MUSTACHE_SPEC_VERSION_STRING, "1.1.3")
             || strcmp(handlebars_mustache_spec_version_string(), MUSTACHE_SPEC_VERSION_STRING)) {
