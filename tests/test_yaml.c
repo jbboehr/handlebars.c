@@ -105,8 +105,7 @@ START_TEST(test_float_yaml)
     handlebars_value_init_yaml_string(context, value, "---\n1234.4321");
     ck_assert_ptr_ne(value, NULL);
     ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_FLOAT);
-    // Note: converting to int - precision issue
-    ck_assert_int_eq(handlebars_value_get_floatval(value), 1234.4321);
+    ck_assert_double_eq_tol(handlebars_value_get_floatval(value), 1234.4321, 0.000001);
     HANDLEBARS_VALUE_UNDECL(value);
     ASSERT_INIT_BLOCKS();
 }

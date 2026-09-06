@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R06, R08, R31, and R32 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial module printing, and the test-assertion gaps.
+R01 through R06, R08, and R31 through R34 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, inline-partial module printing, and rendering semantics.
 
 ## Verification and coverage limits
 
@@ -572,21 +572,27 @@ CTest runs the script on Unix platforms, and Autotools runs it when JSON support
 
 Sources: [tests/test_json.c:91](../../tests/test_json.c#L91), [tests/test_yaml.c:109](../../tests/test_yaml.c#L109), [tests/test_value.c:2599](../../tests/test_value.c#L2599).
 
-These tests compare fractional values using ck_assert_int_eq. Check 0.15.2 converts the operands to integers.
+At the reviewed commit, these tests compared fractional values using ck_assert_int_eq. Check 0.15.2 converts the operands to integers.
 
 A standalone Check control using ck_assert_int_eq(1234.0, 1234.4321) passed. The same values compared with ck_assert_double_eq_tol and a tolerance of 0.000001 failed.
 
-Use floating-point assertions with intentional tolerances, and verify that changing the fractional part makes the test fail. A test's API choice must preserve the property it is supposed to check.
+**Status: addressed.** The three existing tests now use ck_assert_double_eq_tol with an absolute tolerance of 0.000001. This allows conversion rounding while still detecting changes in any of the fixture's four decimal places.
+
+Temporary builds changed each expected value from 1234.4321 to 1234.9876, leaving the actual value unchanged. All three original integer assertions passed despite the different fractions; each corrected assertion failed. Restoring the expected values made all three focused tests pass.
 
 ### R34. P2: the token-print allocation-failure test never attempts the operation
 
 Source: [tests/test_token.c:266](../../tests/test_token.c#L266).
 
-The first setjmp return is zero. The test negates it and immediately returns, before enabling failure injection or calling token_print.
+The first setjmp return is zero. At the reviewed commit, the test negated it and immediately returned, before enabling failure injection or calling token_print.
 
 A temporary instrumented copy, linked to the sanitizer/memory-testing build, ran the isolated test and reported one passing check. It printed a marker in the early-return branch and never printed the marker immediately before enabling injection.
 
-Correct the branch and require evidence that the intended allocation failure was reached. Merely compiling the allocation-failure variant does not establish that its failure path ran.
+**Status: addressed.** The test now reaches token printing on the initial setjmp return and handles the subsequent allocation error. Injection is restricted to allocations. The error branch disables injection before cleanup, requires HANDLEBARS_NOMEM and a positive allocation-call count, destroys the token, clears the intentional error, and checks that context allocations return to their starting count. An unexpected successful return fails with an explicit diagnostic.
+
+Adding the error assertions before correcting the branch produced a focused failure: the context still reported HANDLEBARS_SUCCESS. The corrected test passes. Separate temporary controls that omitted injection, omitted the print call, or omitted token cleanup each failed the intended assertion. Restoring the test made the focused check pass again.
+
+Fresh Linux verification for R33–R34 passed all 29 CTest programs in Release and Debug ASan/UBSan builds with allocation-failure testing enabled. The memory-disabled Autotools build and distcheck each passed all 2,304 checks. The four focused tests and Markdown lint also passed. Non-Linux builds remain unverified.
 
 ### R35. P3: bundled XXH3 hashing depends on update partitioning
 

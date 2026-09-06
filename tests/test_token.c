@@ -263,17 +263,23 @@ START_TEST(test_token_print_failed_alloc)
 	struct handlebars_string * actual;
     jmp_buf buf;
 
-    if( !handlebars_setjmp_ex(context, &buf) ) {
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_int_gt(handlebars_memory_get_call_counter(), 0);
         handlebars_token_dtor(tok);
+        clear_intentional_error();
+        ASSERT_INIT_BLOCKS();
         return;
     }
 
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
     handlebars_memory_fail_enable();
     actual = handlebars_token_print(context, tok, 0);
     (void) actual;
     handlebars_memory_fail_disable();
 
-    ck_assert(0);
+    ck_abort_msg("Expected token printing to report an allocation failure");
 
 #else
     fprintf(stderr, "Skipped, memory testing functions are disabled\n");
