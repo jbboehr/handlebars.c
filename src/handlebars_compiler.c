@@ -671,8 +671,32 @@ static inline void handlebars_compiler_push_param(
             } else {
                 string = handlebars_ast_node_get_string_mode_value(CONTEXT, param);
                 const char * strval = hbs_str_val(string);
-                if( strval == strstr(strval, "this") ) {
-                	strval += 4 + (*(strval + 4) == '.' || *(strval + 4) == '$' ? 1 : 0 );
+                size_t string_length = hbs_str_len(string);
+                // Scalar and bracket-literal IDs retain their prior normalization.
+                bool legacy_this = param->type != HANDLEBARS_AST_NODE_PATH;
+                if( !legacy_this && param->node.path.parts
+                        && param->node.path.parts->first ) {
+                    struct handlebars_ast_node * first =
+                        param->node.path.parts->first->data;
+                    legacy_this = first->node.path_segment.original
+                        && first->node.path_segment.separator == NULL
+                        && !handlebars_string_eq(
+                            first->node.path_segment.original,
+                            first->node.path_segment.part
+                        );
+                }
+                if( legacy_this && string_length >= 4
+                        && memcmp(strval, "this", 4) == 0 ) {
+                    strval += 4
+                        + (strval[4] == '.' || strval[4] == '$' ? 1 : 0);
+                } else if( !legacy_this
+                        && handlebars_ast_helper_scoped_id(param)
+                        && string_length >= 4
+                        && memcmp(strval, "this", 4) == 0
+                        && (string_length == 4
+                            || strval[4] == '.'
+                            || strval[4] == '/') ) {
+                    strval += string_length == 4 ? 4 : 5;
                 }
                 if( *strval == '.' && *(strval + 1) == 0 ) {
                     strval = "";

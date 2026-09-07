@@ -480,23 +480,68 @@ unsigned handlebars_ast_helper_strip_flags(struct handlebars_string * open, stru
     return strip;
 }
 
+static bool handlebars_ast_helper_legacy_scoped_id(
+    struct handlebars_string * original
+)
+{
+    const char * found;
+    char c;
+    size_t length = hbs_str_len(original);
+
+    if( length >= 1 && hbs_str_val(original)[0] == '.' ) {
+        return true;
+    }
+    if( length == 4 && memcmp(hbs_str_val(original), "this", 4) == 0 ) {
+        return true;
+    }
+    found = length > 4 ? strstr(hbs_str_val(original), "this") : NULL;
+    if( !found ) {
+        return false;
+    }
+    c = found[4];
+    return c < '0'
+        || (c > '9' && c < 'A')
+        || (c > 'Z' && c < '_')
+        || (c > '_' && c < 'a')
+        || c > 'z';
+}
+
 bool handlebars_ast_helper_scoped_id(struct handlebars_ast_node * path)
 {
     struct handlebars_string * original;
-    char * found;
-    if( path && (original = path->node.path.original) ) {
-        if( hbs_str_len(original) >= 1 && hbs_str_val(original)[0] == '.' ) {
-            return true;
-        } else if( hbs_str_len(original) == 4 && 0 == strcmp(hbs_str_val(original), "this") ) {
-            return true;
-        } else if( hbs_str_len(original) > 4 && NULL != (found = strstr(hbs_str_val(original), "this")) ) {
-        //} else if( len > 4 && 0 == strncmp(original, "this", 4) ) {
-            char c = *(found + 4);
-            // [^a-zA-Z0-9_]
-            return c < '0' || (c > '9' && c < 'A') || (c > 'Z' && c < '_') || (c > '_' && c < 'a') || c > 'z';
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+    const char * value;
+    size_t length;
+
+    if( !path || !(original = path->node.path.original) ) {
+        return false;
+    }
+    // Data and bracket-literal paths retain their established opcode shape.
+    if( path->node.path.data ) {
+        return handlebars_ast_helper_legacy_scoped_id(original);
+    }
+    if( path->node.path.parts ) {
+        handlebars_ast_list_foreach(path->node.path.parts, item, tmp) {
+            if( item->data->node.path_segment.original
+                    && !handlebars_string_eq(
+                        item->data->node.path_segment.original,
+                        item->data->node.path_segment.part
+                    ) ) {
+                return handlebars_ast_helper_legacy_scoped_id(original);
+            }
         }
     }
-    return false;
+
+    value = hbs_str_val(original);
+    length = hbs_str_len(original);
+    if( length >= 1 && value[0] == '.' ) {
+        return true;
+    }
+    if( length < 4 || memcmp(value, "this", 4) != 0 ) {
+        return false;
+    }
+    return length == 4 || value[4] == '.' || value[4] == '/';
 }
 
 bool handlebars_ast_helper_simple_id(struct handlebars_ast_node * path)

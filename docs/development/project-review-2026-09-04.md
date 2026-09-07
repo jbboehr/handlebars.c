@@ -364,6 +364,8 @@ A separate tracked-ID check compiled {{h thisName}} with track_ids. The lookup r
 
 Recognize the this path component and its permitted separators, rather than substrings or unbounded prefixes. Test identifiers that begin with, end with, or contain those letters.
 
+**Status: addressed.** Ordinary paths are now scoped only when they begin with `.` or use bare `this`, `this.`, or `this/`. Identifiers such as `thisName`, `this-name`, `this$foo`, `mythis`, `thingthis`, and nested forms such as `mythis.foo` remain ordinary paths and resolve as block parameters. Tracked IDs use the same boundary, preserving ordinary names while normalizing `this.foo` and `this/foo` to `foo`. Data paths and bracket literals retain their established classification and tracked-ID metadata for compatibility. The regressions first reproduced empty block-parameter output and truncated tracked IDs, then passed across punctuation, position, case, nested lookup, data-path, and bracket-literal controls. Fresh Linux verification passed all 2,492 Autotools checks and the CMake allocation-failure check. Independent correctness and adversarial test reviews found no actionable defect. Reliability verdict: PASS_WITH_RESIDUAL_RISK; non-Linux platforms and exhaustive identifier-byte combinations were not run.
+
 ### R18. P3: tracked numeric IDs are truncated
 
 Source: [src/handlebars_compiler.c:682](../../src/handlebars_compiler.c#L682).

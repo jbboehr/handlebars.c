@@ -41,6 +41,7 @@
 #include "handlebars_opcode_serializer.h"
 #include "handlebars_opcodes.h"
 #include "handlebars_parser.h"
+#include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_memory.h"
 #include "handlebars_value.h"
@@ -2309,6 +2310,142 @@ START_TEST(test_literal_path_compiler_metadata_remains_normalized)
 }
 END_TEST
 
+static const char * ordinary_this_identifier_cases[] = {
+    "thisName",
+    "this-name",
+    "this$foo",
+    "this:foo",
+    "this?foo",
+    "This",
+    "thisthis",
+    "mythis",
+    "thingthis",
+    "mythisValue",
+};
+
+START_TEST(test_this_substrings_remain_block_parameters)
+{
+    const char * name = ordinary_this_identifier_cases[(size_t) _i];
+    char source[128];
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(item);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * item_map;
+
+    handlebars_value_array(items, handlebars_stack_ctor(context, 2));
+    item_map = handlebars_map_ctor(context, 1);
+    handlebars_value_str(item, handlebars_string_ctor(context, HBS_STRL("A")));
+    item_map = handlebars_map_str_update(item_map, HBS_STRL("foo"), item);
+    handlebars_value_map(item, item_map);
+    handlebars_value_array_push(items, item);
+    item_map = handlebars_map_ctor(context, 1);
+    handlebars_value_str(item, handlebars_string_ctor(context, HBS_STRL("B")));
+    item_map = handlebars_map_str_update(item_map, HBS_STRL("foo"), item);
+    handlebars_value_map(item, item_map);
+    handlebars_value_array_push(items, item);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("items"), items);
+    handlebars_value_map(input, input_map);
+
+    int length = snprintf(
+        source,
+        sizeof(source),
+        "{{#each items as |%s|}}{{%s.foo}}{{/each}}",
+        name,
+        name
+    );
+    ck_assert_int_gt(length, 0);
+    ck_assert_int_lt(length, (int) sizeof(source));
+    assert_compiled_template_output(source, input, 0, "AB");
+
+    HANDLEBARS_VALUE_UNDECL(item);
+    HANDLEBARS_VALUE_UNDECL(items);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_track_ids_only_strip_scoped_this_prefix)
+{
+    static const char source[] =
+        "{{helper thisName this-name this$foo this:foo this?foo This "
+        "thisthis mythis thingthis mythis.foo athis/foo this this.foo "
+        "this/foo . ./foo @this @this.foo @this/foo @thisName @mythis "
+        "@mythis.foo [this] [this.foo] [this]/foo [thisName] [mythis] "
+        "[mythis.foo]}}";
+    static const char * expected[] = {
+        "thisName",
+        "this-name",
+        "this$foo",
+        "this:foo",
+        "this?foo",
+        "This",
+        "thisthis",
+        "mythis",
+        "thingthis",
+        "mythis.foo",
+        "athis/foo",
+        "",
+        "foo",
+        "foo",
+        "",
+        "foo",
+        "@this",
+        "@this.foo",
+        "@this/foo",
+        "@thisName",
+        "@mythis",
+        "@mythis.foo",
+        "",
+        "foo",
+        "/foo",
+        "Name",
+        "mythis",
+        "mythis.foo",
+    };
+    struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+    struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        sizeof(source) - 1
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(local_parser, tmpl, 0);
+    size_t expected_index = 0;
+
+    ck_assert_ptr_nonnull(ast);
+    handlebars_compiler_set_flags(
+        local_compiler,
+        handlebars_compiler_flag_track_ids
+    );
+    struct handlebars_program * program = handlebars_compiler_compile_ex(
+        local_compiler,
+        ast
+    );
+    ck_assert_ptr_nonnull(program);
+
+    for( size_t i = 0; i < program->opcodes_length; i++ ) {
+        struct handlebars_opcode * opcode = program->opcodes[i];
+
+        if( opcode->type != handlebars_opcode_type_push_id ) {
+            continue;
+        }
+        ck_assert_uint_lt(
+            expected_index,
+            sizeof(expected) / sizeof(expected[0])
+        );
+        ck_assert_int_eq(opcode->op2.type, handlebars_operand_type_string);
+        ck_assert_hbs_str_eq_cstr(
+            opcode->op2.data.string.string,
+            expected[expected_index]
+        );
+        expected_index++;
+    }
+    ck_assert_uint_eq(expected_index, sizeof(expected) / sizeof(expected[0]));
+    handlebars_compiler_dtor(local_compiler);
+    handlebars_parser_dtor(local_parser);
+}
+END_TEST
+
 START_TEST(test_fractional_inline_partial_names_use_handlebars_stringification)
 {
     const char * source =
@@ -2918,6 +3055,20 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_ast_to_string_preserves_escaped_literal_path_lookup, "AST source round-trip preserves escaped literal path lookup");
 	REGISTER_TEST_FIXTURE(s, test_ast_to_string_preserves_literal_path_forms, "AST source round-trip preserves literal path forms");
 	REGISTER_TEST_FIXTURE(s, test_literal_path_compiler_metadata_remains_normalized, "Literal path compiler metadata remains normalized");
+	TCase * tc_this_identifier_boundaries = tcase_create("This identifier boundaries");
+	tcase_add_checked_fixture(tc_this_identifier_boundaries, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_this_identifier_boundaries,
+		test_this_substrings_remain_block_parameters,
+		0,
+		(int) (sizeof(ordinary_this_identifier_cases)
+			/ sizeof(ordinary_this_identifier_cases[0]))
+	);
+	tcase_add_test(
+		tc_this_identifier_boundaries,
+		test_track_ids_only_strip_scoped_this_prefix
+	);
+	suite_add_tcase(s, tc_this_identifier_boundaries);
 	REGISTER_TEST_FIXTURE(s, test_fractional_inline_partial_names_use_handlebars_stringification, "Stringify fractional inline partial names compatibly");
 	TCase * tc_inline_partial_number_stringification = tcase_create("Handlebars inline partial number stringification thresholds");
 	tcase_add_checked_fixture(tc_inline_partial_number_stringification, default_setup, default_teardown);

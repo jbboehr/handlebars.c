@@ -27,6 +27,7 @@
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
+#include "handlebars_ast_helpers.h"
 #include "handlebars_ast_list.h"
 #include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
@@ -111,6 +112,59 @@ START_TEST(test_ast_path_segment_owns_strings)
     ck_assert_ptr_eq(talloc_parent(node->node.path_segment.part), node);
     ck_assert_ptr_eq(talloc_parent(node->node.path_segment.separator), node);
     ck_assert_hbs_str_eq_cstr(node->node.path_segment.part, "part");
+}
+END_TEST
+
+static const struct {
+    const char * source;
+    bool expected;
+} scoped_path_cases[] = {
+    { "{{this}}", true },
+    { "{{this.foo}}", true },
+    { "{{this/foo}}", true },
+    { "{{.}}", true },
+    { "{{./foo}}", true },
+    { "{{thisName}}", false },
+    { "{{this-name}}", false },
+    { "{{this$foo}}", false },
+    { "{{this:foo}}", false },
+    { "{{this?foo}}", false },
+    { "{{This}}", false },
+    { "{{thisthis}}", false },
+    { "{{mythis}}", false },
+    { "{{thingthis}}", false },
+    { "{{mythisValue}}", false },
+    { "{{mythis.foo}}", false },
+    { "{{athis/foo}}", false },
+    { "{{@thisName}}", false },
+    { "{{@mythis}}", true },
+    { "{{@mythis.foo}}", true },
+    { "{{[thisName]}}", false },
+    { "{{[mythis]}}", true },
+    { "{{[mythis.foo]}}", true },
+};
+
+START_TEST(test_scoped_path_boundaries)
+{
+    const size_t index = (size_t) _i;
+    const char * source = scoped_path_cases[index].source;
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        strlen(source)
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    struct handlebars_ast_node * mustache;
+
+    ck_assert_ptr_nonnull(ast);
+    mustache = ast->node.program.statements->first->data;
+    ck_assert_int_eq(mustache->type, HANDLEBARS_AST_NODE_MUSTACHE);
+    ck_assert_msg(
+        handlebars_ast_helper_scoped_id(mustache->node.mustache.path)
+            == scoped_path_cases[index].expected,
+        "Unexpected scoped-path classification for %s",
+        source
+    );
 }
 END_TEST
 
@@ -348,6 +402,15 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_ast_node_dtor, "Destructor");
     REGISTER_MEMORY_TEST_FIXTURE(s, test_ast_node_dtor_failed_alloc, "Destructor (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_ast_path_segment_owns_strings, "Path segment owns strings");
+    TCase * tc_scoped_paths = tcase_create("Scoped path boundaries");
+    tcase_add_checked_fixture(tc_scoped_paths, default_setup, default_teardown);
+    tcase_add_loop_test(
+        tc_scoped_paths,
+        test_scoped_path_boundaries,
+        0,
+        (int) (sizeof(scoped_path_cases) / sizeof(scoped_path_cases[0]))
+    );
+    suite_add_tcase(s, tc_scoped_paths);
     REGISTER_TEST_FIXTURE(s, test_ast_tree_outlives_parser_when_reparented, "Reparented tree outlives parser");
     REGISTER_TEST_FIXTURE(s, test_ast_standalone_partial_indent_outlives_parser, "Standalone partial indent outlives parser");
     REGISTER_TEST_FIXTURE(s, test_ast_node_readable_type, "Readable Type");
