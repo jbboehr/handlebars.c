@@ -29,6 +29,7 @@ struct handlebars_error;
 struct handlebars_map;
 struct handlebars_stack;
 struct handlebars_string;
+struct handlebars_value;
 
 HBS_LOCAL bool handlebars_string_parse_number(
     struct handlebars_context * context,
@@ -45,6 +46,11 @@ HBS_LOCAL struct handlebars_context * handlebars_map_get_context(
     struct handlebars_map * map
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
+HBS_LOCAL bool handlebars_map_is_shared(
+    struct handlebars_map * map,
+    size_t expected_references
+) HBS_ATTR_NONNULL_ALL;
+
 HBS_LOCAL bool handlebars_map_iteration_acquire(
     struct handlebars_map * map
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_WARN_UNUSED_RESULT;
@@ -56,6 +62,21 @@ HBS_LOCAL void handlebars_map_iteration_release(
 
 HBS_LOCAL struct handlebars_context * handlebars_stack_get_context(
     struct handlebars_stack * stack
+) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
+
+HBS_LOCAL bool handlebars_stack_is_shared(
+    struct handlebars_stack * stack,
+    size_t expected_references
+) HBS_ATTR_NONNULL_ALL;
+
+/* Set an array slot while discounting references held only by an active value
+ * traversal. force_separate protects aliases inherited through an ancestor. */
+HBS_LOCAL struct handlebars_stack * handlebars_stack_set_internal(
+    struct handlebars_stack * stack,
+    size_t offset,
+    struct handlebars_value * value,
+    size_t expected_references,
+    bool force_separate
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL;
 
 HBS_LOCAL void handlebars_value_iterator_unwind(

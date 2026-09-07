@@ -30,6 +30,7 @@
 #include "handlebars_memory.h"
 #include "handlebars_map.h"
 #include "handlebars_json.h"
+#include "handlebars_stack.h"
 #include "handlebars_string.h"
 #include "handlebars_value.h"
 #include "utils.h"
@@ -403,6 +404,654 @@ START_TEST(test_convert_json)
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
+
+START_TEST(test_convert_json_children_of_native_containers)
+{
+    HANDLEBARS_VALUE_DECL(array);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(map);
+    HANDLEBARS_VALUE_DECL(native_array);
+    HANDLEBARS_VALUE_DECL(nested);
+    HANDLEBARS_VALUE_DECL(wrapped);
+    struct handlebars_map * native_map;
+    struct handlebars_value * result;
+
+    handlebars_value_array(array, handlebars_stack_ctor(context, 1));
+    handlebars_value_init_json_string(context, wrapped, "{\"nested\":[1]}");
+    handlebars_value_array_push(array, wrapped);
+
+    handlebars_value_convert(array);
+
+    result = handlebars_value_array_find(array, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+    result = handlebars_value_map_str_find(result, HBS_STRL("nested"), nested);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_ARRAY
+    );
+
+    native_map = handlebars_map_ctor(context, 1);
+    handlebars_value_array(native_array, handlebars_stack_ctor(context, 1));
+    handlebars_value_init_json_string(context, wrapped, "{\"value\":2}");
+    handlebars_value_array_push(native_array, wrapped);
+    native_map = handlebars_map_str_update(
+        native_map,
+        HBS_STRL("wrapped"),
+        native_array
+    );
+    handlebars_value_map(map, native_map);
+
+    handlebars_value_convert(map);
+
+    result = handlebars_value_map_str_find(map, HBS_STRL("wrapped"), child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_ARRAY
+    );
+    result = handlebars_value_array_find(result, 0, nested);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+
+    HANDLEBARS_VALUE_UNDECL(wrapped);
+    HANDLEBARS_VALUE_UNDECL(nested);
+    HANDLEBARS_VALUE_UNDECL(native_array);
+    HANDLEBARS_VALUE_UNDECL(map);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(array);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_convert_json_native_map_shallow_then_recursive)
+{
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(map);
+    HANDLEBARS_VALUE_DECL(nested);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * native_map = handlebars_map_ctor(context, 3);
+    struct handlebars_value * result;
+
+    handlebars_value_init_json_string(context, value, "{\"deep\":[1]}");
+    native_map = handlebars_map_str_update(
+        native_map,
+        HBS_STRL("first"),
+        value
+    );
+    handlebars_value_integer(value, 7);
+    native_map = handlebars_map_str_update(
+        native_map,
+        HBS_STRL("plain"),
+        value
+    );
+    handlebars_value_init_json_string(context, value, "[{\"deep\":2}]");
+    native_map = handlebars_map_str_update(
+        native_map,
+        HBS_STRL("last"),
+        value
+    );
+    handlebars_value_map(map, native_map);
+
+    handlebars_value_convert_ex(map, false);
+
+    result = handlebars_value_map_str_find(map, HBS_STRL("first"), child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+    result = handlebars_value_map_str_find(result, HBS_STRL("deep"), nested);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+
+    result = handlebars_value_map_str_find(map, HBS_STRL("plain"), child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(handlebars_value_get_intval(result), 7);
+
+    result = handlebars_value_map_str_find(map, HBS_STRL("last"), child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_ARRAY
+    );
+    result = handlebars_value_array_find(result, 0, nested);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+
+    handlebars_value_convert(map);
+
+    result = handlebars_value_map_str_find(map, HBS_STRL("first"), child);
+    ck_assert_ptr_nonnull(result);
+    result = handlebars_value_map_str_find(result, HBS_STRL("deep"), nested);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_ARRAY
+    );
+    result = handlebars_value_map_str_find(map, HBS_STRL("last"), child);
+    ck_assert_ptr_nonnull(result);
+    result = handlebars_value_array_find(result, 0, nested);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(nested);
+    HANDLEBARS_VALUE_UNDECL(map);
+    HANDLEBARS_VALUE_UNDECL(child);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_convert_json_child_of_caller_backed_array)
+{
+    HANDLEBARS_VALUE_DECL(array);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(wrapped);
+    struct handlebars_stack * stack;
+    struct handlebars_value * result;
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    handlebars_stack_alloca(stack, context, 1);
+    handlebars_value_array(array, stack);
+    handlebars_value_init_json_string(context, wrapped, "{\"value\":1}");
+    handlebars_value_array_push(array, wrapped);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = previous;
+        ck_abort_msg(
+            "Converting a child of a caller-backed native array failed: %s",
+            handlebars_error_msg(context)
+        );
+    }
+    handlebars_value_convert(array);
+    context->e->jmp = previous;
+
+    result = handlebars_value_array_find(array, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+
+    handlebars_stack_dtor(stack);
+    handlebars_value_init(array);
+    HANDLEBARS_VALUE_UNDECL(wrapped);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(array);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_convert_json_child_of_nested_caller_backed_array)
+{
+    HANDLEBARS_VALUE_DECL(array);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(nested);
+    HANDLEBARS_VALUE_DECL(wrapped);
+    struct handlebars_stack * nested_stack;
+    struct handlebars_stack * outer_stack;
+    struct handlebars_value * result;
+    jmp_buf * volatile previous = context->e->jmp;
+    bool failed = false;
+    jmp_buf buf;
+
+    handlebars_stack_alloca(nested_stack, context, 1);
+    handlebars_value_array(nested, nested_stack);
+    handlebars_value_init_json_string(context, wrapped, "{\"value\":1}");
+    handlebars_value_array_push(nested, wrapped);
+
+    handlebars_stack_alloca(outer_stack, context, 1);
+    handlebars_value_array(array, outer_stack);
+    handlebars_value_array_push(array, nested);
+    handlebars_value_null(nested);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        failed = true;
+    } else {
+        handlebars_value_convert(array);
+    }
+    context->e->jmp = previous;
+
+    if( !failed ) {
+        result = handlebars_value_array_find(array, 0, child);
+        ck_assert_ptr_nonnull(result);
+        result = handlebars_value_array_find(result, 0, child);
+        ck_assert_ptr_nonnull(result);
+        ck_assert_int_eq(
+            handlebars_value_get_real_type(result),
+            HANDLEBARS_VALUE_TYPE_MAP
+        );
+        handlebars_value_null(child);
+    }
+
+    /* Caller-backed stacks are destroyed before their owning wrappers. */
+    handlebars_value_init(handlebars_stack_get(outer_stack, 0));
+    handlebars_stack_dtor(nested_stack);
+    handlebars_stack_dtor(outer_stack);
+    handlebars_value_init(array);
+    if( failed ) {
+        clear_intentional_error();
+    }
+    HANDLEBARS_VALUE_UNDECL(wrapped);
+    HANDLEBARS_VALUE_UNDECL(nested);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(array);
+    ASSERT_INIT_BLOCKS();
+    ck_assert_msg(!failed, "Nested caller-backed array conversion failed");
+}
+END_TEST
+
+START_TEST(test_convert_json_caller_backed_child_through_aliased_map)
+{
+    HANDLEBARS_VALUE_DECL(child_alias);
+    HANDLEBARS_VALUE_DECL(converted_child);
+    HANDLEBARS_VALUE_DECL(root_alias);
+    HANDLEBARS_VALUE_DECL(root_value);
+    HANDLEBARS_VALUE_DECL(wrapped);
+    struct handlebars_map * native_root = handlebars_map_ctor(context, 1);
+    struct handlebars_stack * child_stack;
+    struct handlebars_value * result;
+
+    handlebars_stack_alloca(child_stack, context, 1);
+    handlebars_value_array(child_alias, child_stack);
+    handlebars_value_init_json_string(context, wrapped, "{\"value\":1}");
+    handlebars_value_array_push(child_alias, wrapped);
+    native_root = handlebars_map_str_update(
+        native_root,
+        HBS_STRL("child"),
+        child_alias
+    );
+    handlebars_value_map(root_value, native_root);
+    handlebars_value_value(root_alias, root_value);
+
+    handlebars_value_convert(root_value);
+
+    result = handlebars_value_map_str_find(
+        root_value,
+        HBS_STRL("child"),
+        converted_child
+    );
+    ck_assert_ptr_nonnull(result);
+    result = handlebars_value_array_find(result, 0, converted_child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+
+    result = handlebars_value_map_str_find(
+        root_alias,
+        HBS_STRL("child"),
+        converted_child
+    );
+    ck_assert_ptr_nonnull(result);
+    result = handlebars_value_array_find(result, 0, converted_child);
+    ck_assert_ptr_nonnull(result);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+    result = handlebars_value_array_find(child_alias, 0, converted_child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+#else
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+    result = handlebars_value_array_find(child_alias, 0, converted_child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+#endif
+
+    HANDLEBARS_VALUE_UNDECL(root_value);
+    HANDLEBARS_VALUE_UNDECL(root_alias);
+    handlebars_stack_dtor(child_stack);
+    handlebars_value_init(child_alias);
+    HANDLEBARS_VALUE_UNDECL(wrapped);
+    HANDLEBARS_VALUE_UNDECL(converted_child);
+    HANDLEBARS_VALUE_UNDECL(child_alias);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_convert_json_protected_array_rejects_atomically_and_retries)
+{
+    HANDLEBARS_VALUE_DECL(array);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(wrapped);
+    struct handlebars_stack * stack = handlebars_stack_ctor(context, 1);
+    struct handlebars_value * result;
+    jmp_buf * volatile previous = context->e->jmp;
+    bool failed = false;
+    jmp_buf buf;
+
+    handlebars_value_array(array, stack);
+    handlebars_value_init_json_string(context, wrapped, "{}");
+    handlebars_value_array_push(array, wrapped);
+    handlebars_stack_protect(stack, 1);
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        failed = true;
+    } else {
+        handlebars_value_convert(array);
+    }
+    context->e->jmp = previous;
+
+    ck_assert_msg(failed, "Conversion unexpectedly replaced a protected slot");
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_STACK_OVERFLOW);
+    result = handlebars_value_array_find(array, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+
+    handlebars_stack_protect(stack, 0);
+    clear_intentional_error();
+    handlebars_value_convert(array);
+    result = handlebars_value_array_find(array, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+
+    HANDLEBARS_VALUE_UNDECL(wrapped);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(array);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+START_TEST(test_convert_json_children_preserves_native_container_aliases)
+{
+    HANDLEBARS_VALUE_DECL(alias);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(container);
+    HANDLEBARS_VALUE_DECL(wrapped);
+    struct handlebars_map * native_map;
+    struct handlebars_value * result;
+
+    handlebars_value_array(container, handlebars_stack_ctor(context, 1));
+    handlebars_value_init_json_string(context, wrapped, "{\"value\":1}");
+    handlebars_value_array_push(container, wrapped);
+    handlebars_value_value(alias, container);
+
+    handlebars_value_convert(container);
+
+    result = handlebars_value_array_find(container, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+    result = handlebars_value_array_find(alias, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+
+    native_map = handlebars_map_ctor(context, 1);
+    handlebars_value_init_json_string(context, wrapped, "[1]");
+    native_map = handlebars_map_str_update(
+        native_map,
+        HBS_STRL("wrapped"),
+        wrapped
+    );
+    handlebars_value_map(container, native_map);
+    handlebars_value_value(alias, container);
+
+    handlebars_value_convert(container);
+
+    result = handlebars_value_map_str_find(
+        container,
+        HBS_STRL("wrapped"),
+        child
+    );
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_ARRAY
+    );
+    result = handlebars_value_map_str_find(alias, HBS_STRL("wrapped"), child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+
+    HANDLEBARS_VALUE_UNDECL(wrapped);
+    HANDLEBARS_VALUE_UNDECL(container);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(alias);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_convert_json_preserves_nested_container_alias)
+{
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(nested);
+    HANDLEBARS_VALUE_DECL(nested_alias);
+    HANDLEBARS_VALUE_DECL(root_value);
+    HANDLEBARS_VALUE_DECL(wrapped_alias);
+    struct handlebars_map * native_root = handlebars_map_ctor(context, 1);
+    struct handlebars_value * result;
+
+    handlebars_value_array(
+        nested_alias,
+        handlebars_stack_ctor(context, 1)
+    );
+    handlebars_value_init_json_string(
+        context,
+        wrapped_alias,
+        "{\"value\":1}"
+    );
+    handlebars_value_array_push(nested_alias, wrapped_alias);
+    native_root = handlebars_map_str_update(
+        native_root,
+        HBS_STRL("nested"),
+        nested_alias
+    );
+    handlebars_value_map(root_value, native_root);
+
+    handlebars_value_convert(root_value);
+
+    result = handlebars_value_map_str_find(
+        root_value,
+        HBS_STRL("nested"),
+        nested
+    );
+    ck_assert_ptr_nonnull(result);
+    result = handlebars_value_array_find(result, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+
+    result = handlebars_value_array_find(nested_alias, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(wrapped_alias),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+
+    HANDLEBARS_VALUE_UNDECL(wrapped_alias);
+    HANDLEBARS_VALUE_UNDECL(root_value);
+    HANDLEBARS_VALUE_UNDECL(nested_alias);
+    HANDLEBARS_VALUE_UNDECL(nested);
+    HANDLEBARS_VALUE_UNDECL(child);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_convert_json_preserves_aliased_parent_nested_child)
+{
+    HANDLEBARS_VALUE_DECL(alias);
+    HANDLEBARS_VALUE_DECL(child);
+    HANDLEBARS_VALUE_DECL(nested);
+    HANDLEBARS_VALUE_DECL(root_value);
+    HANDLEBARS_VALUE_DECL(wrapped);
+    struct handlebars_value * result;
+
+    handlebars_value_array(nested, handlebars_stack_ctor(context, 1));
+    handlebars_value_init_json_string(context, wrapped, "{\"value\":1}");
+    handlebars_value_array_push(nested, wrapped);
+    handlebars_value_array(root_value, handlebars_stack_ctor(context, 1));
+    handlebars_value_array_push(root_value, nested);
+    handlebars_value_null(nested);
+    handlebars_value_value(alias, root_value);
+
+    handlebars_value_convert(root_value);
+
+    result = handlebars_value_array_find(root_value, 0, child);
+    ck_assert_ptr_nonnull(result);
+    result = handlebars_value_array_find(result, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+
+    result = handlebars_value_array_find(alias, 0, child);
+    ck_assert_ptr_nonnull(result);
+    result = handlebars_value_array_find(result, 0, child);
+    ck_assert_ptr_nonnull(result);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(result),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+
+    HANDLEBARS_VALUE_UNDECL(wrapped);
+    HANDLEBARS_VALUE_UNDECL(root_value);
+    HANDLEBARS_VALUE_UNDECL(nested);
+    HANDLEBARS_VALUE_UNDECL(child);
+    HANDLEBARS_VALUE_UNDECL(alias);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+#endif
+
+#if defined(HANDLEBARS_MEMORY) && !defined(HANDLEBARS_NO_REFCOUNT)
+static bool convert_json_with_allocation_failure(
+    struct handlebars_value * value,
+    int fail_at
+) {
+    jmp_buf * volatile previous = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = previous;
+        return true;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(fail_at);
+    handlebars_value_convert(value);
+    handlebars_memory_fail_disable();
+    context->e->jmp = previous;
+    return false;
+}
+
+START_TEST(test_convert_json_native_array_allocation_failures_unwind)
+{
+    bool reached_success = false;
+
+    for( int fail_at = 1; fail_at <= 8; fail_at++ ) {
+        HANDLEBARS_VALUE_DECL(alias);
+        HANDLEBARS_VALUE_DECL(array);
+        HANDLEBARS_VALUE_DECL(child);
+        HANDLEBARS_VALUE_DECL(wrapped);
+        bool failed;
+        struct handlebars_value * result;
+
+        handlebars_value_array(array, handlebars_stack_ctor(context, 1));
+        handlebars_value_init_json_string(context, wrapped, "{}");
+        handlebars_value_array_push(array, wrapped);
+        handlebars_value_value(alias, array);
+
+        failed = convert_json_with_allocation_failure(array, fail_at);
+        if( failed ) {
+            ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+            result = handlebars_value_array_find(array, 0, child);
+            ck_assert_ptr_nonnull(result);
+            ck_assert_int_eq(
+                handlebars_value_get_real_type(result),
+                HANDLEBARS_VALUE_TYPE_USER
+            );
+            result = handlebars_value_array_find(alias, 0, child);
+            ck_assert_ptr_nonnull(result);
+            ck_assert_int_eq(
+                handlebars_value_get_real_type(result),
+                HANDLEBARS_VALUE_TYPE_USER
+            );
+            clear_intentional_error();
+            handlebars_value_convert(array);
+        } else {
+            reached_success = true;
+        }
+
+        result = handlebars_value_array_find(array, 0, child);
+        ck_assert_ptr_nonnull(result);
+        ck_assert_int_eq(
+            handlebars_value_get_real_type(result),
+            HANDLEBARS_VALUE_TYPE_MAP
+        );
+        result = handlebars_value_array_find(alias, 0, child);
+        ck_assert_ptr_nonnull(result);
+        ck_assert_int_eq(
+            handlebars_value_get_real_type(result),
+            HANDLEBARS_VALUE_TYPE_USER
+        );
+
+        HANDLEBARS_VALUE_UNDECL(wrapped);
+        HANDLEBARS_VALUE_UNDECL(child);
+        HANDLEBARS_VALUE_UNDECL(array);
+        HANDLEBARS_VALUE_UNDECL(alias);
+        ASSERT_INIT_BLOCKS();
+        if( reached_success ) {
+            break;
+        }
+    }
+
+    ck_assert(reached_success);
+}
+END_TEST
+#endif
 
 START_TEST(test_json_expression_dispatch)
 {
@@ -886,6 +1535,60 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_find_json, "Map Find");
     REGISTER_TEST_FIXTURE(s, test_complex_json, "Complex");
     REGISTER_TEST_FIXTURE(s, test_convert_json, "Convert");
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_children_of_native_containers,
+        "Convert children of native containers"
+    );
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_native_map_shallow_then_recursive,
+        "Convert native map shallow then recursively"
+    );
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_child_of_caller_backed_array,
+        "Convert child of caller-backed array"
+    );
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_child_of_nested_caller_backed_array,
+        "Convert child of nested caller-backed array"
+    );
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_caller_backed_child_through_aliased_map,
+        "Convert caller-backed child through aliased map"
+    );
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_protected_array_rejects_atomically_and_retries,
+        "Convert protected array rejects atomically and retries"
+    );
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_children_preserves_native_container_aliases,
+        "Convert children preserves native container aliases"
+    );
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_preserves_nested_container_alias,
+        "Convert preserves nested container alias"
+    );
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_preserves_aliased_parent_nested_child,
+        "Convert preserves aliased parent nested child"
+    );
+#endif
+#if defined(HANDLEBARS_MEMORY) && !defined(HANDLEBARS_NO_REFCOUNT)
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_convert_json_native_array_allocation_failures_unwind,
+        "Convert native array allocation failures unwind"
+    );
+#endif
     REGISTER_TEST_FIXTURE(s, test_json_expression_dispatch, "Expression dispatch");
     REGISTER_TEST_FIXTURE(s, test_convert_json_rejects_cycle, "Convert rejects cyclic JSON graphs");
     REGISTER_TEST_FIXTURE(s, test_convert_json_rejects_excessive_depth, "Convert rejects excessively deep JSON graphs");

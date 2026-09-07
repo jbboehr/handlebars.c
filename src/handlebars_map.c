@@ -371,6 +371,19 @@ struct handlebars_context * handlebars_map_get_context(struct handlebars_map * m
     return map->ctx;
 }
 
+bool handlebars_map_is_shared(
+    struct handlebars_map * map,
+    size_t expected_references
+) {
+#ifndef HANDLEBARS_NO_REFCOUNT
+    return handlebars_rc_refcount(&map->rc) > expected_references;
+#else
+    (void) map;
+    (void) expected_references;
+    return false;
+#endif
+}
+
 void handlebars_map_addref_ex(struct handlebars_map * map, const char * expr, const char * loc)
 {
 #ifndef HANDLEBARS_NO_REFCOUNT

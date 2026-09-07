@@ -387,13 +387,17 @@ Use a checked conversion covering the supported integer type, or carry the numer
 
 ### R19. P2: recursive conversion of native containers discards converted children
 
-Source: [src/handlebars_value.c:410](../../src/handlebars_value.c#L410).
+Source: [src/handlebars_value.c:386](../../src/handlebars_value.c#L386).
 
 A C API probe inserted a JSON-backed object into a native array and, separately, a native map. After handlebars_value_convert on each container, retrieving its child still reported real type USER. Converting the same JSON wrapper directly reported MAP.
 
 The traversal converts the iterator's copied current value without writing the replacement back to the container.
 
 Convert actual stored slots, or publish converted children through the appropriate container mutation operation while respecting iterator and copy-on-write rules. Test mixed native/wrapped containers, not only a wrapped root.
+
+**Status: addressed.** Recursive conversion now reports whether a parent must publish a changed child and writes changed children through native container mutation operations. Array publication accounts separately for stored ownership and traversal-only references. Logically unique caller-backed arrays therefore update in place, while direct or inherited aliases force a heap-backed copy before mutation.
+
+The first regression reproduced USER-backed children remaining in native arrays and maps. Independent review then found that the initial publication fix mistook its own iterator reference for an alias and raised `Stack overflow` for a caller-backed array. A second review found the same problem one level deeper because an ancestor iterator also retains its current child; focused tests reproduced both failures before their fixes. The tests now cover both native container types, nested mixed containers, multiple map siblings, shallow followed by recursive conversion, caller-backed arrays nested under arrays and maps, direct and inherited copy-on-write aliases, protected-slot atomic rejection and retry, and allocation failures during conversion and publication. Fresh Linux verification passed all 3,779 Autotools checks, the 2,484-check no-refcount Nix build, and the 36-case JSON and 178-case value suites under ASan/UBSan without test forking. Independent correctness and adversarial test reviews found no remaining actionable defect. Reliability verdict: PASS_WITH_RESIDUAL_RISK; non-Linux and cross-context mixed-container inputs were not run.
 
 ### R20. P2: JSON scalar termination and null membership are inconsistent
 

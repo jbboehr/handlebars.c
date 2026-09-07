@@ -381,10 +381,14 @@ struct handlebars_string * handlebars_value_to_string(
     }
 }
 
-static void handlebars_value_convert_walk(
+/* Return whether a parent iterator must publish this value. Native containers
+ * converted in place keep their existing parent slot and return false. */
+static bool handlebars_value_convert_walk(
     struct handlebars_value * value,
     bool recurse,
-    struct handlebars_value_traversal * state
+    struct handlebars_value_traversal * state,
+    bool temporary,
+    bool inherited_sharing
 )
 {
     switch( value->type ) {
@@ -393,11 +397,29 @@ static void handlebars_value_convert_walk(
                 handlebars_value_traversal_enter(state, value);
                 handlebars_value_get_handlers(value)->convert(value, recurse);
                 handlebars_value_traversal_leave(state);
+                return true;
             }
-            break;
+            return false;
         case HANDLEBARS_VALUE_TYPE_MAP:
         case HANDLEBARS_VALUE_TYPE_ARRAY: {
             HANDLEBARS_VALUE_ITERATOR_DECL(iter);
+            /* A nested value has one reference from its stored slot and one
+             * from the parent iterator's current-value scratch space. */
+            const size_t expected_references = temporary ? 2 : 1;
+            const void * original = handlebars_value_traversal_identity(value);
+            bool shared = inherited_sharing;
+
+            if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+                shared = shared || handlebars_stack_is_shared(
+                    value->v.stack,
+                    expected_references
+                );
+            } else {
+                shared = shared || handlebars_map_is_shared(
+                    value->v.map,
+                    expected_references
+                );
+            }
 
             handlebars_value_traversal_enter(state, value);
             if( handlebars_value_iterator_init_ex(
@@ -407,16 +429,47 @@ static void handlebars_value_convert_walk(
                 state->context
             ) ) {
                 do {
-                    handlebars_value_convert_walk(iter->cur, recurse, state);
+                    if( handlebars_value_convert_walk(
+                        iter->cur,
+                        recurse,
+                        state,
+                        true,
+                        shared
+                    ) ) {
+                        if( value->type == HANDLEBARS_VALUE_TYPE_ARRAY ) {
+                            struct handlebars_stack * previous = value->v.stack;
+                            /* The active array iterator owns one more
+                             * traversal-only reference. */
+                            size_t active_references = temporary ? 3 : 2;
+
+                            value->v.stack = handlebars_stack_set_internal(
+                                previous,
+                                iter->index,
+                                iter->cur,
+                                active_references,
+                                shared
+                            );
+                            if( value->v.stack != previous ) {
+                                handlebars_stack_delref(iter->usr);
+                                iter->usr = value->v.stack;
+                                handlebars_stack_addref(iter->usr);
+                                temporary = false;
+                            }
+                            shared = false;
+                        } else {
+                            handlebars_value_map_update(value, iter->key, iter->cur);
+                            shared = false;
+                        }
+                    }
                 } while( handlebars_value_iterator_next(iter) );
             }
             handlebars_value_iterator_close(iter);
             handlebars_value_traversal_leave(state);
-            break;
+            return original != handlebars_value_traversal_identity(value);
         }
         default:
             // do nothing
-            break;
+            return false;
     }
 }
 
@@ -441,7 +494,7 @@ void handlebars_value_convert_ex(struct handlebars_value * value, bool recurse)
             return;
     }
 
-    handlebars_value_convert_walk(value, recurse, &state);
+    handlebars_value_convert_walk(value, recurse, &state, false, false);
 }
 
 bool handlebars_value_eq(
