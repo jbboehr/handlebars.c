@@ -1182,6 +1182,69 @@ START_TEST(test_delimiter_change_requires_close_delimiter)
 }
 END_TEST
 
+START_TEST(test_delimiter_preprocessor_preserves_trailing_backslash)
+{
+    static const struct {
+        const char * source;
+        size_t length;
+    } cases[] = {
+        { "\\", 1 },
+        { "\\\\", 2 },
+        { "literal\\", sizeof("literal\\") - 1 },
+        { "a\\{{name}}b\\", sizeof("a\\{{name}}b\\") - 1 },
+    };
+
+    for( size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++ ) {
+        struct handlebars_string * tmpl = handlebars_string_ctor(
+            context,
+            cases[i].source,
+            cases[i].length
+        );
+        struct handlebars_string * processed = handlebars_preprocess_delimiters(
+            context,
+            tmpl,
+            NULL,
+            NULL
+        );
+
+        ck_assert_msg(
+            hbs_str_len(processed) == cases[i].length,
+            "case %zu: expected length %zu, got %zu",
+            i,
+            cases[i].length,
+            hbs_str_len(processed)
+        );
+        ck_assert_msg(
+            memcmp(hbs_str_val(processed), cases[i].source, cases[i].length) == 0,
+            "case %zu: preprocessor changed literal bytes",
+            i
+        );
+    }
+}
+END_TEST
+
+START_TEST(test_delimiter_preprocessor_preserves_trailing_backslash_after_change)
+{
+    static const char source[] = "{{=<% %>=}}literal\\";
+    static const char expected[] =
+        "{{hbsc_set_delimiters \"<%\" \"%>\"}}literal\\";
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        sizeof(source) - 1
+    );
+    struct handlebars_string * processed = handlebars_preprocess_delimiters(
+        context,
+        tmpl,
+        NULL,
+        NULL
+    );
+
+    ck_assert_uint_eq(hbs_str_len(processed), sizeof(expected) - 1);
+    ck_assert_int_eq(memcmp(hbs_str_val(processed), expected, sizeof(expected) - 1), 0);
+}
+END_TEST
+
 START_TEST(test_serialize_rejects_invalid_child_program)
 {
     struct handlebars_string * tmpl = handlebars_string_ctor(context, HBS_STRL("{{#if foo}}bar{{/if}}"));
@@ -2505,6 +2568,8 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_compiler_allocation_failure_preserves_array_capacity, "Compiler allocation failure preserves array capacity");
 #endif
 	REGISTER_TEST_FIXTURE(s, test_delimiter_change_requires_close_delimiter, "Delimiter change requires close delimiter");
+	REGISTER_TEST_FIXTURE(s, test_delimiter_preprocessor_preserves_trailing_backslash, "Delimiter preprocessor preserves trailing backslash");
+	REGISTER_TEST_FIXTURE(s, test_delimiter_preprocessor_preserves_trailing_backslash_after_change, "Delimiter preprocessor preserves trailing backslash after change");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_program, "Reject invalid child program index");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_child_array_length, "Reject invalid child array length");
 	REGISTER_TEST_FIXTURE(s, test_serialize_rejects_invalid_opcode_array_length, "Reject invalid opcode array length");

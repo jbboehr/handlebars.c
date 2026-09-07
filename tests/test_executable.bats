@@ -356,6 +356,18 @@ load "../vendor/bats-assert/assert"
     assert_output "A    B"
 }
 
+@test "--execute compat preserves a trailing backslash" {
+    run bash -c 'printf "%s" "literal\\" | "$1" --execute --no-newline --flags compat -' _ "$HANDLEBARSC"
+    assert_success
+    assert_output "literal\\"
+}
+
+@test "--execute compat preserves a trailing backslash after a delimiter switch" {
+    run bash -c 'printf "%s" "{{=<% %>=}}literal\\" | "$1" --execute --no-newline --flags compat -' _ "$HANDLEBARSC"
+    assert_success
+    assert_output "literal\\"
+}
+
 @test "--execute -n" {
     skip_if_no_json
     # wc on OSX outputs leading whitespace

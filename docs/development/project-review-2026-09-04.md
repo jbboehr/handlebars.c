@@ -326,6 +326,8 @@ Rendering ordinary text ending in a backslash with --flags=compat failed with â€
 
 Handle a final backslash explicitly without appending a terminator byte. Add a literal-text regression and a preprocessor output-length assertion.
 
+**Status: addressed.** The delimiter preprocessor now copies a following escaped byte only when one remains, so a final backslash is preserved without adding the string terminator to the processed template. Unit regressions compare exact lengths and bytes for one- and two-byte backslash runs, literal text, escaped delimiter-like text, and a delimiter switch followed by a final backslash. CLI regressions render the ordinary and delimiter-switch forms in compatibility mode. Independent correctness and adversarial test reviews found no actionable defect. Fresh Linux verification passed the compiler, CLI, and Mustache delimiter suites, ASan/UBSan checks, and all ten flake checks. Reliability verdict: PASS_WITH_RESIDUAL_RISK; non-Linux platforms were not run.
+
 ### R16. P2: AST reconstruction changes literal-key lookup meaning
 
 Sources: [src/handlebars_ast_helpers.c:278](../../src/handlebars_ast_helpers.c#L278), [src/handlebars_ast_printer.c:924](../../src/handlebars_ast_printer.c#L924).

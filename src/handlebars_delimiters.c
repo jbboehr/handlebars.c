@@ -87,11 +87,13 @@ struct handlebars_string * handlebars_preprocess_delimiters(
         switch( state ) {
             default: // Default
             case 0: state0:
-                // If current character is a slash, skip one character
+                // If current character is a backslash, skip one character
                 if( *p == '\\' ) {
                     append(p, 1);
-                    move_forward(1);
-                    append(p, 1);
+                    if( i > 1 ) {
+                        move_forward(1);
+                        append(p, 1);
+                    }
                     continue;
                 }
 
