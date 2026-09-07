@@ -1418,7 +1418,8 @@ static bool module_verify_opcode_shape(
 
         case handlebars_opcode_type_push_id:
             allowed[0] = string_type;
-            allowed[1] = bool_type | long_type | string_type | array_type;
+            allowed[1] = bool_type | long_type | string_type | array_type
+                | double_type;
             allowed[2] |= string_type;
             break;
 

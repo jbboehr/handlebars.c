@@ -2446,6 +2446,144 @@ START_TEST(test_track_ids_only_strip_scoped_this_prefix)
 }
 END_TEST
 
+static const char * tracked_numeric_literal_cases[] = {
+    "0",
+    "-0",
+    "0.0",
+    "-42",
+    "12345678901",
+    "-12345678901",
+    "1234567890123456789012345678901234567890",
+    "1.23456789",
+    "-0.125",
+};
+
+static const struct handlebars_operand * assert_tracked_numeric_id_matches_literal(
+    const char * literal
+)
+{
+    char source[96];
+    const struct handlebars_operand * tracked = NULL;
+    const struct handlebars_operand * pushed = NULL;
+    int length = snprintf(
+        source,
+        sizeof(source),
+        "{{helper %s}}",
+        literal
+    );
+
+    ck_assert_int_gt(length, 0);
+    ck_assert_int_lt(length, (int) sizeof(source));
+    struct handlebars_module * module = serialize_for_verification_flags(
+        source,
+        handlebars_compiler_flag_track_ids
+    );
+
+    for( size_t i = 0; i < module->opcode_count; i++ ) {
+        struct handlebars_opcode * opcode = &module->opcodes[i];
+
+        if( opcode->type == handlebars_opcode_type_push_id
+                && opcode->op1.type == handlebars_operand_type_string
+                && hbs_str_eq_strl(
+                    opcode->op1.data.string.string,
+                    HBS_STRL("NumberLiteral")
+                ) ) {
+            ck_assert_ptr_null(tracked);
+            tracked = &opcode->op2;
+        } else if( opcode->type == handlebars_opcode_type_push_literal ) {
+            ck_assert_ptr_null(pushed);
+            pushed = &opcode->op1;
+        }
+    }
+
+    ck_assert_ptr_nonnull(tracked);
+    ck_assert_ptr_nonnull(pushed);
+    ck_assert_msg(
+        tracked->type == pushed->type,
+        "Tracked ID type %d differs from literal type %d for %s",
+        tracked->type,
+        pushed->type,
+        literal
+    );
+    if( pushed->type == handlebars_operand_type_long ) {
+        ck_assert_int_eq(tracked->data.longval, pushed->data.longval);
+    } else {
+        ck_assert_int_eq(pushed->type, handlebars_operand_type_double);
+        ck_assert_double_eq(tracked->data.doubleval, pushed->data.doubleval);
+    }
+
+    handlebars_module_generate_hash(module);
+    ck_assert(handlebars_module_verify(module, NULL));
+    return pushed;
+}
+
+START_TEST(test_tracked_numeric_ids_match_literal_values)
+{
+    assert_tracked_numeric_id_matches_literal(
+        tracked_numeric_literal_cases[(size_t) _i]
+    );
+}
+END_TEST
+
+START_TEST(test_tracked_numeric_ids_match_long_boundaries)
+{
+    char literal[96];
+    int length;
+    const struct handlebars_operand * pushed;
+
+    length = snprintf(literal, sizeof(literal), "%ld", LONG_MAX);
+    ck_assert_int_gt(length, 0);
+    ck_assert_int_lt(length, (int) sizeof(literal));
+    pushed = assert_tracked_numeric_id_matches_literal(literal);
+    ck_assert_int_eq(pushed->type, handlebars_operand_type_long);
+    ck_assert_int_eq(pushed->data.longval, LONG_MAX);
+
+    length = snprintf(literal, sizeof(literal), "%ld", LONG_MIN);
+    ck_assert_int_gt(length, 0);
+    ck_assert_int_lt(length, (int) sizeof(literal));
+    pushed = assert_tracked_numeric_id_matches_literal(literal);
+    ck_assert_int_eq(pushed->type, handlebars_operand_type_long);
+    ck_assert_int_eq(pushed->data.longval, LONG_MIN);
+
+    length = snprintf(
+        literal,
+        sizeof(literal),
+        "%lu",
+        (unsigned long) LONG_MAX + 1UL
+    );
+    ck_assert_int_gt(length, 0);
+    ck_assert_int_lt(length, (int) sizeof(literal));
+    pushed = assert_tracked_numeric_id_matches_literal(literal);
+    ck_assert_int_eq(pushed->type, handlebars_operand_type_double);
+
+    length = snprintf(
+        literal,
+        sizeof(literal),
+        "-%lu",
+        (unsigned long) (-(LONG_MIN + 1L)) + 2UL
+    );
+    ck_assert_int_gt(length, 0);
+    ck_assert_int_lt(length, (int) sizeof(literal));
+    pushed = assert_tracked_numeric_id_matches_literal(literal);
+    ck_assert_int_eq(pushed->type, handlebars_operand_type_double);
+}
+END_TEST
+
+START_TEST(test_tracked_numeric_ids_ignore_process_locale)
+{
+    char * saved_locale = activate_comma_decimal_locale();
+    const struct handlebars_operand * pushed;
+
+    if( saved_locale == NULL ) {
+        return;
+    }
+    pushed = assert_tracked_numeric_id_matches_literal("1.25");
+    ck_assert_int_eq(pushed->type, handlebars_operand_type_double);
+    ck_assert_double_eq(pushed->data.doubleval, 1.25);
+    restore_numeric_locale(saved_locale);
+}
+END_TEST
+
 START_TEST(test_fractional_inline_partial_names_use_handlebars_stringification)
 {
     const char * source =
@@ -3069,6 +3207,24 @@ static Suite * suite(void)
 		test_track_ids_only_strip_scoped_this_prefix
 	);
 	suite_add_tcase(s, tc_this_identifier_boundaries);
+	TCase * tc_tracked_numeric_ids = tcase_create("Tracked numeric IDs");
+	tcase_add_checked_fixture(tc_tracked_numeric_ids, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_tracked_numeric_ids,
+		test_tracked_numeric_ids_match_literal_values,
+		0,
+		(int) (sizeof(tracked_numeric_literal_cases)
+			/ sizeof(tracked_numeric_literal_cases[0]))
+	);
+	tcase_add_test(
+		tc_tracked_numeric_ids,
+		test_tracked_numeric_ids_match_long_boundaries
+	);
+	tcase_add_test(
+		tc_tracked_numeric_ids,
+		test_tracked_numeric_ids_ignore_process_locale
+	);
+	suite_add_tcase(s, tc_tracked_numeric_ids);
 	REGISTER_TEST_FIXTURE(s, test_fractional_inline_partial_names_use_handlebars_stringification, "Stringify fractional inline partial names compatibly");
 	TCase * tc_inline_partial_number_stringification = tcase_create("Handlebars inline partial number stringification thresholds");
 	tcase_add_checked_fixture(tc_inline_partial_number_stringification, default_setup, default_teardown);

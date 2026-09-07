@@ -381,6 +381,8 @@ The helper argument and its tracked ID disagree because the numeric scan uses %1
 
 Use a checked conversion covering the supported integer type, or carry the numeric operand directly. Test IDs against their associated argument values.
 
+**Status: addressed.** Numeric tracked IDs now use the same checked parser and type decision as their associated literal operands. Values representable as `long` remain integer operands; fractional values and integers outside the platform's `long` range remain double operands. Serialized-module validation now permits that existing double operand type for `pushId`. The initial regression failed four of six cases, reproducing positive and negative ten-character truncation as well as fractional truncation. Eleven passing cases now cover zero spellings, signs, `LONG_MIN`, `LONG_MAX`, one-step overflow, much larger integers, fractions, module hashing and verification, and a comma-decimal locale. Fresh Linux verification passed all 2,503 Autotools checks, the CMake allocation-failure check, and 116 compiler checks under ASan/UBSan without test forking. Independent correctness and adversarial test reviews found no actionable defect. Reliability verdict: PASS_WITH_RESIDUAL_RISK; 32-bit and non-Linux builds were not run.
+
 ## Data conversion, containers, and ownership
 
 ### R19. P2: recursive conversion of native containers discards converted children

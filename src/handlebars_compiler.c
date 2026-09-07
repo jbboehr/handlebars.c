@@ -587,6 +587,25 @@ static struct handlebars_string * handlebars_compiler_normalize_string_param(
     );
 }
 
+static void handlebars_compiler_parse_number(
+    struct handlebars_compiler * compiler,
+    const struct handlebars_string * string,
+    long * long_value,
+    double * double_value,
+    bool * is_long
+) {
+    bool long_in_range;
+
+    errno = 0;
+    *long_value = strtol(hbs_str_val(string), NULL, 10);
+    long_in_range = errno != ERANGE;
+
+    if( unlikely(!handlebars_string_parse_number(CONTEXT, string, double_value)) ) {
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid numeric literal");
+    }
+    *is_long = long_in_range && *double_value == (double) *long_value;
+}
+
 static inline void handlebars_compiler_push_param(
         struct handlebars_compiler * compiler,
         struct handlebars_ast_node * param
@@ -709,9 +728,22 @@ static inline void handlebars_compiler_push_param(
                 if( param->type == HANDLEBARS_AST_NODE_BOOLEAN ) {
                     handlebars_operand_set_boolval(&opcode->op2, strcmp(strval, "true") == 0);
                 } else if( param->type == HANDLEBARS_AST_NODE_NUMBER ) {
-                    long lval;
-                    sscanf(strval, "%10ld", &lval);
-                    handlebars_operand_set_longval(&opcode->op2, lval);
+                    long long_value;
+                    double double_value;
+                    bool is_long;
+
+                    handlebars_compiler_parse_number(
+                        compiler,
+                        string,
+                        &long_value,
+                        &double_value,
+                        &is_long
+                    );
+                    if( is_long ) {
+                        handlebars_operand_set_longval(&opcode->op2, long_value);
+                    } else {
+                        handlebars_operand_set_doubleval(&opcode->op2, double_value);
+                    }
                 } else {
                     handlebars_operand_set_stringval(CONTEXT, opcode, &opcode->op2, handlebars_string_ctor(CONTEXT, strval, strlen(strval)));
                 }
@@ -832,27 +864,6 @@ static inline bool handlebars_compiler_block_param_index(
 
     return 0;
 }
-
-static void handlebars_compiler_parse_number(
-    struct handlebars_compiler * compiler,
-    const struct handlebars_string * string,
-    long * long_value,
-    double * double_value,
-    bool * is_long
-) {
-    bool long_in_range;
-
-    errno = 0;
-    *long_value = strtol(hbs_str_val(string), NULL, 10);
-    long_in_range = errno != ERANGE;
-
-    if( unlikely(!handlebars_string_parse_number(CONTEXT, string, double_value)) ) {
-        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid numeric literal");
-    }
-    *is_long = long_in_range && *double_value == (double) *long_value;
-}
-
-
 
 // Acceptors
 
