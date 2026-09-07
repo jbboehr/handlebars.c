@@ -34,6 +34,7 @@
 #include "handlebars.h"
 #include "handlebars_ast.h"
 #include "handlebars_ast_list.h"
+#include "handlebars_ast_printer.h"
 #include "handlebars_compiler.h"
 #include "handlebars_delimiters.h"
 #include "handlebars_map.h"
@@ -1989,6 +1990,325 @@ START_TEST(test_inline_partial_round_trip_preserves_scalar_names_and_statements)
 }
 END_TEST
 
+START_TEST(test_ast_to_string_after_compiler_transforms_literal_path)
+{
+    static const char source[] = "{{\"foo\"}}";
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        sizeof(source) - 1
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    ck_assert_ptr_nonnull(ast);
+    struct handlebars_program * program = handlebars_compiler_compile_ex(
+        compiler,
+        ast
+    );
+
+    ck_assert_ptr_nonnull(program);
+    struct handlebars_string * reconstructed = handlebars_ast_to_string(
+        context,
+        ast
+    );
+
+    ck_assert_ptr_nonnull(reconstructed);
+    ck_assert_hbs_str_eq_cstr(reconstructed, "{{foo}}");
+}
+END_TEST
+
+START_TEST(test_ast_to_string_preserves_escaped_literal_path_lookup)
+{
+    static const struct {
+        const char * source;
+        const char * key;
+        const char * expected;
+    } cases[] = {
+        { "{{[foo\\]]}}", "foo]", "CLOSE" },
+        { "{{[foo\\\\]}}", "foo\\", "BACKSLASH" },
+    };
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(
+        context,
+        sizeof(cases) / sizeof(cases[0])
+    );
+
+    for( size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++ ) {
+        handlebars_value_str(
+            value,
+            handlebars_string_ctor(context, cases[i].expected, strlen(cases[i].expected))
+        );
+        input_map = handlebars_map_str_update(
+            input_map,
+            cases[i].key,
+            strlen(cases[i].key),
+            value
+        );
+    }
+    handlebars_value_map(input, input_map);
+
+    for( size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++ ) {
+        struct handlebars_string * tmpl = handlebars_string_ctor(
+            context,
+            cases[i].source,
+            strlen(cases[i].source)
+        );
+        struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+        ck_assert_ptr_nonnull(ast);
+        struct handlebars_string * reconstructed = handlebars_ast_to_string(
+            context,
+            ast
+        );
+        ck_assert_ptr_nonnull(reconstructed);
+        ck_assert_hbs_str_eq_cstr(reconstructed, cases[i].source);
+        struct handlebars_module * original_module = compile_try_test_template(
+            cases[i].source
+        );
+        struct handlebars_module * reconstructed_module = compile_try_test_template(
+            hbs_str_val(reconstructed)
+        );
+        ck_assert_ptr_nonnull(original_module);
+        ck_assert_ptr_nonnull(reconstructed_module);
+        struct handlebars_string * original_output = handlebars_vm_execute(
+            vm,
+            original_module,
+            input
+        );
+        ck_assert_msg(original_output != NULL, "%s", handlebars_error_msg(context));
+        struct handlebars_string * reconstructed_output = handlebars_vm_execute(
+            vm,
+            reconstructed_module,
+            input
+        );
+        ck_assert_msg(
+            reconstructed_output != NULL,
+            "%s",
+            handlebars_error_msg(context)
+        );
+
+        ck_assert_hbs_str_eq_cstr(original_output, cases[i].expected);
+        ck_assert_hbs_str_eq_cstr(reconstructed_output, cases[i].expected);
+        handlebars_string_delref(original_output);
+        handlebars_string_delref(reconstructed_output);
+    }
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+static struct handlebars_map * literal_path_map_update_string(
+    struct handlebars_map * map,
+    const char * key,
+    const char * string
+)
+{
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_str(
+        value,
+        handlebars_string_ctor(context, string, strlen(string))
+    );
+    map = handlebars_map_str_update(map, key, strlen(key), value);
+    HANDLEBARS_VALUE_UNDECL(value);
+    return map;
+}
+
+static struct handlebars_map * literal_path_map_update_map(
+    struct handlebars_map * map,
+    const char * key,
+    struct handlebars_map * child
+)
+{
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_map(value, child);
+    map = handlebars_map_str_update(map, key, strlen(key), value);
+    HANDLEBARS_VALUE_UNDECL(value);
+    return map;
+}
+
+START_TEST(test_ast_to_string_preserves_literal_path_forms)
+{
+    static const char source[] =
+        "{{[first.dot].leaf}}|"
+        "{{outer.[middle.dot].leaf}}|"
+        "{{outer/[slash.dot]/leaf}}|"
+        "{{outer.[last.dot]}}|"
+        "{{#with child}}{{../[root.dot]}}/{{./[local.dot]}}/"
+        "{{this.[local.dot]}}{{/with}}|"
+        "{{@[data.dot]}}|"
+        "{{#[section.dot]}}BLOCK{{/[section.dot]}}|"
+        "{{>[+404/asdf?.bar]}}";
+    static const char expected[] =
+        "FIRST|MIDDLE|SLASH|LAST|ROOT/LOCAL/LOCAL|DATA|BLOCK|PARTIAL";
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    struct handlebars_map * root_map = handlebars_map_ctor(context, 5);
+    struct handlebars_map * first_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * outer_map = handlebars_map_ctor(context, 3);
+    struct handlebars_map * middle_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * slash_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * child_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * data_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+
+    first_map = literal_path_map_update_string(first_map, "leaf", "FIRST");
+    root_map = literal_path_map_update_map(root_map, "first.dot", first_map);
+    middle_map = literal_path_map_update_string(middle_map, "leaf", "MIDDLE");
+    outer_map = literal_path_map_update_map(outer_map, "middle.dot", middle_map);
+    slash_map = literal_path_map_update_string(slash_map, "leaf", "SLASH");
+    outer_map = literal_path_map_update_map(outer_map, "slash.dot", slash_map);
+    outer_map = literal_path_map_update_string(outer_map, "last.dot", "LAST");
+    root_map = literal_path_map_update_map(root_map, "outer", outer_map);
+    child_map = literal_path_map_update_string(child_map, "local.dot", "LOCAL");
+    root_map = literal_path_map_update_map(root_map, "child", child_map);
+    root_map = literal_path_map_update_string(root_map, "root.dot", "ROOT");
+    root_map = literal_path_map_update_string(root_map, "section.dot", "truthy");
+    handlebars_value_map(input, root_map);
+
+    data_map = literal_path_map_update_string(data_map, "data.dot", "DATA");
+    handlebars_value_map(data, data_map);
+    handlebars_vm_set_data(vm, data);
+
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("PARTIAL"))
+    );
+    partial_map = handlebars_map_str_update(
+        partial_map,
+        HBS_STRL("+404/asdf?.bar"),
+        partial
+    );
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        sizeof(source) - 1
+    );
+    struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
+    ck_assert_ptr_nonnull(ast);
+    struct handlebars_string * reconstructed = handlebars_ast_to_string(
+        context,
+        ast
+    );
+    ck_assert_ptr_nonnull(reconstructed);
+    ck_assert_hbs_str_eq_cstr(reconstructed, source);
+
+    struct handlebars_module * original_module = compile_try_test_template(source);
+    struct handlebars_module * reconstructed_module = compile_try_test_template(
+        hbs_str_val(reconstructed)
+    );
+    ck_assert_ptr_nonnull(original_module);
+    ck_assert_ptr_nonnull(reconstructed_module);
+    struct handlebars_string * original_output = handlebars_vm_execute(
+        vm,
+        original_module,
+        input
+    );
+    ck_assert_msg(original_output != NULL, "%s", handlebars_error_msg(context));
+    struct handlebars_string * reconstructed_output = handlebars_vm_execute(
+        vm,
+        reconstructed_module,
+        input
+    );
+    ck_assert_msg(reconstructed_output != NULL, "%s", handlebars_error_msg(context));
+
+    ck_assert_hbs_str_eq_cstr(original_output, expected);
+    ck_assert_hbs_str_eq_cstr(reconstructed_output, expected);
+    handlebars_string_delref(original_output);
+    handlebars_string_delref(reconstructed_output);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(data);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_literal_path_compiler_metadata_remains_normalized)
+{
+    static const char source[] =
+        "{{helper [arg.dot] outer/[middle.dot]}}";
+    static const struct {
+        unsigned flags;
+        enum handlebars_opcode_type opcode_type;
+        const char * expected[2];
+    } cases[] = {
+        {
+            handlebars_compiler_flag_string_params,
+            handlebars_opcode_type_push_string_param,
+            { "arg.dot", "outer.middle.dot" }
+        },
+        {
+            handlebars_compiler_flag_track_ids,
+            handlebars_opcode_type_push_id,
+            { "arg.dot", "outer/middle.dot" }
+        },
+    };
+
+    for( size_t case_index = 0;
+            case_index < sizeof(cases) / sizeof(cases[0]);
+            case_index++ ) {
+        struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
+        struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(
+            context
+        );
+        struct handlebars_string * tmpl = handlebars_string_ctor(
+            context,
+            source,
+            sizeof(source) - 1
+        );
+        struct handlebars_ast_node * ast = handlebars_parse_ex(
+            local_parser,
+            tmpl,
+            0
+        );
+        ck_assert_ptr_nonnull(ast);
+        struct handlebars_string * reconstructed = handlebars_ast_to_string(
+            context,
+            ast
+        );
+        ck_assert_ptr_nonnull(reconstructed);
+        ck_assert_hbs_str_eq_cstr(reconstructed, source);
+
+        handlebars_compiler_set_flags(local_compiler, cases[case_index].flags);
+        struct handlebars_program * program = handlebars_compiler_compile_ex(
+            local_compiler,
+            ast
+        );
+        ck_assert_ptr_nonnull(program);
+        size_t expected_index = 0;
+
+        for( size_t i = 0; i < program->opcodes_length; i++ ) {
+            struct handlebars_opcode * opcode = program->opcodes[i];
+            struct handlebars_operand * operand;
+
+            if( opcode->type != cases[case_index].opcode_type ) {
+                continue;
+            }
+            ck_assert_uint_lt(expected_index, 2);
+            operand = cases[case_index].flags ==
+                    handlebars_compiler_flag_string_params
+                ? &opcode->op1
+                : &opcode->op2;
+            ck_assert_int_eq(operand->type, handlebars_operand_type_string);
+            ck_assert_hbs_str_eq_cstr(
+                operand->data.string.string,
+                cases[case_index].expected[expected_index]
+            );
+            expected_index++;
+        }
+        ck_assert_uint_eq(expected_index, 2);
+        handlebars_compiler_dtor(local_compiler);
+        handlebars_parser_dtor(local_parser);
+    }
+}
+END_TEST
+
 START_TEST(test_fractional_inline_partial_names_use_handlebars_stringification)
 {
     const char * source =
@@ -2593,6 +2913,10 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_serialized_inline_partial_prologue, "Verify serialized inline partial prologues");
 	REGISTER_TEST_FIXTURE(s, test_module_print_inline_partial_registration, "Print serialized inline partial registration");
 	REGISTER_TEST_FIXTURE(s, test_inline_partial_round_trip_preserves_scalar_names_and_statements, "Round-trip scalar inline partial declarations with surrounding statements");
+	REGISTER_TEST_FIXTURE(s, test_ast_to_string_after_compiler_transforms_literal_path, "AST source printer handles compiler-transformed literal paths");
+	REGISTER_TEST_FIXTURE(s, test_ast_to_string_preserves_escaped_literal_path_lookup, "AST source round-trip preserves escaped literal path lookup");
+	REGISTER_TEST_FIXTURE(s, test_ast_to_string_preserves_literal_path_forms, "AST source round-trip preserves literal path forms");
+	REGISTER_TEST_FIXTURE(s, test_literal_path_compiler_metadata_remains_normalized, "Literal path compiler metadata remains normalized");
 	REGISTER_TEST_FIXTURE(s, test_fractional_inline_partial_names_use_handlebars_stringification, "Stringify fractional inline partial names compatibly");
 	TCase * tc_inline_partial_number_stringification = tcase_create("Handlebars inline partial number stringification thresholds");
 	tcase_add_checked_fixture(tc_inline_partial_number_stringification, default_setup, default_teardown);

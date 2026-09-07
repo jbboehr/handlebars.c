@@ -313,19 +313,21 @@ static void assert_ast_printer_allocation_failure_cleanup(ast_printer_func print
 {
     struct handlebars_string * tmpl = handlebars_string_ctor(
         context,
-        HBS_STRL("content {{foo \"bar\"}}")
+        HBS_STRL(
+            "content {{foo \"bar\"}} {{[a.b]}} {{[foo\\]]}} {{[foo\\\\]}}"
+        )
     );
     struct handlebars_ast_node * ast = handlebars_parse_ex(parser, tmpl, 0);
     int fail_at;
 
     ck_assert_ptr_nonnull(ast);
-    for( fail_at = 1; fail_at < 32; fail_at++ ) {
+    for( fail_at = 1; fail_at < 128; fail_at++ ) {
         if( !ast_printer_fails_at_allocation(printer_func, ast, fail_at) ) {
             break;
         }
     }
 
-    ck_assert_int_lt(fail_at, 32);
+    ck_assert_int_lt(fail_at, 128);
 }
 
 START_TEST(test_ast_printer_allocation_failure_cleanup)

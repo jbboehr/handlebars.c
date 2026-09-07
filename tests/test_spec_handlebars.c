@@ -339,7 +339,6 @@ START_TEST(test_ast_to_string_on_handlebars_spec)
     // it's mainly meant to be used with mustache templates
     if (
         NULL != strstr(expected, "else") ||
-        NULL != strstr(expected, "[") ||
         NULL != strstr(expected, "{{>(") ||
         NULL != strstr(expected, "\\{{")
     ) {

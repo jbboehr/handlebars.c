@@ -913,15 +913,141 @@ static void _handlebars_ast_to_string_hash(struct handlebars_ast_node * ast_node
 
 
 
+// path.original keeps the compiler's normalized spelling, including prefixes
+// removed from path.parts. Validate its normalized suffix before combining
+// that prefix with the segments' source spelling.
+static bool handlebars_ast_path_literal_prefix_length(
+    struct handlebars_ast_node * ast_node,
+    size_t * prefix_length
+)
+{
+    struct handlebars_ast_list * ast_list = ast_node->node.path.parts;
+    struct handlebars_ast_list_item * item;
+    struct handlebars_ast_list_item * tmp;
+    struct handlebars_string * original = ast_node->node.path.original;
+    size_t parts_length = 0;
+    size_t original_length;
+    const char * cursor;
+    bool has_literal = false;
+
+    if( !original || !ast_list ) {
+        return false;
+    }
+
+    handlebars_ast_list_foreach(ast_list, item, tmp) {
+        struct handlebars_ast_node * segment = item->data;
+        struct handlebars_ast_node * next_segment = item->next
+            ? item->next->data
+            : NULL;
+        struct handlebars_string * part;
+        struct handlebars_string * separator;
+        size_t part_length;
+        size_t separator_length;
+
+        if( !segment || segment->type != HANDLEBARS_AST_NODE_PATH_SEGMENT ||
+            !segment->node.path_segment.part ||
+            !segment->node.path_segment.original ||
+            (next_segment &&
+                (next_segment->type != HANDLEBARS_AST_NODE_PATH_SEGMENT ||
+                 !next_segment->node.path_segment.separator)) ) {
+            return false;
+        }
+
+        part = segment->node.path_segment.part;
+        separator = next_segment
+            ? next_segment->node.path_segment.separator
+            : NULL;
+        part_length = hbs_str_len(part);
+        separator_length = separator ? hbs_str_len(separator) : 0;
+
+        if( parts_length > SIZE_MAX - part_length ||
+            parts_length + part_length > SIZE_MAX - separator_length ) {
+            return false;
+        }
+        parts_length += part_length + separator_length;
+        has_literal |= !handlebars_string_eq(
+            segment->node.path_segment.part,
+            segment->node.path_segment.original
+        );
+    }
+
+    original_length = hbs_str_len(original);
+    if( !has_literal || parts_length > original_length ) {
+        return false;
+    }
+
+    *prefix_length = original_length - parts_length;
+    cursor = hbs_str_val(original) + *prefix_length;
+    handlebars_ast_list_foreach(ast_list, item, tmp) {
+        struct handlebars_ast_node * segment = item->data;
+        struct handlebars_string * part = segment->node.path_segment.part;
+
+        if( memcmp(cursor, hbs_str_val(part), hbs_str_len(part)) != 0 ) {
+            return false;
+        }
+        cursor += hbs_str_len(part);
+        if( item->next ) {
+            struct handlebars_string * separator =
+                item->next->data->node.path_segment.separator;
+            if( memcmp(
+                    cursor,
+                    hbs_str_val(separator),
+                    hbs_str_len(separator)
+                ) != 0 ) {
+                return false;
+            }
+            cursor += hbs_str_len(separator);
+        }
+    }
+
+    return true;
+}
+
+static void handlebars_ast_to_string_path_segment(
+    struct handlebars_ast_node * segment,
+    struct handlebars_ast_printer_context * ctx
+)
+{
+    struct handlebars_string * part = segment->node.path_segment.part;
+    struct handlebars_string * escaped;
+
+    if( handlebars_string_eq(part, segment->node.path_segment.original) ) {
+        __APPEND_STR(part);
+        return;
+    }
+
+    __APPENDS("[");
+    // The lexer decodes escaped closing brackets. Re-encode them and keep a
+    // trailing backslash from escaping the bracket that closes this segment.
+    escaped = handlebars_string_addcslashes(ctx->ctx, part, HBS_STRL("]"));
+    talloc_steal(ctx, escaped);
+    __APPEND_STR(escaped);
+    if( hbs_str_len(part) > 0 &&
+        hbs_str_val(part)[hbs_str_len(part) - 1] == '\\' ) {
+        __APPENDS("\\");
+    }
+    handlebars_talloc_free(escaped);
+    __APPENDS("]");
+}
+
 static void _handlebars_ast_to_string_path(struct handlebars_ast_node * ast_node, struct handlebars_ast_printer_context * ctx, bool first_only)
 {
     struct handlebars_ast_list * ast_list = ast_node->node.path.parts;
     struct handlebars_ast_list_item * item;
     struct handlebars_ast_list_item * tmp;
+    size_t prefix_length;
 
     assert(ast_node->node.path.data == 0 || ast_node->node.path.data == 1);
 
-    if (ast_node->node.path.original) {
+    if( handlebars_ast_path_literal_prefix_length(ast_node, &prefix_length) ) {
+        __APPENDL(hbs_str_val(ast_node->node.path.original), prefix_length);
+        handlebars_ast_list_foreach(ast_list, item, tmp) {
+            handlebars_ast_to_string_path_segment(item->data, ctx);
+            if( item->next ) {
+                __APPEND_STR(item->next->data->node.path_segment.separator);
+            }
+        }
+    } else if (ast_node->node.path.original) {
         __APPEND_STR(ast_node->node.path.original);
     } else {
         if( ast_node->node.path.data ) {

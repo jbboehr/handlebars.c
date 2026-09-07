@@ -342,6 +342,8 @@ The original template {{[a.b]}} rendered LITERAL. Reconstruction produced {{a.b}
 
 The original path loses the information needed to reconstruct its literal segment. Preserve or recreate literal-segment quoting and compare rendering semantics in round-trip tests. String-literal backslash reconstruction remains unverified and is not included as a confirmed defect.
 
+**Status: addressed.** AST source reconstruction now combines the path's normalized prefix with each segment's stored source form, preserving bracket literals without changing the normalized identifiers used by compilation and lookup. It emits canonical escapes for literal `]` bytes and terminal backslashes, and falls back to the normalized path for compiler-created segments that have no lexer metadata. Regressions cover lookup semantics, literal segments in each path position, dot and slash separators, data/depth/scoped paths, block tags, escaped partials, compiler-transformed ASTs, string-parameter and tracked-ID metadata, and allocation failures. The upstream bracket-path exclusion was removed, enabling 410 AST reconstruction fixtures. Independent review also checked 1,555 short bracket/backslash combinations. Fresh Linux verification passed the affected suites under ASan/UBSan and all ten flake checks. Reliability verdict: PASS_WITH_RESIDUAL_RISK; non-Linux platforms and exhaustive arbitrary-length inputs were not run.
+
 ### R17. P2: this recognition misclassifies ordinary identifiers
 
 Sources: [src/handlebars_ast_helpers.c:492](../../src/handlebars_ast_helpers.c#L492), [src/handlebars_compiler.c:667](../../src/handlebars_compiler.c#L667).
