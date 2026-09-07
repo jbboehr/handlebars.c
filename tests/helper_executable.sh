@@ -66,7 +66,7 @@ if IFS= read -r request; then
             ;;
         *'"helper":"jsonRequest"'*)
             case "$request" in
-                *'"protocol":1'*'"args":["a",2,true,null,[3]]'*'"hash":{"key":"v"}'*'"scope":{"items":[3]}'*'"data":null'*)
+                *'"protocol":1'*'"args":["a",2,true,null,[3]]'*'"hash":{"key":"v"}'*'"scope":{"items":[3]}'*'"data":{"root":{"items":[3]}}'*)
                     printf '%s' '{"protocol":1,"ok":true,"value":"request-ok","safe":false,"ignored":1}'
                     ;;
                 *)

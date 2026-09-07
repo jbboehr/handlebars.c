@@ -80,6 +80,7 @@ struct handlebars_each_call_state {
     struct handlebars_string * nested_result;
     struct handlebars_map * data_map;
     struct handlebars_vm_call_checkpoint checkpoint;
+    size_t data_proxy_count;
 };
 
 static void handlebars_each_call_state_deinit(
@@ -117,6 +118,8 @@ static void handlebars_builtin_each_guarded(
     short use_data;
     size_t len;
     jmp_buf buf;
+
+    state->data_proxy_count = vm->data_proxy_count;
 
     if( handlebars_setjmp_ex(vm, &buf) ) {
         caught = error->num;
@@ -159,10 +162,10 @@ static void handlebars_builtin_each_guarded(
             handlebars_stack_ctor(CONTEXT, 2)
         );
 
-        if( handlebars_value_get_type(state->options->data) == HANDLEBARS_VALUE_TYPE_MAP ) {
+        if( state->options->data->type == HANDLEBARS_VALUE_TYPE_MAP ) {
             state->data_map = handlebars_map_ctor(
                 CONTEXT,
-                handlebars_value_count(state->options->data) + 4
+                handlebars_value_count(state->options->data) + 5
             );
             HANDLEBARS_VALUE_FOREACH_KV(state->options->data, options_key, child) {
                 state->data_map = handlebars_map_update(
@@ -172,8 +175,18 @@ static void handlebars_builtin_each_guarded(
                 );
             } HANDLEBARS_VALUE_FOREACH_END();
         } else {
-            state->data_map = handlebars_map_ctor(CONTEXT, 4);
+            state->data_map = handlebars_map_ctor(CONTEXT, 5);
         }
+        state->data_map = handlebars_map_str_update(
+            state->data_map,
+            HBS_STRL("_parent"),
+            state->options->data
+        );
+        handlebars_vm_register_data_proxy(
+            vm,
+            state->data_map,
+            state->options->data
+        );
         handlebars_map_addref(state->data_map);
     }
 
@@ -277,6 +290,7 @@ whoopsie:
 
 done:
     error->jmp = prev_jmp;
+    vm->data_proxy_count = state->data_proxy_count;
     handlebars_vm_call_checkpoint_finish(vm, &state->checkpoint, caught);
     handlebars_each_call_state_deinit(state);
 

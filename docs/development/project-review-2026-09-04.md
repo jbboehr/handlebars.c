@@ -277,6 +277,8 @@ The fallback for root uses the current context-stack top. Parent-data traversal 
 
 Establish an explicit root reference and parent-linked data frames, with tests where parent and child values differ. Repeated equal values would mask these errors.
 
+**Status: addressed.** Initial top-level renders create an explicit data frame for native maps that do not already define `root`. The frame preserves supplied entries, links `_parent` to the caller's data, and records the initial context as `root` without mutating caller-owned data. Existing explicit roots, including null, remain authoritative. Lazy user-backed maps retain delegated lookups through native child frames, including unconverted JSON data. Reentrant public renders retain their configured data while establishing a root for the nested context. Each and block-partial calls create linked child frames, missing parent traversal stays missing, and helper-replaced data no longer recovers a root or partial-block closure from VM stacks. Lazy data can still supply a previous partial-block closure through the active frame. Checkpoints also restore delegated-lookup metadata after caught nested failures. Sixteen focused regressions plus allocation-failure coverage exercise native and user-backed data, explicit roots, nested renders, block partials, strict null lookup, helper replacement, rollback, and over-depth traversal.
+
 ### R13. P2: partial blocks bypass whitespace processing
 
 Source: [src/handlebars_whitespace.c:520](../../src/handlebars_whitespace.c#L520).

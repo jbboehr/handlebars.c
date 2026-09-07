@@ -79,6 +79,16 @@
 
 ACCEPT_FUNCTION(push_context);
 
+static struct handlebars_string * handlebars_vm_execute_ex_internal(
+    struct handlebars_vm * vm,
+    struct handlebars_module * module,
+    struct handlebars_value * context,
+    long program,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params,
+    bool initialize_data
+);
+
 const size_t HANDLEBARS_VM_SIZE = sizeof(struct handlebars_vm);
 
 // }}} Prototypes & Variables
@@ -194,6 +204,7 @@ void handlebars_vm_dtor(struct handlebars_vm * vm)
     handlebars_value_dtor(&vm->helpers);
     handlebars_value_dtor(&vm->partials);
     handlebars_value_dtor(&vm->data);
+    handlebars_value_dtor(&vm->render_data);
     if (vm->delim_open) {
         handlebars_string_delref(vm->delim_open);
     }
@@ -210,8 +221,10 @@ HBS_LOCAL void handlebars_vm_call_checkpoint_begin(
 {
     checkpoint->open = false;
     checkpoint->stacks_active = vm->stack != NULL;
+    checkpoint->data_proxy_snapshot = NULL;
     handlebars_value_init(&checkpoint->data);
     handlebars_value_value(&checkpoint->data, &vm->data);
+    checkpoint->data_proxy_count = vm->data_proxy_count;
     checkpoint->buffer = vm->buffer;
     checkpoint->depth = vm->depth;
 
@@ -235,6 +248,21 @@ HBS_LOCAL void handlebars_vm_call_checkpoint_begin(
         checkpoint->partial_scope_stack = handlebars_stack_save(vm->partialScopeStack);
     }
     checkpoint->open = true;
+    if( checkpoint->data_proxy_count > 0 ) {
+        assert(vm->data_proxies != NULL);
+        checkpoint->data_proxy_snapshot = handlebars_talloc_array(
+            vm,
+            struct handlebars_vm_data_proxy,
+            checkpoint->data_proxy_count
+        );
+        HANDLEBARS_MEMCHECK(checkpoint->data_proxy_snapshot, HBSCTX(vm));
+        memcpy(
+            checkpoint->data_proxy_snapshot,
+            vm->data_proxies,
+            sizeof(*checkpoint->data_proxy_snapshot)
+                * checkpoint->data_proxy_count
+        );
+    }
 }
 
 HBS_LOCAL void handlebars_vm_call_checkpoint_commit(
@@ -253,6 +281,10 @@ HBS_LOCAL void handlebars_vm_call_checkpoint_commit(
         handlebars_stack_protect(vm->blockParamStack, checkpoint->block_param_stack.protect);
         handlebars_stack_protect(vm->partialBlockStack, checkpoint->partial_block_stack.protect);
         handlebars_stack_protect(vm->partialScopeStack, checkpoint->partial_scope_stack.protect);
+    }
+    if( checkpoint->data_proxy_snapshot != NULL ) {
+        handlebars_talloc_free(checkpoint->data_proxy_snapshot);
+        checkpoint->data_proxy_snapshot = NULL;
     }
     handlebars_value_dtor(&checkpoint->data);
     checkpoint->open = false;
@@ -282,6 +314,18 @@ HBS_LOCAL void handlebars_vm_call_checkpoint_rollback(
         vm->buffer = checkpoint->buffer;
     }
     handlebars_value_value(&vm->data, &checkpoint->data);
+    if( checkpoint->data_proxy_snapshot != NULL ) {
+        assert(vm->data_proxies != NULL);
+        memcpy(
+            vm->data_proxies,
+            checkpoint->data_proxy_snapshot,
+            sizeof(*checkpoint->data_proxy_snapshot)
+                * checkpoint->data_proxy_count
+        );
+        handlebars_talloc_free(checkpoint->data_proxy_snapshot);
+        checkpoint->data_proxy_snapshot = NULL;
+    }
+    vm->data_proxy_count = checkpoint->data_proxy_count;
     handlebars_value_dtor(&checkpoint->data);
     vm->depth = checkpoint->depth;
     checkpoint->open = false;
@@ -340,6 +384,63 @@ void handlebars_vm_set_partials(struct handlebars_vm * vm, struct handlebars_val
 void handlebars_vm_set_data(struct handlebars_vm * vm, struct handlebars_value * data)
 {
     handlebars_value_value(&vm->data, data);
+    vm->data_proxy_count = 0;
+}
+
+static const struct handlebars_vm_data_proxy * handlebars_vm_find_data_proxy(
+    struct handlebars_vm * vm,
+    struct handlebars_value * value
+)
+{
+    if( value->type != HANDLEBARS_VALUE_TYPE_MAP ) {
+        return NULL;
+    }
+    for( size_t i = vm->data_proxy_count; i > 0; i-- ) {
+        const struct handlebars_vm_data_proxy * proxy = &vm->data_proxies[i - 1];
+        if( proxy->frame == value->v.map ) {
+            return proxy;
+        }
+    }
+    return NULL;
+}
+
+HBS_LOCAL void handlebars_vm_register_data_proxy(
+    struct handlebars_vm * vm,
+    struct handlebars_map * frame,
+    struct handlebars_value * parent
+)
+{
+    struct handlebars_user * source;
+    unsigned char flags;
+
+    if( vm->data_proxies == NULL ) {
+        return;
+    }
+    if( parent->type == HANDLEBARS_VALUE_TYPE_USER
+            && handlebars_value_get_type(parent) == HANDLEBARS_VALUE_TYPE_MAP ) {
+        source = parent->v.user;
+        flags = parent->flags;
+    } else {
+        const struct handlebars_vm_data_proxy * proxy =
+            handlebars_vm_find_data_proxy(vm, parent);
+        if( proxy == NULL ) {
+            return;
+        }
+        source = proxy->source;
+        flags = proxy->flags;
+    }
+
+    if( unlikely(vm->data_proxy_count >= HANDLEBARS_VM_MAX_DEPTH) ) {
+        handlebars_throw(
+            HBSCTX(vm),
+            HANDLEBARS_STACK_OVERFLOW,
+            "VM data-frame stack overflow"
+        );
+    }
+    vm->data_proxies[vm->data_proxy_count].frame = frame;
+    vm->data_proxies[vm->data_proxy_count].source = source;
+    vm->data_proxies[vm->data_proxy_count].flags = flags;
+    vm->data_proxy_count++;
 }
 
 void handlebars_vm_set_cache(struct handlebars_vm * vm, struct handlebars_cache * cache)
@@ -623,6 +724,75 @@ HBS_LOCAL struct handlebars_value * handlebars_vm_lookup_property(
     return NULL;
 }
 
+static struct handlebars_value * handlebars_vm_lookup_data_property(
+    struct handlebars_vm * vm,
+    struct handlebars_value * data,
+    struct handlebars_string * key,
+    struct handlebars_value * rv
+)
+{
+    struct handlebars_value * result = handlebars_vm_lookup_property(
+        vm,
+        data,
+        key,
+        rv
+    );
+    const struct handlebars_vm_data_proxy * proxy;
+
+    if( result != NULL ) {
+        return result;
+    }
+    proxy = handlebars_vm_find_data_proxy(vm, data);
+    if( proxy != NULL ) {
+        struct handlebars_value source = {
+            .type = HANDLEBARS_VALUE_TYPE_USER,
+            .flags = proxy->flags,
+            .v.user = proxy->source
+        };
+        result = handlebars_vm_lookup_property(vm, &source, key, rv);
+        if( result != NULL && result != rv ) {
+            handlebars_value_value(rv, result);
+            result = rv;
+        }
+    }
+    return result;
+}
+
+static struct handlebars_value * handlebars_vm_lookup_data_map_str_find(
+    struct handlebars_vm * vm,
+    struct handlebars_value * data,
+    const char * key,
+    size_t length,
+    struct handlebars_value * rv
+)
+{
+    struct handlebars_value * result = handlebars_value_map_str_find(
+        data,
+        key,
+        length,
+        rv
+    );
+    const struct handlebars_vm_data_proxy * proxy;
+
+    if( result != NULL ) {
+        return result;
+    }
+    proxy = handlebars_vm_find_data_proxy(vm, data);
+    if( proxy != NULL ) {
+        struct handlebars_value source = {
+            .type = HANDLEBARS_VALUE_TYPE_USER,
+            .flags = proxy->flags,
+            .v.user = proxy->source
+        };
+        result = handlebars_value_map_str_find(&source, key, length, rv);
+        if( result != NULL && result != rv ) {
+            handlebars_value_value(rv, result);
+            result = rv;
+        }
+    }
+    return result;
+}
+
 HBS_ATTR_NONNULL_ALL
 static inline void depthed_lookup(struct handlebars_vm * vm, struct handlebars_string * key)
 {
@@ -874,6 +1044,7 @@ static struct handlebars_string * execute_template(
     struct handlebars_vm * vm,
     struct handlebars_string * volatile tmpl,
     struct handlebars_value * input,
+    struct handlebars_value * data,
     struct handlebars_string * indent,
     int escape,
     bool use_delimiters
@@ -987,7 +1158,15 @@ static struct handlebars_string * execute_template(
 
     vm->depth++;
 
-    retval = handlebars_vm_execute(vm, module, input);
+    retval = handlebars_vm_execute_ex_internal(
+        vm,
+        module,
+        input,
+        0,
+        data,
+        NULL,
+        false
+    );
     assert(retval != NULL);
 
     if (indent && !(vm->flags & handlebars_compiler_flag_compat)) {
@@ -1033,7 +1212,12 @@ done:
 HANDLEBARS_CLOSURE_ATTRS
 static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE_ARGS)
 {
-    assert(localc >= 4);
+    struct handlebars_partial_block_closure_state {
+        struct handlebars_value data;
+        size_t data_proxy_count;
+    };
+
+    assert(localc >= 5);
     assert(HANDLEBARS_LOCAL_AT(0)->type == HANDLEBARS_VALUE_TYPE_PTR);
     assert(HANDLEBARS_LOCAL_AT(1)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
     assert(HANDLEBARS_LOCAL_AT(2)->type == HANDLEBARS_VALUE_TYPE_INTEGER);
@@ -1058,7 +1242,17 @@ static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE
     struct handlebars_stack * current_block_params;
     struct handlebars_value * input;
     struct handlebars_string * buffer;
+    size_t data_capacity;
+    struct handlebars_partial_block_closure_state * state =
+        handlebars_talloc_zero(
+            vm,
+            struct handlebars_partial_block_closure_state
+        );
     jmp_buf buf;
+
+    HANDLEBARS_MEMCHECK(state, CONTEXT);
+    handlebars_value_init(&state->data);
+    state->data_proxy_count = vm->data_proxy_count;
 
     /* Keep the closure's snapshot alive when PUSH transfers or separates the
      * VM's working reference. */
@@ -1080,10 +1274,52 @@ static struct handlebars_value * invoke_partial_block_closure(HANDLEBARS_CLOSURE
     }
 
     input = argc > 0 ? &argv[0] : TOP(vm->contextStack);
+    data_capacity = 2;
+    if( options->data->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        data_capacity += handlebars_value_count(options->data);
+    }
+    handlebars_value_map(
+        &state->data,
+        handlebars_map_ctor(CONTEXT, data_capacity)
+    );
+    if( options->data->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        HANDLEBARS_VALUE_FOREACH_KV(options->data, key, child) {
+            state->data.v.map = handlebars_map_update(
+                state->data.v.map,
+                key,
+                child
+            );
+        } HANDLEBARS_VALUE_FOREACH_END();
+    }
+    state->data.v.map = handlebars_map_str_update(
+        state->data.v.map,
+        HBS_STRL("_parent"),
+        options->data
+    );
+    state->data.v.map = handlebars_map_str_update(
+        state->data.v.map,
+        HBS_STRL("partial-block"),
+        HANDLEBARS_LOCAL_AT(4)
+    );
+    handlebars_vm_register_data_proxy(vm, state->data.v.map, options->data);
     if (vm->module == module) {
-        buffer = handlebars_vm_execute_program_ex(vm, program, input, NULL, NULL);
+        buffer = handlebars_vm_execute_program_ex(
+            vm,
+            program,
+            input,
+            &state->data,
+            NULL
+        );
     } else {
-        buffer = handlebars_vm_execute_ex(vm, module, input, program, NULL, NULL);
+        buffer = handlebars_vm_execute_ex_internal(
+            vm,
+            module,
+            input,
+            program,
+            &state->data,
+            NULL,
+            false
+        );
     }
     if (buffer) {
         handlebars_value_str(rv, buffer);
@@ -1110,6 +1346,9 @@ done:
     handlebars_stack_restore(vm->partialBlockStack, partial_block_stack_save);
     handlebars_stack_restore(vm->partialScopeStack, partial_scope_stack_save);
     vm->depth = previous_depth;
+    vm->data_proxy_count = state->data_proxy_count;
+    handlebars_value_dtor(&state->data);
+    handlebars_talloc_free(state);
 
     if( caught != HANDLEBARS_SUCCESS && prev_jmp != NULL ) {
         handlebars_longjmp(HBSCTX(vm), prev_jmp, caught);
@@ -1175,13 +1414,14 @@ static struct handlebars_value * invoke_inline_partial_closure(HANDLEBARS_CLOSUR
             NULL
         );
     } else {
-        buffer = handlebars_vm_execute_ex(
+        buffer = handlebars_vm_execute_ex_internal(
             vm,
             module,
             input,
             program,
             options->data,
-            NULL
+            NULL,
+            false
         );
     }
     if( buffer != NULL ) {
@@ -1620,6 +1860,7 @@ static struct handlebars_value * invoke_partial_string_closure(HANDLEBARS_CLOSUR
         vm,
         tmpl,
         &argv[0],
+        options->data,
         indent,
         0,
         0
@@ -1651,7 +1892,15 @@ static struct handlebars_value * invoke_mustache_style_lambda_closure(HANDLEBARS
 
     if (!handlebars_value_is_empty(lambda_result)) {
         struct handlebars_string * tmpl = handlebars_value_to_string(lambda_result, CONTEXT);
-        struct handlebars_string * rv_str = execute_template(vm, tmpl, callable, NULL, 0, use_delimiters);
+        struct handlebars_string * rv_str = execute_template(
+            vm,
+            tmpl,
+            callable,
+            options->data,
+            NULL,
+            0,
+            use_delimiters
+        );
         handlebars_value_str(rv, rv_str);
     }
 
@@ -2264,16 +2513,18 @@ struct handlebars_partial_call_state {
     struct handlebars_options options;
     struct handlebars_value argv[1];
     struct handlebars_value extra[5];
-    struct handlebars_value partial_block_localv[4];
+    struct handlebars_value partial_block_localv[5];
     struct handlebars_value partial_string_localv[2];
     struct handlebars_value tmp;
     struct handlebars_value partial_rv;
     struct handlebars_value rv;
     struct handlebars_value partial_block;
+    struct handlebars_value partial_data;
     struct handlebars_string * temporary_name;
     struct handlebars_stack_save_buf inline_scope_save;
     bool inline_scope_saved;
     bool pushed_partial_block;
+    size_t data_proxy_count;
 };
 
 ACCEPT_NOINLINE_FUNCTION(invoke_partial)
@@ -2300,6 +2551,7 @@ ACCEPT_NOINLINE_FUNCTION(invoke_partial)
     jmp_buf buf;
 
     HANDLEBARS_MEMCHECK(state, CONTEXT);
+    state->data_proxy_count = vm->data_proxy_count;
     options = &state->options;
     argv = state->argv;
     extra = state->extra;
@@ -2354,13 +2606,20 @@ ACCEPT_NOINLINE_FUNCTION(invoke_partial)
     }
 
     // Try to look up partial block
-    if (!partial && name && hbs_str_eq_strl(name, HBS_STRL("@partial-block")) && LEN(vm->partialBlockStack) > 0) {
-        partial = TOP(vm->partialBlockStack);
+    if( !partial
+            && name
+            && hbs_str_eq_strl(name, HBS_STRL("@partial-block")) ) {
+        partial = handlebars_vm_lookup_data_map_str_find(
+            vm,
+            options->data,
+            HBS_STRL("partial-block"),
+            partial_rv
+        );
     }
 
     // Push partial block
     if (options->program > 0) {
-        const int closure_localc = 4;
+        const int closure_localc = 5;
         struct handlebars_value * closure_localv = state->partial_block_localv;
         handlebars_value_ptr(&closure_localv[0], handlebars_ptr_ctor(CONTEXT, struct handlebars_module, vm->module, true));
         handlebars_value_integer(&closure_localv[1], options->program);
@@ -2369,6 +2628,14 @@ ACCEPT_NOINLINE_FUNCTION(invoke_partial)
             &closure_localv[3],
             handlebars_stack_copy_ctor(vm->blockParamStack, HANDLEBARS_VM_STACK_SIZE)
         );
+        if( handlebars_vm_lookup_data_map_str_find(
+                vm,
+                options->data,
+                HBS_STRL("partial-block"),
+                &closure_localv[4]
+            ) == NULL ) {
+            handlebars_value_null(&closure_localv[4]);
+        }
         struct handlebars_closure * closure = handlebars_closure_ctor(
             vm,
             invoke_partial_block_closure,
@@ -2381,6 +2648,40 @@ ACCEPT_NOINLINE_FUNCTION(invoke_partial)
         handlebars_value_closure(partial_block, closure);
         PUSH(vm->partialBlockStack, partial_block);
         state->pushed_partial_block = true;
+
+        size_t partial_data_capacity = 2;
+        if( options->data->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+            partial_data_capacity += handlebars_value_count(options->data);
+        }
+        handlebars_value_map(
+            &state->partial_data,
+            handlebars_map_ctor(CONTEXT, partial_data_capacity)
+        );
+        if( options->data->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+            HANDLEBARS_VALUE_FOREACH_KV(options->data, key, child) {
+                state->partial_data.v.map = handlebars_map_update(
+                    state->partial_data.v.map,
+                    key,
+                    child
+                );
+            } HANDLEBARS_VALUE_FOREACH_END();
+        }
+        state->partial_data.v.map = handlebars_map_str_update(
+            state->partial_data.v.map,
+            HBS_STRL("_parent"),
+            options->data
+        );
+        state->partial_data.v.map = handlebars_map_str_update(
+            state->partial_data.v.map,
+            HBS_STRL("partial-block"),
+            partial_block
+        );
+        handlebars_vm_register_data_proxy(
+            vm,
+            state->partial_data.v.map,
+            options->data
+        );
+        options->data = &state->partial_data;
     }
 
     // Inline partial declarations in a partial-block body are decorators on
@@ -2479,11 +2780,12 @@ done:
         POP(vm->partialBlockStack, closure_value);
         HANDLEBARS_VALUE_UNDECL(closure_value);
     }
+    vm->data_proxy_count = state->data_proxy_count;
 
     for( int i = 0; i < 5; i++ ) {
         handlebars_value_dtor(&state->extra[i]);
     }
-    for( int i = 0; i < 4; i++ ) {
+    for( int i = 0; i < 5; i++ ) {
         handlebars_value_dtor(&state->partial_block_localv[i]);
     }
     for( int i = 0; i < 2; i++ ) {
@@ -2492,6 +2794,7 @@ done:
     handlebars_value_dtor(&state->argv[0]);
     handlebars_options_deinit(&state->options);
     handlebars_value_dtor(&state->partial_block);
+    handlebars_value_dtor(&state->partial_data);
     handlebars_value_dtor(&state->rv);
     handlebars_value_dtor(&state->partial_rv);
     handlebars_value_dtor(&state->tmp);
@@ -2567,12 +2870,45 @@ done:
     HANDLEBARS_VALUE_UNDECL(empty_value);
 }
 
-ACCEPT_FUNCTION(lookup_data)
+struct handlebars_lookup_data_state {
+    struct handlebars_value rv;
+    struct handlebars_value data;
+    struct handlebars_value val;
+};
+
+static void handlebars_lookup_data_state_deinit(
+    struct handlebars_lookup_data_state * state
+)
 {
-    HANDLEBARS_VALUE_DECL(rv);
-    HANDLEBARS_VALUE_DECL(data);
-    HANDLEBARS_VALUE_DECL(val);
+    handlebars_value_dtor(&state->val);
+    handlebars_value_dtor(&state->data);
+    handlebars_value_dtor(&state->rv);
+}
+
+HBS_ATTR_NOINLINE HBS_ATTR_NONNULL_ALL
+static void accept_lookup_data_guarded(
+    struct handlebars_vm * vm,
+    struct handlebars_opcode * opcode,
+    struct handlebars_lookup_data_state * state
+)
+{
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
     struct handlebars_value * tmp;
+    struct handlebars_operand_string * arr;
+    struct handlebars_operand_string * first;
+    bool is_strict;
+    bool require_terminal;
+    long depth;
+    size_t arr_len;
+    size_t i;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
 
     if( unlikely(opcode->op1.type != handlebars_operand_type_long
             || opcode->op2.type != handlebars_operand_type_array
@@ -2582,73 +2918,99 @@ ACCEPT_FUNCTION(lookup_data)
         handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Invalid lookup_data operands");
     }
 
-    handlebars_value_value(data, &vm->data);
+    handlebars_value_value(&state->data, &vm->data);
 
-    bool is_strict = (vm->flags & handlebars_compiler_flag_strict) || (vm->flags & handlebars_compiler_flag_assume_objects);
-    bool require_terminal = (vm->flags & handlebars_compiler_flag_strict) && opcode->op3.data.boolval;
+    is_strict = (vm->flags & handlebars_compiler_flag_strict) || (vm->flags & handlebars_compiler_flag_assume_objects);
+    require_terminal = (vm->flags & handlebars_compiler_flag_strict) && opcode->op3.data.boolval;
+    depth = opcode->op1.data.longval;
+    arr_len = opcode->op2.data.array.count;
+    arr = opcode->op2.data.array.array;
+    first = arr;
 
-    long depth = opcode->op1.data.longval;
-    size_t arr_len = opcode->op2.data.array.count;
-    size_t i;
-    struct handlebars_operand_string * arr = opcode->op2.data.array.array;
-    struct handlebars_operand_string * first = arr;
-
-    if( depth && data ) {
-        while( data && depth-- ) {
-            tmp = handlebars_value_map_str_find(data, HBS_STRL("_parent"), rv);
+    if( depth ) {
+        while( state->data.type != HANDLEBARS_VALUE_TYPE_NULL && depth-- ) {
+            tmp = handlebars_value_map_str_find(
+                &state->data,
+                HBS_STRL("_parent"),
+                &state->rv
+            );
             if (tmp != NULL) {
-                handlebars_value_value(data, tmp);
+                handlebars_value_value(&state->data, tmp);
+            } else {
+                handlebars_value_null(&state->data);
+                break;
             }
         }
     }
 
-    if( data && (tmp = handlebars_vm_lookup_property(vm, data, first->string, rv)) ) {
-        handlebars_value_value(val, tmp);
-    } else if (hbs_str_eq_strl(first->string, HBS_STRL("root"))) {
-        handlebars_value_value(val, TOP(vm->contextStack));
-    } else if (hbs_str_eq_strl(first->string, HBS_STRL("partial-block"))) {
-        tmp = TOP(vm->partialBlockStack);
-        if( tmp == NULL ) {
-            goto done_and_null;
-        }
-        handlebars_value_value(val, tmp);
+    tmp = NULL;
+    if( state->data.type != HANDLEBARS_VALUE_TYPE_NULL ) {
+        tmp = handlebars_vm_lookup_data_property(
+            vm,
+            &state->data,
+            first->string,
+            &state->rv
+        );
+    }
+
+    if( tmp != NULL ) {
+        handlebars_value_value(&state->val, tmp);
     } else if( vm->flags & handlebars_compiler_flag_assume_objects ) {
         goto done_and_err;
     } else {
+        handlebars_value_null(&state->val);
+        if( require_terminal ) {
+            goto done_and_err;
+        }
         goto done_and_null;
     }
 
     for( i = 1 ; i < arr_len; i++ ) {
         struct handlebars_operand_string * part = arr + i;
-        if( NULL != (tmp = handlebars_vm_lookup_property(vm, val, part->string, rv)) ) {
-            handlebars_value_value(val, tmp);
+        if( NULL != (tmp = handlebars_vm_lookup_property(
+                vm,
+                &state->val,
+                part->string,
+                &state->rv
+            )) ) {
+            handlebars_value_value(&state->val, tmp);
         } else if( is_strict || require_terminal ) {
             goto done_and_err;
         } else {
-            handlebars_value_null(val);
+            handlebars_value_null(&state->val);
             break;
         }
     }
 
-    if( val->type == HANDLEBARS_VALUE_TYPE_NULL ) {
-        done_and_null:
-        if( require_terminal ) {
-            done_and_err:
-            handlebars_throw_ex(
-                CONTEXT,
-                HANDLEBARS_ERROR,
-                &opcode->loc,
-                "\"%.*s\" not defined in object",
-                (int) hbs_str_len(arr->string), hbs_str_val(arr->string)
-            );
-        }
+done_and_null:
+    PUSH(vm->stack, &state->val);
+    goto done;
+
+done_and_err:
+    handlebars_throw_ex(
+        CONTEXT,
+        HANDLEBARS_ERROR,
+        &opcode->loc,
+        "\"%.*s\" not defined in object",
+        (int) hbs_str_len(arr->string), hbs_str_val(arr->string)
+    );
+
+done:
+    error->jmp = previous;
+    handlebars_lookup_data_state_deinit(state);
+    if( caught != HANDLEBARS_SUCCESS ) {
+        handlebars_vm_rethrow_caught(vm, previous, caught);
     }
+}
 
-    PUSH(vm->stack, val);
+ACCEPT_NOINLINE_FUNCTION(lookup_data)
+{
+    struct handlebars_lookup_data_state state;
 
-    HANDLEBARS_VALUE_UNDECL(val);
-    HANDLEBARS_VALUE_UNDECL(data);
-    HANDLEBARS_VALUE_UNDECL(rv);
+    handlebars_value_init(&state.rv);
+    handlebars_value_init(&state.data);
+    handlebars_value_init(&state.val);
+    accept_lookup_data_guarded(vm, opcode, &state);
 }
 
 ACCEPT_FUNCTION(lookup_on_context)
@@ -3061,10 +3423,10 @@ static void handlebars_vm_execute_program_guarded(
     enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
     jmp_buf buf;
 
-    handlebars_vm_call_checkpoint_begin(vm, &state->checkpoint);
     if( handlebars_setjmp_ex(vm, &buf) ) {
         caught = error->num;
     } else {
+        handlebars_vm_call_checkpoint_begin(vm, &state->checkpoint);
         handlebars_vm_execute_program_inner(
             vm,
             program_num,
@@ -3113,13 +3475,143 @@ struct handlebars_string * handlebars_vm_execute_program(struct handlebars_vm * 
     return handlebars_vm_execute_program_ex(vm, program, context, NULL, NULL);
 }
 
-struct handlebars_string * handlebars_vm_execute_ex(
+struct handlebars_vm_initial_data_state {
+    struct handlebars_value frame;
+    struct handlebars_value lookup;
+    struct handlebars_value parent;
+    size_t capacity;
+    bool has_root;
+};
+
+static void handlebars_vm_initial_data_state_deinit(
+    struct handlebars_vm_initial_data_state * state
+)
+{
+    handlebars_value_dtor(&state->parent);
+    handlebars_value_dtor(&state->lookup);
+    handlebars_value_dtor(&state->frame);
+}
+
+HBS_ATTR_NOINLINE HBS_ATTR_NONNULL_ALL
+static void handlebars_vm_initialize_data_guarded(
+    struct handlebars_vm * vm,
+    struct handlebars_value * context,
+    struct handlebars_value * source,
+    struct handlebars_vm_initial_data_state * state
+)
+{
+    struct handlebars_error * error = HBSCTX(vm)->e;
+    jmp_buf * volatile previous = error->jmp;
+    enum handlebars_error_type volatile caught = HANDLEBARS_SUCCESS;
+    struct handlebars_value * root;
+    struct handlebars_value * parent;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(vm, &buf) ) {
+        caught = error->num;
+        goto done;
+    }
+
+    root = NULL;
+    if( handlebars_value_get_type(source) == HANDLEBARS_VALUE_TYPE_MAP ) {
+        root = handlebars_value_map_str_find(
+            source,
+            HBS_STRL("root"),
+            &state->lookup
+        );
+    }
+    state->has_root = root != NULL;
+    if( root != NULL && root != &state->lookup ) {
+        handlebars_value_value(&state->lookup, root);
+    }
+    if( state->has_root && source->type != HANDLEBARS_VALUE_TYPE_USER ) {
+        handlebars_value_value(&vm->data, source);
+        goto done;
+    }
+
+    if( source->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        state->capacity += handlebars_value_count(source);
+    }
+    handlebars_value_map(
+        &state->frame,
+        handlebars_map_ctor(CONTEXT, state->capacity)
+    );
+
+    if( source->type == HANDLEBARS_VALUE_TYPE_MAP ) {
+        HANDLEBARS_VALUE_FOREACH_KV(source, key, child) {
+            state->frame.v.map = handlebars_map_update(
+                state->frame.v.map,
+                key,
+                child
+            );
+        } HANDLEBARS_VALUE_FOREACH_END();
+    }
+    parent = NULL;
+    if( state->has_root && source->type == HANDLEBARS_VALUE_TYPE_USER ) {
+        parent = handlebars_value_map_str_find(
+            source,
+            HBS_STRL("_parent"),
+            &state->parent
+        );
+        if( parent != NULL && parent != &state->parent ) {
+            handlebars_value_value(&state->parent, parent);
+        }
+    }
+    if( !state->has_root
+            && handlebars_value_get_type(source) == HANDLEBARS_VALUE_TYPE_MAP ) {
+        state->frame.v.map = handlebars_map_str_update(
+            state->frame.v.map,
+            HBS_STRL("_parent"),
+            source
+        );
+    } else if( parent != NULL ) {
+        state->frame.v.map = handlebars_map_str_update(
+            state->frame.v.map,
+            HBS_STRL("_parent"),
+            &state->parent
+        );
+    }
+    state->frame.v.map = handlebars_map_str_update(
+        state->frame.v.map,
+        HBS_STRL("root"),
+        state->has_root ? &state->lookup : context
+    );
+    handlebars_value_value(&vm->data, &state->frame);
+    if( source->type == HANDLEBARS_VALUE_TYPE_USER ) {
+        handlebars_vm_register_data_proxy(vm, vm->data.v.map, source);
+    }
+
+done:
+    error->jmp = previous;
+    handlebars_vm_initial_data_state_deinit(state);
+    if( caught != HANDLEBARS_SUCCESS ) {
+        handlebars_vm_rethrow_caught(vm, previous, caught);
+    }
+}
+
+static void handlebars_vm_initialize_data(
+    struct handlebars_vm * vm,
+    struct handlebars_value * context,
+    struct handlebars_value * source
+)
+{
+    struct handlebars_vm_initial_data_state state = {0};
+
+    handlebars_value_init(&state.frame);
+    handlebars_value_init(&state.lookup);
+    handlebars_value_init(&state.parent);
+    state.capacity = 2;
+    handlebars_vm_initialize_data_guarded(vm, context, source, &state);
+}
+
+static struct handlebars_string * handlebars_vm_execute_ex_internal(
     struct handlebars_vm * vm,
     struct handlebars_module * module,
     struct handlebars_value * context,
     long program,
     struct handlebars_value * data,
-    struct handlebars_value * block_params
+    struct handlebars_value * block_params,
+    bool initialize_data
 ) {
     struct handlebars_error * error = HBSCTX(vm)->e;
     jmp_buf * volatile prev = error->jmp;
@@ -3138,6 +3630,7 @@ struct handlebars_string * handlebars_vm_execute_ex(
     struct handlebars_stack_save_buf pst;
     struct handlebars_stack_save_buf ist;
     HANDLEBARS_VALUE_DECL(prev_data);
+    HANDLEBARS_VALUE_DECL(prev_render_data);
     HANDLEBARS_VALUE_DECL(prev_last_context_value);
 
     struct handlebars_string * volatile buffer = NULL;
@@ -3145,9 +3638,15 @@ struct handlebars_string * handlebars_vm_execute_ex(
     struct handlebars_vm_error_snapshot previous_error;
     bool volatile setup_last_context = false;
     bool volatile setup_stacks = false;
+    bool previous_render_data_active = vm->render_data_active;
+    struct handlebars_vm_data_proxy * previous_data_proxies = vm->data_proxies;
+    size_t previous_data_proxy_count = vm->data_proxy_count;
+    struct handlebars_vm_data_proxy * data_proxies;
+    struct handlebars_vm_data_proxy * volatile data_proxy_snapshot = NULL;
     jmp_buf buf;
 
     handlebars_value_value(prev_data, &vm->data);
+    handlebars_value_value(prev_render_data, &vm->render_data);
     if( prev_delim_open != NULL ) {
         handlebars_string_addref(prev_delim_open);
     }
@@ -3168,6 +3667,33 @@ struct handlebars_string * handlebars_vm_execute_ex(
         handlebars_stack_alloca(vm->partialBlockStack, HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
         handlebars_stack_alloca(vm->partialScopeStack, HBSCTX(vm), HANDLEBARS_VM_STACK_SIZE);
         setup_stacks = true;
+    }
+    if( initialize_data || vm->data_proxies == NULL ) {
+        data_proxies = alloca(
+            sizeof(*vm->data_proxies) * HANDLEBARS_VM_MAX_DEPTH
+        );
+        if( initialize_data
+                && previous_data_proxies != NULL
+                && previous_data_proxy_count > 0 ) {
+            memcpy(
+                data_proxies,
+                previous_data_proxies,
+                sizeof(*data_proxies) * previous_data_proxy_count
+            );
+            vm->data_proxy_count = previous_data_proxy_count;
+        } else {
+            vm->data_proxy_count = 0;
+        }
+        vm->data_proxies = data_proxies;
+    } else if( previous_data_proxy_count > 0 ) {
+        data_proxy_snapshot = alloca(
+            sizeof(*data_proxy_snapshot) * previous_data_proxy_count
+        );
+        memcpy(
+            data_proxy_snapshot,
+            previous_data_proxies,
+            sizeof(*data_proxy_snapshot) * previous_data_proxy_count
+        );
     }
 
     st = handlebars_stack_save(vm->stack);
@@ -3202,7 +3728,34 @@ struct handlebars_string * handlebars_vm_execute_ex(
     vm->flags |= module->flags;
 
     // Execute
-    buffer = handlebars_vm_execute_program_ex(vm, program, context, data, block_params);
+    if( initialize_data ) {
+        if( data != NULL ) {
+            handlebars_value_value(&vm->render_data, data);
+        } else if( !vm->render_data_active ) {
+            handlebars_value_value(&vm->render_data, &vm->data);
+        }
+        vm->render_data_active = true;
+        handlebars_vm_initialize_data(
+            vm,
+            context,
+            &vm->render_data
+        );
+        buffer = handlebars_vm_execute_program_ex(
+            vm,
+            program,
+            context,
+            NULL,
+            block_params
+        );
+    } else {
+        buffer = handlebars_vm_execute_program_ex(
+            vm,
+            program,
+            context,
+            data,
+            block_params
+        );
+    }
 
 done:
     error->jmp = prev;
@@ -3222,6 +3775,17 @@ done:
     }
 
     handlebars_value_value(&vm->data, prev_data);
+    handlebars_value_value(&vm->render_data, prev_render_data);
+    if( data_proxy_snapshot != NULL ) {
+        memcpy(
+            previous_data_proxies,
+            data_proxy_snapshot,
+            sizeof(*data_proxy_snapshot) * previous_data_proxy_count
+        );
+    }
+    vm->data_proxies = previous_data_proxies;
+    vm->data_proxy_count = previous_data_proxy_count;
+    vm->render_data_active = previous_render_data_active;
 
     if( setup_last_context ) {
         handlebars_value_dtor(vm->last_context);
@@ -3263,6 +3827,7 @@ done:
     }
 
     HANDLEBARS_VALUE_UNDECL(prev_last_context_value);
+    HANDLEBARS_VALUE_UNDECL(prev_render_data);
     HANDLEBARS_VALUE_UNDECL(prev_data);
 
     if( caught != HANDLEBARS_SUCCESS && prev != NULL ) {
@@ -3270,6 +3835,26 @@ done:
     }
 
     return (struct handlebars_string *) buffer;
+}
+
+struct handlebars_string * handlebars_vm_execute_ex(
+    struct handlebars_vm * vm,
+    struct handlebars_module * module,
+    struct handlebars_value * context,
+    long program,
+    struct handlebars_value * data,
+    struct handlebars_value * block_params
+)
+{
+    return handlebars_vm_execute_ex_internal(
+        vm,
+        module,
+        context,
+        program,
+        data,
+        block_params,
+        true
+    );
 }
 
 struct handlebars_string * handlebars_vm_execute(

@@ -126,6 +126,86 @@ static struct handlebars_value * test_passthrough_helper(
     return rv;
 }
 
+static struct handlebars_value * test_replace_block_data_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    HANDLEBARS_VALUE_DECL(block_context);
+    HANDLEBARS_VALUE_DECL(data);
+    struct handlebars_string * output;
+
+    (void) argv;
+    ck_assert_int_eq(argc, 0);
+    handlebars_value_map(
+        block_context,
+        handlebars_map_ctor(HBSCTX(callback_vm), 0)
+    );
+    handlebars_value_map(
+        data,
+        handlebars_map_ctor(HBSCTX(callback_vm), 0)
+    );
+    data->v.map = handlebars_map_str_update(
+        data->v.map,
+        HBS_STRL("_parent"),
+        options->data
+    );
+    output = handlebars_vm_execute_program_ex(
+        callback_vm,
+        options->program,
+        block_context,
+        data,
+        NULL
+    );
+    ck_assert_ptr_nonnull(output);
+    handlebars_value_str(rv, output);
+    HANDLEBARS_VALUE_UNDECL(data);
+    HANDLEBARS_VALUE_UNDECL(block_context);
+    return rv;
+}
+
+static struct handlebars_module * test_reentrant_root_module;
+
+static struct handlebars_value * test_reentrant_public_render_helper(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    HANDLEBARS_VALUE_DECL(inner);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * inner_map = handlebars_map_ctor(
+        HBSCTX(callback_vm),
+        1
+    );
+    struct handlebars_string * output;
+
+    (void) argv;
+    (void) options;
+    ck_assert_int_eq(argc, 0);
+    handlebars_value_str(
+        value,
+        handlebars_string_ctor(HBSCTX(callback_vm), HBS_STRL("INNER"))
+    );
+    inner_map = handlebars_map_str_update(inner_map, HBS_STRL("name"), value);
+    handlebars_value_map(inner, inner_map);
+    output = handlebars_vm_execute(
+        callback_vm,
+        test_reentrant_root_module,
+        inner
+    );
+    ck_assert_ptr_nonnull(output);
+    handlebars_value_str(rv, output);
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(inner);
+    return rv;
+}
+
 static struct handlebars_value * test_context_helper(
     int argc,
     struct handlebars_value * argv,
@@ -457,14 +537,17 @@ static void test_register_helper(const char * name, size_t length, handlebars_fu
     HANDLEBARS_VALUE_UNDECL(helper);
 }
 
-static struct handlebars_module * test_compile_template(const char * tmpl)
+static struct handlebars_module * test_compile_template_flags(
+    const char * tmpl,
+    unsigned long flags
+)
 {
     struct handlebars_parser * local_parser = handlebars_parser_ctor(context);
     struct handlebars_compiler * local_compiler = handlebars_compiler_ctor(context);
     struct handlebars_ast_node * ast = handlebars_parse_ex(
         local_parser,
         handlebars_string_ctor(context, tmpl, strlen(tmpl)),
-        0
+        flags
     );
     struct handlebars_program * program;
     struct handlebars_module * module;
@@ -475,12 +558,18 @@ static struct handlebars_module * test_compile_template(const char * tmpl)
         tmpl,
         handlebars_error_msg(context)
     );
+    handlebars_compiler_set_flags(local_compiler, flags);
     program = handlebars_compiler_compile_ex(local_compiler, ast);
     ck_assert_ptr_nonnull(program);
     module = handlebars_program_serialize(context, program);
     handlebars_compiler_dtor(local_compiler);
     handlebars_parser_dtor(local_parser);
     return module;
+}
+
+static struct handlebars_module * test_compile_template(const char * tmpl)
+{
+    return test_compile_template_flags(tmpl, 0);
 }
 
 static struct handlebars_string * test_execute_with_bar(
@@ -558,7 +647,10 @@ static const struct handlebars_value_handlers test_lazy_array_no_count_handlers 
 struct test_lazy_map_user {
     struct handlebars_user user;
     struct handlebars_value item;
+    struct handlebars_value * parent;
+    struct handlebars_value * partial_block;
     bool has_length;
+    bool has_root;
 };
 
 static enum handlebars_value_type test_lazy_map_type(
@@ -579,11 +671,25 @@ static struct handlebars_value * test_lazy_map_find(
         handlebars_value_get_user(value);
 
     (void) rv;
-    if( !user->has_length || !hbs_str_eq_strl(key, HBS_STRL("length")) ) {
-        return NULL;
+    if( user->has_length && hbs_str_eq_strl(key, HBS_STRL("length")) ) {
+        handlebars_value_integer(&user->item, 37);
+        return &user->item;
     }
-    handlebars_value_integer(&user->item, 37);
-    return &user->item;
+    if( user->has_root && hbs_str_eq_strl(key, HBS_STRL("root")) ) {
+        handlebars_value_integer(&user->item, 41);
+        return &user->item;
+    }
+    if( user->parent != NULL && hbs_str_eq_strl(key, HBS_STRL("_parent")) ) {
+        return user->parent;
+    }
+    if( hbs_str_eq_strl(key, HBS_STRL("self")) ) {
+        return value;
+    }
+    if( user->partial_block != NULL
+            && hbs_str_eq_strl(key, HBS_STRL("partial-block")) ) {
+        return user->partial_block;
+    }
+    return NULL;
 }
 
 static const struct handlebars_value_handlers test_lazy_map_handlers = {
@@ -700,6 +806,53 @@ static void test_value_lazy_map(
     user->has_length = has_length;
     handlebars_user_init(&user->user, context, &test_lazy_map_handlers);
     handlebars_value_user(value, &user->user);
+}
+
+static void test_value_lazy_map_with_root(
+    struct handlebars_value * value,
+    struct handlebars_value * parent
+)
+{
+    struct test_lazy_map_user * user;
+
+    test_value_lazy_map(value, true);
+    user = (struct test_lazy_map_user *) handlebars_value_get_user(value);
+    user->has_root = true;
+    user->parent = parent;
+}
+
+static struct handlebars_value * test_proxy_overwrite_data;
+static struct handlebars_value * test_proxy_overwrite_items;
+
+static struct handlebars_value * test_overwrite_proxy_then_fail_iterator(
+    int argc,
+    struct handlebars_value * argv,
+    struct handlebars_options * options,
+    struct handlebars_vm * callback_vm,
+    struct handlebars_value * rv
+)
+{
+    struct handlebars_value * unexpected;
+    struct handlebars_options nested_options = {
+        .program = options->program,
+        .inverse = -1,
+        .scope = options->scope,
+        .data = test_proxy_overwrite_data
+    };
+    (void) argv;
+    ck_assert_int_eq(argc, 1);
+    handlebars_vm_set_data(callback_vm, test_proxy_overwrite_data);
+    unexpected = handlebars_builtin_each(
+        1,
+        test_proxy_overwrite_items,
+        &nested_options,
+        callback_vm,
+        rv
+    );
+    ck_abort_msg(
+        "Expected nested #each body to fail, got %p",
+        (void *) unexpected
+    );
 }
 
 static void test_value_user_string(
@@ -1372,6 +1525,528 @@ START_TEST(test_compiled_float_literal_rendering_ignores_process_locale)
     assert_conditional_render("{{identity 1.25}}", input, "1.25");
 
     ck_assert_ptr_nonnull(setlocale(LC_NUMERIC, saved_locale));
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_nested_block_data_root_uses_initial_context)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * child = handlebars_map_ctor(context, 1);
+    struct handlebars_map * root_map = handlebars_map_ctor(context, 2);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("CHILD")));
+    child = handlebars_map_str_update(child, HBS_STRL("name"), value);
+    handlebars_value_map(value, child);
+    root_map = handlebars_map_str_update(root_map, HBS_STRL("child"), value);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("ROOT")));
+    root_map = handlebars_map_str_update(root_map, HBS_STRL("name"), value);
+    handlebars_value_map(input, root_map);
+
+    assert_conditional_render(
+        "{{#with child}}{{@root.name}}{{/with}}",
+        input,
+        "ROOT"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_nested_each_data_parent_uses_enclosing_frame)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_stack * inner = handlebars_stack_ctor(context, 2);
+    struct handlebars_stack * outer = handlebars_stack_ctor(context, 2);
+
+    handlebars_value_integer(value, 1);
+    inner = handlebars_stack_push(inner, value);
+    handlebars_value_integer(value, 2);
+    inner = handlebars_stack_push(inner, value);
+    handlebars_value_array(value, inner);
+    outer = handlebars_stack_push(outer, value);
+
+    inner = handlebars_stack_ctor(context, 1);
+    handlebars_value_integer(value, 3);
+    inner = handlebars_stack_push(inner, value);
+    handlebars_value_array(value, inner);
+    outer = handlebars_stack_push(outer, value);
+
+    handlebars_value_array(value, outer);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("outer"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render(
+        "{{#each outer}}{{#each this}}[{{@../index}},{{@index}}]{{/each}}{{/each}}",
+        input,
+        "[0,0][0,1][1,0]"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_initial_data_frame_links_supplied_data)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * data_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("DATA")));
+    data_map = handlebars_map_str_update(data_map, HBS_STRL("name"), value);
+    handlebars_value_map(data, data_map);
+    handlebars_vm_set_data(vm, data);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("CONTEXT")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("name"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render(
+        "{{@root.name}}|{{@../name}}",
+        input,
+        "CONTEXT|DATA"
+    );
+    assert_conditional_render(
+        "{{@missing.name}}|{{#if @missing}}Y{{else}}N{{/if}}",
+        input,
+        "|N"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+START_TEST(test_initial_data_frame_preserves_explicit_null_root)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * data_map = handlebars_map_ctor(context, 2);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_module * module;
+    struct handlebars_string * output;
+
+    handlebars_value_null(value);
+    data_map = handlebars_map_str_update(data_map, HBS_STRL("root"), value);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("DATA")));
+    data_map = handlebars_map_str_update(data_map, HBS_STRL("seed"), value);
+    handlebars_value_map(data, data_map);
+    handlebars_vm_set_data(vm, data);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("CONTEXT")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("name"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render(
+        "[{{@root.name}}]|[{{@seed}}]|[{{@../seed}}]",
+        input,
+        "[]|[DATA]|[]"
+    );
+    module = test_compile_template_flags(
+        "{{@root}}",
+        handlebars_compiler_flag_strict
+    );
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(context));
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+START_TEST(test_initial_data_frame_preserves_explicit_root)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * data_map = handlebars_map_ctor(context, 2);
+    struct handlebars_map * explicit_root = handlebars_map_ctor(context, 1);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("EXPLICIT")));
+    explicit_root = handlebars_map_str_update(
+        explicit_root,
+        HBS_STRL("name"),
+        value
+    );
+    handlebars_value_map(value, explicit_root);
+    data_map = handlebars_map_str_update(data_map, HBS_STRL("root"), value);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("DATA")));
+    data_map = handlebars_map_str_update(data_map, HBS_STRL("name"), value);
+    handlebars_value_map(data, data_map);
+    handlebars_vm_set_data(vm, data);
+
+    assert_conditional_render(
+        "{{@root.name}}|{{@../name}}",
+        input,
+        "EXPLICIT|"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+START_TEST(test_replacement_data_without_root_stays_missing)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("OUTER")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("foo"), value);
+    handlebars_value_map(input, input_map);
+    test_register_helper(
+        HBS_STRL("replaceBlockData"),
+        test_replace_block_data_helper
+    );
+
+    assert_conditional_render(
+        "{{#replaceBlockData}}{{@root.foo}}{{/replaceBlockData}}",
+        input,
+        ""
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_replacement_data_hides_partial_block)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    struct handlebars_module * module;
+    struct handlebars_string * output;
+
+    handlebars_value_map(input, handlebars_map_ctor(context, 0));
+    test_register_helper(
+        HBS_STRL("replaceBlockData"),
+        test_replace_block_data_helper
+    );
+    module = test_compile_template(
+        "{{#*inline \"layout\"}}"
+        "{{#replaceBlockData}}{{> @partial-block}}{{/replaceBlockData}}"
+        "{{/inline}}"
+        "{{#> layout}}BODY{{/layout}}"
+    );
+
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_null(output);
+    ck_assert_ptr_nonnull(
+        strstr(
+            handlebars_error_msg(context),
+            "partial @partial-block could not be found"
+        )
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_user_backed_data_preserves_previous_partial_block)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(previous_partial_block);
+    struct test_lazy_map_user * user;
+
+    test_value_lazy_map(data, false);
+    user = (struct test_lazy_map_user *) handlebars_value_get_user(data);
+    handlebars_value_str(
+        previous_partial_block,
+        handlebars_string_ctor(context, HBS_STRL("OLD"))
+    );
+    user->partial_block = previous_partial_block;
+    handlebars_vm_set_data(vm, data);
+    handlebars_value_map(input, handlebars_map_ctor(context, 0));
+
+    assert_conditional_render(
+        "{{#*inline \"layout\"}}{{> @partial-block}}{{/inline}}"
+        "{{#> layout}}{{> @partial-block}}{{/layout}}",
+        input,
+        "OLD"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(previous_partial_block);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+START_TEST(test_overdepth_data_root_stays_missing)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_module * module;
+    struct handlebars_string * output;
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("ROOT")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("name"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render("{{@../root.name}}", input, "");
+
+    module = test_compile_template_flags(
+        "{{@../root.name}}",
+        handlebars_compiler_flag_strict
+    );
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_null(output);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_ERROR);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_user_backed_map_can_supply_initial_data)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_stack * items = handlebars_stack_ctor(context, 1);
+
+    test_value_lazy_map(data, true);
+    handlebars_vm_set_data(vm, data);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("ROOT")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("name"), value);
+    handlebars_value_integer(value, 1);
+    items = handlebars_stack_push(items, value);
+    handlebars_value_array(value, items);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("items"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render(
+        "{{@length}}|{{@self.length}}|{{@root.name}}|"
+        "{{#each items}}{{@length}}:{{@../length}}{{/each}}",
+        input,
+        "37|37|ROOT|37:37"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+#ifdef HANDLEBARS_HAVE_JSON
+START_TEST(test_unconverted_json_can_supply_initial_data)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+
+    handlebars_value_init_json_string(
+        context,
+        data,
+        "{\"name\":\"DATA\",\"root\":{\"name\":\"EXPLICIT\"}}"
+    );
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(data),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+    handlebars_vm_set_data(vm, data);
+
+    assert_conditional_render(
+        "{{@name}}|{{@root.name}}|{{@../name}}",
+        input,
+        "DATA|EXPLICIT|"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+#endif
+
+START_TEST(test_user_backed_data_preserves_explicit_root_and_parent)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(parent);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * parent_map = handlebars_map_ctor(context, 1);
+    struct handlebars_stack * items = handlebars_stack_ctor(context, 1);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("P")));
+    parent_map = handlebars_map_str_update(parent_map, HBS_STRL("x"), value);
+    handlebars_value_map(parent, parent_map);
+    test_value_lazy_map_with_root(data, parent);
+    handlebars_vm_set_data(vm, data);
+    handlebars_value_integer(value, 1);
+    items = handlebars_stack_push(items, value);
+    handlebars_value_array(value, items);
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("items"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render(
+        "{{@root}}|{{@../x}}|{{#each items}}"
+            "{{@root}}:{{@length}}:{{@../length}}:{{@../../x}}"
+        "{{/each}}",
+        input,
+        "41|P|41:37:37:P"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(parent);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+START_TEST(test_reentrant_public_render_gets_its_own_root)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+
+    test_value_lazy_map(data, true);
+    handlebars_vm_set_data(vm, data);
+    test_reentrant_root_module = test_compile_template(
+        "{{@root.name}}:{{@length}}"
+    );
+    test_register_helper(
+        HBS_STRL("reentrantPublicRender"),
+        test_reentrant_public_render_helper
+    );
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("OUTER")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("name"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render(
+        "{{@length}}|{{reentrantPublicRender}}|{{@length}}",
+        input,
+        "37|INNER:37|37"
+    );
+
+    test_reentrant_root_module = NULL;
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+START_TEST(test_caught_nested_data_reset_restores_proxy_metadata)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(inner_data);
+    HANDLEBARS_VALUE_DECL(item);
+    HANDLEBARS_VALUE_DECL(items);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(iterator);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_stack * item_stack = handlebars_stack_ctor(context, 1);
+
+    test_value_lazy_map(data, true);
+    test_value_lazy_map(inner_data, false);
+    handlebars_value_boolean(item, true);
+    item_stack = handlebars_stack_push(item_stack, item);
+    handlebars_value_array(items, item_stack);
+    test_proxy_overwrite_data = inner_data;
+    test_proxy_overwrite_items = items;
+    handlebars_vm_set_data(vm, data);
+    handlebars_value_helper(iterator, test_overwrite_proxy_then_fail_iterator);
+    input_map = handlebars_map_str_update(
+        input_map,
+        HBS_STRL("iterator"),
+        iterator
+    );
+    handlebars_value_map(input, input_map);
+    test_register_helper(HBS_STRL("catchEach"), test_catch_each_helper);
+
+    assert_conditional_render(
+        "{{@length}}|{{#catchEach iterator}}{{> missing}}{{/catchEach}}|{{@length}}",
+        input,
+        "37|caught|37"
+    );
+
+    test_proxy_overwrite_data = NULL;
+    test_proxy_overwrite_items = NULL;
+    HANDLEBARS_VALUE_UNDECL(iterator);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(items);
+    HANDLEBARS_VALUE_UNDECL(item);
+    HANDLEBARS_VALUE_UNDECL(inner_data);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+START_TEST(test_partial_block_data_parent_matches_handlebars)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partials);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("ROOT")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("name"), value);
+    handlebars_value_map(input, input_map);
+    handlebars_value_str(
+        value,
+        handlebars_string_ctor(
+            context,
+            HBS_STRL(
+                "{{@../root.name}}|"
+                "{{#if @../partial-block}}Y{{else}}N{{/if}}"
+            )
+        )
+    );
+    partial_map = handlebars_map_str_update(
+        partial_map,
+        HBS_STRL("layout"),
+        value
+    );
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    assert_conditional_render(
+        "{{#> layout}}body{{/layout}}",
+        input,
+        "ROOT|N"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_partial_block_body_uses_child_data_frame)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("ROOT")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("name"), value);
+    handlebars_value_map(input, input_map);
+
+    assert_conditional_render(
+        "{{#*inline \"layout\"}}{{> @partial-block}}{{/inline}}"
+        "{{#> layout}}"
+            "{{@../root.name}}|"
+            "{{#if @partial-block}}Y{{else}}N{{/if}}|"
+            "{{#if @../partial-block}}Y{{else}}N{{/if}}"
+        "{{/layout}}",
+        input,
+        "ROOT|N|Y"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
     HANDLEBARS_VALUE_UNDECL(input);
 }
 END_TEST
@@ -2248,6 +2923,113 @@ static void assert_block_helper_allocation_failures_unwind_vm(
     ck_assert(reached_success);
 }
 
+START_TEST(test_execute_ex_initial_data_allocation_failures_preserve_caller)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(lookup);
+    HANDLEBARS_VALUE_DECL(saved_vm_data);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_map * data_map = handlebars_map_ctor(context, 1);
+    struct handlebars_map * input_map = handlebars_map_ctor(context, 1);
+    struct handlebars_module * module = test_compile_template(
+        "{{@root.name}}|{{@seed}}|{{@../seed}}"
+    );
+#ifndef HANDLEBARS_NO_REFCOUNT
+    size_t baseline_blocks;
+#endif
+    bool reached_success = false;
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("DATA")));
+    data_map = handlebars_map_str_update(data_map, HBS_STRL("seed"), value);
+    handlebars_value_map(data, data_map);
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("ROOT")));
+    input_map = handlebars_map_str_update(input_map, HBS_STRL("name"), value);
+    handlebars_value_map(input, input_map);
+    handlebars_value_value(saved_vm_data, &vm->data);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    baseline_blocks = talloc_total_blocks(vm);
+#endif
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        struct handlebars_string * output;
+
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        output = handlebars_vm_execute_ex(vm, module, input, 0, data, NULL);
+        handlebars_memory_fail_disable();
+        if( output != NULL ) {
+            ck_assert_hbs_str_eq_cstr(output, "ROOT|DATA|DATA");
+            handlebars_string_delref(output);
+            ck_assert(handlebars_value_eq(&vm->data, saved_vm_data));
+            reached_success = true;
+            break;
+        }
+
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert(handlebars_value_eq(&vm->data, saved_vm_data));
+        ck_assert_uint_eq(handlebars_value_count(data), 1);
+        ck_assert_ptr_null(
+            handlebars_value_map_str_find(data, HBS_STRL("root"), lookup)
+        );
+        ck_assert_ptr_null(
+            handlebars_value_map_str_find(data, HBS_STRL("_parent"), lookup)
+        );
+        ck_assert_ptr_null(vm->stack);
+        ck_assert_ptr_null(vm->contextStack);
+        ck_assert_ptr_null(vm->hashStack);
+        ck_assert_ptr_null(vm->blockParamStack);
+        ck_assert_ptr_null(vm->partialBlockStack);
+        ck_assert_ptr_null(vm->partialScopeStack);
+#ifndef HANDLEBARS_NO_REFCOUNT
+        ck_assert_msg(
+            talloc_total_blocks(vm) == baseline_blocks,
+            "allocation %d retained %zu VM blocks (baseline %zu)",
+            fail_at,
+            talloc_total_blocks(vm),
+            baseline_blocks
+        );
+#endif
+
+        output = handlebars_vm_execute_ex(vm, module, input, 0, data, NULL);
+        ck_assert_msg(output != NULL, "%s", handlebars_error_msg(context));
+        ck_assert_hbs_str_eq_cstr(output, "ROOT|DATA|DATA");
+        handlebars_string_delref(output);
+#ifndef HANDLEBARS_NO_REFCOUNT
+        ck_assert_uint_eq(talloc_total_blocks(vm), baseline_blocks);
+#endif
+    }
+    ck_assert(reached_success);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(saved_vm_data);
+    HANDLEBARS_VALUE_UNDECL(lookup);
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
+START_TEST(test_data_proxy_checkpoint_allocation_failures_unwind_vm)
+{
+    HANDLEBARS_VALUE_DECL(data);
+    HANDLEBARS_VALUE_DECL(input);
+
+    test_value_lazy_map(data, true);
+    handlebars_value_map(input, handlebars_map_ctor(context, 0));
+    handlebars_vm_set_data(vm, data);
+    test_register_helper(HBS_STRL("passthrough"), test_passthrough_helper);
+
+    assert_block_helper_allocation_failures_unwind_vm(
+        "{{passthrough 1}}|{{@length}}",
+        input,
+        "1|37"
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+    HANDLEBARS_VALUE_UNDECL(data);
+}
+END_TEST
+
 START_TEST(test_with_helper_allocation_failures_unwind_vm)
 {
     HANDLEBARS_VALUE_DECL(input);
@@ -2732,32 +3514,23 @@ START_TEST(test_inline_partial_explicit_context_error_unwinds_vm)
 }
 END_TEST
 
-START_TEST(test_inline_partial_recursive_partial_block_is_bounded)
+START_TEST(test_inline_partial_data_does_not_recurse_into_current_block)
 {
     HANDLEBARS_VALUE_DECL(input);
-    struct handlebars_module * failing = test_compile_template(
+    struct handlebars_module * module = test_compile_template(
         "{{#*inline \"layout\"}}{{@partial-block}}{{/inline}}"
         "{{#> layout}}{{@partial-block}}{{/layout}}"
     );
     struct handlebars_module * succeeding = test_compile_template("ok");
     struct handlebars_string * output;
-    jmp_buf * previous = context->e->jmp;
-    jmp_buf buf;
 #ifndef HANDLEBARS_NO_REFCOUNT
     size_t baseline_blocks = talloc_total_blocks(vm);
 #endif
 
-    if( handlebars_setjmp_ex(context, &buf) ) {
-        context->e->jmp = previous;
-        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_STACK_OVERFLOW);
-        ck_assert_ptr_nonnull(
-            strstr(handlebars_error_msg(context), "VM program stack overflow")
-        );
-    } else {
-        (void) handlebars_vm_execute(vm, failing, input);
-        context->e->jmp = previous;
-        ck_abort_msg("Expected recursive partial-block execution to be rejected");
-    }
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
 
     ck_assert_ptr_null(vm->stack);
     ck_assert_ptr_null(vm->contextStack);
@@ -2772,7 +3545,6 @@ START_TEST(test_inline_partial_recursive_partial_block_is_bounded)
     ck_assert_uint_eq(talloc_total_blocks(vm), baseline_blocks);
 #endif
 
-    clear_intentional_error();
     output = handlebars_vm_execute(vm, succeeding, input);
     ck_assert_ptr_nonnull(output);
     ck_assert_hbs_str_eq_cstr(output, "ok");
@@ -5230,6 +6002,37 @@ static Suite * suite(void)
     );
     suite_add_tcase(s, numeric_literals);
 
+    TCase * data_frames = tcase_create("Data frames");
+    tcase_add_checked_fixture(data_frames, default_setup, default_teardown);
+    tcase_add_test(data_frames, test_nested_block_data_root_uses_initial_context);
+    tcase_add_test(data_frames, test_nested_each_data_parent_uses_enclosing_frame);
+    tcase_add_test(data_frames, test_initial_data_frame_links_supplied_data);
+    tcase_add_test(data_frames, test_initial_data_frame_preserves_explicit_root);
+    tcase_add_test(data_frames, test_initial_data_frame_preserves_explicit_null_root);
+    tcase_add_test(data_frames, test_replacement_data_without_root_stays_missing);
+    tcase_add_test(data_frames, test_replacement_data_hides_partial_block);
+    tcase_add_test(
+        data_frames,
+        test_user_backed_data_preserves_previous_partial_block
+    );
+    tcase_add_test(data_frames, test_overdepth_data_root_stays_missing);
+    tcase_add_test(data_frames, test_user_backed_map_can_supply_initial_data);
+#ifdef HANDLEBARS_HAVE_JSON
+    tcase_add_test(data_frames, test_unconverted_json_can_supply_initial_data);
+#endif
+    tcase_add_test(
+        data_frames,
+        test_user_backed_data_preserves_explicit_root_and_parent
+    );
+    tcase_add_test(data_frames, test_reentrant_public_render_gets_its_own_root);
+    tcase_add_test(
+        data_frames,
+        test_caught_nested_data_reset_restores_proxy_metadata
+    );
+    tcase_add_test(data_frames, test_partial_block_data_parent_matches_handlebars);
+    tcase_add_test(data_frames, test_partial_block_body_uses_child_data_frame);
+    suite_add_tcase(s, data_frames);
+
     REGISTER_TEST_FIXTURE(s, test_boolean_true, "Boolean - true");
     REGISTER_TEST_FIXTURE(s, test_boolean_false, "Boolean - false");
     REGISTER_TEST_FIXTURE(s, test_int, "Integer");
@@ -5279,9 +6082,11 @@ static Suite * suite(void)
 #endif
     REGISTER_TEST_FIXTURE(s, test_inline_partial_error_unwinds_vm, "Inline partial errors unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_explicit_context_error_unwinds_vm, "Inline partial explicit-context errors unwind VM state");
-    REGISTER_TEST_FIXTURE(s, test_inline_partial_recursive_partial_block_is_bounded, "Recursive inline partial blocks are bounded");
+    REGISTER_TEST_FIXTURE(s, test_inline_partial_data_does_not_recurse_into_current_block, "Inline partial data does not recurse into the current block");
     REGISTER_TEST_FIXTURE(s, test_inline_partial_error_after_stack_growth_unwinds_vm, "Inline partial errors unwind after captured stack growth");
 #ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_execute_ex_initial_data_allocation_failures_preserve_caller, "execute_ex initial data allocation failures preserve caller");
+    REGISTER_TEST_FIXTURE(s, test_data_proxy_checkpoint_allocation_failures_unwind_vm, "Data proxy checkpoint allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_with_helper_allocation_failures_unwind_vm, "With helper allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_each_helper_allocation_failures_unwind_vm, "Each helper allocation failures unwind VM state");
     REGISTER_TEST_FIXTURE(s, test_three_nested_each_allocation_failures_unwind_vm, "Three nested each allocation failures unwind VM state");

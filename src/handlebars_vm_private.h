@@ -29,6 +29,13 @@ struct handlebars_cache;
 struct handlebars_module;
 struct handlebars_string;
 struct handlebars_stack;
+struct handlebars_user;
+
+struct handlebars_vm_data_proxy {
+    struct handlebars_map * frame;
+    struct handlebars_user * source;
+    unsigned char flags;
+};
 
 HBS_LOCAL struct handlebars_value * handlebars_vm_lookup_property(
     struct handlebars_vm * vm,
@@ -42,6 +49,12 @@ HBS_LOCAL size_t handlebars_vm_program_block_params(
     long program
 ) HBS_ATTR_NONNULL(1);
 
+HBS_LOCAL void handlebars_vm_register_data_proxy(
+    struct handlebars_vm * vm,
+    struct handlebars_map * frame,
+    struct handlebars_value * parent
+) HBS_ATTR_NONNULL_ALL;
+
 struct handlebars_vm {
     struct handlebars_context ctx;
     struct handlebars_cache * cache;
@@ -54,6 +67,10 @@ struct handlebars_vm {
     struct handlebars_string * buffer;
 
     struct handlebars_value data;
+    struct handlebars_value render_data;
+    struct handlebars_vm_data_proxy * data_proxies;
+    size_t data_proxy_count;
+    bool render_data_active;
     struct handlebars_value helpers;
     struct handlebars_value partials;
 
@@ -90,6 +107,8 @@ struct handlebars_vm_call_checkpoint {
     struct handlebars_stack_save_buf partial_block_stack;
     struct handlebars_stack_save_buf partial_scope_stack;
     struct handlebars_value data;
+    struct handlebars_vm_data_proxy * data_proxy_snapshot;
+    size_t data_proxy_count;
     struct handlebars_string * buffer;
     long depth;
     bool stacks_active;
