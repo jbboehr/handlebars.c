@@ -449,6 +449,10 @@ After successful YAML conversion, the CLI uses handlebars_value_is_empty to deci
 
 Select the parser once from the input format. Track parse success separately from the parsed value. Test short relative filenames and each valid falsy YAML root.
 
+**Status: addressed.** The CLI now selects YAML only for an exact `.yaml` or `.yml` suffix and otherwise selects JSON. That choice is independent of the parsed value, so valid YAML roots such as `false`, `0`, and `[]` are no longer mistaken for a failed parse and passed to the JSON parser.
+
+The short relative `a.yml` case and all three falsy roots failed with JSON parse errors before the fix. The retained CLI regressions also cover filenames shorter than either YAML suffix, suffix near-misses, empty data files, and the YAML-disabled error path. Independent correctness and adversarial reviews found no remaining defect. Fresh Linux verification passed all 3,793 Autotools checks, the 2,498-check no-refcount Nix build, the full 118-case CLI suite, and the focused suffix and parser-dispatch cases under ASan/UBSan. Reliability verdict: PASS_WITH_RESIDUAL_RISK; non-Linux filename behavior and a JSON-disabled build were not executed.
+
 ### R23. P2: duplicate cache keys have three different contracts
 
 Sources: [src/handlebars_cache.h:165](../../src/handlebars_cache.h#L165), [src/handlebars_cache_simple.c:192](../../src/handlebars_cache_simple.c#L192), [src/handlebars_cache_mmap.c:480](../../src/handlebars_cache_mmap.c#L480), [src/handlebars_cache_lmdb.c:313](../../src/handlebars_cache_lmdb.c#L313).

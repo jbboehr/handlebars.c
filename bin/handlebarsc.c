@@ -434,6 +434,15 @@ static char * file_get_contents(char * filename)
     return buf;
 }
 
+static bool filename_has_suffix(const char * filename, const char * suffix)
+{
+    size_t filename_length = strlen(filename);
+    size_t suffix_length = strlen(suffix);
+
+    return filename_length >= suffix_length
+        && strcmp(filename + filename_length - suffix_length, suffix) == 0;
+}
+
 static void readInput(void)
 {
     input_buf = file_get_contents(input_name);
@@ -802,22 +811,20 @@ static int do_execute(void)
     // Read context
     HANDLEBARS_VALUE_DECL(input);
     if( input_data_name ) {
-        size_t input_data_name_len = strlen(input_data_name);
+        bool input_is_yaml = filename_has_suffix(input_data_name, ".yaml")
+            || filename_has_suffix(input_data_name, ".yml");
         char * input_str = file_get_contents(input_data_name);
         size_t input_str_size = talloc_array_length(input_str);
         if (input_str && input_str_size > 1) {
-            if (handlebars_value_is_empty(input) && input_data_name_len > 5 && (0 == strcmp(input_data_name + input_data_name_len - 5, ".yaml") ||
-                    0 == strcmp(input_data_name + input_data_name_len - 4, ".yml"))) {
+            if( input_is_yaml ) {
 #ifdef HANDLEBARS_HAVE_YAML
                 handlebars_value_init_yaml_string(ctx, input, input_str);
 #else
                 fprintf(stderr, "Failed to process input data: YAML support is disabled");
                 exit(1);
 #endif
-            }
-            if (handlebars_value_is_empty(input)) {
+            } else {
 #ifdef HANDLEBARS_HAVE_JSON
-                // assume json
                 handlebars_value_init_json_stringl(ctx, input, input_str, input_str_size - 1);
                 if (convert_input) {
                     handlebars_value_convert(input);

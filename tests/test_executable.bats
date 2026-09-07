@@ -341,6 +341,108 @@ EOF
     assert_output "falsy:false|truthy:false|truthy:false|truthy:12|truthy:0012|truthy:0012"
 }
 
+@test "--execute recognizes a short relative YAML filename" {
+    local data_dir="$BATS_TEST_TMPDIR/short-yaml-name"
+    local handlebarsc
+
+    skip_if_no_yaml
+    case "$HANDLEBARSC" in
+        /*) handlebarsc="$HANDLEBARSC" ;;
+        *) handlebarsc="$PWD/$HANDLEBARSC" ;;
+    esac
+    mkdir -p "$data_dir"
+    printf '%s\n' 'name: world' > "$data_dir/a.yml"
+    run bash -c 'cd "$1" && printf "%s" "{{name}}" | "$2" --execute --no-newline --data a.yml -' _ \
+        "$data_dir" "$handlebarsc"
+
+    assert_success
+    assert_output "world"
+}
+
+@test "--execute safely handles a data filename shorter than YAML suffixes" {
+    local data_dir="$BATS_TEST_TMPDIR/short-json-name"
+    local handlebarsc
+
+    skip_if_no_json
+    case "$HANDLEBARSC" in
+        /*) handlebarsc="$HANDLEBARSC" ;;
+        *) handlebarsc="$PWD/$HANDLEBARSC" ;;
+    esac
+    mkdir -p "$data_dir"
+    printf '%s\n' '{"name":"world"}' > "$data_dir/a"
+    run bash -c 'cd "$1" && printf "%s" "{{name}}" | "$2" --execute --no-newline --data a -' _ \
+        "$data_dir" "$handlebarsc"
+
+    assert_success
+    assert_output "world"
+}
+
+@test "--execute requires an exact YAML filename suffix" {
+    local data_file
+    local filename
+
+    skip_if_no_json
+    for filename in data.yaml.json data.YAML; do
+        data_file="$BATS_TEST_TMPDIR/$filename"
+        printf '%s\n' 'name: yaml-only' > "$data_file"
+        run bash -c 'printf "%s" "{{name}}" | "$1" --execute --no-newline --data "$2" -' _ \
+            "$HANDLEBARSC" "$data_file"
+
+        assert_failure
+        assert_output --partial "JSON Parse error"
+    done
+}
+
+@test "--execute accepts falsy YAML roots" {
+    local data_file="$BATS_TEST_TMPDIR/falsy-root.yaml"
+    local expected
+    local scalar
+
+    skip_if_no_yaml
+    for scalar in false 0 '[]'; do
+        case "$scalar" in
+            false) expected="false" ;;
+            0) expected="0" ;;
+            '[]') expected="" ;;
+        esac
+        printf '%s\n' '---' "$scalar" > "$data_file"
+        run bash -c 'printf "%s" "{{this}}" | "$1" --execute --no-newline --data "$2" -' _ \
+            "$HANDLEBARSC" "$data_file"
+
+        assert_success
+        assert_output "$expected"
+    done
+}
+
+@test "--execute accepts empty data files regardless of suffix" {
+    local data_file
+    local suffix
+
+    for suffix in json yaml; do
+        data_file="$BATS_TEST_TMPDIR/empty.$suffix"
+        printf '' > "$data_file"
+        run bash -c 'printf "%s" "empty{{this}}" | "$1" --execute --no-newline --data "$2" -' _ \
+            "$HANDLEBARSC" "$data_file"
+
+        assert_success
+        assert_output "empty"
+    done
+}
+
+@test "--execute reports disabled YAML support for a YAML suffix" {
+    local data_file="$BATS_TEST_TMPDIR/disabled.yaml"
+
+    if [ "$HAVE_YAML" = "false" ]; then
+        skip
+    fi
+    printf '%s\n' '{"name":"json-fallback"}' > "$data_file"
+    run bash -c 'printf "%s" "{{name}}" | "$1" --execute --no-newline --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_failure
+    assert_output --partial "YAML support is disabled"
+}
+
 @test "--execute --template <TEMPLATE>" {
     skip_if_no_json
     run "$HANDLEBARSC" --execute --data "$TEST_DIR/fixture1.json" --template "$TEMPLATE"
