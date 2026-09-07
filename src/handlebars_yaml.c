@@ -208,6 +208,31 @@ static size_t handlebars_yaml_find_node(
     handlebars_throw(context, HANDLEBARS_ERROR, "YAML node is not part of document");
 }
 
+static bool handlebars_yaml_scalar_should_remain_string(const yaml_node_t * node)
+{
+    const char * tag = (const char *) node->tag;
+
+    return node->data.scalar.style != YAML_ANY_SCALAR_STYLE
+        && node->data.scalar.style != YAML_PLAIN_SCALAR_STYLE
+        && (tag == NULL || strcmp(tag, YAML_STR_TAG) == 0);
+}
+
+static void handlebars_yaml_scalar_to_string(
+    struct handlebars_yaml_convert_state * state,
+    struct handlebars_value * value,
+    const yaml_node_t * node
+)
+{
+    struct handlebars_string * string = handlebars_string_ctor(
+        state->context,
+        (const char *) node->data.scalar.value,
+        node->data.scalar.length
+    );
+
+    handlebars_yaml_track_allocation(state, string);
+    handlebars_value_str(value, string);
+}
+
 static void handlebars_value_init_yaml_node_ex(
     struct handlebars_yaml_convert_state * state,
     struct handlebars_value * value,
@@ -339,6 +364,11 @@ static void handlebars_value_init_yaml_node_ex(
             long lval;
             double dval;
 
+            if( handlebars_yaml_scalar_should_remain_string(node) ) {
+                handlebars_yaml_scalar_to_string(state, value, node);
+                break;
+            }
+
             scalar = (const char *) node->data.scalar.value;
             if( node->data.scalar.length == 4 && memcmp(scalar, "true", 4) == 0 ) {
                 handlebars_value_boolean(value, true);
@@ -369,15 +399,7 @@ static void handlebars_value_init_yaml_node_ex(
                 break;
             }
 
-            {
-                struct handlebars_string * string = handlebars_string_ctor(
-                    state->context,
-                    scalar,
-                    node->data.scalar.length
-                );
-                handlebars_yaml_track_allocation(state, string);
-                handlebars_value_str(value, string);
-            }
+            handlebars_yaml_scalar_to_string(state, value, node);
             break;
         }
         case YAML_NO_NODE:

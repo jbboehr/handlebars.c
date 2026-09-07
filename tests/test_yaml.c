@@ -125,6 +125,139 @@ START_TEST(test_string_yaml)
 }
 END_TEST
 
+START_TEST(test_scalar_styles_yaml)
+{
+    struct scalar_case {
+        const char * key;
+        enum handlebars_value_type type;
+        const char * string;
+        long integer;
+    };
+    static const struct scalar_case cases[] = {
+        { "plain_false", HANDLEBARS_VALUE_TYPE_FALSE, NULL, 0 },
+        { "double_false", HANDLEBARS_VALUE_TYPE_STRING, "false", 0 },
+        { "single_false", HANDLEBARS_VALUE_TYPE_STRING, "false", 0 },
+        { "plain_number", HANDLEBARS_VALUE_TYPE_INTEGER, NULL, 12 },
+        { "double_number", HANDLEBARS_VALUE_TYPE_STRING, "0012", 0 },
+        { "single_number", HANDLEBARS_VALUE_TYPE_STRING, "0012", 0 },
+        { "literal_false", HANDLEBARS_VALUE_TYPE_STRING, "false", 0 },
+        { "folded_number", HANDLEBARS_VALUE_TYPE_STRING, "0012", 0 },
+        { "tagged_false", HANDLEBARS_VALUE_TYPE_FALSE, NULL, 0 },
+        { "tagged_number", HANDLEBARS_VALUE_TYPE_INTEGER, NULL, 12 }
+    };
+    HANDLEBARS_VALUE_DECL(found);
+    HANDLEBARS_VALUE_DECL(nested);
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_value * nested_scalar;
+
+    handlebars_value_init_yaml_string(
+        context,
+        value,
+        "---\n"
+        "plain_false: false\n"
+        "double_false: \"false\"\n"
+        "single_false: 'false'\n"
+        "plain_number: 0012\n"
+        "double_number: \"0012\"\n"
+        "single_number: '0012'\n"
+        "literal_false: |-\n"
+        "  false\n"
+        "folded_number: >-\n"
+        "  0012\n"
+        "tagged_false: !!bool \"false\"\n"
+        "tagged_number: !!int '0012'\n"
+        "nested:\n"
+        "  quoted: \"false\"\n"
+        "  block: >-\n"
+        "    0012\n"
+    );
+
+    for( size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++ ) {
+        const struct scalar_case * scalar_case = &cases[i];
+        struct handlebars_value * scalar = handlebars_value_map_str_find(
+            value,
+            scalar_case->key,
+            strlen(scalar_case->key),
+            found
+        );
+
+        ck_assert_msg(scalar != NULL, "Missing scalar %s", scalar_case->key);
+        ck_assert_msg(
+            handlebars_value_get_type(scalar) == scalar_case->type,
+            "%s: expected type %d, got %d",
+            scalar_case->key,
+            scalar_case->type,
+            handlebars_value_get_type(scalar)
+        );
+        if( scalar_case->type == HANDLEBARS_VALUE_TYPE_STRING ) {
+            ck_assert_str_eq(handlebars_value_get_strval(scalar), scalar_case->string);
+        } else if( scalar_case->type == HANDLEBARS_VALUE_TYPE_INTEGER ) {
+            ck_assert_int_eq(handlebars_value_get_intval(scalar), scalar_case->integer);
+        }
+    }
+
+    ck_assert_ptr_nonnull(
+        handlebars_value_map_str_find(value, HBS_STRL("nested"), nested)
+    );
+    nested_scalar = handlebars_value_map_str_find(
+        nested,
+        HBS_STRL("quoted"),
+        found
+    );
+    ck_assert_ptr_nonnull(nested_scalar);
+    ck_assert_int_eq(
+        handlebars_value_get_type(nested_scalar),
+        HANDLEBARS_VALUE_TYPE_STRING
+    );
+    ck_assert_str_eq(handlebars_value_get_strval(nested_scalar), "false");
+    nested_scalar = handlebars_value_map_str_find(
+        nested,
+        HBS_STRL("block"),
+        found
+    );
+    ck_assert_ptr_nonnull(nested_scalar);
+    ck_assert_int_eq(
+        handlebars_value_get_type(nested_scalar),
+        HANDLEBARS_VALUE_TYPE_STRING
+    );
+    ck_assert_str_eq(handlebars_value_get_strval(nested_scalar), "0012");
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    HANDLEBARS_VALUE_UNDECL(nested);
+    HANDLEBARS_VALUE_UNDECL(found);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_scalar_styles_yaml_node_api)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    yaml_document_t document;
+    yaml_node_t * node;
+    int node_id;
+
+    ck_assert(yaml_document_initialize(&document, NULL, NULL, NULL, 0, 0));
+    node_id = yaml_document_add_scalar(
+        &document,
+        NULL,
+        (yaml_char_t *) "0012",
+        4,
+        YAML_DOUBLE_QUOTED_SCALAR_STYLE
+    );
+    ck_assert_int_gt(node_id, 0);
+    node = yaml_document_get_node(&document, node_id);
+    ck_assert_ptr_nonnull(node);
+
+    handlebars_value_init_yaml_node(context, value, &document, node);
+    yaml_document_delete(&document);
+
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_STRING);
+    ck_assert_str_eq(handlebars_value_get_strval(value), "0012");
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_parse_error_yaml)
 {
     assert_yaml_error(HBS_STRL("---\n'"), "YAML Parse Error");
@@ -622,6 +755,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_int_yaml, "Integer");
     REGISTER_TEST_FIXTURE(s, test_float_yaml, "Float");
     REGISTER_TEST_FIXTURE(s, test_string_yaml, "String");
+    REGISTER_TEST_FIXTURE(s, test_scalar_styles_yaml, "Scalar styles");
+    REGISTER_TEST_FIXTURE(s, test_scalar_styles_yaml_node_api, "Scalar styles through node API");
     REGISTER_TEST_FIXTURE(s, test_parse_error_yaml, "YAML Parse Error");
     REGISTER_TEST_FIXTURE(s, test_empty_document_yaml, "Empty document");
     REGISTER_TEST_FIXTURE(s, test_complex_mapping_key_yaml, "Complex mapping key");

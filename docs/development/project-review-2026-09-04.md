@@ -433,6 +433,12 @@ The first should remain a nonempty string, and the second should retain its lead
 
 Respect scalar style and explicit type information when resolving YAML values. Add paired quoted/unquoted tests that inspect both type and output. Explicit-tag behavior was inspected in source, but the !!str 12 rendering probe alone did not distinguish its runtime type.
 
+**Status: addressed.** Non-plain scalar styles carrying libyaml's default string tag now bypass boolean and numeric inference. Single-quoted, double-quoted, literal, and folded values therefore retain both their string type and exact scalar contents. Explicit non-string tags continue through the pre-existing conversion path, so quoting does not force supported tagged boolean or integer values to strings.
+
+The type-level regression initially reported `HANDLEBARS_VALUE_TYPE_FALSE` for `"false"` instead of `HANDLEBARS_VALUE_TYPE_STRING`. The end-to-end regression produced `falsy:false` and `12` for the two quoted examples. The retained tests pair plain and quoted values, cover every non-plain style, nested maps, explicit boolean and integer tags, the public node API, value lifetime after deleting the YAML document, truthiness, and rendered output.
+
+Libyaml 0.2.5 composes an explicit plain `!!str false` into the same tag and style metadata as an implicit plain `false`; the public node API cannot distinguish those inputs. Full YAML core-schema lexical forms and invalid explicit-tag policy remain separate, pre-existing concerns. Independent correctness review and a narrowed adversarial follow-up found no in-scope defect. Fresh Linux verification passed all 3,787 Autotools checks, the 2,492-check no-refcount Nix build, and all 19 YAML tests under ASan/UBSan without test forking. Reliability verdict: PASS_WITH_RESIDUAL_RISK; other platforms and libyaml versions were not executed.
+
 ### R22. P2: CLI YAML dispatch depends on filename length and parsed truthiness
 
 Source: [bin/handlebarsc.c:809](../../bin/handlebarsc.c#L809).

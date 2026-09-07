@@ -319,6 +319,28 @@ load "../vendor/bats-assert/assert"
     assert_output "|bar|"
 }
 
+@test "--execute preserves quoted YAML scalar types" {
+    local data_file="$BATS_TEST_TMPDIR/quoted-scalars.yaml"
+    local template
+
+    skip_if_no_yaml
+    cat > "$data_file" <<'EOF'
+plainFalse: false
+quotedFalse: "false"
+singleFalse: 'false'
+plainNumber: 0012
+quotedNumber: "0012"
+blockNumber: >-
+  0012
+EOF
+    template="{{#if plainFalse}}truthy{{else}}falsy{{/if}}:{{plainFalse}}|{{#if quotedFalse}}truthy{{else}}falsy{{/if}}:{{quotedFalse}}|{{#if singleFalse}}truthy{{else}}falsy{{/if}}:{{singleFalse}}|{{#if plainNumber}}truthy{{else}}falsy{{/if}}:{{plainNumber}}|{{#if quotedNumber}}truthy{{else}}falsy{{/if}}:{{quotedNumber}}|{{#if blockNumber}}truthy{{else}}falsy{{/if}}:{{blockNumber}}"
+    run bash -c 'printf "%s" "$3" | "$1" --execute --no-newline --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file" "$template"
+
+    assert_success
+    assert_output "falsy:false|truthy:false|truthy:false|truthy:12|truthy:0012|truthy:0012"
+}
+
 @test "--execute --template <TEMPLATE>" {
     skip_if_no_json
     run "$HANDLEBARSC" --execute --data "$TEST_DIR/fixture1.json" --template "$TEMPLATE"
