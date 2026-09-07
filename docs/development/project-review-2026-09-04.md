@@ -299,6 +299,8 @@ Explicit trim markers were also ineffective in the tested fallback block: A {{~#
 
 Apply whitespace handling to partial blocks, including their opening and closing strip flags. Cover both a supplied partial and fallback execution.
 
+**Status: addressed.** Partial blocks now use the same whitespace visitor as ordinary blocks, including the parent-program cleanup that removes standalone opening and closing lines. Focused compatibility checks cover fallback and supplied execution, standalone and explicit trimming, independent trim markers, ignored standalone processing, indentation, nesting, and partial blocks compiled from supplied string partials.
+
 ### R14. P2: whitespace changes inverse syntax into a different construct
 
 Source: [src/handlebars.l:288](../../src/handlebars.l#L288), [src/handlebars.l:308](../../src/handlebars.l#L308), and the generated lexer.

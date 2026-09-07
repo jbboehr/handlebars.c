@@ -264,7 +264,8 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
             }
         }
         if( do_standalone && open_standalone ) {
-            if( current->type == HANDLEBARS_AST_NODE_BLOCK ) {
+            if( current->type == HANDLEBARS_AST_NODE_BLOCK ||
+                    current->type == HANDLEBARS_AST_NODE_PARTIAL_BLOCK ) {
                 if( current->node.block.program ) {
                     assert(current->node.block.program->type == HANDLEBARS_AST_NODE_PROGRAM);
                     handlebars_whitespace_omit_right(current->node.block.program->node.program.statements, NULL, 0);
@@ -277,7 +278,8 @@ static inline void handlebars_whitespace_accept_program(struct handlebars_parser
         }
         if( do_standalone && close_standalone ) {
             handlebars_whitespace_omit_right(statements, current, 0);
-            if( current->type == HANDLEBARS_AST_NODE_BLOCK ) {
+            if( current->type == HANDLEBARS_AST_NODE_BLOCK ||
+                    current->type == HANDLEBARS_AST_NODE_PARTIAL_BLOCK ) {
                 if( current->node.block.inverse ) {
                     assert(current->node.block.inverse->type == HANDLEBARS_AST_NODE_PROGRAM);
                     handlebars_whitespace_omit_left(current->node.block.inverse->node.program.statements, NULL, 0);
@@ -499,6 +501,7 @@ void handlebars_whitespace_accept(struct handlebars_parser * parser,
 
     switch( node->type ) {
         case HANDLEBARS_AST_NODE_BLOCK:
+        case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
             return handlebars_whitespace_accept_block(parser, node);
         case HANDLEBARS_AST_NODE_MUSTACHE:
             return handlebars_whitespace_accept_mustache(parser, node);
@@ -517,7 +520,6 @@ void handlebars_whitespace_accept(struct handlebars_parser * parser,
         case HANDLEBARS_AST_NODE_CONTENT:
         case HANDLEBARS_AST_NODE_HASH:
         case HANDLEBARS_AST_NODE_HASH_PAIR:
-        case HANDLEBARS_AST_NODE_PARTIAL_BLOCK:
         case HANDLEBARS_AST_NODE_NUL:
         case HANDLEBARS_AST_NODE_NUMBER:
         case HANDLEBARS_AST_NODE_PATH:

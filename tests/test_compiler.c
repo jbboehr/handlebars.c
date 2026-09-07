@@ -98,6 +98,188 @@ static struct handlebars_module * compile_try_test_template(const char * source)
     return compile_try_test_template_flags(source, 0);
 }
 
+static void assert_compiled_template_output(
+    const char * source,
+    struct handlebars_value * input,
+    unsigned flags,
+    const char * expected
+)
+{
+    struct handlebars_module * module = compile_try_test_template_flags(source, flags);
+    struct handlebars_string * output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(context));
+    ck_assert_hbs_str_eq_cstr(output, expected);
+    handlebars_string_delref(output);
+}
+
+static const struct {
+    const char * source;
+    const char * partial;
+    unsigned flags;
+    const char * expected;
+} partial_block_whitespace_cases[] = {
+    {
+        "A\n{{#> missing}}\nB\n{{/missing}}\nC",
+        NULL,
+        0,
+        "A\nB\nC"
+    },
+    {
+        "A {{~#> missing~}} B {{~/missing~}} C",
+        NULL,
+        0,
+        "ABC"
+    },
+    {
+        "A\n{{#> layout}}\nB\n{{/layout}}\nC",
+        "<L>[{{> @partial-block}}]</L>",
+        0,
+        "A\n<L>[B\n]</L>C"
+    },
+    {
+        "A {{~#> layout~}} B {{~/layout~}} C",
+        "<L>[{{> @partial-block}}]</L>",
+        0,
+        "A<L>[B]</L>C"
+    },
+    {
+        "A\n{{#> missing}}\nB\n{{/missing}}\nC",
+        NULL,
+        handlebars_compiler_flag_ignore_standalone,
+        "A\n\nB\n\nC"
+    },
+    {
+        "A {{~#> missing~}} B {{~/missing~}} C",
+        NULL,
+        handlebars_compiler_flag_ignore_standalone,
+        "ABC"
+    },
+    {
+        "A\n{{#> layout}}\nO\n{{#> inner}}\nI\n{{/inner}}\nP\n{{/layout}}\nZ",
+        "<O>[{{> @partial-block}}]</O>",
+        0,
+        "A\n<O>[O\nI\nP\n]</O>Z"
+    },
+    {
+        "A\n  {{#> layout}}\n    B\n  {{/layout}}\nC",
+        "<L>\n{{> @partial-block}}\n</L>",
+        0,
+        "A\n<L>\n    B\n</L>C"
+    },
+    {
+        "A\n{{#> layout}}\nB\n{{/layout}}\nZ",
+        "<O>\n{{#> missing}}\nX\n{{/missing}}\n{{> @partial-block}}\n</O>",
+        0,
+        "A\n<O>\nX\nB\n</O>Z"
+    }
+};
+
+START_TEST(test_partial_block_whitespace)
+{
+    size_t index = (size_t) _i;
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+
+    if( partial_block_whitespace_cases[index].partial ) {
+        struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+
+        handlebars_value_str(
+            partial,
+            handlebars_string_ctor(
+                context,
+                partial_block_whitespace_cases[index].partial,
+                strlen(partial_block_whitespace_cases[index].partial)
+            )
+        );
+        partial_map = handlebars_map_str_update(
+            partial_map,
+            HBS_STRL("layout"),
+            partial
+        );
+        handlebars_value_map(partials, partial_map);
+        handlebars_vm_set_partials(vm, partials);
+    }
+
+    assert_compiled_template_output(
+        partial_block_whitespace_cases[index].source,
+        input,
+        partial_block_whitespace_cases[index].flags,
+        partial_block_whitespace_cases[index].expected
+    );
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_partial_block_trim_markers_are_independent)
+{
+    HANDLEBARS_VALUE_DECL(input);
+    HANDLEBARS_VALUE_DECL(partial);
+    HANDLEBARS_VALUE_DECL(partials);
+    struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
+
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(context, HBS_STRL("<L>[{{> @partial-block}}]</L>"))
+    );
+    partial_map = handlebars_map_str_update(
+        partial_map,
+        HBS_STRL("layout"),
+        partial
+    );
+    handlebars_value_map(partials, partial_map);
+    handlebars_vm_set_partials(vm, partials);
+
+    for( unsigned supplied = 0; supplied < 2; supplied++ ) {
+        const char * name = supplied ? "layout" : "missing";
+
+        for( unsigned trim = 0; trim < 16; trim++ ) {
+            const char * before_open = trim & 1 ? "" : " ";
+            const char * after_open = trim & 2 ? "" : " ";
+            const char * before_close = trim & 4 ? "" : " ";
+            const char * after_close = trim & 8 ? "" : " ";
+            char * source = handlebars_talloc_asprintf(
+                context,
+                "A {{%s#> %s%s}} B {{%s/%s%s}} C",
+                trim & 1 ? "~" : "",
+                name,
+                trim & 2 ? "~" : "",
+                trim & 4 ? "~" : "",
+                name,
+                trim & 8 ? "~" : ""
+            );
+            char * expected = supplied
+                ? handlebars_talloc_asprintf(
+                    context,
+                    "A%s<L>[%sB%s]</L>%sC",
+                    before_open,
+                    after_open,
+                    before_close,
+                    after_close
+                )
+                : handlebars_talloc_asprintf(
+                    context,
+                    "A%s%sB%s%sC",
+                    before_open,
+                    after_open,
+                    before_close,
+                    after_close
+                );
+
+            assert_compiled_template_output(source, input, 0, expected);
+        }
+    }
+
+    HANDLEBARS_VALUE_UNDECL(partials);
+    HANDLEBARS_VALUE_UNDECL(partial);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 static struct handlebars_value * try_test_throwing_helper(
     int argc,
     struct handlebars_value * argv,
@@ -2207,6 +2389,20 @@ static Suite * suite(void)
 
 	REGISTER_TEST_FIXTURE(s, test_compiler_ctor, "Constructor");
 	REGISTER_TEST_FIXTURE(s, test_program_size_constant, "Program size constant");
+	TCase * tc_partial_block_whitespace = tcase_create("Partial-block whitespace");
+	tcase_add_checked_fixture(tc_partial_block_whitespace, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_partial_block_whitespace,
+		test_partial_block_whitespace,
+		0,
+		(int) (sizeof(partial_block_whitespace_cases)
+			/ sizeof(partial_block_whitespace_cases[0]))
+	);
+	tcase_add_test(
+		tc_partial_block_whitespace,
+		test_partial_block_trim_markers_are_independent
+	);
+	suite_add_tcase(s, tc_partial_block_whitespace);
 	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_returns_errors_without_longjmp, "VM try execution returns errors without longjmp");
 	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_reports_errors_from_string_partials, "VM try reports errors from string partials");
 	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_reports_parse_errors_from_string_partials, "VM try reports parse errors from string partials");
