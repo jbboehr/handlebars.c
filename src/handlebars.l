@@ -128,6 +128,7 @@ EEMU \\\\\{\{\{?
 CONTENT [^\x00\{\\\r\n]*[\r\n]*
 
 WHITESPACE [ \r\n\t]
+WORD_CHAR [A-Za-z0-9_]
 
 IDC	  [^ \r\n\t!\"#%-,\.\/;->@\[-\^`\{-~]
 ID    {IDC}+/{LOOKAHEAD}
@@ -285,7 +286,7 @@ BLOCKPARAM [\x7C]
 										return OPEN_ENDBLOCK;
                              		}
 
-<mu>"{{"{LEFT_STRIP}?"^"\s*{RIGHT_STRIP}?"}}"        {
+<mu>"{{"{LEFT_STRIP}?"^"{WHITESPACE}*{RIGHT_STRIP}?"}}"        {
 										// v2.0.0 handlebars.l line 73
 										yy_pop_state(yyg);
 										handlebars_yy_copy_lval();
@@ -305,7 +306,18 @@ BLOCKPARAM [\x7C]
 										return OPEN_INVERSE;
                              		}
 
-<mu>"{{"{LEFT_STRIP}?\s*"else"   	{
+<mu>"{{"{LEFT_STRIP}?{WHITESPACE}*"else"/{WORD_CHAR}     {
+										int open_length = yytext[2] == '~' ? 3 : 2;
+										int open_column = yylloc->first_column;
+										yyless(open_length);
+										yylloc->first_line = yylloc->last_line = yylineno;
+										yylloc->last_column = open_column + open_length - 1;
+										yycolumn = open_column + open_length;
+										handlebars_yy_copy_lval();
+										return OPEN;
+                                    }
+
+<mu>"{{"{LEFT_STRIP}?{WHITESPACE}*"else"                {
 										// v2.0.0 handlebars.l line 76
 										handlebars_yy_copy_lval();
 										return OPEN_INVERSE_CHAIN;

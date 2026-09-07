@@ -280,6 +280,63 @@ START_TEST(test_partial_block_trim_markers_are_independent)
 }
 END_TEST
 
+static const struct {
+    const char * source;
+    const char * expected;
+} inverse_whitespace_render_cases[] = {
+    { "{{#if false}}A{{^}}B{{/if}}", "B" },
+    { "{{#if false}}A{{^ }}B{{/if}}", "B" },
+    { "{{#if false}}A{{^\t}}B{{/if}}", "B" },
+    { "{{#if false}}A{{^\n}}B{{/if}}", "B" },
+    { "{{#if false}}A{{^\r}}B{{/if}}", "B" },
+    { "X {{~#if false~}} A {{~^\t\r\n ~}} B {{~/if~}} Y", "XBY" },
+    { "{{#if false}}A{{else if true}}B{{/if}}", "B" },
+    { "{{#if false}}A{{ else if true}}B{{/if}}", "B" },
+    { "{{#if false}}A{{\telse\tif true}}B{{/if}}", "B" },
+    { "{{#if false}}A{{\nelse\nif true}}B{{/if}}", "B" },
+    { "{{#if false}}A{{\relse\rif true}}B{{/if}}", "B" },
+    { "X {{~#if false~}} A {{~\r\nelse\tif true~}} B {{~/if~}} Y", "XBY" }
+};
+
+START_TEST(test_inverse_whitespace_rendering)
+{
+    HANDLEBARS_VALUE_DECL(input);
+
+    assert_compiled_template_output(
+        inverse_whitespace_render_cases[_i].source,
+        input,
+        0,
+        inverse_whitespace_render_cases[_i].expected
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+static const struct {
+    const char * source;
+    const char * expected;
+} ordinary_else_identifier_render_cases[] = {
+    { "X {{~#if true~}} A {{~ elsex~}} B {{~/if~}} Y", "XABY" },
+    { "X {{~#if true~}} A {{~\r\nelsex~}} B {{~/if~}} Y", "XABY" },
+    { "{{#if true}}A{{ selse}}B{{/if}}", "AB" }
+};
+
+START_TEST(test_ordinary_else_identifier_rendering)
+{
+    HANDLEBARS_VALUE_DECL(input);
+
+    assert_compiled_template_output(
+        ordinary_else_identifier_render_cases[_i].source,
+        input,
+        0,
+        ordinary_else_identifier_render_cases[_i].expected
+    );
+
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 static struct handlebars_value * try_test_throwing_helper(
     int argc,
     struct handlebars_value * argv,
@@ -2403,6 +2460,26 @@ static Suite * suite(void)
 		test_partial_block_trim_markers_are_independent
 	);
 	suite_add_tcase(s, tc_partial_block_whitespace);
+	TCase * tc_inverse_whitespace = tcase_create("Inverse whitespace rendering");
+	tcase_add_checked_fixture(tc_inverse_whitespace, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_inverse_whitespace,
+		test_inverse_whitespace_rendering,
+		0,
+		(int) (sizeof(inverse_whitespace_render_cases)
+			/ sizeof(inverse_whitespace_render_cases[0]))
+	);
+	suite_add_tcase(s, tc_inverse_whitespace);
+	TCase * tc_else_identifier = tcase_create("Else identifier boundaries");
+	tcase_add_checked_fixture(tc_else_identifier, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_else_identifier,
+		test_ordinary_else_identifier_rendering,
+		0,
+		(int) (sizeof(ordinary_else_identifier_render_cases)
+			/ sizeof(ordinary_else_identifier_render_cases[0]))
+	);
+	suite_add_tcase(s, tc_else_identifier);
 	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_returns_errors_without_longjmp, "VM try execution returns errors without longjmp");
 	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_reports_errors_from_string_partials, "VM try reports errors from string partials");
 	REGISTER_TEST_FIXTURE(s, test_vm_execute_try_reports_parse_errors_from_string_partials, "VM try reports parse errors from string partials");

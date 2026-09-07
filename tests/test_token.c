@@ -20,6 +20,7 @@
 #endif
 
 #include <check.h>
+#include <string.h>
 #include <talloc.h>
 
 #include "handlebars.h"
@@ -120,6 +121,97 @@ START_TEST(test_token_list_outlives_parser_when_reparented)
     ck_assert_hbs_str_eq_cstr(handlebars_token_get_text(tokens[0]), "{{");
     ck_assert_ptr_eq(talloc_parent(tokens[0]), tokens);
     ck_assert_ptr_eq(talloc_parent(handlebars_token_get_text(tokens[0])), tokens[0]);
+}
+END_TEST
+
+static const struct {
+    const char * source;
+    int types[4];
+    size_t length;
+} inverse_whitespace_token_cases[] = {
+    { "{{^}}", { INVERSE }, 1 },
+    { "{{^ }}", { INVERSE }, 1 },
+    { "{{^\t}}", { INVERSE }, 1 },
+    { "{{^\n}}", { INVERSE }, 1 },
+    { "{{^\r}}", { INVERSE }, 1 },
+    { "{{~^\t\r\n ~}}", { INVERSE }, 1 },
+    { "{{else if true}}", { OPEN_INVERSE_CHAIN, ID, BOOLEAN, CLOSE }, 4 },
+    { "{{ else if true}}", { OPEN_INVERSE_CHAIN, ID, BOOLEAN, CLOSE }, 4 },
+    { "{{\telse\tif true}}", { OPEN_INVERSE_CHAIN, ID, BOOLEAN, CLOSE }, 4 },
+    { "{{\nelse\nif true}}", { OPEN_INVERSE_CHAIN, ID, BOOLEAN, CLOSE }, 4 },
+    { "{{\relse\rif true}}", { OPEN_INVERSE_CHAIN, ID, BOOLEAN, CLOSE }, 4 },
+    { "{{~\r\nelse\tif true~}}", { OPEN_INVERSE_CHAIN, ID, BOOLEAN, CLOSE }, 4 }
+};
+
+START_TEST(test_inverse_whitespace_tokenization)
+{
+    size_t index = (size_t) _i;
+    const char * source = inverse_whitespace_token_cases[index].source;
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        strlen(source)
+    );
+    struct handlebars_token ** tokens = handlebars_lex_ex(parser, tmpl);
+
+    for( size_t i = 0; i < inverse_whitespace_token_cases[index].length; i++ ) {
+        ck_assert_ptr_nonnull(tokens[i]);
+        ck_assert_int_eq(
+            inverse_whitespace_token_cases[index].types[i],
+            handlebars_token_get_type(tokens[i])
+        );
+    }
+    ck_assert_ptr_null(tokens[inverse_whitespace_token_cases[index].length]);
+}
+END_TEST
+
+static const struct {
+    const char * source;
+    int types[4];
+    size_t length;
+    const char * ordinary_identifier;
+} else_keyword_boundary_token_cases[] = {
+    { "{{~ elsex~}}", { OPEN, ID, CLOSE }, 3, "elsex" },
+    { "{{~\r\nelsex~}}", { OPEN, ID, CLOSE }, 3, "elsex" },
+    { "{{ else_foo}}", { OPEN, ID, CLOSE }, 3, "else_foo" },
+    { "{{ else2}}", { OPEN, ID, CLOSE }, 3, "else2" },
+    { "{{ selse}}", { OPEN, ID, CLOSE }, 3, "selse" },
+    { "{{ else.foo}}", { OPEN_INVERSE_CHAIN, SEP, ID, CLOSE }, 4, NULL },
+    { "{{ else/foo}}", { OPEN_INVERSE_CHAIN, SEP, ID, CLOSE }, 4, NULL },
+    { "{{ else-foo}}", { OPEN_INVERSE_CHAIN, ID, CLOSE }, 3, NULL },
+    { "{{ else}}", { INVERSE }, 1, NULL },
+    { "{{ else~}}", { INVERSE }, 1, NULL },
+    { "{{~ else}}", { INVERSE }, 1, NULL },
+    { "{{~ else~}}", { INVERSE }, 1, NULL },
+    { "{{else", { OPEN_INVERSE_CHAIN }, 1, NULL },
+    { "{{~ else", { OPEN_INVERSE_CHAIN }, 1, NULL }
+};
+
+START_TEST(test_else_keyword_boundary_tokenization)
+{
+    size_t index = (size_t) _i;
+    const char * source = else_keyword_boundary_token_cases[index].source;
+    struct handlebars_string * tmpl = handlebars_string_ctor(
+        context,
+        source,
+        strlen(source)
+    );
+    struct handlebars_token ** tokens = handlebars_lex_ex(parser, tmpl);
+
+    for( size_t i = 0; i < else_keyword_boundary_token_cases[index].length; i++ ) {
+        ck_assert_ptr_nonnull(tokens[i]);
+        ck_assert_int_eq(
+            else_keyword_boundary_token_cases[index].types[i],
+            handlebars_token_get_type(tokens[i])
+        );
+    }
+    ck_assert_ptr_null(tokens[else_keyword_boundary_token_cases[index].length]);
+    if( else_keyword_boundary_token_cases[index].ordinary_identifier ) {
+        ck_assert_hbs_str_eq_cstr(
+            handlebars_token_get_text(tokens[1]),
+            else_keyword_boundary_token_cases[index].ordinary_identifier
+        );
+    }
 }
 END_TEST
 
@@ -298,6 +390,26 @@ static Suite * suite(void)
 	REGISTER_TEST_FIXTURE(s, test_token_get_type, "Get type");
 	REGISTER_TEST_FIXTURE(s, test_token_get_text, "Get text");
 	REGISTER_TEST_FIXTURE(s, test_token_list_outlives_parser_when_reparented, "Reparented token list outlives parser");
+	TCase * tc_inverse_whitespace = tcase_create("Inverse whitespace tokenization");
+	tcase_add_checked_fixture(tc_inverse_whitespace, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_inverse_whitespace,
+		test_inverse_whitespace_tokenization,
+		0,
+		(int) (sizeof(inverse_whitespace_token_cases)
+			/ sizeof(inverse_whitespace_token_cases[0]))
+	);
+	suite_add_tcase(s, tc_inverse_whitespace);
+	TCase * tc_else_identifier = tcase_create("Else identifier boundaries");
+	tcase_add_checked_fixture(tc_else_identifier, default_setup, default_teardown);
+	tcase_add_loop_test(
+		tc_else_identifier,
+		test_else_keyword_boundary_tokenization,
+		0,
+		(int) (sizeof(else_keyword_boundary_token_cases)
+			/ sizeof(else_keyword_boundary_token_cases[0]))
+	);
+	suite_add_tcase(s, tc_else_identifier);
 	REGISTER_TEST_FIXTURE(s, test_token_readable_type, "Readable Type");
 	REGISTER_TEST_FIXTURE(s, test_token_reverse_readable_type, "Reverse Readable Type");
 	REGISTER_TEST_FIXTURE(s, test_token_print, "Print Token");

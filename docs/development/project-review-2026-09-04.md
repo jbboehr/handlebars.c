@@ -316,6 +316,8 @@ These rules use \s where the Flex grammar needs its existing WHITESPACE definiti
 
 Correct the grammar and regenerate the committed lexer. Keep these comparisons in both tokenizer and render tests.
 
+**Status: addressed.** The two inverse rules now use the lexer's existing `WHITESPACE` definition, and the committed scanner has been regenerated with Flex 2.6.4. The inverse-chain rules also implement the right word boundary used by Handlebars.js, so identifiers such as `elsex`, `else_foo`, and `else2` remain ordinary paths while end-of-input remains a valid keyword boundary. Tokenization and rendering regressions cover spaces, tabs, line endings, trim markers, keyword boundaries, incomplete input, and punctuation forms accepted as inverse chains.
+
 ### R15. P2: a final backslash breaks compatibility-mode rendering
 
 Source: [src/handlebars_delimiters.c:94](../../src/handlebars_delimiters.c#L94).
