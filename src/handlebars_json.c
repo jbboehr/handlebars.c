@@ -24,14 +24,9 @@
 #include <string.h>
 #include <talloc.h>
 
-// json-c undeprecated json_object_object_get, but the version in xenial
-// is too old, so let's silence deprecated warnings for json-c
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <json.h>
 #include <json_object.h>
 #include <json_tokener.h>
-#pragma GCC diagnostic pop
 
 #include "handlebars.h"
 #include "handlebars_memory.h"
@@ -219,8 +214,13 @@ static enum handlebars_value_type hbs_json_type(struct handlebars_value * value)
 static struct handlebars_value * hbs_json_map_find(struct handlebars_value * value, struct handlebars_string * key, struct handlebars_value * rv)
 {
     struct handlebars_json * intern = GET_INTERN_V(value);
-    struct json_object * item = json_object_object_get(intern->object, hbs_str_val(key));
-    if( item == NULL ) {
+    struct json_object * item;
+
+    if( !json_object_object_get_ex(
+        intern->object,
+        hbs_str_val(key),
+        &item
+    ) ) {
         return NULL;
     }
     handlebars_value_init_json_object(intern->user.ctx, rv, item);
@@ -230,10 +230,12 @@ static struct handlebars_value * hbs_json_map_find(struct handlebars_value * val
 static struct handlebars_value * hbs_json_array_find(struct handlebars_value * value, size_t index, struct handlebars_value * rv)
 {
     struct handlebars_json * intern = GET_INTERN_V(value);
-    struct json_object * item = json_object_array_get_idx(intern->object, index);
-    if( item == NULL ) {
+    struct json_object * item;
+
+    if( index >= json_object_array_length(intern->object) ) {
         return NULL;
     }
+    item = json_object_array_get_idx(intern->object, index);
     handlebars_value_init_json_object(intern->user.ctx, rv, item);
     return rv;
 }
@@ -406,6 +408,61 @@ void handlebars_value_init_json_object(struct handlebars_context * ctx, struct h
     }
 }
 
+static bool hbs_json_is_whitespace(char c)
+{
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
+static bool hbs_json_is_complete_number(const char * str, size_t length)
+{
+    size_t i = 0;
+
+    while( i < length && hbs_json_is_whitespace(str[i]) ) {
+        i++;
+    }
+    if( i < length && str[i] == '-' ) {
+        i++;
+    }
+    if( i >= length ) {
+        return false;
+    }
+    if( str[i] == '0' ) {
+        i++;
+    } else if( str[i] >= '1' && str[i] <= '9' ) {
+        do {
+            i++;
+        } while( i < length && str[i] >= '0' && str[i] <= '9' );
+    } else {
+        return false;
+    }
+    if( i < length && str[i] == '.' ) {
+        i++;
+        if( i >= length || str[i] < '0' || str[i] > '9' ) {
+            return false;
+        }
+        do {
+            i++;
+        } while( i < length && str[i] >= '0' && str[i] <= '9' );
+    }
+    if( i < length && (str[i] == 'e' || str[i] == 'E') ) {
+        i++;
+        if( i < length && (str[i] == '+' || str[i] == '-') ) {
+            i++;
+        }
+        if( i >= length || str[i] < '0' || str[i] > '9' ) {
+            return false;
+        }
+        do {
+            i++;
+        } while( i < length && str[i] >= '0' && str[i] <= '9' );
+    }
+    while( i < length && hbs_json_is_whitespace(str[i]) ) {
+        i++;
+    }
+    return i == length;
+}
+
+HBS_ATTR_NOINLINE
 static struct json_object *json_tokener_parse_verbose_length(
     struct handlebars_context * context,
     const char *str,
@@ -415,15 +472,33 @@ static struct json_object *json_tokener_parse_verbose_length(
 {
 	struct json_tokener *tok;
 	struct json_object *obj;
+    bool finished_at_boundary = false;
 
 	tok = json_tokener_new();
 	if (!tok) {
         handlebars_throw(context, HANDLEBARS_NOMEM, "Failed to initialize JSON parser");
     }
 
-	obj = json_tokener_parse_ex(tok, str, length);
+	obj = json_tokener_parse_ex(tok, str, (int) length);
+	if( tok->err == json_tokener_continue ) {
+        /* A length-delimited scalar has no structural byte that tells json-c
+         * it is complete. Feed a virtual terminator rather than reading past
+         * the caller's buffer. */
+        obj = json_tokener_parse_ex(tok, "", 1);
+        finished_at_boundary = true;
+    }
 	*error = tok->err;
-	if (tok->err != json_tokener_success) {
+	if( finished_at_boundary &&
+        *error == json_tokener_success &&
+        obj != NULL &&
+        (json_object_get_type(obj) == json_type_int ||
+            json_object_get_type(obj) == json_type_double) &&
+        !hbs_json_is_complete_number(str, length) ) {
+        json_object_put(obj);
+        obj = NULL;
+        *error = json_tokener_error_parse_number;
+    }
+	if (*error != json_tokener_success) {
 		if (obj != NULL) {
 			json_object_put(obj);
         }

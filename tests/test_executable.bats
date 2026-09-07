@@ -399,6 +399,38 @@ load "../vendor/bats-assert/assert"
     assert_output "4|0|3|1|0"
 }
 
+@test "--execute accepts exact-length JSON scalar data" {
+    local data_file="$BATS_TEST_TMPDIR/scalar.json"
+    local expected
+    local scalar
+
+    skip_if_no_json
+    for scalar in 1 true null; do
+        case "$scalar" in
+            null) expected="" ;;
+            *) expected="$scalar" ;;
+        esac
+        printf '%s' "$scalar" > "$data_file"
+        run bash -c 'printf "%s" "{{this}}" | "$1" --execute --no-newline --data "$2" -' _ \
+            "$HANDLEBARSC" "$data_file"
+
+        assert_success
+        assert_output "$expected"
+    done
+}
+
+@test "--execute strict lookup finds lazy JSON null members" {
+    local data_file="$BATS_TEST_TMPDIR/null-member.json"
+
+    skip_if_no_json
+    printf '%s' '{"known":null}' > "$data_file"
+    run bash -c 'printf "%s" "{{known}}" | "$1" --execute --no-newline --flags strict --no-convert-input --data "$2" -' _ \
+        "$HANDLEBARSC" "$data_file"
+
+    assert_success
+    assert_output ""
+}
+
 @test "--execute resolves lazy array length through compat depthed lookup" {
     local data_file="$BATS_TEST_TMPDIR/length-compat.json"
 

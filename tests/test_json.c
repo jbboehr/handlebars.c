@@ -108,6 +108,160 @@ START_TEST(test_string_json)
 }
 END_TEST
 
+START_TEST(test_scalar_json_exact_length)
+{
+    static const char integer[] = { '1' };
+    static const char negative[] = { '-', '1', '2' };
+    static const char floating[] = { '1', '.', '2', '5' };
+    static const char exponent[] = { '1', 'e', '2' };
+    static const char string[] = { '"', 'x', '"' };
+    static const char boolean_true[] = { 't', 'r', 'u', 'e' };
+    static const char boolean_false[] = { 'f', 'a', 'l', 's', 'e' };
+    static const char null[] = { 'n', 'u', 'l', 'l' };
+    static const char integer_before_exponent[] = { '1', 'e' };
+    static const char true_before_suffix[] = { 't', 'r', 'u', 'e', 'x' };
+    static const struct {
+        const char * json;
+        size_t length;
+        enum handlebars_value_type type;
+        const char * description;
+    } cases[] = {
+        { integer, sizeof(integer), HANDLEBARS_VALUE_TYPE_INTEGER, "1" },
+        { negative, sizeof(negative), HANDLEBARS_VALUE_TYPE_INTEGER, "-12" },
+        { floating, sizeof(floating), HANDLEBARS_VALUE_TYPE_FLOAT, "1.25" },
+        { exponent, sizeof(exponent), HANDLEBARS_VALUE_TYPE_FLOAT, "1e2" },
+        { string, sizeof(string), HANDLEBARS_VALUE_TYPE_STRING, "\"x\"" },
+        { boolean_true, sizeof(boolean_true), HANDLEBARS_VALUE_TYPE_TRUE, "true" },
+        { boolean_false, sizeof(boolean_false), HANDLEBARS_VALUE_TYPE_FALSE, "false" },
+        { null, sizeof(null), HANDLEBARS_VALUE_TYPE_NULL, "null" },
+        {
+            integer_before_exponent,
+            1,
+            HANDLEBARS_VALUE_TYPE_INTEGER,
+            "1 before excluded exponent byte"
+        },
+        {
+            true_before_suffix,
+            4,
+            HANDLEBARS_VALUE_TYPE_TRUE,
+            "true before excluded suffix byte"
+        }
+    };
+    HANDLEBARS_VALUE_DECL(value);
+
+    for( size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++ ) {
+        enum handlebars_error_type error =
+            handlebars_value_init_json_stringl_try(
+                context,
+                value,
+                cases[i].json,
+                cases[i].length
+            );
+
+        ck_assert_msg(
+            error == HANDLEBARS_SUCCESS,
+            "Exact-length JSON scalar %s failed: %s",
+            cases[i].description,
+            handlebars_error_msg(context)
+        );
+        ck_assert_int_eq(handlebars_value_get_type(value), cases[i].type);
+    }
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_invalid_scalar_json_rejected_without_clobbering_value)
+{
+    static const char empty[] = { 'x' };
+    static const char keyword_t[] = { 't' };
+    static const char keyword_tr[] = { 't', 'r' };
+    static const char keyword_tru[] = { 't', 'r', 'u' };
+    static const char keyword_fals[] = { 'f', 'a', 'l', 's' };
+    static const char keyword_nul[] = { 'n', 'u', 'l' };
+    static const char minus[] = { '-' };
+    static const char exponent[] = { '1', 'e' };
+    static const char signed_exponent[] = { '1', 'e', '+' };
+    static const char trailing_decimal[] = { '1', '.' };
+    static const char leading_zero[] = { '0', '1' };
+    static const char decimal_exponent[] = { '1', '.', 'e', '2' };
+    static const char nan[] = { 'N', 'a', 'N' };
+    static const char infinity[] = {
+        'I', 'n', 'f', 'i', 'n', 'i', 't', 'y'
+    };
+    static const char unterminated_string[] = { '"', 'x' };
+    static const struct {
+        const char * json;
+        size_t length;
+        const char * description;
+    } cases[] = {
+        { empty, 0, "empty input" },
+        { keyword_t, sizeof(keyword_t), "t" },
+        { keyword_tr, sizeof(keyword_tr), "tr" },
+        { keyword_tru, sizeof(keyword_tru), "tru" },
+        { keyword_fals, sizeof(keyword_fals), "fals" },
+        { keyword_nul, sizeof(keyword_nul), "nul" },
+        { minus, sizeof(minus), "-" },
+        { exponent, sizeof(exponent), "1e" },
+        { signed_exponent, sizeof(signed_exponent), "1e+" },
+        { trailing_decimal, sizeof(trailing_decimal), "1." },
+        { leading_zero, sizeof(leading_zero), "01" },
+        { decimal_exponent, sizeof(decimal_exponent), "1.e2" },
+        { nan, sizeof(nan), "NaN" },
+        { infinity, sizeof(infinity), "Infinity" },
+        {
+            unterminated_string,
+            sizeof(unterminated_string),
+            "unterminated string"
+        }
+    };
+    HANDLEBARS_VALUE_DECL(value);
+    jmp_buf * previous = context->e->jmp;
+    jmp_buf outer;
+
+    if( setjmp(outer) != 0 ) {
+        context->e->jmp = previous;
+        ck_abort_msg("An invalid scalar escaped the JSON try API");
+    }
+    context->e->jmp = &outer;
+    handlebars_value_integer(value, 42);
+
+    for( size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++ ) {
+        enum handlebars_error_type error =
+            handlebars_value_init_json_stringl_try(
+                context,
+                value,
+                cases[i].json,
+                cases[i].length
+            );
+
+        ck_assert_msg(
+            error == HANDLEBARS_ERROR,
+            "Invalid JSON scalar %s was accepted",
+            cases[i].description
+        );
+        ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+        ck_assert_int_eq(handlebars_value_get_intval(value), 42);
+        ck_assert_ptr_eq(context->e->jmp, &outer);
+    }
+
+    ck_assert_int_eq(
+        handlebars_value_init_json_stringl_try(context, value, HBS_STRL("0")),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_int_eq(handlebars_value_get_type(value), HANDLEBARS_VALUE_TYPE_INTEGER);
+    ck_assert_int_eq(handlebars_value_get_intval(value), 0);
+    ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_SUCCESS);
+    ck_assert_ptr_null(handlebars_error_msg(context));
+    ck_assert_ptr_eq(context->e->jmp, &outer);
+
+    context->e->jmp = previous;
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
 START_TEST(test_array_iterator_json)
 {
     HANDLEBARS_VALUE_DECL(value);
@@ -331,6 +485,63 @@ START_TEST(test_map_find_json)
 
     HANDLEBARS_VALUE_UNDECL(value);
     HANDLEBARS_VALUE_UNDECL(rv);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+static void assert_json_null_members(struct handlebars_value * value)
+{
+    HANDLEBARS_VALUE_DECL(array);
+    HANDLEBARS_VALUE_DECL(found);
+
+    ck_assert_ptr_nonnull(
+        handlebars_value_map_str_find(value, HBS_STRL("known"), found)
+    );
+    ck_assert_int_eq(
+        handlebars_value_get_type(found),
+        HANDLEBARS_VALUE_TYPE_NULL
+    );
+    ck_assert_ptr_null(
+        handlebars_value_map_str_find(value, HBS_STRL("missing"), found)
+    );
+
+    ck_assert_ptr_nonnull(
+        handlebars_value_map_str_find(value, HBS_STRL("items"), array)
+    );
+    ck_assert_ptr_nonnull(handlebars_value_array_find(array, 0, found));
+    ck_assert_int_eq(
+        handlebars_value_get_type(found),
+        HANDLEBARS_VALUE_TYPE_NULL
+    );
+    ck_assert_ptr_null(handlebars_value_array_find(array, 1, found));
+
+    HANDLEBARS_VALUE_UNDECL(found);
+    HANDLEBARS_VALUE_UNDECL(array);
+}
+
+START_TEST(test_json_null_member_lookup_parity)
+{
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_init_json_string(
+        context,
+        value,
+        "{\"known\":null,\"items\":[null]}"
+    );
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(value),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+    assert_json_null_members(value);
+
+    handlebars_value_convert(value);
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(value),
+        HANDLEBARS_VALUE_TYPE_MAP
+    );
+    assert_json_null_members(value);
+
+    HANDLEBARS_VALUE_UNDECL(value);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -1523,6 +1734,12 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_int_json, "Integer");
     REGISTER_TEST_FIXTURE(s, test_float_json, "Float");
     REGISTER_TEST_FIXTURE(s, test_string_json, "String");
+    REGISTER_TEST_FIXTURE(s, test_scalar_json_exact_length, "Scalar exact length");
+    REGISTER_TEST_FIXTURE(
+        s,
+        test_invalid_scalar_json_rejected_without_clobbering_value,
+        "Invalid scalar rejection preserves destination"
+    );
     REGISTER_TEST_FIXTURE(s, test_array_iterator_json, "Array iterator");
     REGISTER_TEST_FIXTURE(s, test_empty_array_iterator_json, "Empty array iterator");
     REGISTER_TEST_FIXTURE(s, test_array_iterator_json_replaces_value_with_null, "Array iterator replaces its current value with null");
@@ -1533,6 +1750,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_map_iterator_json_retains_owner, "Map iterator retains its JSON owner");
     REGISTER_TEST_FIXTURE(s, test_array_find_json, "Array Find");
     REGISTER_TEST_FIXTURE(s, test_map_find_json, "Map Find");
+    REGISTER_TEST_FIXTURE(s, test_json_null_member_lookup_parity, "Null member lookup parity");
     REGISTER_TEST_FIXTURE(s, test_complex_json, "Complex");
     REGISTER_TEST_FIXTURE(s, test_convert_json, "Convert");
     REGISTER_TEST_FIXTURE(

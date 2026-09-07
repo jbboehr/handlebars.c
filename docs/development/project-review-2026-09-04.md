@@ -401,7 +401,7 @@ The first regression reproduced USER-backed children remaining in native arrays 
 
 ### R20. P2: JSON scalar termination and null membership are inconsistent
 
-Sources: [src/handlebars_json.c:424](../../src/handlebars_json.c#L424), [src/handlebars_json.c:222](../../src/handlebars_json.c#L222), [src/handlebars_json.c:233](../../src/handlebars_json.c#L233).
+Sources: [src/handlebars_json.c:466](../../src/handlebars_json.c#L466), [src/handlebars_json.c:214](../../src/handlebars_json.c#L214), [src/handlebars_json.c:230](../../src/handlebars_json.c#L230).
 
 Two separate behaviors were confirmed:
 
@@ -413,6 +413,10 @@ Two separate behaviors were confirmed:
 The length-delimited parser does not finish scalar parsing at the supplied document boundary. Lazy object/array lookup also uses a null pointer as both “absent” and “present with JSON null.”
 
 Finalize parsing without requiring callers to add whitespace. Use explicit membership/index validity checks independently of the returned JSON value. Test scalar documents at exact length and native/lazy parity for null members.
+
+**Status: addressed.** When json-c requests more input at the supplied document boundary, the adapter feeds it a virtual terminator without reading beyond the caller's buffer. Numeric values completed at that boundary must also match the JSON number grammar, preventing permissive json-c finalization from accepting incomplete or extension forms. Lazy object lookup now uses explicit key membership, and lazy array lookup checks the index against the array length before wrapping a possibly null element.
+
+The original exact-length scalar and lazy-null tests both failed before the fix. Adversarial review then showed that the first EOF-finalization implementation accepted `1e` as `1`; the retained negative matrix covers incomplete keywords and numbers as well as `1.`, `01`, `1.e2`, `NaN`, and `Infinity`, while preserving the destination and error boundary. Positive cases cover integers, fractions, exponents, strings, booleans, null, nonterminated buffers, and excluded suffix bytes. End-to-end CLI tests cover exact scalar data files and strict lazy-null lookup. Fresh Linux verification passed all 3,784 Autotools checks, the 2,489-check no-refcount Nix build, and all 39 JSON checks under ASan/UBSan without test forking. Independent correctness review found no remaining defect. Reliability verdict: PASS_WITH_RESIDUAL_RISK; non-Linux platforms and json-c versions other than 0.18 were not executed. Whole-document trailing-content validation remains the separate R32 follow-up.
 
 ### R21. P2: YAML quoted scalars are converted to non-string values
 
