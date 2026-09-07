@@ -20,7 +20,6 @@
 #endif
 
 #include <check.h>
-#include <locale.h>
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
@@ -1197,7 +1196,7 @@ static const struct conditional_value_case conditional_value_cases[] = {
     {HANDLEBARS_VALUE_TYPE_FLOAT, 0.0, NULL, "FTFTTF|T|outer", "FT"},
     {HANDLEBARS_VALUE_TYPE_FLOAT, -0.0, NULL, "FTFTTF|T|outer", "FT"},
     {HANDLEBARS_VALUE_TYPE_FLOAT, 0.5, NULL, "TFTFTF|T|outer", "TF"},
-    {HANDLEBARS_VALUE_TYPE_FLOAT, NAN, NULL, "FTFTFT|outer|outer", "FT"},
+    {HANDLEBARS_VALUE_TYPE_FLOAT, (double) NAN, NULL, "FTFTFT|outer|outer", "FT"},
     {HANDLEBARS_VALUE_TYPE_STRING, 0, "", "FTFTFT|outer|outer", "FT"},
     {HANDLEBARS_VALUE_TYPE_STRING, 0, "0", "TFTFTF|T|outer", "TF"},
     {HANDLEBARS_VALUE_TYPE_STRING, 0, "value", "TFTFTF|T|outer", "TF"},
@@ -1509,22 +1508,17 @@ END_TEST
 START_TEST(test_compiled_float_literal_rendering_ignores_process_locale)
 {
     HANDLEBARS_VALUE_DECL(input);
-    char * saved_locale = handlebars_talloc_strdup(
-        context,
-        setlocale(LC_NUMERIC, NULL)
-    );
+    char * saved_locale = activate_comma_decimal_locale();
 
-    ck_assert_ptr_nonnull(saved_locale);
-    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+    if( saved_locale == NULL ) {
         HANDLEBARS_VALUE_UNDECL(input);
         return;
     }
-    ck_assert_str_eq(localeconv()->decimal_point, ",");
     test_register_helper(HBS_STRL("identity"), test_passthrough_helper);
 
     assert_conditional_render("{{identity 1.25}}", input, "1.25");
 
-    ck_assert_ptr_nonnull(setlocale(LC_NUMERIC, saved_locale));
+    restore_numeric_locale(saved_locale);
     HANDLEBARS_VALUE_UNDECL(input);
 }
 END_TEST
@@ -4272,9 +4266,9 @@ static const struct {
     {0x1.fffffffffffffp+1023, "1.7976931348623157e+308"},
     {0x0.0000000000001p-1022, "5e-324"},
     {-0.0, "0"},
-    {NAN, "NaN"},
-    {INFINITY, "Infinity"},
-    {-INFINITY, "-Infinity"}
+    {(double) NAN, "NaN"},
+    {(double) INFINITY, "Infinity"},
+    {-(double) INFINITY, "-Infinity"}
 };
 
 static void assert_float_stringification_paths(double number, const char * expected)
@@ -4321,23 +4315,18 @@ START_TEST(test_float_stringification_paths_ignore_process_locale)
 {
     const size_t count = sizeof(float_stringification_cases)
         / sizeof(float_stringification_cases[0]);
-    char * saved_locale = handlebars_talloc_strdup(
-        context,
-        setlocale(LC_NUMERIC, NULL)
-    );
+    char * saved_locale = activate_comma_decimal_locale();
 
-    ck_assert_ptr_nonnull(saved_locale);
-    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+    if( saved_locale == NULL ) {
         return;
     }
-    ck_assert_str_eq(localeconv()->decimal_point, ",");
     for( size_t i = 0; i < count; i++ ) {
         assert_float_stringification_paths(
             float_stringification_cases[i].value,
             float_stringification_cases[i].expected
         );
     }
-    ck_assert_ptr_nonnull(setlocale(LC_NUMERIC, saved_locale));
+    restore_numeric_locale(saved_locale);
 }
 END_TEST
 

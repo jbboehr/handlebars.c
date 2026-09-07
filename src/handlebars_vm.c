@@ -1702,7 +1702,7 @@ static void handlebars_vm_install_inline_partial_scope(
         struct handlebars_opcode * opcodes = &vm->module->opcodes[
             entry->opcode_offset + offset
         ];
-        size_t program_opcode_offset;
+        size_t program_opcode_offset = 0;
         size_t range_length = handlebars_vm_inline_partial_opcode_range_length(
             opcodes,
             state->opcode_count - offset,

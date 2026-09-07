@@ -20,7 +20,6 @@
 #endif
 
 #include <check.h>
-#include <locale.h>
 #include <limits.h>
 #include <string.h>
 #include <talloc.h>
@@ -1630,11 +1629,11 @@ START_TEST(test_numeric_literal_parsing_ignores_process_locale)
     struct handlebars_program * program = NULL;
     enum handlebars_error_type error;
     bool found_double = false;
+    char * saved_locale = activate_comma_decimal_locale();
 
-    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+    if( saved_locale == NULL ) {
         return;
     }
-    ck_assert_str_eq(localeconv()->decimal_point, ",");
 
     tmpl = handlebars_string_ctor(context, HBS_STRL("{{numeric 1.25}}"));
     ast = handlebars_parse_ex(parser, tmpl, 0);
@@ -1657,6 +1656,7 @@ START_TEST(test_numeric_literal_parsing_ignores_process_locale)
         }
     }
     ck_assert(found_double);
+    restore_numeric_locale(saved_locale);
 }
 END_TEST
 
@@ -2421,17 +2421,18 @@ START_TEST(test_fractional_inline_partial_names_ignore_process_locale)
     HANDLEBARS_VALUE_DECL(input);
     struct handlebars_module * module = serialize_for_verification(source);
     struct handlebars_string * output;
+    char * saved_locale = activate_comma_decimal_locale();
 
-    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+    if( saved_locale == NULL ) {
         HANDLEBARS_VALUE_UNDECL(input);
         return;
     }
-    ck_assert_str_eq(localeconv()->decimal_point, ",");
     output = handlebars_vm_execute(vm, module, input);
 
     ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
     ck_assert_hbs_str_eq_cstr(output, "fraction");
     handlebars_string_delref(output);
+    restore_numeric_locale(saved_locale);
     HANDLEBARS_VALUE_UNDECL(input);
 }
 END_TEST

@@ -28,6 +28,7 @@
 
 #include <errno.h>
 #include <dirent.h>
+#include <locale.h>
 #ifndef YY_NO_UNISTD_H
 #include <unistd.h>
 #endif
@@ -70,6 +71,32 @@ static size_t null_blocks;
 void clear_intentional_error(void)
 {
     handlebars_error_clear(context);
+}
+
+char * activate_comma_decimal_locale(void)
+{
+    const char * current_locale = setlocale(LC_NUMERIC, NULL);
+    char * saved_locale;
+
+    ck_assert_ptr_nonnull(current_locale);
+    saved_locale = handlebars_talloc_strdup(context, current_locale);
+    ck_assert_ptr_nonnull(saved_locale);
+
+    /* Musl accepts locale names while retaining the C numeric convention. */
+    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL
+            || strcmp(localeconv()->decimal_point, ",") != 0 ) {
+        ck_assert_ptr_nonnull(setlocale(LC_NUMERIC, saved_locale));
+        handlebars_talloc_free(saved_locale);
+        return NULL;
+    }
+    return saved_locale;
+}
+
+void restore_numeric_locale(char * saved_locale)
+{
+    ck_assert_ptr_nonnull(saved_locale);
+    ck_assert_ptr_nonnull(setlocale(LC_NUMERIC, saved_locale));
+    handlebars_talloc_free(saved_locale);
 }
 
 void default_setup(void)

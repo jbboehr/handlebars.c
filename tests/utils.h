@@ -140,6 +140,8 @@ extern size_t init_blocks;
 void default_setup(void);
 void default_teardown(void);
 void clear_intentional_error(void);
+char * activate_comma_decimal_locale(void);
+void restore_numeric_locale(char * saved_locale);
 typedef Suite * (*suite_ctor_func)(void);
 int default_main(suite_ctor_func suite_ctor);
 

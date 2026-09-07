@@ -111,16 +111,17 @@ START_TEST(test_operand_print_append_double_ignores_process_locale)
 {
     struct handlebars_operand op;
     struct handlebars_string * string;
+    char * saved_locale = activate_comma_decimal_locale();
 
-    if( setlocale(LC_NUMERIC, "de_DE.UTF-8") == NULL ) {
+    if( saved_locale == NULL ) {
         return;
     }
-    ck_assert_str_eq(localeconv()->decimal_point, ",");
     handlebars_operand_set_doubleval(&op, 1.25);
     string = handlebars_operand_print(context, &op);
     ck_assert_ptr_ne(NULL, string);
     ck_assert_str_eq("[DOUBLE:1.25]", hbs_str_val(string));
     handlebars_talloc_free(string);
+    restore_numeric_locale(saved_locale);
 }
 END_TEST
 
