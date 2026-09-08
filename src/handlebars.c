@@ -125,8 +125,6 @@ void handlebars_error_clear(struct handlebars_context * context)
 
 char * handlebars_error_message(struct handlebars_context * context)
 {
-    char * errmsg;
-    char errbuf[256];
     struct handlebars_error * e = context->e;
 
     assert(context != NULL);
@@ -136,23 +134,17 @@ char * handlebars_error_message(struct handlebars_context * context)
         return NULL;
     }
 
-    snprintf(errbuf, sizeof(errbuf), "%s on line %d, column %d",
-             e->msg,
-             e->loc.last_line,
-             e->loc.last_column);
-
-    errmsg = handlebars_talloc_strdup(context, errbuf);
-    if( unlikely(errmsg == NULL) ) {
-        return NULL;
-    }
-
-    return errmsg;
+    return handlebars_talloc_asprintf(
+        context,
+        "%s on line %d, column %d",
+        e->msg,
+        e->loc.last_line,
+        e->loc.last_column
+    );
 }
 
 char * handlebars_error_message_js(struct handlebars_context * context)
 {
-    char * errmsg;
-    char errbuf[512];
     struct handlebars_error * e = context->e;
 
     assert(context != NULL);
@@ -163,17 +155,13 @@ char * handlebars_error_message_js(struct handlebars_context * context)
 
     // @todo check errno == HANDLEBARS_PARSEERR
 
-    snprintf(errbuf, sizeof(errbuf), "Parse error on line %d, column %d : %s",
-             e->loc.first_line,
-             e->loc.first_column,
-             e->msg);
-
-    errmsg = handlebars_talloc_strdup(context, errbuf);
-    if( unlikely(errmsg == NULL) ) {
-        return NULL;
-    }
-
-    return errmsg;
+    return handlebars_talloc_asprintf(
+        context,
+        "Parse error on line %d, column %d : %s",
+        e->loc.first_line,
+        e->loc.first_column,
+        e->msg
+    );
 }
 
 #ifdef __clang__

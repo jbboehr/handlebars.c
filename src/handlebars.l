@@ -75,22 +75,36 @@
 #define handlebars_yy_unput_n(n) \
 	do { \
 		int i; \
+		int yyunput_count = (n); \
  		char * yycopy = MC(handlebars_talloc_strndup(yyextra, yytext, yyleng)); \
-		for ( i = yyleng - 1; i >= yyleng - n && i >= 0; --i ) { \
+		for ( i = yyleng - 1; i >= yyleng - yyunput_count && i >= 0; --i ) { \
 			unput( yycopy[i] ); \
 		} \
+		yycolumn -= yyunput_count; \
 		handlebars_talloc_free(yycopy); \
     } while(0)
 
 #define handlebars_yy_copy_lval() \
     yylval->string = handlebars_string_ctor(HBSCTX(yyextra), yytext, yyleng);
 
+static int handlebars_yy_next_column(const char * text, int length, int column)
+{
+    int i;
+
+    for( i = length - 1; i >= 0; i-- ) {
+        if( text[i] == '\n' ) {
+            return length - i - 1;
+        }
+    }
+    return column + length;
+}
+
 #define YY_USER_ACTION \
     yylloc->first_line = yylloc->last_line = yylineno; \
     yylloc->first_column = yycolumn; \
     yylloc->last_column = yycolumn + yyleng - 1; \
-    yycolumn += yyleng; \
-   	YY_USER_DEBUG_ACTION;
+    yycolumn = handlebars_yy_next_column(yytext, yyleng, yycolumn); \
+    YY_USER_DEBUG_ACTION;
 %}
 
 %option prefix="handlebars_yy_"

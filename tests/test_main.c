@@ -224,6 +224,66 @@ START_TEST(test_parser_reuse_after_error)
 }
 END_TEST
 
+START_TEST(test_parse_error_column_resets_after_newline)
+{
+    struct handlebars_locinfo short_loc;
+    struct handlebars_locinfo long_loc;
+    struct handlebars_ast_node * ast;
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("a\n{{) }}")),
+        0
+    );
+    ck_assert_ptr_null(ast);
+    short_loc = handlebars_error_loc(context);
+
+    handlebars_error_clear(context);
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("abcdefghij\n{{) }}")),
+        0
+    );
+    ck_assert_ptr_null(ast);
+    long_loc = handlebars_error_loc(context);
+
+    ck_assert_int_eq(short_loc.last_line, 2);
+    ck_assert_int_eq(long_loc.last_line, 2);
+    ck_assert_int_eq(short_loc.last_column, 2);
+    ck_assert_int_eq(long_loc.last_column, 2);
+}
+END_TEST
+
+START_TEST(test_parse_error_column_after_comment)
+{
+    struct handlebars_locinfo base_loc;
+    struct handlebars_locinfo comment_loc;
+    struct handlebars_ast_node * ast;
+
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("{{) }}")),
+        0
+    );
+    ck_assert_ptr_null(ast);
+    base_loc = handlebars_error_loc(context);
+
+    handlebars_error_clear(context);
+    ast = handlebars_parse_ex(
+        parser,
+        handlebars_string_ctor(context, HBS_STRL("{{!x}}{{) }}")),
+        0
+    );
+    ck_assert_ptr_null(ast);
+    comment_loc = handlebars_error_loc(context);
+
+    ck_assert_int_eq(base_loc.last_line, 1);
+    ck_assert_int_eq(comment_loc.last_line, 1);
+    ck_assert_int_eq(base_loc.last_column, 2);
+    ck_assert_int_eq(comment_loc.last_column, 8);
+}
+END_TEST
+
 START_TEST(test_parser_reuse_resets_whitespace_state)
 {
     struct handlebars_ast_node * ast;
@@ -399,6 +459,52 @@ START_TEST(test_context_get_errmsg_js)
     ck_assert_ptr_ne(NULL, strstr(actual, "line 1"));
     ck_assert_ptr_ne(NULL, strstr(actual, "column 2"));
     ck_assert_ptr_ne(NULL, strstr(actual, "Parse error"));
+}
+END_TEST
+
+START_TEST(test_context_get_errmsg_preserves_long_message)
+{
+    static const char suffix[] = " on line 12, column 34";
+    struct handlebars_locinfo loc = {0};
+    char message[601];
+    char * actual;
+
+    memset(message, 'x', sizeof(message) - 1);
+    memcpy(message + sizeof(message) - 5, "TAIL", 4);
+    message[sizeof(message) - 1] = '\0';
+    loc.last_line = 12;
+    loc.last_column = 34;
+
+    context->e->msg = message;
+    context->e->loc = loc;
+    actual = handlebars_error_message(context);
+
+    ck_assert_ptr_nonnull(actual);
+    ck_assert_uint_eq(strlen(actual), strlen(message) + strlen(suffix));
+    ck_assert_str_eq(actual + sizeof(message) - 5, "TAIL on line 12, column 34");
+}
+END_TEST
+
+START_TEST(test_context_get_errmsg_js_preserves_long_message)
+{
+    static const char prefix[] = "Parse error on line 12, column 34 : ";
+    struct handlebars_locinfo loc = {0};
+    char message[601];
+    char * actual;
+
+    memset(message, 'x', sizeof(message) - 1);
+    memcpy(message + sizeof(message) - 5, "TAIL", 4);
+    message[sizeof(message) - 1] = '\0';
+    loc.first_line = 12;
+    loc.first_column = 34;
+
+    context->e->msg = message;
+    context->e->loc = loc;
+    actual = handlebars_error_message_js(context);
+
+    ck_assert_ptr_nonnull(actual);
+    ck_assert_uint_eq(strlen(actual), strlen(prefix) + strlen(message));
+    ck_assert_str_eq(actual + strlen(actual) - 4, "TAIL");
 }
 END_TEST
 
@@ -603,6 +709,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_lex_then_parse_reuse, "Lexer then parser reuse");
     REGISTER_TEST_FIXTURE(s, test_parser_reuse, "Parser reuse");
     REGISTER_TEST_FIXTURE(s, test_parser_reuse_after_error, "Parser reuse after error");
+    REGISTER_TEST_FIXTURE(s, test_parse_error_column_resets_after_newline, "Parse error column resets after newline");
+    REGISTER_TEST_FIXTURE(s, test_parse_error_column_after_comment, "Parse error column after comment");
     REGISTER_TEST_FIXTURE(s, test_parser_reuse_resets_whitespace_state, "Parser reuse resets whitespace state");
     REGISTER_TEST_FIXTURE(s, test_parse_rejects_embedded_nul, "Reject Embedded NUL");
     REGISTER_TEST_FIXTURE(s, test_parse_handles_empty_trimmed_block, "Parse Empty Trimmed Block");
@@ -613,6 +721,8 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg, "Get error message");
     REGISTER_MEMORY_TEST_FIXTURE(s, test_context_get_errmsg_failed_alloc, "Get error message (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_js, "Get error message (js compat)");
+    REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_preserves_long_message, "Get error message preserves long messages");
+    REGISTER_TEST_FIXTURE(s, test_context_get_errmsg_js_preserves_long_message, "Get error message (js compat) preserves long messages");
     REGISTER_MEMORY_TEST_FIXTURE(s, test_context_get_errmsg_js_failed_alloc, "Get error message (js compat) (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_error_message_replaces_previous_allocation, "Error message replaces previous allocation");
     REGISTER_TEST_FIXTURE(s, test_error_message_supports_self_rethrow, "Error message supports self-rethrow");

@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R11, R30 through R34, and R36 are addressed. The remaining priorities include optional JSON and YAML dependencies in CMake, rendering semantics, data conversion, and ownership contracts.
+R01 through R34 and R36 are addressed. R35 is intentionally deferred pending an update of the vendored xxHash implementation.
 
 ## Verification and coverage limits
 
@@ -600,6 +600,12 @@ Separately, a 600-character ordinary error message remained 600 characters throu
 
 Track positions relative to the last newline. Allocate formatted diagnostics to the required length, or explicitly report truncation. Test locations with different preceding-line lengths and long messages whose distinguishing information is near the end.
 
+**Status: addressed.** Lexer column accounting now derives the next column from the bytes after the final newline in each matched token. Scanner pushback also restores the column before those bytes are rescanned, so diagnostic columns are source offsets rather than counts of internal lexer passes. The ordinary and JavaScript-compatible diagnostic-copy APIs now allocate their formatted results to the required length instead of using fixed 256- and 512-byte buffers.
+
+The initial regressions reproduced line-two columns 6 and 15 for identical errors after one- and ten-byte preceding lines, and reproduced copied diagnostic lengths of 255 and 511 for a 600-byte message. They now report the actual zero-based column 2 and preserve the complete 622- and 636-byte formatted messages, including distinguishing text at the end. Independent testing also found that pushback made a bare error report column 4 and a six-byte comment move the same error to column 15; those cases now report source columns 2 and 8. Additional probes covered CRLF input, an escaped mustache, and a multiline comment.
+
+Fresh Linux verification passed all 34 focused context and parser checks, all 79 parser-spec and 78 tokenizer-spec checks, all 116 compiler checks, 3,832 of 3,833 Autotools checks with one expected skip, and all 29 CMake tests under ASan/UBSan with allocation-failure testing enabled and LeakSanitizer disabled. The Nix package build also passed. Independent correctness and adversarial test reviews found the pushback defect during the first reliability pass; the retained regression and final review passed after the fix. Reliability verdict: PASS_WITH_RESIDUAL_RISK; non-Linux platforms were not run.
+
 ### R30. P3: opcode utility APIs do not honor their advertised mappings or flags
 
 Sources: [src/handlebars_opcodes.c:274](../../src/handlebars_opcodes.c#L274), [src/handlebars_opcode_printer.c:183](../../src/handlebars_opcode_printer.c#L183).
@@ -705,6 +711,8 @@ Lengths 300 and 513 also disagreed. Controls at 256, 320, and 512 agreed.
 The project uses the one-update streaming path for string hashing. This experiment demonstrates an algorithm-equivalence defect, not a cryptographic or collision-security claim. The project's consistent use of one update can hide the dependency inconsistency.
 
 Do not patch the vendored implementation locally. Consider updating to a newer upstream release, with equivalence tests across chunk boundaries. Consider persisted hash/cache compatibility when changing the algorithm.
+
+**Status: deferred.** The vendored implementation remains unchanged so it can be updated from upstream as a unit.
 
 ### R36. P2: a third nested each retains its data frame after an allocation failure
 
