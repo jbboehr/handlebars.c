@@ -4057,7 +4057,189 @@ START_TEST(test_value_getter_defaults)
     ck_assert_double_eq(handlebars_value_get_floatval(value), 0);
     ck_assert_int_eq(handlebars_value_get_flags(value), 0);
 
+    handlebars_value_integer(value, 42);
+    ck_assert_ptr_null(handlebars_value_get_strval(value));
+    ck_assert_uint_eq(handlebars_value_get_strlen(value), 0);
+
     HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_raw_string_getters_preserve_native_bytes)
+{
+    static const char bytes[] = { 'a', '\0', 'b' };
+    HANDLEBARS_VALUE_DECL(value);
+    struct handlebars_string * string;
+
+    string = handlebars_string_ctor(context, bytes, sizeof(bytes));
+    handlebars_value_str(value, string);
+    ck_assert_ptr_eq(handlebars_value_get_strval(value), hbs_str_val(string));
+    ck_assert_uint_eq(handlebars_value_get_strlen(value), sizeof(bytes));
+    ck_assert_int_eq(
+        memcmp(handlebars_value_get_strval(value), bytes, sizeof(bytes)),
+        0
+    );
+
+    test_value_user_string(value, 1, true);
+    ck_assert_int_eq(
+        handlebars_value_get_type(value),
+        HANDLEBARS_VALUE_TYPE_STRING
+    );
+    ck_assert_int_eq(
+        handlebars_value_get_real_type(value),
+        HANDLEBARS_VALUE_TYPE_USER
+    );
+    ck_assert_ptr_null(handlebars_value_get_strval(value));
+    ck_assert_uint_eq(handlebars_value_get_strlen(value), 0);
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_get_boolval_uses_library_emptiness_rules)
+{
+    static const char zero_with_nul_suffix[] = { '0', '\0', 'x' };
+    HANDLEBARS_VALUE_DECL(value);
+
+    handlebars_value_integer(value, 0);
+    ck_assert(!handlebars_value_get_boolval(value));
+
+    handlebars_value_integer(value, 1);
+    ck_assert(handlebars_value_get_boolval(value));
+
+    handlebars_value_float(value, 0.0);
+    ck_assert(!handlebars_value_get_boolval(value));
+
+    handlebars_value_float(value, (double) NAN);
+    ck_assert(handlebars_value_get_boolval(value));
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("")));
+    ck_assert(!handlebars_value_get_boolval(value));
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("0")));
+    ck_assert(!handlebars_value_get_boolval(value));
+
+    handlebars_value_str(
+        value,
+        handlebars_string_ctor(
+            context,
+            zero_with_nul_suffix,
+            sizeof(zero_with_nul_suffix)
+        )
+    );
+    ck_assert(handlebars_value_get_boolval(value));
+
+    handlebars_value_str(value, handlebars_string_ctor(context, HBS_STRL("false")));
+    ck_assert(handlebars_value_get_boolval(value));
+
+    handlebars_value_array(value, handlebars_stack_ctor(context, 0));
+    ck_assert(!handlebars_value_get_boolval(value));
+
+    handlebars_value_map(value, handlebars_map_ctor(context, 0));
+    ck_assert(!handlebars_value_get_boolval(value));
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_replacement_clears_payload_flags)
+{
+    HANDLEBARS_VALUE_DECL(value);
+    unsigned char integer_flags;
+
+    handlebars_value_str(
+        value,
+        handlebars_string_ctor(context, HBS_STRL("<safe>"))
+    );
+    handlebars_value_set_flag(value, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
+    assert_value_expression_result(value, true, "<safe>");
+
+    handlebars_value_integer(value, 42);
+    integer_flags = handlebars_value_get_flags(value);
+
+    handlebars_value_str(
+        value,
+        handlebars_string_ctor(context, HBS_STRL("<unsafe>"))
+    );
+    assert_value_expression_result(value, true, "&lt;unsafe&gt;");
+    ck_assert_uint_eq(integer_flags, HANDLEBARS_VALUE_FLAG_NONE);
+    ck_assert_uint_eq(
+        handlebars_value_get_flags(value),
+        HANDLEBARS_VALUE_FLAG_NONE
+    );
+
+    handlebars_value_set_flag(value, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
+    handlebars_value_dtor(value);
+    ck_assert_uint_eq(
+        handlebars_value_get_flags(value),
+        HANDLEBARS_VALUE_FLAG_NONE
+    );
+
+    handlebars_value_set_flag(value, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
+    handlebars_value_null(value);
+    ck_assert_uint_eq(
+        handlebars_value_get_flags(value),
+        HANDLEBARS_VALUE_FLAG_NONE
+    );
+
+    HANDLEBARS_VALUE_UNDECL(value);
+    ASSERT_INIT_BLOCKS();
+}
+END_TEST
+
+START_TEST(test_value_copy_preserves_payload_flags)
+{
+    HANDLEBARS_VALUE_DECL(source);
+    HANDLEBARS_VALUE_DECL(destination);
+
+    handlebars_value_str(
+        source,
+        handlebars_string_ctor(context, HBS_STRL("<safe>"))
+    );
+    handlebars_value_set_flag(source, HANDLEBARS_VALUE_FLAG_SAFE_STRING);
+    handlebars_value_integer(destination, 42);
+
+    handlebars_value_value(destination, source);
+
+    ck_assert_uint_eq(
+        handlebars_value_get_flags(destination),
+        HANDLEBARS_VALUE_FLAG_SAFE_STRING
+    );
+    assert_value_expression_result(destination, true, "<safe>");
+
+    handlebars_value_value(destination, destination);
+    ck_assert_uint_eq(
+        handlebars_value_get_flags(destination),
+        HANDLEBARS_VALUE_FLAG_SAFE_STRING
+    );
+    assert_value_expression_result(destination, true, "<safe>");
+
+    handlebars_value_str(
+        source,
+        handlebars_string_ctor(context, HBS_STRL("<unsafe>"))
+    );
+    ck_assert_uint_eq(
+        handlebars_value_get_flags(source),
+        HANDLEBARS_VALUE_FLAG_NONE
+    );
+    ck_assert_uint_eq(
+        handlebars_value_get_flags(destination),
+        HANDLEBARS_VALUE_FLAG_SAFE_STRING
+    );
+    assert_value_expression_result(destination, true, "<safe>");
+
+    handlebars_value_value(destination, source);
+    ck_assert_uint_eq(
+        handlebars_value_get_flags(destination),
+        HANDLEBARS_VALUE_FLAG_NONE
+    );
+    assert_value_expression_result(destination, true, "&lt;unsafe&gt;");
+
+    HANDLEBARS_VALUE_UNDECL(destination);
+    HANDLEBARS_VALUE_UNDECL(source);
     ASSERT_INIT_BLOCKS();
 }
 END_TEST
@@ -6028,6 +6210,10 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_float, "Float");
     REGISTER_TEST_FIXTURE(s, test_string, "String");
     REGISTER_TEST_FIXTURE(s, test_value_getter_defaults, "Getter defaults");
+    REGISTER_TEST_FIXTURE(s, test_value_raw_string_getters_preserve_native_bytes, "Raw string getters preserve native bytes");
+    REGISTER_TEST_FIXTURE(s, test_value_get_boolval_uses_library_emptiness_rules, "Boolean getter emptiness rules");
+    REGISTER_TEST_FIXTURE(s, test_value_replacement_clears_payload_flags, "Value replacement clears payload flags");
+    REGISTER_TEST_FIXTURE(s, test_value_copy_preserves_payload_flags, "Value copy preserves payload flags");
     REGISTER_TEST_FIXTURE(s, test_checked_pointer_retrieval, "Checked pointer retrieval");
 #ifndef HANDLEBARS_NO_REFCOUNT
     REGISTER_TEST_FIXTURE(s, test_checked_pointer_retrieval_is_borrowed, "Checked pointer retrieval is borrowed");

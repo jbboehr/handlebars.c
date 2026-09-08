@@ -53,7 +53,7 @@ enum handlebars_value_type
 enum handlebars_value_flags
 {
     HANDLEBARS_VALUE_FLAG_NONE = 0,
-    //! Indicates that the string value should not be escaped when appending to the output buffer
+    //! Indicates that the current string payload should not be escaped when appending to the output buffer
     HANDLEBARS_VALUE_FLAG_SAFE_STRING = 1
 };
 

@@ -167,6 +167,7 @@ void handlebars_value_dtor(struct handlebars_value * value)
 
     // Initialize to null
     value->type = HANDLEBARS_VALUE_TYPE_NULL;
+    value->flags = HANDLEBARS_VALUE_FLAG_NONE;
     memset(&value->v, 0, sizeof(value->v));
 
 #ifdef HANDLEBARS_HAVE_VALGRIND
@@ -325,8 +326,11 @@ bool handlebars_value_get_boolval(struct handlebars_value * value)
             return value->v.dval != 0;
         case HANDLEBARS_VALUE_TYPE_INTEGER:
             return value->v.lval != 0;
-        case HANDLEBARS_VALUE_TYPE_STRING:
-            return hbs_str_len(value->v.string) != 0 && strcmp(hbs_str_val(value->v.string), "0") != 0;
+        case HANDLEBARS_VALUE_TYPE_STRING: {
+            size_t length = hbs_str_len(value->v.string);
+            return length != 0
+                && (length != 1 || hbs_str_val(value->v.string)[0] != '0');
+        }
         case HANDLEBARS_VALUE_TYPE_ARRAY:
             return handlebars_stack_count(value->v.stack) != 0;
         case HANDLEBARS_VALUE_TYPE_MAP:
@@ -721,6 +725,7 @@ void handlebars_value_null(struct handlebars_value * value)
     if( value->type != HANDLEBARS_VALUE_TYPE_NULL ) {
         handlebars_value_dtor(value);
     }
+    value->flags = HANDLEBARS_VALUE_FLAG_NONE;
 }
 
 void handlebars_value_boolean(struct handlebars_value * value, bool bval)

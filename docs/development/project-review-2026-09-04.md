@@ -542,6 +542,10 @@ Remove the macro's trailing semicolon, or use a suitable inline wrapper. Header 
 
 A separate benign state check showed that setting SAFE_STRING, replacing the value with an integer, and then replacing it with a different ordinary string leaves the flag byte equal to one. This is a **potential lifecycle hardening issue**, not an established affected application: define whether flags belong to the payload or the value slot, then reset or preserve them deliberately. No unsafe-content rendering experiment was performed.
 
+**Status: addressed.** The raw string getters now document their actual native-string-only contract: `handlebars_value_get_strval` returns borrowed bytes or NULL, and `handlebars_value_get_strlen` returns the explicit byte length or zero. The boolean getter retains the library's established emptiness rules instead of claiming JavaScript conversion. Its scalar, native-container, and USER count-handler requirements are now explicit. Native string truthiness also uses the stored byte length, so only the exact one-byte string `"0"` is false; an embedded NUL no longer hides a nonempty suffix.
+
+`handlebars_value_convert` is now an expression-safe macro without an embedded semicolon. Flags are defined as metadata for the current payload: replacement, nulling, and destruction clear them, while `handlebars_value_value` copies them with the payload. A rendering regression demonstrated that the old lifecycle let `SAFE_STRING` survive through an integer and suppress escaping on a later ordinary string. The macro composition, stale-flag rendering, and embedded-NUL truthiness regressions all failed before their fixes and are retained alongside raw getter and copy-semantics coverage. Fresh Linux verification passed all 3,818 Autotools checks with one expected skip, all 182 value checks under Valgrind with no definite leaks, all 29 ASan/UBSan CTests, the 166-check no-refcount value suite, and the no-refcount Nix build. Independent correctness review found no remaining defect; non-Linux builds remain unverified.
+
 ## CLI and diagnostics
 
 ### R27. P2: CLI validation accepts invalid options or silently changes their meaning

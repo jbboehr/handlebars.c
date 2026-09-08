@@ -234,8 +234,9 @@ struct handlebars_value * handlebars_value_ctor(
 ) HBS_ATTR_NONNULL_ALL HBS_ATTR_RETURNS_NONNULL HBS_ATTR_WARN_UNUSED_RESULT HBS_ATTR_DEPRECATED;
 
 /**
- * @brief Destruct a value. Does not free the value object itself. Frees any child resources and sets the value to null.
- * @param[in] value
+ * @brief Destruct a value. Does not free the value object itself. Frees any
+ *        child resources, clears its payload flags, and sets the value to null.
+ * @param[in,out] value
  * @return void
  */
 void handlebars_value_dtor(
@@ -263,6 +264,15 @@ enum handlebars_value_type handlebars_value_get_type(struct handlebars_value * v
 enum handlebars_value_type handlebars_value_get_real_type(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Get the flags associated with the current payload
+ *
+ * Replacement mutators clear the previous payload's flags. Copying a value
+ * with #handlebars_value_value copies its flags along with its payload.
+ *
+ * @param[in] value The value to inspect
+ * @return The current payload flags
+ */
 unsigned char handlebars_value_get_flags(struct handlebars_value * value)
     HBS_ATTR_NONNULL_ALL;
 
@@ -314,27 +324,39 @@ struct handlebars_closure * handlebars_value_get_closure(struct handlebars_value
     HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Get the string value, or an empty string for non-string types
- * @param[in] value
- * @return The string value
+ * @brief Get the bytes of a native string value without conversion
+ * @param[in] value The value to inspect
+ * @return A borrowed pointer to the string bytes, or NULL when @p value is not
+ *         a native string value. Use #handlebars_value_get_strlen for the byte
+ *         length and #handlebars_value_to_string when conversion is required.
  */
 const char * handlebars_value_get_strval(
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Get the string length, or zero for invalid types
- * @param[in] value
- * @return The string length
+ * @brief Get the byte length of a native string value without conversion
+ * @param[in] value The value to inspect
+ * @return The string byte length, or zero for non-string values
  */
 size_t handlebars_value_get_strlen(
     struct handlebars_value * value
 ) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Get the boolean value. Follows javascript boolean conversion rules.
- * @param[in] value
- * @return The boolean value
+ * @brief Get the value's truthiness using the library's emptiness rules
+ *
+ * Null, false, numeric zero, empty native containers, empty strings, the
+ * one-byte string "0", and user values with a zero count are false. True,
+ * nonzero numbers, other nonempty strings and containers, and NaN are true.
+ * Other value types are false. These rules intentionally differ from
+ * JavaScript boolean conversion.
+ *
+ * @pre A USER value must provide a non-NULL count handler; this getter invokes
+ *      it to determine truthiness.
+ *
+ * @param[in] value The value to inspect
+ * @return The value's library-specific truthiness
  */
 bool handlebars_value_get_boolval(
     struct handlebars_value * value
@@ -421,7 +443,7 @@ void handlebars_value_convert_ex(
     bool recurse
 ) HBS_ATTR_NONNULL_ALL;
 
-#define handlebars_value_convert(value) handlebars_value_convert_ex(value, 1);
+#define handlebars_value_convert(value) handlebars_value_convert_ex((value), true)
 
 bool handlebars_value_eq(
     struct handlebars_value * value1,
@@ -433,8 +455,8 @@ bool handlebars_value_eq(
 // {{{ Mutators
 
 /**
- * @brief Set the value to null
- * @param[in] value
+ * @brief Set the value to null and clear its payload flags
+ * @param[in,out] value
  * @return void
  */
 void handlebars_value_null(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
@@ -483,8 +505,22 @@ void handlebars_value_helper(struct handlebars_value * value, handlebars_helper_
 
 void handlebars_value_closure(struct handlebars_value * value, struct handlebars_closure * closure) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Replace a value with a copy of another value, including its flags
+ * @param[in,out] dest The value to replace
+ * @param[in] src The value and payload flags to copy
+ */
 void handlebars_value_value(struct handlebars_value * dest, struct handlebars_value * src) HBS_ATTR_NONNULL_ALL;
 
+/**
+ * @brief Set a flag on the current payload
+ *
+ * Assign payload flags after constructing the payload. A subsequent value
+ * replacement or destruction clears them.
+ *
+ * @param[in,out] value The value whose current payload receives the flag
+ * @param[in] flag The flag to set
+ */
 void handlebars_value_set_flag(struct handlebars_value * value, enum handlebars_value_flags flag)
     HBS_ATTR_NONNULL_ALL;
 
@@ -500,9 +536,9 @@ void handlebars_value_set_flag(struct handlebars_value * value, enum handlebars_
 bool handlebars_value_is_callable(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 
 /**
- * @brief Check if the value is empty. Follows javascript boolean conversion rules.
- * @param[in] value
- * @return Whether or not the value is empty
+ * @brief Check whether the value is empty under the library's truthiness rules
+ * @param[in] value The value to inspect
+ * @return The inverse of #handlebars_value_get_boolval
  */
 bool handlebars_value_is_empty(struct handlebars_value * value) HBS_ATTR_NONNULL_ALL;
 

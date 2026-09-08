@@ -15,3 +15,23 @@ void handlebars_vm_cache_clear_compile_probe(struct handlebars_vm * vm)
     handlebars_vm_set_cache(vm, NULL);
 }
 #endif
+
+#ifdef HANDLEBARS_VALUE_H
+void handlebars_value_convert_compile_probe(
+    struct handlebars_value * value,
+    int condition
+)
+{
+    if( condition )
+        handlebars_value_convert(value);
+    else
+        handlebars_value_null(value);
+}
+
+struct handlebars_value * handlebars_value_convert_expression_compile_probe(
+    struct handlebars_value * value
+)
+{
+    return (handlebars_value_convert(value), value);
+}
+#endif
