@@ -139,7 +139,7 @@ static int loadSpec(const char * filename) {
     }
 
     // Parse JSON
-    result = json_tokener_parse(data);
+    result = hbs_test_json_parse_document(data, data_len);
     // @todo: parsing errors seem to cause segfaults....
     if( result == NULL ) {
         fprintf(stderr, "Failed so parse JSON\n");

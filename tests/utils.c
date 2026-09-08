@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 
 #include <pcre2.h>
 #include <talloc.h>
@@ -308,6 +309,115 @@ char * normalize_template_whitespace(TALLOC_CTX *ctx, struct handlebars_string *
 }
 
 #ifdef HANDLEBARS_HAVE_JSON
+static int hbs_test_json_has_valid_whitespace(
+    const char * data,
+    size_t length
+)
+{
+    enum {
+        HBS_TEST_JSON_NORMAL,
+        HBS_TEST_JSON_STRING,
+        HBS_TEST_JSON_STRING_ESCAPE,
+        HBS_TEST_JSON_LINE_COMMENT,
+        HBS_TEST_JSON_BLOCK_COMMENT
+    } state = HBS_TEST_JSON_NORMAL;
+    char string_delimiter = '\0';
+    size_t i;
+
+    for( i = 0; i < length; i++ ) {
+        char byte = data[i];
+
+        switch( state ) {
+            case HBS_TEST_JSON_STRING:
+                if( byte == '\\' ) {
+                    state = HBS_TEST_JSON_STRING_ESCAPE;
+                } else if( byte == string_delimiter ) {
+                    state = HBS_TEST_JSON_NORMAL;
+                }
+                break;
+
+            case HBS_TEST_JSON_STRING_ESCAPE:
+                state = HBS_TEST_JSON_STRING;
+                break;
+
+            case HBS_TEST_JSON_LINE_COMMENT:
+                if( byte == '\n' ) {
+                    state = HBS_TEST_JSON_NORMAL;
+                }
+                break;
+
+            case HBS_TEST_JSON_BLOCK_COMMENT:
+                if( byte == '*' && i + 1 < length && data[i + 1] == '/' ) {
+                    state = HBS_TEST_JSON_NORMAL;
+                    i++;
+                }
+                break;
+
+            case HBS_TEST_JSON_NORMAL:
+                if( byte == '"' || byte == '\'' ) {
+                    string_delimiter = byte;
+                    state = HBS_TEST_JSON_STRING;
+                } else if( byte == '/' && i + 1 < length
+                        && data[i + 1] == '/' ) {
+                    state = HBS_TEST_JSON_LINE_COMMENT;
+                    i++;
+                } else if( byte == '/' && i + 1 < length
+                        && data[i + 1] == '*' ) {
+                    state = HBS_TEST_JSON_BLOCK_COMMENT;
+                    i++;
+                } else if( (unsigned char) byte <= 0x1f
+                        && byte != '\t' && byte != '\r' && byte != '\n' ) {
+                    return 0;
+                }
+                break;
+
+            default:
+                return 0;
+        }
+    }
+    return 1;
+}
+
+struct json_object * hbs_test_json_parse_document(const char * data, size_t length)
+{
+    struct json_tokener * tokener;
+    struct json_object * result;
+    size_t parse_end;
+
+    if( length > INT_MAX
+            || !hbs_test_json_has_valid_whitespace(data, length) ) {
+        return NULL;
+    }
+    tokener = json_tokener_new();
+    if( tokener == NULL ) {
+        return NULL;
+    }
+    result = json_tokener_parse_ex(tokener, data, (int) length);
+    parse_end = (size_t) tokener->char_offset;
+    if( parse_end == length
+            && json_tokener_get_error(tokener) == json_tokener_continue ) {
+        result = json_tokener_parse_ex(tokener, "", 1);
+    }
+    while( parse_end < length ) {
+        char byte = data[parse_end];
+
+        if( byte != ' ' && byte != '\t' && byte != '\r' && byte != '\n' ) {
+            break;
+        }
+        parse_end++;
+    }
+    if( json_tokener_get_error(tokener) != json_tokener_success
+            || result == NULL
+            || parse_end != length ) {
+        if( result != NULL ) {
+            json_object_put(result);
+        }
+        result = NULL;
+    }
+    json_tokener_free(tokener);
+    return result;
+}
+
 int hbs_test_json_dtor(struct hbs_test_json_holder * holder)
 {
     if (holder && holder->obj) {

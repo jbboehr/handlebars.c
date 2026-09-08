@@ -664,7 +664,25 @@ The runner regression script starts with a complete fixture copy, then removes e
 
 CTest runs the script on Unix platforms, and Autotools runs it when JSON support enables these specification runners. The script is distributed in release archives and uses the existing executables and standard shell tools. Fresh Linux verification passed all 29 CTest programs in Release and Debug ASan/UBSan builds, both with allocation-failure testing enabled. The memory-disabled Autotools build and distcheck each passed 2,304 checks. An extracted archive passed all five affected CTest tests. The script also passed with read-only source fixtures, temporary paths containing spaces, and a reordered valid fixture set whose first case expects an error. ShellCheck and shell syntax validation passed.
 
-**Separate follow-up confirmed during review:** the existing json_tokener_parse call accepts a valid array followed by non-whitespace text. Both the base revision for this slice, 6daccd0, and the patched runner loaded all 449 fixtures and exited zero when ordinary text was appended to whitespace-control.json; TEST_NUM=0 executed three checks in each control. Both independent reviews found this pre-existing behavior. Whole-file JSON validation is a separate follow-up; its failing regression is retained with the temporary review evidence. Reliability verdict: PASS_WITH_RESIDUAL_RISK. Non-Linux execution remains unverified.
+**Follow-up status: addressed.** All four JSON fixture loaders now use one
+length-delimited test utility that requires json-c to consume the complete
+document, apart from trailing JSON whitespace. Before the fix, the compiler,
+parser, tokenizer, and runtime runners each accepted a second JSON value after
+their fixture array and started Check. The retained runner regression requires
+all four to reject that input before running tests, while the existing
+newline-terminated controls continue to pass. Inputs larger than json-c's
+signed-length limit are also rejected.
+
+Independent review found that the first helper version rejected exact-length
+scalars and json-c line comments ending at EOF because json-c requested one more
+byte. The helper now supplies a separate virtual terminator only after the
+parser consumes the supplied boundary. Focused controls cover exact scalars,
+JSON whitespace, comments, extra values, ordinary suffixes, non-JSON whitespace,
+embedded NULs, and the signed-length limit. Fresh final verification passed all
+3,837 Autotools checks with one expected skip, the utility suite under Valgrind
+with no errors or leaks, and all ten x86_64-linux flake checks. Reliability
+verdict: PASS_WITH_RESIDUAL_RISK. Other json-c versions and non-Linux platforms
+remain unverified.
 
 ### R33. P2: floating-point tests discard fractional precision
 

@@ -119,6 +119,7 @@ struct hbs_test_json_holder {
 };
 
 int hbs_test_json_dtor(struct hbs_test_json_holder * holder);
+struct json_object * hbs_test_json_parse_document(const char * data, size_t length);
 
 #define HBS_TEST_JSON_DTOR(ctx, o) \
     do { \

@@ -61,6 +61,13 @@ last_fixture_fails() {
         grep -Fq 'RUNNER_SENTINEL' "$log"
 }
 
+trailing_content_rejected() {
+    status=0
+    run_fixture >"$log" 2>&1 || status=$?
+    test "$status" -ne 0 &&
+        ! grep -Fq 'Running suite(s):' "$log"
+}
+
 # The compiler runner expects all export files. Put the controlled cases in
 # basic.json and leave the other groups empty.
 for name in basic blocks builtins data helpers partials regressions strict \
@@ -88,6 +95,14 @@ for runner in compiler parser tokenizer; do
     esac
     printf '[%s]\n' "$good" >"$fixture"
     check "$runner executes a singleton fixture" singleton_runs
+    printf '[%s] \t\r\n' "$good" >"$fixture"
+    check "$runner accepts trailing JSON whitespace" singleton_runs
+    printf '[%s]// comment' "$good" >"$fixture"
+    check "$runner accepts a json-c line comment at EOF" singleton_runs
+    printf '[%s]\n{}\n' "$good" >"$fixture"
+    check "$runner rejects content after its fixture array" trailing_content_rejected
+    printf '[%s]\000{}\n' "$good" >"$fixture"
+    check "$runner rejects content after an embedded NUL" trailing_content_rejected
     printf '[%s,%s]\n' "$good" "$bad" >"$fixture"
     check "$runner executes the final fixture" last_fixture_fails
 done
@@ -153,6 +168,20 @@ check 'runtime rejects malformed fixture JSON' runtime_rejects_invalid \
 printf '{}\n' >"$temporary/runtime/whitespace-control.json"
 check 'runtime rejects a non-array fixture root' runtime_rejects_invalid \
     "Root JSON value was not array in spec file: $temporary/runtime/whitespace-control.json"
+cp "$SPEC_RUNTIME_SOURCE/whitespace-control.json" "$temporary/runtime/whitespace-control.json"
+printf '{}\n' >>"$temporary/runtime/whitespace-control.json"
+check 'runtime rejects content after a fixture array' runtime_rejects_invalid \
+    "Failed to parse JSON in spec file: $temporary/runtime/whitespace-control.json"
+cp "$SPEC_RUNTIME_SOURCE/whitespace-control.json" "$temporary/runtime/whitespace-control.json"
+printf ' \t\r\n' >>"$temporary/runtime/whitespace-control.json"
+check 'runtime accepts trailing JSON whitespace' runtime_starts
+cp "$SPEC_RUNTIME_SOURCE/whitespace-control.json" "$temporary/runtime/whitespace-control.json"
+printf '// comment' >>"$temporary/runtime/whitespace-control.json"
+check 'runtime accepts a json-c line comment at EOF' runtime_starts
+cp "$SPEC_RUNTIME_SOURCE/whitespace-control.json" "$temporary/runtime/whitespace-control.json"
+printf '\000{}\n' >>"$temporary/runtime/whitespace-control.json"
+check 'runtime rejects content after an embedded NUL' runtime_rejects_invalid \
+    "Failed to parse JSON in spec file: $temporary/runtime/whitespace-control.json"
 
 echo "1..$checked"
 exit "$failed"

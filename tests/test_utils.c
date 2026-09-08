@@ -20,8 +20,13 @@
 #endif
 
 #include <check.h>
+#include <limits.h>
 #include <string.h>
 #include <talloc.h>
+
+#ifdef HANDLEBARS_HAVE_JSON
+#include <json_object.h>
+#endif
 
 #include "handlebars.h"
 #include "handlebars_ast.h"
@@ -214,6 +219,65 @@ START_TEST(test_regex_compare)
 }
 END_TEST
 
+#ifdef HANDLEBARS_HAVE_JSON
+START_TEST(test_json_parse_document_boundaries)
+{
+    static const struct {
+        const char * data;
+        size_t length;
+        int accepted;
+        const char * description;
+    } cases[] = {
+        { "[]", sizeof("[]") - 1, 1, "exact document" },
+        { " \n[]\t\r\n", sizeof(" \n[]\t\r\n") - 1, 1, "JSON whitespace" },
+        { "[/* comment */]", sizeof("[/* comment */]") - 1, 1, "json-c comment" },
+        { "[]{}", sizeof("[]{}") - 1, 0, "second JSON value" },
+        { "[]x", sizeof("[]x") - 1, 0, "ordinary suffix" },
+        { "[]/* comment */", sizeof("[]/* comment */") - 1, 1, "json-c trailing comment" },
+        { "[]// comment", sizeof("[]// comment") - 1, 1, "json-c EOF line comment" },
+        { "[/*\v*/]", sizeof("[/*\v*/]") - 1, 1, "control byte inside json-c comment" },
+        { "['\"']\v", sizeof("['\"']\v") - 1, 0, "vertical tab after single-quoted string" },
+        { "[//x\r\v\n]", sizeof("[//x\r\v\n]") - 1, 1, "control bytes inside json-c line comment" },
+        { "\v[]", sizeof("\v[]") - 1, 0, "leading vertical tab" },
+        { "[]\v", sizeof("[]\v") - 1, 0, "vertical tab" },
+        { "[]\f", sizeof("[]\f") - 1, 0, "form feed" },
+        { "[]\0", sizeof("[]\0") - 1, 0, "NUL byte" },
+        { "[]\0{}", sizeof("[]\0{}") - 1, 0, "content after NUL" },
+    };
+    size_t i;
+
+    for( i = 0; i < sizeof(cases) / sizeof(cases[0]); i++ ) {
+        struct json_object * result = hbs_test_json_parse_document(
+            cases[i].data, cases[i].length);
+        int accepted = result != NULL;
+
+        if( result != NULL ) {
+            json_object_put(result);
+        }
+        ck_assert_msg(accepted == cases[i].accepted,
+            "%s was unexpectedly %s", cases[i].description,
+            accepted ? "accepted" : "rejected");
+    }
+}
+END_TEST
+
+START_TEST(test_json_parse_document_exact_scalar)
+{
+    struct json_object * result = hbs_test_json_parse_document("1", 1);
+
+    ck_assert_ptr_nonnull(result);
+    json_object_put(result);
+}
+END_TEST
+
+START_TEST(test_json_parse_document_rejects_length_over_int_max)
+{
+    ck_assert_ptr_null(hbs_test_json_parse_document(
+        NULL, (size_t) INT_MAX + 1));
+}
+END_TEST
+#endif
+
 static Suite * suite(void);
 static Suite * suite(void)
 {
@@ -228,6 +292,14 @@ static Suite * suite(void)
     REGISTER_MEMORY_TEST_FIXTURE(s, test_yy_alloc_failed_alloc, "yy_alloc (failed alloc)");
     REGISTER_MEMORY_TEST_FIXTURE(s, test_yy_realloc_failed_alloc, "yy_realloc (failed alloc)");
     REGISTER_TEST_FIXTURE(s, test_regex_compare, "PCRE2 regex comparison");
+#ifdef HANDLEBARS_HAVE_JSON
+    REGISTER_TEST_FIXTURE(s, test_json_parse_document_boundaries,
+        "length-delimited JSON document boundaries");
+    REGISTER_TEST_FIXTURE(s, test_json_parse_document_exact_scalar,
+        "length-delimited JSON exact scalar");
+    REGISTER_TEST_FIXTURE(s, test_json_parse_document_rejects_length_over_int_max,
+        "length-delimited JSON rejects length over INT_MAX");
+#endif
 
     return s;
 }
