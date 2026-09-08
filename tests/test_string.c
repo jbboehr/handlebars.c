@@ -25,6 +25,14 @@
 #include <stdint.h>
 #include <string.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch-default"
+
+#define XXH_INLINE_ALL
+#include "../vendor/xxhash/xxhash.h"
+
+#pragma GCC diagnostic pop
+
 #include "handlebars.h"
 #include "handlebars_memory.h"
 #include "handlebars_rc.h"
@@ -54,16 +62,130 @@ _Static_assert(
 
 START_TEST(test_handlebars_string_hash)
 {
+    ck_assert_str_eq(HANDLEBARS_XXHASH_VERSION, "0.8.3");
+    ck_assert_uint_eq(HANDLEBARS_XXHASH_VERSION_ID, 803);
 #if 0
     // DJBX33A
     ck_assert_uint_eq(3127933309ul, handlebars_string_hash(HBS_STRL("foobar\xFF")));
 #elif 1
     // XXH3LOW
-    ck_assert_uint_eq(1811779989ul, handlebars_string_hash(HBS_STRL("")));
+    ck_assert_msg(
+        handlebars_hash_xxh3(HBS_STRL("")) == UINT64_C(0x2d06800538d394c2),
+        "unexpected XXH3 hash for empty input"
+    );
+    ck_assert_uint_eq(953390274ul, handlebars_string_hash(HBS_STRL("")));
     ck_assert_uint_eq(813235675ul, handlebars_string_hash(HBS_STRL("foobar\xFF")));
 #endif
 }
 END_TEST
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winline"
+
+static HBS_ATTR_NOINLINE XXH64_hash_t xxh3_stream_hash(
+    const char * input,
+    size_t length,
+    size_t chunk_size
+) {
+    XXH3_state_t state;
+    size_t offset = 0;
+
+    ck_assert_int_eq(XXH3_64bits_reset(&state), XXH_OK);
+    ck_assert_int_eq(XXH3_64bits_update(&state, input, 0), XXH_OK);
+    while( offset < length ) {
+        size_t remaining = length - offset;
+        size_t update_size = remaining < chunk_size ? remaining : chunk_size;
+
+        ck_assert_int_eq(
+            XXH3_64bits_update(&state, input + offset, update_size),
+            XXH_OK
+        );
+        offset += update_size;
+    }
+    ck_assert_int_eq(XXH3_64bits_update(&state, input + offset, 0), XXH_OK);
+    return XXH3_64bits_digest(&state);
+}
+
+static HBS_ATTR_NOINLINE XXH64_hash_t xxh3_stream_hash_pseudorandom(
+    const char * input,
+    size_t length,
+    uint32_t seed
+) {
+    XXH3_state_t state;
+    size_t offset = 0;
+
+    ck_assert_int_eq(XXH3_64bits_reset(&state), XXH_OK);
+    while( offset < length ) {
+        size_t remaining = length - offset;
+        size_t update_size;
+
+        seed = seed * UINT32_C(1664525) + UINT32_C(1013904223);
+        update_size = 1 + seed % 521;
+        if( update_size > remaining ) {
+            update_size = remaining;
+        }
+        ck_assert_int_eq(XXH3_64bits_update(&state, input + offset, 0), XXH_OK);
+        ck_assert_int_eq(
+            XXH3_64bits_update(&state, input + offset, update_size),
+            XXH_OK
+        );
+        offset += update_size;
+    }
+    ck_assert_int_eq(XXH3_64bits_update(&state, input + offset, 0), XXH_OK);
+    return XXH3_64bits_digest(&state);
+}
+
+START_TEST(test_handlebars_hash_xxh3_is_independent_of_update_partitioning)
+{
+    static const size_t lengths[] = {
+        0, 1, 2, 3, 4, 5, 7, 8, 9, 15, 16, 17,
+        31, 32, 33, 63, 64, 65, 127, 128, 129,
+        239, 240, 241, 255, 256, 257, 300, 319, 320, 321,
+        511, 512, 513, 1023, 1024, 1025, 2047, 2048, 2049
+    };
+    static const size_t chunk_sizes[] = {
+        1, 2, 3, 7, 8, 9, 15, 16, 17, 31, 32, 33,
+        63, 64, 65, 127, 128, 129, 239, 240, 241,
+        255, 256, 257, 511, 512, 513, 1023, 1024, 1025
+    };
+    char input[2049];
+
+    for( size_t i = 0; i < sizeof(input); i++ ) {
+        input[i] = (char) ('a' + (i % 26));
+    }
+
+    for( size_t i = 0; i < sizeof(lengths) / sizeof(lengths[0]); i++ ) {
+        size_t length = lengths[i];
+        XXH64_hash_t expected = XXH3_64bits(input, length);
+
+        ck_assert_msg(
+            handlebars_hash_xxh3(input, length) == expected,
+            "project hash differs from one-shot XXH3 at length %zu",
+            length
+        );
+        for( size_t j = 0; j < sizeof(chunk_sizes) / sizeof(chunk_sizes[0]); j++ ) {
+            size_t chunk_size = chunk_sizes[j];
+
+            ck_assert_msg(
+                xxh3_stream_hash(input, length, chunk_size) == expected,
+                "streaming XXH3 differs at length %zu with %zu-byte updates",
+                length,
+                chunk_size
+            );
+        }
+        for( uint32_t seed = 1; seed <= 32; seed++ ) {
+            ck_assert_msg(
+                xxh3_stream_hash_pseudorandom(input, length, seed) == expected,
+                "streaming XXH3 differs at length %zu with partition seed %u",
+                length,
+                seed
+            );
+        }
+    }
+}
+END_TEST
+
+#pragma GCC diagnostic pop
 
 START_TEST(test_handlebars_string_read_accessors_preserve_binary_bytes)
 {
@@ -1267,6 +1389,7 @@ static Suite * suite(void)
     Suite * s = suite_create("String");
 
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_hash, "handlebars_string_hash");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_hash_xxh3_is_independent_of_update_partitioning, "XXH3 update partitioning");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_read_accessors_preserve_binary_bytes, "read accessors preserve binary bytes");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_1, "handlebars_strnstr 1");
     REGISTER_TEST_FIXTURE(s, test_handlebars_strnstr_2, "handlebars_strnstr 2");

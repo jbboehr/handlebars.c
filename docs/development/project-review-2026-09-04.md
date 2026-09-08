@@ -6,7 +6,7 @@ This report covers the library, CLI, build and installation workflows, tests, fu
 
 P1 means fix before the next release because the defect affects packaging or a substantial runtime contract. P2 means a correctness or ownership defect in ordinary use. P3 means a narrower API, diagnostic, test, or maintenance issue. These are remediation priorities, not vulnerability severity ratings.
 
-R01 through R34 and R36 are addressed. R35 is intentionally deferred pending an update of the vendored xxHash implementation.
+R01 through R36 are addressed.
 
 ## Verification and coverage limits
 
@@ -712,7 +712,25 @@ The project uses the one-update streaming path for string hashing. This experime
 
 Do not patch the vendored implementation locally. Consider updating to a newer upstream release, with equivalence tests across chunk boundaries. Consider persisted hash/cache compatibility when changing the algorithm.
 
-**Status: deferred.** The vendored implementation remains unchanged so it can be updated from upstream as a unit.
+**Status: addressed.** The vendored xxHash implementation was updated as a unit
+from 0.7.3 to 0.8.3, the current upstream release. The project now uses the
+one-shot XXH3 interface directly. A regression compares it with streaming
+hashes across 40 boundary lengths through 2,049 bytes, 30 fixed update sizes,
+zero-length updates, and 32 deterministic nonuniform partitions per length;
+all 2,480 streaming comparisons produce the same value.
+
+XXH3 was still unstable in xxHash 0.7.3, so this update intentionally changes
+some hash values. Serialized modules include an XXH3 checksum. Verification
+recomputes that checksum before a persistent cache entry is accepted, causing
+modules written with the old algorithm to be rejected and recompiled rather
+than reused. A cross-version probe normalized a valid 3,440-byte module and
+confirmed that verification accepted its 0.8.3 checksum, then rejected the
+checksum produced by the exact previous 0.7.3 one-update path.
+
+Fresh verification reported 3,833 Autotools passes and one expected skip, all
+29 GCC CTest programs, all 29 Clang 21 AddressSanitizer and UndefinedBehaviorSanitizer
+CTest programs with leak detection disabled, and all ten x86_64-linux flake
+checks. Non-x86, big-endian, and 32-bit platforms remain unverified.
 
 ### R36. P2: a third nested each retains its data frame after an allocation failure
 

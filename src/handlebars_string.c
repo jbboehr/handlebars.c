@@ -436,10 +436,7 @@ uint32_t handlebars_hash_djbx33a(const char * str, size_t len)
 
 uint64_t handlebars_hash_xxh3(const char * str, size_t len)
 {
-    XXH3_state_t state;
-    XXH3_64bits_reset(&state);
-    XXH3_64bits_update(&state, str, len);
-    return XXH3_64bits_digest(&state);
+    return XXH3_64bits(str, len);
 }
 
 uint32_t handlebars_hash_xxh3low(const char * str, size_t len)
