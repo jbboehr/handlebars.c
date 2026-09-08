@@ -1120,7 +1120,7 @@ static struct handlebars_string * execute_template(
             use_delimiters ? vm->delim_close : NULL
         );
         if (indent) {
-            tmpl = handlebars_string_indent(CONTEXT, tmpl, indent);
+            tmpl = handlebars_string_indent(HBSCTX(context), tmpl, indent);
         }
     }
 
@@ -2560,6 +2560,7 @@ struct handlebars_partial_call_state {
     struct handlebars_value partial_block;
     struct handlebars_value partial_data;
     struct handlebars_string * temporary_name;
+    struct handlebars_string * buffer;
     struct handlebars_stack_save_buf inline_scope_save;
     bool inline_scope_saved;
     bool pushed_partial_block;
@@ -2586,7 +2587,6 @@ ACCEPT_NOINLINE_FUNCTION(invoke_partial)
     struct handlebars_value * partial_block;
     struct handlebars_string * name;
     struct handlebars_value * partial;
-    struct handlebars_string * buffer;
     jmp_buf buf;
 
     HANDLEBARS_MEMCHECK(state, CONTEXT);
@@ -2620,8 +2620,6 @@ ACCEPT_NOINLINE_FUNCTION(invoke_partial)
     }
     name = NULL;
     partial = NULL;
-    buffer = NULL;
-
     if( opcode->op1.data.boolval ) {
         // Dynamic partial
         HBS_ASSERT(POP(vm->stack, tmp));
@@ -2794,17 +2792,28 @@ ACCEPT_NOINLINE_FUNCTION(invoke_partial)
 
     // Finally, call the partial
     do {
-        buffer = handlebars_value_expression(
+        state->buffer = handlebars_value_expression(
             CONTEXT,
             handlebars_value_call(partial, argc, argv, options, vm, rv),
             false
         );
 
         if (vm->flags & handlebars_compiler_flag_compat) {
-            vm->buffer = handlebars_string_append_str(CONTEXT, vm->buffer, buffer);
+            vm->buffer = handlebars_string_append_str(
+                CONTEXT,
+                vm->buffer,
+                state->buffer
+            );
+            handlebars_string_delref(state->buffer);
         } else {
-            vm->buffer = handlebars_string_indent_append(HBSCTX(vm), vm->buffer, buffer, opcode->op3.data.string.string);
+            vm->buffer = handlebars_string_indent_append(
+                HBSCTX(vm),
+                vm->buffer,
+                state->buffer,
+                opcode->op3.data.string.string
+            );
         }
+        state->buffer = NULL;
     } while (0);
 
 done:
@@ -2837,6 +2846,9 @@ done:
     handlebars_value_dtor(&state->rv);
     handlebars_value_dtor(&state->partial_rv);
     handlebars_value_dtor(&state->tmp);
+    if( state->buffer != NULL ) {
+        handlebars_string_delref(state->buffer);
+    }
     handlebars_talloc_free(state);
     vm->depth = previous_depth;
 

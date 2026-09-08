@@ -1222,16 +1222,16 @@ struct handlebars_string * handlebars_string_indent_append(
     struct handlebars_string * input_string,
     const struct handlebars_string * indent_str
 ) {
-    bool copied_input = append_to_string == input_string;
+    bool input_is_output = append_to_string == input_string;
+    bool indent_is_output = append_to_string == indent_str;
     const char * str;
+    const char * indent;
     size_t str_len;
+    size_t indent_len = indent_str->len;
+    size_t added_len;
+    size_t new_len;
     bool endsInLine;
     size_t i;
-    char tmp[2] = "\0";
-
-    if( copied_input ) {
-        input_string = handlebars_string_copy_ctor(context, input_string);
-    }
 
     str = input_string->val;
     str_len = input_string->len;
@@ -1241,25 +1241,57 @@ struct handlebars_string * handlebars_string_indent_append(
         str_len--;
     }
 
-    append_to_string = handlebars_string_append_str(context, append_to_string, indent_str);
+    added_len = string_length_add(context, input_string->len, indent_len);
+    for( i = 0; i < str_len; i++ ) {
+        if( str[i] == '\n' ) {
+            added_len = string_length_add(context, added_len, indent_len);
+        }
+    }
+    new_len = string_length_add(context, append_to_string->len, added_len);
+    append_to_string = string_reserve_for_write(
+        context,
+        append_to_string,
+        new_len
+    );
+
+    if( input_is_output ) {
+        str = append_to_string->val;
+    }
+    indent = indent_is_output ? append_to_string->val : indent_str->val;
+    append_to_string = handlebars_string_append_unsafe(
+        append_to_string,
+        indent,
+        indent_len
+    );
 
     for( i = 0; i < str_len; i++ ) {
         if( str[i] == '\n' ) {
-            append_to_string = handlebars_string_append(context, append_to_string, HBS_STRL("\n"));
-            append_to_string = handlebars_string_append_str(context, append_to_string, indent_str);
+            append_to_string = handlebars_string_append_unsafe(
+                append_to_string,
+                HBS_STRL("\n")
+            );
+            append_to_string = handlebars_string_append_unsafe(
+                append_to_string,
+                indent,
+                indent_len
+            );
         } else {
-            tmp[0] = str[i];
-            append_to_string = handlebars_string_append(context, append_to_string, tmp, 1);
+            append_to_string = handlebars_string_append_unsafe(
+                append_to_string,
+                &str[i],
+                1
+            );
         }
     }
 
     if( endsInLine ) {
-        append_to_string = handlebars_string_append(context, append_to_string, HBS_STRL("\n"));
+        append_to_string = handlebars_string_append_unsafe(
+            append_to_string,
+            HBS_STRL("\n")
+        );
     }
 
-    if( copied_input ) {
-        handlebars_talloc_free(input_string);
-    } else {
+    if( !input_is_output ) {
         handlebars_string_delref(input_string);
     }
 

@@ -4372,15 +4372,35 @@ END_TEST
 
 START_TEST(test_compat_partial_cache_uses_processed_template_key)
 {
+    static const char partial_source[] =
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef{{bar}}";
+    static const char expected[] =
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdefbaz";
     struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
     struct handlebars_module * module = serialize_template("{{>foo}}");
+    struct handlebars_string * buffer;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    size_t baseline_blocks;
+    size_t baseline_size;
+#endif
     HANDLEBARS_VALUE_DECL(input);
     HANDLEBARS_VALUE_DECL(partial);
     HANDLEBARS_VALUE_DECL(partials);
 
     handlebars_value_init_json_string(context, input, "{\"bar\": \"baz\"}");
     handlebars_value_convert(input);
-    handlebars_value_str(partial, handlebars_string_ctor(context, HBS_STRL("{{bar}}")));
+    handlebars_value_str(
+        partial,
+        handlebars_string_ctor(
+            context,
+            partial_source,
+            sizeof(partial_source) - 1
+        )
+    );
     struct handlebars_map * partial_map = handlebars_map_ctor(context, 1);
     partial_map = handlebars_map_str_add(partial_map, HBS_STRL("foo"), partial);
     handlebars_value_map(partials, partial_map);
@@ -4389,11 +4409,88 @@ START_TEST(test_compat_partial_cache_uses_processed_template_key)
     handlebars_vm_set_partials(vm, partials);
     handlebars_vm_set_cache(vm, cache);
 
-    struct handlebars_string * buffer = handlebars_vm_execute(vm, module, input);
-    ck_assert_hbs_str_eq_cstr(buffer, "baz");
     buffer = handlebars_vm_execute(vm, module, input);
-    ck_assert_hbs_str_eq_cstr(buffer, "baz");
+    ck_assert_hbs_str_eq_cstr(buffer, expected);
+    handlebars_string_delref(buffer);
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+    baseline_blocks = talloc_total_blocks(vm);
+    baseline_size = talloc_total_size(vm);
+    for( int i = 0; i < 100; i++ ) {
+#else
+    for( int i = 0; i < 1; i++ ) {
+#endif
+        buffer = handlebars_vm_execute(vm, module, input);
+        ck_assert_hbs_str_eq_cstr(buffer, expected);
+        handlebars_string_delref(buffer);
+    }
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ck_assert_msg(
+        talloc_total_blocks(vm) == baseline_blocks,
+        "repeated compatibility renders retained %zu VM blocks (baseline %zu)",
+        talloc_total_blocks(vm),
+        baseline_blocks
+    );
+    ck_assert_msg(
+        talloc_total_size(vm) == baseline_size,
+        "repeated compatibility renders retained %zu VM bytes (baseline %zu)",
+        talloc_total_size(vm),
+        baseline_size
+    );
+    ck_assert_int_ge(handlebars_cache_stat(cache).hits, 100);
+#else
     ck_assert_int_ge(handlebars_cache_stat(cache).hits, 1);
+#endif
+
+#ifdef HANDLEBARS_MEMORY
+    {
+        bool observed_failure = false;
+        bool reached_success = false;
+
+        for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+            enum handlebars_error_type error;
+
+            handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+            handlebars_memory_fail_counter(fail_at);
+            error = handlebars_vm_execute_try(vm, module, input, &buffer);
+            handlebars_memory_fail_disable();
+
+            if( error == HANDLEBARS_SUCCESS ) {
+                ck_assert_hbs_str_eq_cstr(buffer, expected);
+                handlebars_string_delref(buffer);
+                reached_success = true;
+                break;
+            }
+
+            observed_failure = true;
+            ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+            ck_assert_ptr_null(buffer);
+#ifndef HANDLEBARS_NO_REFCOUNT
+            ck_assert_msg(
+                talloc_total_blocks(vm) == baseline_blocks,
+                "compatibility render allocation %d retained %zu VM blocks "
+                "(baseline %zu)",
+                fail_at,
+                talloc_total_blocks(vm),
+                baseline_blocks
+            );
+#endif
+
+            handlebars_error_clear(HBSCTX(vm));
+            buffer = handlebars_vm_execute(vm, module, input);
+            ck_assert_msg(buffer != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+            ck_assert_hbs_str_eq_cstr(buffer, expected);
+            handlebars_string_delref(buffer);
+#ifndef HANDLEBARS_NO_REFCOUNT
+            ck_assert_uint_eq(talloc_total_blocks(vm), baseline_blocks);
+#endif
+        }
+
+        ck_assert(observed_failure);
+        ck_assert(reached_success);
+    }
+#endif
 
     HANDLEBARS_VALUE_UNDECL(partials);
     HANDLEBARS_VALUE_UNDECL(partial);
@@ -4401,6 +4498,216 @@ START_TEST(test_compat_partial_cache_uses_processed_template_key)
     handlebars_cache_dtor(cache);
 }
 END_TEST
+
+#if defined(HANDLEBARS_MEMORY) && !defined(HANDLEBARS_NO_REFCOUNT)
+START_TEST(test_compat_indented_partial_allocation_failures_unwind_vm)
+{
+    static const char partial_source[] = "body";
+    static const char expected[] = "prefix\n  body";
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_module * module = serialize_template("prefix\n  {{> cached}}");
+    struct handlebars_string * output;
+    size_t baseline_blocks;
+    size_t baseline_size;
+    bool observed_failure = false;
+    bool reached_success = false;
+    HANDLEBARS_VALUE_DECL(input);
+
+    vm_cache_set_string_partial(context, vm, partial_source);
+    handlebars_vm_set_flags(vm, handlebars_compiler_flag_compat);
+    handlebars_vm_set_cache(vm, cache);
+
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, expected);
+    handlebars_string_delref(output);
+    baseline_blocks = talloc_total_blocks(vm);
+    baseline_size = talloc_total_size(vm);
+
+    for( int fail_at = 1; fail_at <= 128; fail_at++ ) {
+        enum handlebars_error_type error;
+
+        handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+        handlebars_memory_fail_counter(fail_at);
+        error = handlebars_vm_execute_try(vm, module, input, &output);
+        handlebars_memory_fail_disable();
+
+        if( error == HANDLEBARS_SUCCESS ) {
+            ck_assert_hbs_str_eq_cstr(output, expected);
+            handlebars_string_delref(output);
+            reached_success = true;
+            break;
+        }
+
+        observed_failure = true;
+        ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+        ck_assert_ptr_null(output);
+        ck_assert_msg(
+            talloc_total_blocks(vm) == baseline_blocks,
+            "indented compatibility allocation %d retained %zu VM blocks "
+            "(baseline %zu)",
+            fail_at,
+            talloc_total_blocks(vm),
+            baseline_blocks
+        );
+        ck_assert_uint_eq(talloc_total_size(vm), baseline_size);
+
+        error = handlebars_vm_execute_try(vm, module, input, &output);
+        ck_assert_msg(error == HANDLEBARS_SUCCESS, "%s", handlebars_error_msg(HBSCTX(vm)));
+        ck_assert_hbs_str_eq_cstr(output, expected);
+        handlebars_string_delref(output);
+        ck_assert_uint_eq(talloc_total_blocks(vm), baseline_blocks);
+        ck_assert_uint_eq(talloc_total_size(vm), baseline_size);
+    }
+
+    ck_assert(observed_failure);
+    ck_assert(reached_success);
+    handlebars_vm_set_cache(vm, NULL);
+    handlebars_cache_dtor(cache);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+#endif
+
+START_TEST(test_compat_empty_partial_releases_rendered_expression)
+{
+    struct handlebars_module * module = serialize_template("{{> cached}}");
+    struct handlebars_string * output;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    size_t baseline_blocks;
+    size_t baseline_size;
+#endif
+    HANDLEBARS_VALUE_DECL(input);
+
+    vm_cache_set_string_partial(context, vm, "");
+    handlebars_vm_set_flags(vm, handlebars_compiler_flag_compat);
+
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, "");
+    handlebars_string_delref(output);
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+    baseline_blocks = talloc_total_blocks(vm);
+    baseline_size = talloc_total_size(vm);
+    for( int i = 0; i < 100; i++ ) {
+#else
+    for( int i = 0; i < 1; i++ ) {
+#endif
+        output = handlebars_vm_execute(vm, module, input);
+        ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+        ck_assert_hbs_str_eq_cstr(output, "");
+        handlebars_string_delref(output);
+    }
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ck_assert_msg(
+        talloc_total_blocks(vm) == baseline_blocks,
+        "empty compatibility renders retained %zu VM blocks (baseline %zu)",
+        talloc_total_blocks(vm),
+        baseline_blocks
+    );
+    ck_assert_msg(
+        talloc_total_size(vm) == baseline_size,
+        "empty compatibility renders retained %zu VM bytes (baseline %zu)",
+        talloc_total_size(vm),
+        baseline_size
+    );
+#endif
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+START_TEST(test_indented_partial_last_allocation_failure_unwinds_vm)
+{
+    static const char partial_source[] =
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "\n"
+        "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+        "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+    static const char expected[] =
+        "prefix\n"
+        "  0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "\n"
+        "  fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+        "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+    struct handlebars_cache * cache = handlebars_cache_simple_ctor(context);
+    struct handlebars_module * module = serialize_template(
+        "prefix\n  {{> cached}}"
+    );
+    struct handlebars_string * output = NULL;
+    enum handlebars_error_type error;
+    int allocation_count;
+#ifndef HANDLEBARS_NO_REFCOUNT
+    size_t baseline_blocks;
+    size_t baseline_size;
+#endif
+    HANDLEBARS_VALUE_DECL(input);
+
+    vm_cache_set_string_partial(context, vm, partial_source);
+    handlebars_vm_set_cache(vm, cache);
+
+    output = handlebars_vm_execute(vm, module, input);
+    ck_assert_msg(output != NULL, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, expected);
+    handlebars_string_delref(output);
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(INT_MAX);
+    error = handlebars_vm_execute_try(vm, module, input, &output);
+    allocation_count = handlebars_memory_get_call_counter();
+    handlebars_memory_fail_disable();
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_hbs_str_eq_cstr(output, expected);
+    handlebars_string_delref(output);
+    ck_assert_int_gt(allocation_count, 1);
+
+#ifndef HANDLEBARS_NO_REFCOUNT
+    baseline_blocks = talloc_total_blocks(vm);
+    baseline_size = talloc_total_size(vm);
+#endif
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(allocation_count);
+    error = handlebars_vm_execute_try(vm, module, input, &output);
+    handlebars_memory_fail_disable();
+
+    ck_assert_int_eq(error, HANDLEBARS_NOMEM);
+    ck_assert_ptr_null(output);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ck_assert_msg(
+        talloc_total_blocks(vm) == baseline_blocks,
+        "indented partial failure retained %zu VM blocks (baseline %zu)",
+        talloc_total_blocks(vm),
+        baseline_blocks
+    );
+    ck_assert_msg(
+        talloc_total_size(vm) == baseline_size,
+        "indented partial failure retained %zu VM bytes (baseline %zu)",
+        talloc_total_size(vm),
+        baseline_size
+    );
+#endif
+
+    error = handlebars_vm_execute_try(vm, module, input, &output);
+    ck_assert_msg(error == HANDLEBARS_SUCCESS, "%s", handlebars_error_msg(HBSCTX(vm)));
+    ck_assert_hbs_str_eq_cstr(output, expected);
+    handlebars_string_delref(output);
+#ifndef HANDLEBARS_NO_REFCOUNT
+    ck_assert_uint_eq(talloc_total_blocks(vm), baseline_blocks);
+    ck_assert_uint_eq(talloc_total_size(vm), baseline_size);
+#endif
+    ck_assert_int_ge(handlebars_cache_stat(cache).hits, 3);
+
+    handlebars_vm_set_cache(vm, NULL);
+    handlebars_cache_dtor(cache);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+#endif
 
 START_TEST(test_vm_rejects_empty_opcode_range)
 {
@@ -5105,6 +5412,13 @@ static Suite * suite(void)
         0, sizeof(vm_flags_test_cache_ctors) / sizeof(vm_flags_test_cache_ctors[0]));
     suite_add_tcase(s, compile_flags);
     REGISTER_TEST_FIXTURE(s, test_compat_partial_cache_uses_processed_template_key, "Compat partial cache key");
+#if defined(HANDLEBARS_MEMORY) && !defined(HANDLEBARS_NO_REFCOUNT)
+    REGISTER_TEST_FIXTURE(s, test_compat_indented_partial_allocation_failures_unwind_vm, "Compat indented partial allocation failures");
+#endif
+    REGISTER_TEST_FIXTURE(s, test_compat_empty_partial_releases_rendered_expression, "Compat empty partial rendered-expression ownership");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_indented_partial_last_allocation_failure_unwinds_vm, "Indented partial final allocation failure");
+#endif
     REGISTER_TEST_FIXTURE(s, test_vm_rejects_empty_opcode_range, "VM rejects empty opcode range");
     REGISTER_TEST_FIXTURE(s, test_vm_error_returns_null_without_outer_handler, "VM error returns NULL without outer handler");
     REGISTER_TEST_FIXTURE(s, test_vm_rejects_empty_lookup_path, "VM rejects empty lookup path");
