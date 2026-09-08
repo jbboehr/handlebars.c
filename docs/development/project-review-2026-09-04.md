@@ -567,6 +567,10 @@ Unknown options fall through an assertion that disappears in Release builds. Fla
 
 Return explicit errors from option parsing. Parse comma-separated flags by exact token, and reuse checked integer parsing like that already used for external-helper limits. Define the zero-run behavior instead of accepting it accidentally.
 
+**Status: addressed.** Unknown options now terminate parsing with a nonzero status, so a later mode such as `--version` cannot turn the invocation into a success. Compiler flags are matched as exact comma-separated names; unknown, partial, whitespace-prefixed, and empty names are rejected without applying any part of that option. A shared strict-decimal parser validates the complete input and target range for run counts, pool sizes, and external-helper limits. Run counts must be positive, while zero remains the documented disable value for the pool and helper limits.
+
+The seven focused CLI cases exercise every supported compiler flag, repeated flags and scalar options, malformed lists, unknown-option ordering, a valid multi-run value, zero, signs, whitespace, trailing text, and overflow. A frozen Release build of the prior revision failed the five negative groups while the exact-name and repetition controls passed, establishing test sensitivity. Fresh Linux verification passed all 123 CLI cases, all 3,823 Autotools checks with one expected skip, all 29 CMake CTests under ASan/UBSan, and the Nix package build. Independent correctness and adversarial test reviews found no remaining defect. Reliability verdict: PASS_WITH_RESIDUAL_RISK; non-Linux and 32-bit behavior remain unverified, and impractical maximum-size execution and allocation were not attempted.
+
 ### R28. P2: output failure is reported as success
 
 Sources: [bin/handlebarsc.c:876](../../bin/handlebarsc.c#L876), [bin/handlebarsc.c:880](../../bin/handlebarsc.c#L880).

@@ -86,9 +86,15 @@ load "../vendor/bats-assert/assert"
 }
 
 @test "invalid option" {
-    run "$HANDLEBARSC" --invalid
+    run "$HANDLEBARSC" --invalid --version
     assert_failure
     assert_output --partial "unrecognized option"
+    refute_output --partial "handlebarsc v"
+
+    run "$HANDLEBARSC" --version --invalid
+    assert_failure
+    assert_output --partial "unrecognized option"
+    refute_output --partial "handlebarsc v"
 }
 
 @test "--help" {
@@ -225,6 +231,44 @@ load "../vendor/bats-assert/assert"
 
 @test "--compile --flags no_escape" {
     run "$HANDLEBARSC" --compile --flags no_escape "$TEMPLATE"
+    assert_output --partial "append"
+    refute_output --partial "appendEscaped"
+}
+
+@test "--flags accepts exact comma-separated names" {
+    local flags="compat,known_helpers_only,string_params,track_ids,no_escape,ignore_standalone,alternate_decorators,strict,assume_objects,mustache_style_lambdas"
+
+    run bash -c 'printf "%s" "literal" | "$1" --compile --flags "$2" -' _ \
+        "$HANDLEBARSC" "$flags"
+
+    assert_success
+    assert_output --partial "appendContent"
+}
+
+@test "--flags rejects unknown, partial, and empty names" {
+    local flags
+
+    for flags in typo_flag not_strict strictness 'strict, typo_flag'; do
+        run bash -c 'printf "%s" "literal" | "$1" --compile --flags "$2" -' _ \
+            "$HANDLEBARSC" "$flags"
+        assert_failure
+        assert_output --partial "Unknown compiler flag"
+    done
+
+    for flags in '' ',strict' 'strict,' 'strict,,compat'; do
+        run bash -c 'printf "%s" "literal" | "$1" --compile --flags "$2" -' _ \
+            "$HANDLEBARSC" "$flags"
+        assert_failure
+        assert_output --partial "Compiler flag names must not be empty"
+    done
+}
+
+@test "--flags repetitions accumulate exact names" {
+    run bash -c 'printf "%s" "{{foo bar}}" | "$1" --compile --flags no_escape --flags track_ids --flags no_escape -' _ \
+        "$HANDLEBARSC"
+
+    assert_success
+    assert_output --partial "pushId"
     assert_output --partial "append"
     refute_output --partial "appendEscaped"
 }
@@ -509,6 +553,54 @@ EOF
     run "$HANDLEBARSC" --execute --pool-size 0 --data "$TEST_DIR/fixture1.json" "$TEST_DIR/fixture1.hbs"
     assert_success
     assert_output "|bar|"
+}
+
+@test "--run-count requires a positive integer" {
+    local template_file="$BATS_TEST_TMPDIR/run-count.hbs"
+    local value
+    printf '%s' 'rendered' > "$template_file"
+
+    for value in '' potato 2oops 0 -1 +1 ' 1' 999999999999999999999999999999999; do
+        run "$HANDLEBARSC" --execute --run-count "$value" "$template_file"
+        assert_failure
+        assert_output --partial "Run count must be a positive integer"
+    done
+
+    run "$HANDLEBARSC" --execute --run-count 1 --run-count invalid "$template_file"
+    assert_failure
+    assert_output --partial "Run count must be a positive integer"
+
+    run "$HANDLEBARSC" --execute --run-count invalid --run-count 1 "$template_file"
+    assert_failure
+    assert_output --partial "Run count must be a positive integer"
+
+    run "$HANDLEBARSC" --execute --run-count 01 --run-count 2 --no-newline "$template_file"
+    assert_success
+    assert_output "rendered"
+}
+
+@test "--pool-size requires a non-negative integer" {
+    local template_file="$BATS_TEST_TMPDIR/pool-size.hbs"
+    local value
+    printf '%s' 'rendered' > "$template_file"
+
+    for value in '' potato 2oops -1 +1 ' 1' 999999999999999999999999999999999; do
+        run "$HANDLEBARSC" --execute --pool-size "$value" "$template_file"
+        assert_failure
+        assert_output --partial "Pool size must be a non-negative integer"
+    done
+
+    run "$HANDLEBARSC" --execute --pool-size 0 --pool-size invalid "$template_file"
+    assert_failure
+    assert_output --partial "Pool size must be a non-negative integer"
+
+    run "$HANDLEBARSC" --execute --pool-size invalid --pool-size 0 "$template_file"
+    assert_failure
+    assert_output --partial "Pool size must be a non-negative integer"
+
+    run "$HANDLEBARSC" --execute --pool-size 01 --pool-size 0 --no-newline "$template_file"
+    assert_success
+    assert_output "rendered"
 }
 
 @test "--execute emulates length for lazy JSON strings and arrays" {
@@ -940,13 +1032,28 @@ EOF
 }
 
 @test "external helper option values are validated" {
+    local option
+    local value
+
     run "$HANDLEBARSC" --execute --helper-exec invalid "$TEST_DIR/fixture1.hbs"
     assert_failure
     assert_output --partial "NAME=COMMAND"
 
-    run "$HANDLEBARSC" --execute --helper-timeout-ms invalid "$TEST_DIR/fixture1.hbs"
-    assert_failure
-    assert_output --partial "non-negative integer"
+    for option in --helper-timeout-ms --helper-output-limit; do
+        for value in '' invalid 2oops -1 +1 ' 1' 999999999999999999999999999999999; do
+            run "$HANDLEBARSC" --execute "$option" "$value" "$TEST_DIR/fixture1.hbs"
+            assert_failure
+            assert_output --partial "External helper limit must be a non-negative integer"
+        done
+
+        run "$HANDLEBARSC" --execute "$option" 1 "$option" invalid "$TEST_DIR/fixture1.hbs"
+        assert_failure
+        assert_output --partial "External helper limit must be a non-negative integer"
+
+        run "$HANDLEBARSC" --execute "$option" invalid "$option" 1 "$TEST_DIR/fixture1.hbs"
+        assert_failure
+        assert_output --partial "External helper limit must be a non-negative integer"
+    done
 }
 
 @test "--helper-json sends structured requests and accepts structured values" {

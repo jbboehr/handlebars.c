@@ -134,6 +134,89 @@ static enum handlebarsc_mode mode = handlebarsc_mode_execute;
 #define HBSC_OPT(a, b, c) {HBS_S1(a), b, 0, c},
 #define HBSC_OPT_END {0, 0, 0, 0}
 
+struct handlebarsc_named_compiler_flag {
+    const char * name;
+    unsigned long value;
+};
+
+static bool parse_unsigned_decimal(
+    const char * input,
+    unsigned long long maximum,
+    unsigned long long * result
+)
+{
+    const char * cursor;
+    char * end = NULL;
+    unsigned long long value;
+
+    if( input[0] == '\0' ) {
+        return false;
+    }
+    for( cursor = input; *cursor != '\0'; cursor++ ) {
+        if( *cursor < '0' || *cursor > '9' ) {
+            return false;
+        }
+    }
+
+    errno = 0;
+    value = strtoull(input, &end, 10);
+    if( errno == ERANGE || end == input || *end != '\0' || value > maximum ) {
+        return false;
+    }
+
+    *result = value;
+    return true;
+}
+
+static bool parse_compiler_flags(const char * input)
+{
+    static const struct handlebarsc_named_compiler_flag named_flags[] = {
+        { "compat", handlebars_compiler_flag_compat },
+        { "known_helpers_only", handlebars_compiler_flag_known_helpers_only },
+        { "string_params", handlebars_compiler_flag_string_params },
+        { "track_ids", handlebars_compiler_flag_track_ids },
+        { "no_escape", handlebars_compiler_flag_no_escape },
+        { "ignore_standalone", handlebars_compiler_flag_ignore_standalone },
+        { "alternate_decorators", handlebars_compiler_flag_alternate_decorators },
+        { "strict", handlebars_compiler_flag_strict },
+        { "assume_objects", handlebars_compiler_flag_assume_objects },
+        { "mustache_style_lambdas", handlebars_compiler_flag_mustache_style_lambdas }
+    };
+    const char * cursor = input;
+    unsigned long parsed_flags = 0;
+
+    for(;;) {
+        const char * separator = strchr(cursor, ',');
+        size_t length = separator ? (size_t) (separator - cursor) : strlen(cursor);
+        size_t index;
+
+        if( length == 0 ) {
+            fprintf(stderr, "Compiler flag names must not be empty\n");
+            return false;
+        }
+
+        for( index = 0; index < sizeof(named_flags) / sizeof(named_flags[0]); index++ ) {
+            if( strlen(named_flags[index].name) == length
+                    && memcmp(named_flags[index].name, cursor, length) == 0 ) {
+                parsed_flags |= named_flags[index].value;
+                break;
+            }
+        }
+        if( index == sizeof(named_flags) / sizeof(named_flags[0]) ) {
+            fprintf(stderr, "Unknown compiler flag: ");
+            fwrite(cursor, sizeof(char), length, stderr);
+            fwrite("\n", sizeof(char), 1, stderr);
+            return false;
+        }
+
+        if( separator == NULL ) {
+            compiler_flags |= parsed_flags;
+            return true;
+        }
+        cursor = separator + 1;
+    }
+}
+
 /**
  * http://linux.die.net/man/3/getopt_long
  */
@@ -220,36 +303,8 @@ start:
 
         // compiler flags
         case handlebarsc_flag_flags:
-            // we could do this more efficiently
-            if (NULL != strstr(optarg, "compat")) {
-                compiler_flags |= handlebars_compiler_flag_compat;
-            }
-            if (NULL != strstr(optarg, "known_helpers_only")) {
-                compiler_flags |= handlebars_compiler_flag_known_helpers_only;
-            }
-            if (NULL != strstr(optarg, "string_params")) {
-                compiler_flags |= handlebars_compiler_flag_string_params;
-            }
-            if (NULL != strstr(optarg, "track_ids")) {
-                compiler_flags |= handlebars_compiler_flag_track_ids;
-            }
-            if (NULL != strstr(optarg, "no_escape")) {
-                compiler_flags |= handlebars_compiler_flag_no_escape;
-            }
-            if (NULL != strstr(optarg, "ignore_standalone")) {
-                compiler_flags |= handlebars_compiler_flag_ignore_standalone;
-            }
-            if (NULL != strstr(optarg, "alternate_decorators")) {
-                compiler_flags |= handlebars_compiler_flag_alternate_decorators;
-            }
-            if (NULL != strstr(optarg, "strict")) {
-                compiler_flags |= handlebars_compiler_flag_strict;
-            }
-            if (NULL != strstr(optarg, "assume_objects")) {
-                compiler_flags |= handlebars_compiler_flag_assume_objects;
-            }
-            if (NULL != strstr(optarg, "mustache_style_lambdas")) {
-                compiler_flags |= handlebars_compiler_flag_mustache_style_lambdas;
+            if( !parse_compiler_flags(optarg) ) {
+                exit(1);
             }
             break;
 
@@ -275,9 +330,16 @@ start:
             break;
 
         // misc
-        case handlebarsc_flag_run_count:
-            sscanf(optarg, "%ld", &run_count);
+        case handlebarsc_flag_run_count: {
+            unsigned long long value;
+            if( !parse_unsigned_decimal(optarg, (unsigned long long) LONG_MAX, &value)
+                    || value == 0 ) {
+                fprintf(stderr, "Run count must be a positive integer\n");
+                exit(1);
+            }
+            run_count = (long) value;
             break;
+        }
 
         case handlebarsc_flag_no_convert_input:
             convert_input = false;
@@ -287,9 +349,15 @@ start:
             newline_at_eof = false;
             break;
 
-        case handlebarsc_flag_pool_size:
-            sscanf(optarg, "%zu", &pool_size);
+        case handlebarsc_flag_pool_size: {
+            unsigned long long value;
+            if( !parse_unsigned_decimal(optarg, (unsigned long long) SIZE_MAX, &value) ) {
+                fprintf(stderr, "Pool size must be a non-negative integer\n");
+                exit(1);
+            }
+            pool_size = (size_t) value;
             break;
+        }
 
         case handlebarsc_flag_pretty_print:
             pretty_print = true;
@@ -325,19 +393,14 @@ start:
 
         case handlebarsc_flag_helper_timeout_ms:
         case handlebarsc_flag_helper_output_limit: {
-            char * end = NULL;
             unsigned long long value;
+            unsigned long long maximum = (unsigned long long) LONG_MAX;
 
-            if( optarg[0] == '\0' || optarg[0] == '-' || optarg[0] == '+' ) {
-                fprintf(stderr, "External helper limit must be a non-negative integer\n");
-                exit(1);
+            if( c == handlebarsc_flag_helper_output_limit
+                    && (unsigned long long) SIZE_MAX < maximum ) {
+                maximum = (unsigned long long) SIZE_MAX;
             }
-            errno = 0;
-            value = strtoull(optarg, &end, 10);
-            if( errno == ERANGE || end == optarg || *end != '\0'
-                    || value > (unsigned long long) LONG_MAX
-                    || (c == handlebarsc_flag_helper_output_limit
-                        && value > (unsigned long long) SIZE_MAX) ) {
+            if( !parse_unsigned_decimal(optarg, maximum, &value) ) {
                 fprintf(stderr, "External helper limit must be a non-negative integer\n");
                 exit(1);
             }
@@ -355,7 +418,14 @@ start:
             helper_registry.options_used = true;
             break;
 
-        default: assert(0); break; // LCOV_EXCL_LINE
+        case '?':
+            exit(1);
+
+        // LCOV_EXCL_START
+        default:
+            fprintf(stderr, "Internal error while parsing command-line options\n");
+            exit(1);
+        // LCOV_EXCL_STOP
     }
 
     goto start;
@@ -486,8 +556,8 @@ static int do_usage(void)
         "  --partial-loader      Specify to enable loading partials dynamically\n"
         "  --partial-path=DIR    The directory in which to look for partials\n"
         "  --partial-ext=EXT     The file extension of partials, including the '.'\n"
-        "  --pool-size=SIZE      The size of the memory pool to use, 0 to disable (default 2 MB)\n"
-        "  --run-count=NUM       The number of times to execute (for benchmarking)\n"
+        "  --pool-size=SIZE      Non-negative memory pool size in bytes; 0 disables it (default 2 MB)\n"
+        "  --run-count=NUM       Positive number of executions (for benchmarking)\n"
         "  --helper-exec=NAME=COMMAND\n"
         "                        Register a helper backed by plain executable output\n"
         "  --helper-json=NAME=COMMAND\n"
