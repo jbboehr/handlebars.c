@@ -579,6 +579,10 @@ Rendering hello with stdout redirected to /dev/full exited zero and emitted no d
 
 Check write and final flush errors and propagate failure to the process exit status. Include a failing-output-stream test, including buffered output that fails only at flush time.
 
+**Status: addressed.** All stdout paths now record failed or short writes, and every normal return path explicitly flushes stdout and checks its error indicator. Any failure produces `Failed to write output` on stderr and forces a nonzero exit status. Writes and flushes temporarily ignore `SIGPIPE` so a closed pipe is reported through the same path, then restore the caller's disposition before other work can observe it. This covers formatted help and version output as well as binary lex, parse, compile, module, and render output; lexing retains its per-token flush behavior.
+
+Both retained `/dev/full` regressions failed against the prior executable: a five-byte render buffered until process shutdown, and a 64 KiB render failed during its direct write, yet each exited zero without a diagnostic. The expanded suite covers every output-producing mode, a downstream pipe reader that exits early, zero-length output, both default and inherited ignored `SIGPIPE` dispositions, and initially closed standard descriptors. Fresh Linux verification passed all 129 CLI cases, all 3,829 Autotools checks with one expected skip, all 29 CMake CTests under ASan/UBSan, and the Nix package build. Independent correctness and adversarial test reviews found no remaining defect. Reliability verdict: PASS; behavior on platforms without `SIGPIPE` or `/dev/full` was reviewed statically but not executed.
+
 ### R29. P3: diagnostic locations depend on preceding text, and copies truncate silently
 
 Sources: [src/handlebars.l:88](../../src/handlebars.l#L88), [src/handlebars.c:139](../../src/handlebars.c#L139), [src/handlebars.c:166](../../src/handlebars.c#L166).

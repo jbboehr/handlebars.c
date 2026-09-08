@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
@@ -30,6 +31,7 @@
 
 #include <assert.h>
 #include <getopt.h>
+#include <signal.h>
 
 #ifdef HANDLEBARS_HAVE_VALGRIND
 #include <valgrind/valgrind.h>
@@ -84,6 +86,7 @@ static bool convert_input = true;
 static bool newline_at_eof = true;
 static size_t pool_size = 2 * 1024 * 1024;
 static bool pretty_print = true;
+static bool output_write_failed = false;
 static struct handlebarsc_helper_registry helper_registry;
 
 enum handlebarsc_mode {
@@ -513,6 +516,84 @@ static bool filename_has_suffix(const char * filename, const char * suffix)
         && strcmp(filename + filename_length - suffix_length, suffix) == 0;
 }
 
+#ifdef SIGPIPE
+typedef void (*handlebarsc_signal_handler)(int);
+
+static bool ignore_output_sigpipe(handlebarsc_signal_handler * previous_handler)
+{
+    *previous_handler = signal(SIGPIPE, SIG_IGN);
+    if( *previous_handler == SIG_ERR ) {
+        output_write_failed = true;
+        return false;
+    }
+    return true;
+}
+
+static void restore_output_sigpipe(handlebarsc_signal_handler previous_handler)
+{
+    if( signal(SIGPIPE, previous_handler) == SIG_ERR ) {
+        output_write_failed = true;
+    }
+}
+#endif
+
+static void print_output(const char * format, ...) HBS_ATTR_PRINTF(1, 2);
+
+static void print_output(const char * format, ...)
+{
+    va_list args;
+
+#ifdef SIGPIPE
+    handlebarsc_signal_handler previous_handler;
+    if( !ignore_output_sigpipe(&previous_handler) ) {
+        return;
+    }
+#endif
+    va_start(args, format);
+    if( vfprintf(stdout, format, args) < 0 ) {
+        output_write_failed = true;
+    }
+    va_end(args);
+#ifdef SIGPIPE
+    restore_output_sigpipe(previous_handler);
+#endif
+}
+
+static void write_output(const void * buffer, size_t length)
+{
+    if( length == 0 ) {
+        return;
+    }
+#ifdef SIGPIPE
+    handlebarsc_signal_handler previous_handler;
+    if( !ignore_output_sigpipe(&previous_handler) ) {
+        return;
+    }
+#endif
+    if( fwrite(buffer, sizeof(char), length, stdout) != length ) {
+        output_write_failed = true;
+    }
+#ifdef SIGPIPE
+    restore_output_sigpipe(previous_handler);
+#endif
+}
+
+static void flush_output(void)
+{
+#ifdef SIGPIPE
+    handlebarsc_signal_handler previous_handler;
+    if( !ignore_output_sigpipe(&previous_handler) ) {
+        return;
+    }
+#endif
+    if( fflush(stdout) == EOF ) {
+        output_write_failed = true;
+    }
+#ifdef SIGPIPE
+    restore_output_sigpipe(previous_handler);
+#endif
+}
+
 static void readInput(void)
 {
     input_buf = file_get_contents(input_name);
@@ -529,7 +610,7 @@ static void print_error(struct handlebars_context * ctx)
 
 static int do_usage(void)
 {
-    fprintf(stdout,
+    print_output(
         "Usage: handlebarsc [OPTIONS]\n"
         "Example: handlebarsc -t foo.hbs -D bar.json\n"
         "\n"
@@ -583,8 +664,7 @@ static int do_usage(void)
 
 static int do_version(void)
 {
-    fprintf(
-        stdout,
+    print_output(
         "handlebarsc v%s\n"
         "Copyright (c) anno Domini nostri Jesu Christi MMXVI-MMXXIV John Boehr & contributors\n"
         "License AGPLv3.0+: Affero GNU GPL version 3.0 or later <https://www.gnu.org/licenses/agpl-3.0.html>.\n"
@@ -674,8 +754,8 @@ static int do_lex(void)
 
     for ( ; *tokens; tokens++ ) {
         struct handlebars_string * tmp = handlebars_token_print(ctx, *tokens, 1);
-        fwrite(hbs_str_val(tmp), sizeof(char), hbs_str_len(tmp), stdout);
-        fflush(stdout);
+        write_output(hbs_str_val(tmp), hbs_str_len(tmp));
+        flush_output();
         handlebars_talloc_free(tmp);
     }
 
@@ -716,7 +796,7 @@ static int do_parse(void)
     ast = handlebars_parse_ex(parser, tmpl, compiler_flags);
 
     output = handlebars_ast_print(HBSCTX(parser), ast);
-    fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
+    write_output(hbs_str_val(output), hbs_str_len(output));
 
     handlebars_context_dtor(ctx);
     return 0;
@@ -765,7 +845,7 @@ static int do_compile(void)
 
     // Print
     output = handlebars_program_print(ctx, program, 0);
-    fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
+    write_output(hbs_str_val(output), hbs_str_len(output));
 
     handlebars_context_dtor(ctx);
     return 0;
@@ -820,10 +900,10 @@ static int do_module(void)
     // Print
     if (pretty_print) {
         output = handlebars_module_print(ctx, module);
-        fwrite(hbs_str_val(output), sizeof(char), hbs_str_len(output), stdout);
+        write_output(hbs_str_val(output), hbs_str_len(output));
     } else {
         handlebars_module_normalize_pointers(module, (void *) 0);
-        fwrite((char *) module, sizeof(char), handlebars_module_get_size(module), stdout);
+        write_output(module, handlebars_module_get_size(module));
     }
 
     handlebars_context_dtor(ctx);
@@ -950,11 +1030,11 @@ static int do_execute(void)
     } while(--run_count > 0);
 
     if (buffer) {
-        fwrite(hbs_str_val(buffer), sizeof(char), hbs_str_len(buffer), stdout);
+        write_output(hbs_str_val(buffer), hbs_str_len(buffer));
     }
 
     if (newline_at_eof) {
-        fwrite("\n", sizeof(char), 1, stdout);
+        write_output("\n", 1);
     }
 
     HANDLEBARS_VALUE_UNDECL(input);
@@ -1043,6 +1123,11 @@ int main(int argc, char * argv[])
     }
 
 done:
+    flush_output();
+    if( output_write_failed || ferror(stdout) ) {
+        fprintf(stderr, "Failed to write output\n");
+        rc = 1;
+    }
     cleanup_root();
     return rc;
 }

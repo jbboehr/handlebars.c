@@ -322,6 +322,87 @@ load "../vendor/bats-assert/assert"
     assert_output "|bar|"
 }
 
+@test "--execute reports buffered output failures" {
+    local template_file="$BATS_TEST_TMPDIR/buffered-output.hbs"
+
+    if [ ! -c /dev/full ]; then
+        skip "/dev/full is required to simulate a failing output stream"
+    fi
+    printf '%s' 'hello' > "$template_file"
+
+    run bash -c '"$1" --execute --no-newline "$2" > /dev/full' _ \
+        "$HANDLEBARSC" "$template_file"
+
+    assert_failure
+    assert_output "Failed to write output"
+}
+
+@test "--execute reports direct output failures" {
+    local template_file="$BATS_TEST_TMPDIR/direct-output.hbs"
+
+    if [ ! -c /dev/full ]; then
+        skip "/dev/full is required to simulate a failing output stream"
+    fi
+    awk 'BEGIN { for (i = 0; i < 65536; i++) printf "x" }' > "$template_file"
+
+    run bash -c '"$1" --execute --no-newline "$2" > /dev/full' _ \
+        "$HANDLEBARSC" "$template_file"
+
+    assert_failure
+    assert_output "Failed to write output"
+}
+
+@test "--execute reports output failures after a pipe reader exits" {
+    local template_file="$BATS_TEST_TMPDIR/closed-output-pipe.hbs"
+
+    command -v head >/dev/null || skip "head is required to close the output pipe"
+    awk 'BEGIN { for (i = 0; i < 1048576; i++) printf "x" }' > "$template_file"
+
+    run bash -o pipefail -c \
+        '"$1" --execute --no-newline "$2" | head -c 1 >/dev/null' _ \
+        "$HANDLEBARSC" "$template_file"
+
+    assert_failure
+    assert_output "Failed to write output"
+
+    run bash -o pipefail -c \
+        'trap "" PIPE; "$1" --execute --no-newline "$2" | head -c 1 >/dev/null' _ \
+        "$HANDLEBARSC" "$template_file"
+
+    assert_failure
+    assert_output "Failed to write output"
+}
+
+@test "output-producing modes report write failures" {
+    local mode
+
+    if [ ! -c /dev/full ]; then
+        skip "/dev/full is required to simulate a failing output stream"
+    fi
+
+    for mode in --help --version --lex --parse --compile --module; do
+        run bash -c '"$1" "$2" "$3" > /dev/full' _ \
+            "$HANDLEBARSC" "$mode" "$TEMPLATE"
+        assert_failure
+        assert_output "Failed to write output"
+    done
+}
+
+@test "zero-length stdout does not report a write failure" {
+    local template_file="$BATS_TEST_TMPDIR/empty-output.hbs"
+
+    if [ ! -c /dev/full ]; then
+        skip "/dev/full is required to simulate a failing output stream"
+    fi
+    : > "$template_file"
+
+    run bash -c '"$1" --execute --no-newline "$2" > /dev/full' _ \
+        "$HANDLEBARSC" "$template_file"
+
+    assert_success
+    assert_output ""
+}
+
 @test "--execute (invalid file)" {
     run "$HANDLEBARSC" --execute nonexist
     assert_failure
@@ -738,6 +819,29 @@ EOF
     assert_output "Ahello|42B"
 }
 
+@test "external helpers inherit the caller SIGPIPE disposition" {
+    local helper="$BATS_TEST_TMPDIR/helper-sigpipe.sh"
+    local template_file="$BATS_TEST_TMPDIR/helper-sigpipe.hbs"
+
+    printf '%s\n' '#!/bin/sh' 'kill -PIPE $$' 'printf survived' > "$helper"
+    chmod +x "$helper"
+    printf '%s' '{{external}}' > "$template_file"
+
+    # POSIX shells cannot reset a signal disposition inherited as ignored.
+    if [ -z "$(trap -p PIPE)" ]; then
+        run "$HANDLEBARSC" --execute --no-newline \
+            --helper-exec "external=$helper" "$template_file"
+        assert_failure
+        assert_output --partial "terminated by signal"
+    fi
+
+    run bash -c \
+        'trap "" PIPE; exec "$1" --execute --no-newline --helper-exec "external=$2" "$3"' _ \
+        "$HANDLEBARSC" "$helper" "$template_file"
+    assert_success
+    assert_output survived
+}
+
 @test "--helper-exec resolves a bare executable through PATH" {
     run bash -c 'printf "%s" "{{external \"path\"}}" | PATH="$2:$PATH" "$1" --execute --no-newline --helper-exec external=helper_executable.sh -' _ \
         "$HANDLEBARSC" "$TEST_DIR"
@@ -974,10 +1078,14 @@ EOF
             HELPER_REQUEST_FILE="$5" "$2" --execute --no-newline --helper-json "jsonSafe=$3" "$4"
         ' _ "$mask" "$HANDLEBARSC" "$TEST_DIR/helper_executable.sh" "$template_file" "$request_file"
 
-        assert_success "closed stdio mask $mask"
         if (( (mask & 2) == 0 )); then
+            assert_success "closed stdio mask $mask"
             assert_output '<strong>safe</strong>'
+        elif (( (mask & 4) == 0 )); then
+            assert_failure "closed stdout mask $mask"
+            assert_output "Failed to write output"
         else
+            assert_failure "closed stdout and stderr mask $mask"
             assert_output ""
         fi
         grep -q '"helper":"jsonSafe"' "$request_file"
