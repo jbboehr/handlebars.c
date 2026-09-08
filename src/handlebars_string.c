@@ -829,10 +829,6 @@ struct handlebars_string * handlebars_str_replace(
     struct handlebars_string * new_string;
     size_t new_len = 0;
 
-    if( search_len <= 0 || string->len <= 0 ) {
-        return (struct handlebars_string *) string;
-    }
-
     // Calculate the exact output size before allocating. Besides making the
     // arithmetic checkable, this avoids reallocating once per expanding match.
     while( NULL != (tok = handlebars_strnstr(tok, string->len - (tok - string->val), search, search_len)) ) {

@@ -409,29 +409,205 @@ END_TEST
 START_TEST(test_handlebars_string_replace_1)
 {
     struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("abcdef"));
-    input = handlebars_str_replace(context, input, HBS_STRL("bcd"), HBS_STRL("qq"));
-    ck_assert_hbs_str_eq_cstr(input, "aqqef");
+    struct handlebars_string * actual = handlebars_str_replace(
+        context,
+        input,
+        HBS_STRL("bcd"),
+        HBS_STRL("qq")
+    );
+
+    ck_assert_ptr_ne(actual, input);
+    ck_assert_hbs_str_eq_cstr(input, "abcdef");
+    ck_assert_hbs_str_eq_cstr(actual, "aqqef");
     handlebars_talloc_free(input);
+    handlebars_talloc_free(actual);
 }
 END_TEST
 
-START_TEST(test_handlebars_string_replace_2)
+START_TEST(test_handlebars_string_replace_empty_input)
 {
     struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL(""));
-    input = handlebars_str_replace(context, input, HBS_STRL("a"), HBS_STRL(""));
-    ck_assert_hbs_str_eq_cstr(input, "");
+    struct handlebars_string * actual = handlebars_str_replace(
+        context,
+        input,
+        HBS_STRL("a"),
+        HBS_STRL("")
+    );
+
+    ck_assert_ptr_ne(actual, input);
+    ck_assert_hbs_str_eq_cstr(actual, "");
     handlebars_talloc_free(input);
+    handlebars_talloc_free(actual);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_replace_empty_search)
+{
+    struct handlebars_string * input = handlebars_string_ctor(
+        context,
+        HBS_STRL("unchanged")
+    );
+    struct handlebars_string * actual = handlebars_str_replace(
+        context,
+        input,
+        HBS_STRL(""),
+        HBS_STRL("replacement")
+    );
+
+    ck_assert_ptr_ne(actual, input);
+    ck_assert_hbs_str_eq_cstr(actual, "unchanged");
+    handlebars_talloc_free(input);
+    handlebars_talloc_free(actual);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_replace_no_match)
+{
+    struct handlebars_string * input = handlebars_string_ctor(
+        context,
+        HBS_STRL("unchanged")
+    );
+    struct handlebars_string * actual = handlebars_str_replace(
+        context,
+        input,
+        HBS_STRL("missing"),
+        HBS_STRL("replacement")
+    );
+
+    ck_assert_ptr_ne(actual, input);
+    ck_assert_hbs_str_eq_cstr(input, "unchanged");
+    ck_assert_hbs_str_eq_cstr(actual, "unchanged");
+    handlebars_talloc_free(input);
+    handlebars_talloc_free(actual);
 }
 END_TEST
 
 START_TEST(test_handlebars_string_replace_3)
 {
     struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("QQQ"));
-    input = handlebars_str_replace(context, input, HBS_STRL("Q"), HBS_STRL("W"));
-    ck_assert_hbs_str_eq_cstr(input, "WWW");
+    struct handlebars_string * actual = handlebars_str_replace(
+        context,
+        input,
+        HBS_STRL("Q"),
+        HBS_STRL("W")
+    );
+
+    ck_assert_ptr_ne(actual, input);
+    ck_assert_hbs_str_eq_cstr(input, "QQQ");
+    ck_assert_hbs_str_eq_cstr(actual, "WWW");
     handlebars_talloc_free(input);
+    handlebars_talloc_free(actual);
 }
 END_TEST
+
+START_TEST(test_handlebars_string_replace_preserves_binary_contract)
+{
+    static const char input_bytes[] = {'A', '\0', 'B', 'A', '\0', 'B'};
+    static const char expected_bytes[] = {'A', 'B', 'A', '\0', 'A', 'B', 'A', '\0'};
+    struct handlebars_context * input_owner = handlebars_context_ctor_ex(context);
+    struct handlebars_context * output_owner = handlebars_context_ctor_ex(context);
+    struct handlebars_string * input;
+    struct handlebars_string * actual;
+    uint32_t input_hash;
+
+    ck_assert_ptr_nonnull(input_owner);
+    ck_assert_ptr_nonnull(output_owner);
+    input = handlebars_string_ctor(input_owner, input_bytes, sizeof(input_bytes));
+    input_hash = hbs_str_hash(input);
+
+    actual = handlebars_str_replace(
+        output_owner,
+        input,
+        hbs_str_val(input) + 1,
+        2,
+        hbs_str_val(input) + 2,
+        3
+    );
+
+    ck_assert_ptr_ne(actual, input);
+    ck_assert_ptr_eq(talloc_parent(input), input_owner);
+    ck_assert_ptr_eq(talloc_parent(actual), output_owner);
+    ck_assert_uint_eq(hbs_str_len(input), sizeof(input_bytes));
+    ck_assert_int_eq(memcmp(hbs_str_val(input), input_bytes, sizeof(input_bytes)), 0);
+    ck_assert_uint_eq(hbs_str_hash(input), input_hash);
+    ck_assert_uint_eq(hbs_str_len(actual), sizeof(expected_bytes));
+    ck_assert_int_eq(memcmp(hbs_str_val(actual), expected_bytes, sizeof(expected_bytes)), 0);
+    ck_assert_int_eq(hbs_str_val(actual)[sizeof(expected_bytes)], '\0');
+    ck_assert_uint_eq(
+        hbs_str_hash(actual),
+        handlebars_string_hash(expected_bytes, sizeof(expected_bytes))
+    );
+
+    handlebars_context_dtor(input_owner);
+    ck_assert_uint_eq(hbs_str_len(actual), sizeof(expected_bytes));
+    ck_assert_int_eq(memcmp(hbs_str_val(actual), expected_bytes, sizeof(expected_bytes)), 0);
+    handlebars_talloc_free(actual);
+    handlebars_context_dtor(output_owner);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_replace_overflow_is_atomic)
+{
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("aa"));
+    uint32_t input_hash = hbs_str_hash(input);
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_hbs_str_eq_cstr(input, "aa");
+        ck_assert_uint_eq(hbs_str_hash(input), input_hash);
+        handlebars_talloc_free(input);
+        return;
+    }
+
+    handlebars_talloc_free(handlebars_str_replace(
+        context,
+        input,
+        HBS_STRL("a"),
+        "x",
+        SIZE_MAX
+    ));
+    context->e->jmp = prev;
+    handlebars_talloc_free(input);
+    ck_abort_msg("Expected an overflowing replacement length to be rejected");
+}
+END_TEST
+
+#ifdef HANDLEBARS_MEMORY
+START_TEST(test_handlebars_string_replace_nomem_is_atomic)
+{
+    struct handlebars_string * input = handlebars_string_ctor(context, HBS_STRL("unchanged"));
+    uint32_t input_hash = hbs_str_hash(input);
+    jmp_buf * prev = context->e->jmp;
+    jmp_buf buf;
+
+    if( handlebars_setjmp_ex(context, &buf) ) {
+        handlebars_memory_fail_disable();
+        context->e->jmp = prev;
+        ck_assert_int_eq(handlebars_error_num(context), HANDLEBARS_NOMEM);
+        ck_assert_hbs_str_eq_cstr(input, "unchanged");
+        ck_assert_uint_eq(hbs_str_hash(input), input_hash);
+        handlebars_talloc_free(input);
+        return;
+    }
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(1);
+    handlebars_talloc_free(handlebars_str_replace(
+        context,
+        input,
+        HBS_STRL("missing"),
+        HBS_STRL("replacement")
+    ));
+    handlebars_memory_fail_disable();
+    context->e->jmp = prev;
+    handlebars_talloc_free(input);
+    ck_abort_msg("Expected replacement allocation failure");
+}
+END_TEST
+#endif
 
 START_TEST(test_handlebars_string_replace_expanding)
 {
@@ -968,6 +1144,99 @@ START_TEST(test_handlebars_string_indent_empty)
 }
 END_TEST
 
+#ifndef HANDLEBARS_NO_REFCOUNT
+static unsigned observed_string_dtor_calls;
+
+static int record_string_dtor(struct handlebars_string * string)
+{
+    (void) string;
+    observed_string_dtor_calls++;
+    return 0;
+}
+
+START_TEST(test_handlebars_string_append_str_borrows_source)
+{
+    struct handlebars_string * target = handlebars_string_ctor(
+        context,
+        HBS_STRL("prefix")
+    );
+    struct handlebars_string * source = handlebars_string_ctor(
+        context,
+        HBS_STRL(" body")
+    );
+    uint32_t source_hash = hbs_str_hash(source);
+
+    observed_string_dtor_calls = 0;
+    talloc_set_destructor(source, record_string_dtor);
+    handlebars_string_addref(source);
+
+    target = handlebars_string_append_str(context, target, source);
+
+    ck_assert_uint_eq(observed_string_dtor_calls, 0);
+    ck_assert_hbs_str_eq_cstr(target, "prefix body");
+    ck_assert_hbs_str_eq_cstr(source, " body");
+    ck_assert_uint_eq(hbs_str_hash(source), source_hash);
+    handlebars_talloc_free(target);
+    ck_assert_hbs_str_eq_cstr(source, " body");
+    handlebars_string_delref(source);
+    ck_assert_uint_eq(observed_string_dtor_calls, 1);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_indent_consumes_input_reference)
+{
+    struct handlebars_string * input = handlebars_string_ctor(
+        context,
+        HBS_STRL("body")
+    );
+    struct handlebars_string * indent = handlebars_string_ctor(
+        context,
+        HBS_STRL("  ")
+    );
+    struct handlebars_string * actual;
+
+    observed_string_dtor_calls = 0;
+    talloc_set_destructor(input, record_string_dtor);
+    handlebars_string_addref(input);
+
+    actual = handlebars_string_indent(context, input, indent);
+
+    ck_assert_uint_eq(observed_string_dtor_calls, 1);
+    ck_assert_hbs_str_eq_cstr(actual, "  body");
+    handlebars_talloc_free(indent);
+    handlebars_string_delref(actual);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_indent_append_consumes_input_reference)
+{
+    struct handlebars_string * target = handlebars_string_ctor(
+        context,
+        HBS_STRL("prefix\n")
+    );
+    struct handlebars_string * input = handlebars_string_ctor(
+        context,
+        HBS_STRL("body")
+    );
+    struct handlebars_string * indent = handlebars_string_ctor(
+        context,
+        HBS_STRL(">")
+    );
+
+    observed_string_dtor_calls = 0;
+    talloc_set_destructor(input, record_string_dtor);
+    handlebars_string_addref(input);
+
+    target = handlebars_string_indent_append(context, target, input, indent);
+
+    ck_assert_uint_eq(observed_string_dtor_calls, 1);
+    ck_assert_hbs_str_eq_cstr(target, "prefix\n>body");
+    handlebars_talloc_free(indent);
+    handlebars_talloc_free(target);
+}
+END_TEST
+#endif
+
 START_TEST(test_handlebars_string_indent_append_self)
 {
     struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("a\n"));
@@ -977,6 +1246,17 @@ START_TEST(test_handlebars_string_indent_append_self)
 
     ck_assert_hbs_str_eq_cstr(string, "a\n>a\n");
     handlebars_talloc_free(indent);
+    handlebars_talloc_free(string);
+}
+END_TEST
+
+START_TEST(test_handlebars_string_indent_append_all_aliases)
+{
+    struct handlebars_string * string = handlebars_string_ctor(context, HBS_STRL("a\n"));
+
+    string = handlebars_string_indent_append(context, string, string, string);
+
+    ck_assert_hbs_str_eq_cstr(string, "a\na\na\n");
     handlebars_talloc_free(string);
 }
 END_TEST
@@ -1018,8 +1298,15 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_reduce_with_separation, "handlebars_string_reduce with separation");
 #endif
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_1, "handlebars_string_replace 1");
-    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_2, "handlebars_string_replace 2");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_empty_input, "handlebars_string_replace empty input");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_empty_search, "handlebars_string_replace empty search");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_no_match, "handlebars_string_replace no match");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_3, "handlebars_string_replace 3");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_preserves_binary_contract, "handlebars_string_replace binary contract");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_overflow_is_atomic, "handlebars_string_replace overflow is atomic");
+#ifdef HANDLEBARS_MEMORY
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_nomem_is_atomic, "handlebars_string_replace allocation failure is atomic");
+#endif
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_expanding, "handlebars_string_replace expanding");
 #ifdef HANDLEBARS_MEMORY
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_replace_expanding_allocates_once, "handlebars_string_replace expanding allocation count");
@@ -1074,7 +1361,13 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_truncate_4, "handlebars_string_truncate 4");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_truncate_invalid_range, "handlebars_string_truncate invalid range");
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_indent_empty, "handlebars_string_indent empty input");
+#ifndef HANDLEBARS_NO_REFCOUNT
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_append_str_borrows_source, "handlebars_string_append_str borrows source");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_indent_consumes_input_reference, "handlebars_string_indent consumes input reference");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_indent_append_consumes_input_reference, "handlebars_string_indent_append consumes input reference");
+#endif
     REGISTER_TEST_FIXTURE(s, test_handlebars_string_indent_append_self, "handlebars_string_indent append self");
+    REGISTER_TEST_FIXTURE(s, test_handlebars_string_indent_append_all_aliases, "handlebars_string_indent append all aliases");
 
     return s;
 }

@@ -512,6 +512,10 @@ The probes did not free aliases twice or access released input. They establish c
 
 Give replacement results a consistent ownership rule and document consuming parameters explicitly. Add ownership tests for no-op and empty cases. API names and documentation should make consumption differences between append operations visible to callers.
 
+**Status: addressed.** `handlebars_str_replace` now follows its documented constructor-style contract for every input: the common replacement path returns a distinct allocation under the supplied context even when the input is empty, the search length is zero, or no match exists. The input remains borrowed and unchanged. The header now distinguishes this rule from `handlebars_string_append_str`, which borrows its source, and from both indentation functions, which consume one input reference. The self-alias exception for `handlebars_string_indent_append` and the requirement to use its possibly reallocated return pointer are explicit.
+
+The empty-input and empty-search regressions both initially failed because the result aliased the input. Retained tests now cover matched and unmatched text, empty boundaries, independent cleanup, embedded NUL bytes, search and replacement views into the input, allocator parentage, cached hashes, checked size overflow, allocation failure, ordinary borrowed append sources, both indentation entry points, and full self-aliasing. Fresh Linux verification passed all 3,814 Autotools checks with one expected skip, all 81 string checks under Valgrind, the installed-header check, and the string suite in a no-refcount build. Independent correctness and adversarial reviews found no remaining defect. Reliability verdict: PASS_WITH_RESIDUAL_RISK; binary ABI comparison and non-Linux builds were not run.
+
 ### R26. P3: public value contracts and a convenience macro need correction
 
 Sources: [src/handlebars_value.h:317](../../src/handlebars_value.h#L317), [src/handlebars_value.h:335](../../src/handlebars_value.h#L335), [src/handlebars_value.h:424](../../src/handlebars_value.h#L424), [src/handlebars_value.c:298](../../src/handlebars_value.c#L298).
