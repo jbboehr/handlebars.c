@@ -994,6 +994,39 @@ static enum handlebars_error_type handlebars_vm_cache_add_try(
     );
 }
 
+static enum handlebars_error_type handlebars_vm_cache_add_or_find_try(
+    struct handlebars_vm * vm,
+    struct handlebars_cache * cache,
+    struct handlebars_string * tmpl,
+    struct handlebars_module * module,
+    struct handlebars_module ** found
+)
+{
+    struct handlebars_vm_error_snapshot snapshot;
+    enum handlebars_error_type add_error;
+    enum handlebars_error_type find_error;
+
+    *found = NULL;
+    handlebars_vm_error_snapshot_begin(vm, &snapshot);
+    add_error = handlebars_vm_cache_add_try(vm, cache, tmpl, module);
+    if( add_error == HANDLEBARS_SUCCESS ) {
+        handlebars_vm_execution_error_snapshot_finish(vm, &snapshot);
+        return HANDLEBARS_SUCCESS;
+    }
+
+    find_error = handlebars_vm_cache_find_try(vm, cache, tmpl, found);
+    if( find_error == HANDLEBARS_SUCCESS && *found != NULL ) {
+        handlebars_error_clear(HBSCTX(vm));
+        handlebars_vm_execution_error_snapshot_finish(vm, &snapshot);
+        return HANDLEBARS_SUCCESS;
+    }
+
+    if( snapshot.detached ) {
+        handlebars_vm_error_snapshot_discard(vm, &snapshot);
+    }
+    return add_error;
+}
+
 static enum handlebars_error_type handlebars_vm_cache_release_try(
     struct handlebars_vm * vm,
     struct handlebars_cache * cache,
@@ -1136,11 +1169,13 @@ static struct handlebars_string * execute_template(
 
         // Save cache entry
         if( cache ) {
-            enum handlebars_error_type cache_error = handlebars_vm_cache_add_try(
+            struct handlebars_module * found;
+            enum handlebars_error_type cache_error = handlebars_vm_cache_add_or_find_try(
                 vm,
                 cache,
                 (struct handlebars_string *) cache_key,
-                (struct handlebars_module *) module
+                (struct handlebars_module *) module,
+                &found
             );
 
             if( unlikely(cache_error != HANDLEBARS_SUCCESS) ) {
@@ -1149,6 +1184,10 @@ static struct handlebars_string * execute_template(
                     HBSCTX(vm)->e->jmp,
                     cache_error
                 );
+            }
+            if( found != NULL ) {
+                module = found;
+                from_cache = true;
             }
         }
 

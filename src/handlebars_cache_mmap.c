@@ -230,6 +230,20 @@ static inline void unlock(struct handlebars_cache * cache)
     }
 }
 
+#ifdef HANDLEBARS_TESTING_EXPORTS
+HBS_TEST_PUBLIC bool handlebars_cache_mmap_is_resetting(
+    struct handlebars_cache * cache
+) {
+    struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
+    bool in_reset;
+
+    lock(cache);
+    in_reset = intern->in_reset;
+    unlock(cache);
+    return in_reset;
+}
+#endif
+
 static inline void require_protected(struct handlebars_cache * cache)
 {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
@@ -461,11 +475,19 @@ static void cache_add(
 ) {
     struct handlebars_cache_mmap * intern = (struct handlebars_cache_mmap *) cache->internal;
     struct table_entry entry;
+    struct table_entry * found;
     int protect_error;
 
     // Lock
     lock(cache);
     require_protected(cache);
+
+    // Check duplicates while reset still retains the existing table.
+    found = table_find(intern, key);
+    if( found && handlebars_string_eq(found->key, key) ) {
+        unlock(cache);
+        handlebars_throw(CONTEXT, HANDLEBARS_ERROR, "Duplicate cache key");
+    }
 
     // Currently resetting
     if( unlikely(intern->in_reset) ) {
@@ -476,11 +498,8 @@ static void cache_add(
     assert(module == module->addr);
 
     // Collision
-    struct table_entry * found = table_find(intern, key);
     if( found ) {
-        if( !handlebars_string_eq(found->key, key) ) {
-            intern->collisions++;
-        }
+        intern->collisions++;
         unlock(cache);
         return;
     }

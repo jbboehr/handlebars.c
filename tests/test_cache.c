@@ -2397,6 +2397,99 @@ START_TEST(test_concurrent_vms_isolate_foreign_cache_errors)
     handlebars_context_dtor(foreign_context);
 }
 END_TEST
+
+static handlebars_cache_add_func vm_cache_population_race_original_add;
+static handlebars_cache_release_func vm_cache_population_race_original_release;
+static bool vm_cache_population_race_injected;
+static unsigned int vm_cache_population_race_releases;
+
+static void vm_cache_population_race_add(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
+    struct handlebars_module * module
+) {
+    if( !vm_cache_population_race_injected ) {
+        vm_cache_population_race_injected = true;
+        vm_cache_population_race_original_add(cache, key, module);
+    }
+    vm_cache_population_race_original_add(cache, key, module);
+}
+
+static void vm_cache_population_race_release(
+    struct handlebars_cache * cache,
+    struct handlebars_string * key,
+    struct handlebars_module * module
+) {
+    vm_cache_population_race_releases++;
+    vm_cache_population_race_original_release(cache, key, module);
+}
+
+START_TEST(test_concurrent_vm_cache_population_is_benign)
+{
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(
+        context,
+        2097152,
+        2053
+    );
+    const struct handlebars_cache_handlers * original_handlers = cache->hnd;
+    struct handlebars_cache_handlers ordered_handlers = *original_handlers;
+    struct handlebars_module * module = serialize_template("{{> cached}}");
+    struct handlebars_string * output = NULL;
+    enum handlebars_error_type error;
+    HANDLEBARS_VALUE_DECL(input);
+
+    ordered_handlers.add = vm_cache_population_race_add;
+    ordered_handlers.release = vm_cache_population_race_release;
+    cache->hnd = &ordered_handlers;
+    vm_cache_population_race_original_add = original_handlers->add;
+    vm_cache_population_race_original_release = original_handlers->release;
+    vm_cache_population_race_injected = false;
+    vm_cache_population_race_releases = 0;
+    vm_cache_set_string_partial(context, vm, "concurrent cache body");
+    handlebars_vm_set_cache(vm, cache);
+
+    error = handlebars_vm_execute_try(vm, module, input, &output);
+
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "concurrent cache body");
+    ck_assert(vm_cache_population_race_injected);
+    ck_assert_uint_eq(vm_cache_population_race_releases, 1);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).refcount, 0);
+
+    handlebars_string_delref(output);
+    handlebars_cache_reset(cache);
+    vm_cache_population_race_injected = false;
+    handlebars_error_set(
+        HBSCTX(vm),
+        HANDLEBARS_TYPE_ERROR,
+        "Pre-existing VM diagnostic"
+    );
+
+    output = handlebars_vm_execute(vm, module, input);
+
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "concurrent cache body");
+    ck_assert(vm_cache_population_race_injected);
+    ck_assert_uint_eq(vm_cache_population_race_releases, 2);
+    ck_assert_int_eq(handlebars_error_num(HBSCTX(vm)), HANDLEBARS_TYPE_ERROR);
+    ck_assert_str_eq(
+        handlebars_error_msg(HBSCTX(vm)),
+        "Pre-existing VM diagnostic"
+    );
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).refcount, 0);
+
+    handlebars_string_delref(output);
+    handlebars_vm_set_cache(vm, NULL);
+    cache->hnd = original_handlers;
+    vm_cache_population_race_original_add = NULL;
+    vm_cache_population_race_original_release = NULL;
+    handlebars_cache_dtor(cache);
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
 #endif
 
 START_TEST(test_simple_cache_refuses_entry_over_capacity)
@@ -3335,6 +3428,91 @@ START_TEST(test_lmdb_cache_rejects_invalid_records)
 }
 END_TEST
 
+START_TEST(test_lmdb_cache_add_replaces_invalid_record)
+{
+    static const char raw_key[] = "lmdb-invalid-refresh";
+    struct handlebars_module * invalid = serialize_template_for_lmdb("stale");
+    struct handlebars_module * replacement = serialize_template("fresh");
+    struct handlebars_cache * cache;
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL(raw_key)
+    );
+    struct handlebars_module * found = NULL;
+    struct handlebars_string * output;
+    HANDLEBARS_VALUE_DECL(input);
+
+    reset_lmdb_test_files();
+    handlebars_module_patch_pointers(invalid);
+    invalid->programs[0].opcode_count = 0;
+    handlebars_module_normalize_pointers(invalid, NULL);
+    handlebars_module_generate_hash(invalid);
+    lmdb_put_raw(raw_key, invalid, invalid->size);
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    ck_assert_int_eq(
+        handlebars_cache_add_try(cache, key, replacement),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_int_eq(
+        handlebars_cache_find_try(cache, key, &found),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_ptr_nonnull(found);
+    output = handlebars_vm_execute(vm, found, input);
+    ck_assert_hbs_str_eq_cstr(output, "fresh");
+    handlebars_string_delref(output);
+    handlebars_cache_release(cache, key, found);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+
+    handlebars_cache_dtor(cache);
+    reset_lmdb_test_files();
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
+START_TEST(test_lmdb_cache_add_replaces_expired_record)
+{
+    struct handlebars_module * original = serialize_template("stale");
+    struct handlebars_module * replacement = serialize_template("fresh");
+    struct handlebars_cache * cache;
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("lmdb-expired-refresh")
+    );
+    struct handlebars_module * found = NULL;
+    struct handlebars_string * output;
+    HANDLEBARS_VALUE_DECL(input);
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    handlebars_cache_add(cache, key, original);
+    cache->max_age = 0;
+
+    ck_assert_ptr_null(handlebars_cache_find(cache, key));
+    ck_assert_int_eq(
+        handlebars_cache_add_try(cache, key, replacement),
+        HANDLEBARS_SUCCESS
+    );
+    cache->max_age = -1;
+    ck_assert_int_eq(
+        handlebars_cache_find_try(cache, key, &found),
+        HANDLEBARS_SUCCESS
+    );
+    ck_assert_ptr_nonnull(found);
+    output = handlebars_vm_execute(vm, found, input);
+    ck_assert_hbs_str_eq_cstr(output, "fresh");
+    handlebars_string_delref(output);
+    handlebars_cache_release(cache, key, found);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+
+    handlebars_cache_dtor(cache);
+    reset_lmdb_test_files();
+    HANDLEBARS_VALUE_UNDECL(input);
+}
+END_TEST
+
 START_TEST(test_lmdb_cache_gc_expires_zero_age_records)
 {
     struct handlebars_cache * cache;
@@ -3412,6 +3590,142 @@ START_TEST(test_lmdb_cache_add_nomem_leaves_cache_usable)
     handlebars_cache_add(cache, key, module);
     handlebars_memory_fail_disable();
     ck_abort_msg("Expected LMDB cache add allocation to fail");
+}
+END_TEST
+
+START_TEST(test_lmdb_duplicate_rejection_precedes_allocation_failure)
+{
+    struct handlebars_cache * cache;
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("lmdb-duplicate-nomem")
+    );
+    struct handlebars_string * duplicate_key = handlebars_string_ctor(
+        context,
+        HBS_STRL("lmdb-duplicate-nomem")
+    );
+    struct handlebars_string * fresh_key = handlebars_string_ctor(
+        context,
+        HBS_STRL("lmdb-after-duplicate-nomem")
+    );
+    struct handlebars_module * original = serialize_template("original");
+    struct handlebars_module * duplicate = serialize_template("duplicate");
+    struct handlebars_module * fresh = serialize_template("fresh");
+    struct handlebars_module * found = NULL;
+    struct handlebars_cache_stat stat;
+    void * duplicate_parent = talloc_parent(duplicate);
+    enum handlebars_error_type duplicate_error;
+    enum handlebars_error_type find_error;
+    enum handlebars_error_type fresh_error;
+    const char * error_message;
+    char * duplicate_message;
+    bool found_original;
+
+    reset_lmdb_test_files();
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+    ck_assert_int_eq(
+        handlebars_cache_add_try(cache, key, original),
+        HANDLEBARS_SUCCESS
+    );
+
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_enable();
+    duplicate_error = handlebars_cache_add_try(cache, duplicate_key, duplicate);
+    handlebars_memory_fail_disable();
+
+    error_message = handlebars_error_msg(context);
+    duplicate_message = error_message
+        ? handlebars_talloc_strdup(context, error_message)
+        : NULL;
+    stat = handlebars_cache_stat(cache);
+    find_error = handlebars_cache_find_try(cache, key, &found);
+    found_original = found != NULL;
+    if( found != NULL ) {
+        handlebars_cache_release(cache, key, found);
+    }
+    fresh_error = handlebars_cache_add_try(cache, fresh_key, fresh);
+    handlebars_cache_dtor(cache);
+    reset_lmdb_test_files();
+
+    ck_assert_msg(
+        duplicate_error == HANDLEBARS_ERROR,
+        "Expected duplicate error, got %d: %s; entries=%lu, find=%d, "
+        "found=%s, fresh-add=%d, caller-owned=%s",
+        duplicate_error,
+        duplicate_message ? duplicate_message : "(null)",
+        (unsigned long) stat.current_entries,
+        find_error,
+        found_original ? "yes" : "no",
+        fresh_error,
+        talloc_parent(duplicate) == duplicate_parent ? "yes" : "no"
+    );
+    ck_assert_ptr_nonnull(duplicate_message);
+    ck_assert_ptr_nonnull(strstr(duplicate_message, "Duplicate cache key"));
+    ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_int_eq(find_error, HANDLEBARS_SUCCESS);
+    ck_assert(found_original);
+    ck_assert_int_eq(fresh_error, HANDLEBARS_SUCCESS);
+}
+END_TEST
+
+START_TEST(test_lmdb_invalid_replacement_nomem_reports_nomem_and_recovers)
+{
+    static const char raw_key[] = "lmdb-invalid-refresh-nomem";
+    struct handlebars_module * invalid = serialize_template_for_lmdb("stale");
+    struct handlebars_module * replacement = serialize_template("fresh");
+    struct handlebars_cache * cache;
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL(raw_key)
+    );
+    struct handlebars_module * found = NULL;
+    struct handlebars_cache_stat stat;
+    enum handlebars_error_type error;
+    enum handlebars_error_type retry_error;
+    const char * error_message;
+    char * saved_message;
+
+    reset_lmdb_test_files();
+    handlebars_module_patch_pointers(invalid);
+    invalid->programs[0].opcode_count = 0;
+    handlebars_module_normalize_pointers(invalid, NULL);
+    handlebars_module_generate_hash(invalid);
+    lmdb_put_raw(raw_key, invalid, invalid->size);
+    cache = handlebars_cache_lmdb_ctor(context, lmdb_db_file);
+
+    /* Prewarm the persistent try guard so the injected failure reaches the
+     * cache-add allocation. */
+    ck_assert_int_eq(
+        handlebars_cache_stat_try(cache, &stat),
+        HANDLEBARS_SUCCESS
+    );
+    handlebars_memory_fail_set_flags(handlebars_memory_fail_flag_alloc);
+    handlebars_memory_fail_counter(1);
+    error = handlebars_cache_add_try(cache, key, replacement);
+    handlebars_memory_fail_disable();
+
+    error_message = handlebars_error_msg(context);
+    saved_message = error_message
+        ? handlebars_talloc_strdup(context, error_message)
+        : NULL;
+    stat = handlebars_cache_stat(cache);
+    ck_assert_int_eq(handlebars_cache_find_try(cache, key, &found), HANDLEBARS_SUCCESS);
+    retry_error = handlebars_cache_add_try(cache, key, replacement);
+    handlebars_cache_dtor(cache);
+    reset_lmdb_test_files();
+
+    ck_assert_msg(
+        error == HANDLEBARS_NOMEM,
+        "Expected allocation error, got %d: %s",
+        error,
+        saved_message ? saved_message : "(null)"
+    );
+    ck_assert_ptr_nonnull(saved_message);
+    ck_assert_ptr_nonnull(strstr(saved_message, "Out of memory"));
+    ck_assert_uint_eq(stat.current_entries, 1);
+    ck_assert_ptr_null(found);
+    ck_assert_int_eq(retry_error, HANDLEBARS_SUCCESS);
 }
 END_TEST
 
@@ -3595,6 +3909,65 @@ START_TEST(test_mmap_cache_release_allows_deferred_reset)
     handlebars_cache_dtor(cache);
 }
 END_TEST
+
+#if defined(HANDLEBARS_TESTING_EXPORTS) && defined(__ATOMIC_SEQ_CST) && !defined(INTELLIJ)
+static void * mmap_cache_reset_thread(void * opaque)
+{
+    handlebars_cache_reset(opaque);
+    return NULL;
+}
+
+START_TEST(test_mmap_duplicate_is_rejected_during_deferred_reset)
+{
+    struct handlebars_cache * cache = handlebars_cache_mmap_ctor(
+        context,
+        2097152,
+        2053
+    );
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("mmap-duplicate-during-reset")
+    );
+    struct handlebars_string * duplicate_key = handlebars_string_ctor(
+        context,
+        HBS_STRL("mmap-duplicate-during-reset")
+    );
+    struct handlebars_module * original = serialize_template("original");
+    struct handlebars_module * duplicate = serialize_template("duplicate");
+    struct handlebars_module * found;
+    void * duplicate_parent = talloc_parent(duplicate);
+    enum handlebars_error_type error;
+    pthread_t reset_thread;
+    int attempts;
+
+    handlebars_cache_add(cache, key, original);
+    found = handlebars_cache_find(cache, key);
+    ck_assert_ptr_nonnull(found);
+
+    ck_assert_int_eq(
+        pthread_create(&reset_thread, NULL, mmap_cache_reset_thread, cache),
+        0
+    );
+    for( attempts = 0; attempts < 1000; attempts++ ) {
+        if( handlebars_cache_mmap_is_resetting(cache) ) break;
+        usleep(1000);
+    }
+    ck_assert_msg(attempts < 1000, "MMAP reset did not enter its deferred state");
+
+    error = handlebars_cache_add_try(cache, duplicate_key, duplicate);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Duplicate cache key"));
+    ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
+
+    handlebars_cache_release(cache, key, found);
+    ck_assert_int_eq(pthread_join(reset_thread, NULL), 0);
+    handlebars_cache_reset(cache);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 0);
+    handlebars_cache_dtor(cache);
+    ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
+}
+END_TEST
+#endif
 
 struct mmap_cache_stress_context {
     struct handlebars_cache * cache;
@@ -3788,6 +4161,54 @@ static struct handlebars_cache * (*const vm_flags_test_cache_ctors[])(struct han
     vm_flags_test_lmdb_cache,
 #endif
 };
+
+START_TEST(test_cache_duplicate_key_contract)
+{
+    struct handlebars_cache * cache = vm_flags_test_cache_ctors[_i](context);
+    struct handlebars_string * key = handlebars_string_ctor(
+        context,
+        HBS_STRL("duplicate-key-contract")
+    );
+    struct handlebars_string * duplicate_key = handlebars_string_ctor(
+        context,
+        HBS_STRL("duplicate-key-contract")
+    );
+    struct handlebars_module * original = serialize_template("original");
+    struct handlebars_module * duplicate = serialize_template("duplicate");
+    struct handlebars_module * found = NULL;
+    struct handlebars_string * output;
+    void * duplicate_parent = talloc_parent(duplicate);
+    enum handlebars_error_type error;
+    HANDLEBARS_VALUE_DECL(input);
+
+    error = handlebars_cache_add_try(cache, key, original);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+
+    error = handlebars_cache_add_try(cache, duplicate_key, duplicate);
+    ck_assert_int_eq(error, HANDLEBARS_ERROR);
+    ck_assert_ptr_nonnull(strstr(handlebars_error_msg(context), "Duplicate cache key"));
+    ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
+    ck_assert_uint_eq(handlebars_cache_stat(cache).current_entries, 1);
+
+    error = handlebars_cache_find_try(cache, key, &found);
+    ck_assert_int_eq(error, HANDLEBARS_SUCCESS);
+    ck_assert_ptr_nonnull(found);
+    output = handlebars_vm_execute(vm, found, input);
+    ck_assert_ptr_nonnull(output);
+    ck_assert_hbs_str_eq_cstr(output, "original");
+    ck_assert_int_eq(
+        handlebars_cache_release_try(cache, key, found),
+        HANDLEBARS_SUCCESS
+    );
+
+    handlebars_cache_dtor(cache);
+    ck_assert_ptr_eq(talloc_parent(duplicate), duplicate_parent);
+    HANDLEBARS_VALUE_UNDECL(input);
+#ifdef HANDLEBARS_HAVE_LMDB
+    reset_lmdb_test_files();
+#endif
+}
+END_TEST
 
 static const struct {
     const char * partial_source;
@@ -4580,6 +5001,7 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_cache_try_concurrent_calls_restore_jump_target, "Cache try API concurrent jump target restoration");
     REGISTER_TEST_FIXTURE(s, test_cache_try_independent_contexts_progress_during_reset_destructor, "Independent cache try contexts progress during reset destructor");
     REGISTER_TEST_FIXTURE(s, test_concurrent_vms_isolate_foreign_cache_errors, "Concurrent VMs isolate foreign cache errors");
+    REGISTER_TEST_FIXTURE(s, test_concurrent_vm_cache_population_is_benign, "Concurrent VM cache population is benign");
 #if defined(HANDLEBARS_TESTING_EXPORTS) && !defined(YY_NO_UNISTD_H)
     REGISTER_TEST_FIXTURE(s, test_vm_execute_try_catches_foreign_cache_errors, "VM try execution catches foreign cache errors");
 #endif
@@ -4633,9 +5055,13 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_distinguishes_binary_and_empty_keys, "LMDB distinguishes binary and empty keys");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_does_not_hash_oversized_keys, "LMDB skips oversized keys");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_rejects_invalid_records, "LMDB rejects invalid records");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_add_replaces_invalid_record, "LMDB replaces invalid records on add");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_cache_add_replaces_expired_record, "LMDB replaces expired records on add");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc_expires_zero_age_records, "LMDB GC expires zero-age records");
 #ifdef HANDLEBARS_MEMORY
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_add_nomem_leaves_cache_usable, "LMDB add remains usable after allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_duplicate_rejection_precedes_allocation_failure, "LMDB duplicate rejection precedes allocation failure");
+    REGISTER_TEST_FIXTURE(s, test_lmdb_invalid_replacement_nomem_reports_nomem_and_recovers, "LMDB invalid replacement reports allocation failure and recovers");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_find_nomem_closes_transaction, "LMDB find cleans up after allocation failure");
     REGISTER_TEST_FIXTURE(s, test_lmdb_cache_gc_nomem_closes_transaction, "LMDB GC cleans up after allocation failure");
 #endif
@@ -4646,6 +5072,9 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_try_constructor_reports_errors, "MMAP cache try constructor errors");
 #ifdef HANDLEBARS_TESTING_EXPORTS
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_try_reprotect_failure_recovers_or_poison, "MMAP cache try reprotection failures");
+#if defined(__ATOMIC_SEQ_CST) && !defined(INTELLIJ)
+    REGISTER_TEST_FIXTURE(s, test_mmap_duplicate_is_rejected_during_deferred_reset, "MMAP rejects duplicates during deferred reset");
+#endif
 #endif
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_gc, "MMAP Cache (GC)");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_reset, "MMAP Cache (Reset)");
@@ -4655,6 +5084,15 @@ static Suite * suite(void)
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_hash_collision_is_a_miss, "MMAP hash collision is a miss");
     REGISTER_TEST_FIXTURE(s, test_mmap_cache_rejects_invalid_geometry, "MMAP rejects invalid geometry");
 #endif
+    TCase * duplicate_keys = tcase_create("Duplicate cache key contract");
+    tcase_add_checked_fixture(duplicate_keys, default_setup, default_teardown);
+    tcase_add_loop_test(
+        duplicate_keys,
+        test_cache_duplicate_key_contract,
+        0,
+        sizeof(vm_flags_test_cache_ctors) / sizeof(vm_flags_test_cache_ctors[0])
+    );
+    suite_add_tcase(s, duplicate_keys);
     TCase * compile_flags = tcase_create("Partial cache compilation settings");
     tcase_add_checked_fixture(compile_flags, default_setup, default_teardown);
     tcase_add_loop_test(compile_flags, test_vm_partial_cache_respects_compile_flags,

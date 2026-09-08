@@ -131,6 +131,10 @@ HBS_TEST_PUBLIC extern int (*handlebars_cache_mmap_mprotect)(
     size_t length,
     int protection
 );
+
+HBS_TEST_PUBLIC bool handlebars_cache_mmap_is_resetting(
+    struct handlebars_cache * cache
+) HBS_ATTR_NONNULL_ALL;
 #endif
 
 #endif /* HANDLEBARS_CACHE_PRIVATE_H */
