@@ -2,6 +2,17 @@
 
 set -eu
 
+helper_process_state()
+{
+    if [ -r "/proc/$1/stat" ]; then
+        IFS= read -r process_stat < "/proc/$1/stat" || return 1
+        process_stat=${process_stat##*) }
+        printf '%s\n' "${process_stat%% *}"
+    else
+        ps -o stat= -p "$1" 2>/dev/null
+    fi
+}
+
 if [ -n "${HELPER_MARKER_FILE-}" ]; then
     printf '%s\n' invoked > "$HELPER_MARKER_FILE"
 fi
@@ -125,11 +136,25 @@ case "${1-}" in
         ;;
     stop-parent-then-complete)
         parent_pid=$PPID
+        helper_pid=$$
+        # Resume only after the CLI is stopped and this helper has exited.
         (
-            sleep 0.10
+            while parent_state=$(helper_process_state "$parent_pid"); do
+                case "$parent_state" in
+                    *T*) break ;;
+                esac
+                sleep 0.01
+            done
+            while helper_state=$(helper_process_state "$helper_pid"); do
+                case "$helper_state" in
+                    *Z*) break ;;
+                esac
+                sleep 0.01
+            done
             kill -CONT "$parent_pid"
         ) </dev/null >/dev/null 2>&1 &
         kill -STOP "$parent_pid"
+        sleep 0.20
         printf '%s' complete
         ;;
     timeout-descendant)
