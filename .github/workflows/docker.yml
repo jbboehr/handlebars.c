@@ -5,6 +5,14 @@ on:
         branches:
             - master
             - develop
+        tags:
+            - "v*"
+
+env:
+    DEFAULT_IMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || github.ref_name == 'master' && 'latest' || 'develop' }}
+    ALPINE_IMAGE_TAG: ${{ github.ref_type == 'tag' && format('{0}-alpine', github.ref_name) || github.ref_name == 'master' && 'alpine' || 'develop-alpine' }}
+    DEBIAN_IMAGE_TAG: ${{ github.ref_type == 'tag' && format('{0}-debian', github.ref_name) || github.ref_name == 'master' && 'debian' || 'develop-debian' }}
+    FEDORA_IMAGE_TAG: ${{ github.ref_type == 'tag' && format('{0}-fedora', github.ref_name) || github.ref_name == 'master' && 'fedora' || 'develop-fedora' }}
 
 jobs:
     publish_alpine_docker_hub:
@@ -23,8 +31,8 @@ jobs:
                   file: .github/alpine.Dockerfile
                   push: true
                   tags: |
-                    jbboehr/handlebars.c:latest
-                    jbboehr/handlebars.c:alpine
+                    jbboehr/handlebars.c:${{ env.DEFAULT_IMAGE_TAG }}
+                    jbboehr/handlebars.c:${{ env.ALPINE_IMAGE_TAG }}
 
     publish_alpine_gh_pkg:
         runs-on: ubuntu-latest
@@ -43,8 +51,8 @@ jobs:
                   file: .github/alpine.Dockerfile
                   push: true
                   tags: |
-                    ghcr.io/jbboehr/handlebars.c/handlebarsc:latest
-                    ghcr.io/jbboehr/handlebars.c/handlebarsc:alpine
+                    ghcr.io/jbboehr/handlebars.c/handlebarsc:${{ env.DEFAULT_IMAGE_TAG }}
+                    ghcr.io/jbboehr/handlebars.c/handlebarsc:${{ env.ALPINE_IMAGE_TAG }}
 
     publish_debian_docker_hub:
         runs-on: ubuntu-latest
@@ -61,7 +69,7 @@ jobs:
               with:
                   file: .github/debian.Dockerfile
                   push: true
-                  tags: "jbboehr/handlebars.c:alpine"
+                  tags: "jbboehr/handlebars.c:${{ env.DEBIAN_IMAGE_TAG }}"
 
     publish_debian_gh_pkg:
         runs-on: ubuntu-latest
@@ -79,7 +87,7 @@ jobs:
               with:
                   file: .github/debian.Dockerfile
                   push: true
-                  tags: "ghcr.io/jbboehr/handlebars.c/handlebarsc:debian"
+                  tags: "ghcr.io/jbboehr/handlebars.c/handlebarsc:${{ env.DEBIAN_IMAGE_TAG }}"
 
     publish_fedora_docker_hub:
         runs-on: ubuntu-latest
@@ -96,7 +104,7 @@ jobs:
               with:
                   file: .github/fedora.Dockerfile
                   push: true
-                  tags: "jbboehr/handlebars.c:fedora"
+                  tags: "jbboehr/handlebars.c:${{ env.FEDORA_IMAGE_TAG }}"
 
     publish_fedora_gh_pkgs:
         runs-on: ubuntu-latest
@@ -114,4 +122,4 @@ jobs:
               with:
                   file: .github/fedora.Dockerfile
                   push: true
-                  tags: "ghcr.io/jbboehr/handlebars.c/handlebarsc:fedora"
+                  tags: "ghcr.io/jbboehr/handlebars.c/handlebarsc:${{ env.FEDORA_IMAGE_TAG }}"
