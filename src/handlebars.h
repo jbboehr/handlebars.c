@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <setjmp.h>
 
-#include "handlebars_config.h"
+#include <handlebars_config.h>
 
 #ifdef	__cplusplus
 #define HBS_EXTERN_C_START extern "C" {

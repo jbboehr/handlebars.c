@@ -618,7 +618,7 @@ EOF
 }
 
 @test "--execute -n" {
-    skip_if_no_json
+    skip_if_no_yaml
     # wc on OSX outputs leading whitespace
     result1=$("$HANDLEBARSC" --execute --data "$TEST_DIR/fixture1.yaml" "$TEMPLATE" | wc -l | sed 's/ *//g')
     assert_equal "$result1" "1"
@@ -630,7 +630,7 @@ EOF
 
 @test "--execute --pool-size 0" {
     # not really any way to check if this works, just checking if nothing is broken when specified
-    skip_if_no_yaml
+    skip_if_no_json
     run "$HANDLEBARSC" --execute --pool-size 0 --data "$TEST_DIR/fixture1.json" "$TEST_DIR/fixture1.hbs"
     assert_success
     assert_output "|bar|"

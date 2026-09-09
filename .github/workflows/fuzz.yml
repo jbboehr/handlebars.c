@@ -28,15 +28,18 @@ jobs:
                       dictionary: handlebars.dict
                       corpora: fuzz/corpus/template
                     - target: json
+                      cmake_package: Libjsonc
                       dictionary: json.dict
                       corpora: fuzz/corpus/json
                     - target: module
                       dictionary: module.dict
                       corpora: fuzz/corpus/module
                     - target: lmdb
+                      cmake_package: LMDB
                       dictionary: lmdb.dict
                       corpora: fuzz/corpus/lmdb fuzz/corpus/module
                     - target: yaml
+                      cmake_package: LibYaml
                       dictionary: yaml.dict
                       corpora: fuzz/corpus/yaml
         env:
@@ -57,18 +60,20 @@ jobs:
                   restore-keys: |
                       fuzz-${{ matrix.target }}-${{ runner.os }}-
 
-            - name: Verify CMake LMDB reconfiguration
-              if: matrix.target == 'lmdb'
+            - name: Verify CMake optional dependency reconfiguration
+              if: matrix.cmake_package
+              env:
+                  CMAKE_PACKAGE: ${{ matrix.cmake_package }}
               run: |
-                  cmake -S . -B "$RUNNER_TEMP/cmake-lmdb" \
+                  cmake -S . -B "$RUNNER_TEMP/cmake-optional" \
                       -DCMAKE_C_COMPILER=clang-18 \
                       -DHANDLEBARS_ENABLE_FUZZING=ON \
                       -DHANDLEBARS_ENABLE_TESTS=OFF
-                  cmake --build "$RUNNER_TEMP/cmake-lmdb" --target fuzz_lmdb -j2
-                  cmake -S . -B "$RUNNER_TEMP/cmake-lmdb" -DCMAKE_DISABLE_FIND_PACKAGE_LMDB=ON
-                  cmake --build "$RUNNER_TEMP/cmake-lmdb" -j2
-                  cmake -S . -B "$RUNNER_TEMP/cmake-lmdb" -DCMAKE_DISABLE_FIND_PACKAGE_LMDB=OFF
-                  cmake --build "$RUNNER_TEMP/cmake-lmdb" --target fuzz_lmdb -j2
+                  cmake --build "$RUNNER_TEMP/cmake-optional" --target "fuzz_${{ matrix.target }}" -j2
+                  cmake -S . -B "$RUNNER_TEMP/cmake-optional" "-DCMAKE_DISABLE_FIND_PACKAGE_${CMAKE_PACKAGE}=ON"
+                  cmake --build "$RUNNER_TEMP/cmake-optional" -j2
+                  cmake -S . -B "$RUNNER_TEMP/cmake-optional" "-DCMAKE_DISABLE_FIND_PACKAGE_${CMAKE_PACKAGE}=OFF"
+                  cmake --build "$RUNNER_TEMP/cmake-optional" --target "fuzz_${{ matrix.target }}" -j2
 
             - name: Create configure
               run: autoreconf -i

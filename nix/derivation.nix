@@ -164,15 +164,22 @@ stdenv.mkDerivation rec {
     ++ lib.optional checkSupport "-DHANDLEBARS_ENABLE_TESTS=1"
     ++ lib.optional memoryTestingSupport "-DHANDLEBARS_ENABLE_MEMORY=1";
 
-  preConfigure = lib.optionalString checkSupport ''
-    patchShebangs ./bench/run.sh
-    patchShebangs ./tests/test_executable.bats
-    export handlebars_export_dir=${handlebars_spec}/share/handlebars-spec/export/
-    export handlebars_spec_dir=${handlebars_spec}/share/handlebars-spec/spec/
-    export handlebars_tokenizer_spec=${handlebars_spec}/share/handlebars-spec/spec/tokenizer.json
-    export handlebars_parser_spec=${handlebars_spec}/share/handlebars-spec/spec/parser.json
-    export mustache_spec_dir=${mustache_spec}/specs
-  '';
+  preConfigure =
+    lib.optionalString checkSupport ''
+      patchShebangs ./bench/run.sh
+      patchShebangs ./tests/test_executable.bats
+      export handlebars_export_dir=${handlebars_spec}/share/handlebars-spec/export/
+      export handlebars_spec_dir=${handlebars_spec}/share/handlebars-spec/spec/
+      export handlebars_tokenizer_spec=${handlebars_spec}/share/handlebars-spec/spec/tokenizer.json
+      export handlebars_parser_spec=${handlebars_spec}/share/handlebars-spec/spec/parser.json
+      export mustache_spec_dir=${mustache_spec}/specs
+    ''
+    + lib.optionalString (cmakeSupport && (!jsonSupport || !yamlSupport)) ''
+      cp src/handlebars_config.h.in src/handlebars_config.h
+      substituteInPlace src/handlebars_config.h \
+        --replace-fail '#undef HANDLEBARS_HAVE_JSON' '#define HANDLEBARS_HAVE_JSON 1' \
+        --replace-fail '#undef HANDLEBARS_HAVE_YAML' '#define HANDLEBARS_HAVE_YAML 1'
+    '';
 
   doCheck = checkSupport;
   preCheck = lib.optionalString (cmakeSupport && memoryTestingSupport) ''

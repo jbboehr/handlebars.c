@@ -71,9 +71,9 @@ if(HANDLEBARS_ENABLE_TESTS)
 endif()
 
 find_package(Libjsonc)
-include_directories(${LIBJSONC_INCLUDE_DIR} ${LIBJSONC_INCLUDE_DIR}/json-c ${LIBJSONC_INCLUDE_DIR}/json)
-set(LIBS ${LIBS} ${LIBJSONC_LIBRARY})
-if(LIBJSONC_LIBRARY)
+if(Libjsonc_FOUND)
+    include_directories(${LIBJSONC_INCLUDE_DIR} ${LIBJSONC_INCLUDE_DIR}/json-c ${LIBJSONC_INCLUDE_DIR}/json)
+    set(LIBS ${LIBS} ${LIBJSONC_LIBRARY})
     set(HANDLEBARS_HAVE_JSON 1)
 endif()
 
@@ -100,9 +100,9 @@ if(CMAKE_USE_PTHREADS_INIT)
 endif()
 
 find_package(LibYaml)
-include_directories(${LIBYAML_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${LIBYAML_LIBRARIES})
-if(LIBYAML_LIBRARIES)
+if(LibYaml_FOUND)
+    include_directories(${LIBYAML_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${LIBYAML_LIBRARIES})
     set(HANDLEBARS_HAVE_YAML 1)
 endif()
 
@@ -201,46 +201,52 @@ if (HANDLEBARS_ENABLE_TESTS)
     add_test(NAME test_ast COMMAND test_ast)
     add_test(NAME test_ast_helpers COMMAND test_ast_helpers)
     add_test(NAME test_ast_list COMMAND test_ast_list)
-    add_test(NAME test_cache COMMAND test_cache)
     add_test(NAME test_compiler COMMAND test_compiler)
-    add_test(NAME test_json COMMAND test_json)
     add_test(NAME test_main COMMAND test_main)
     add_test(NAME test_map COMMAND test_map)
     add_test(NAME test_opcode_printer COMMAND test_opcode_printer)
     add_test(NAME test_opcodes COMMAND test_opcodes)
-    add_test(NAME test_partial_loader COMMAND test_partial_loader)
-    set_tests_properties(test_partial_loader PROPERTIES
-        ENVIRONMENT "top_srcdir=${CMAKE_SOURCE_DIR}")
-    if(HANDLEBARS_ENABLE_MEMORY AND LIBJSONC_LIBRARY)
+    if(Libjsonc_FOUND)
+        add_test(NAME test_cache COMMAND test_cache)
+        add_test(NAME test_json COMMAND test_json)
+        add_test(NAME test_partial_loader COMMAND test_partial_loader)
+        set_tests_properties(test_partial_loader PROPERTIES
+            ENVIRONMENT "top_srcdir=${CMAKE_SOURCE_DIR}")
+    endif()
+    if(HANDLEBARS_ENABLE_MEMORY AND Libjsonc_FOUND)
         add_test(NAME test_random_alloc_fail COMMAND test_random_alloc_fail)
     elseif(HANDLEBARS_ENABLE_MEMORY)
         message(STATUS "json-c not found; the random allocation failure test will not run")
     endif()
     add_test(NAME test_scanners COMMAND test_scanners)
-    add_test(NAME test_spec_handlebars COMMAND test_spec_handlebars "${HANDLEBARS_SPEC_DIR}")
-    add_test(NAME test_spec_handlebars_compiler COMMAND test_spec_handlebars_compiler "${HANDLEBARS_EXPORT_DIR}")
-    add_test(NAME test_spec_handlebars_parser COMMAND test_spec_handlebars_parser "${HANDLEBARS_PARSER_SPEC}")
-    add_test(NAME test_spec_handlebars_tokenizer COMMAND test_spec_handlebars_tokenizer "${HANDLEBARS_TOKENIZER_SPEC}")
-    add_test(NAME test_spec_mustache COMMAND test_spec_mustache "${MUSTACHE_SPEC_DIR}")
-    set_tests_properties(test_spec_handlebars PROPERTIES
-        ENVIRONMENT "handlebars_spec_dir=${HANDLEBARS_SPEC_DIR}")
-    set_tests_properties(test_spec_handlebars_compiler PROPERTIES
-        ENVIRONMENT "handlebars_export_dir=${HANDLEBARS_EXPORT_DIR}")
-    set_tests_properties(test_spec_handlebars_parser PROPERTIES
-        ENVIRONMENT "handlebars_parser_spec=${HANDLEBARS_PARSER_SPEC}")
-    set_tests_properties(test_spec_handlebars_tokenizer PROPERTIES
-        ENVIRONMENT "handlebars_tokenizer_spec=${HANDLEBARS_TOKENIZER_SPEC}")
-    set_tests_properties(test_spec_mustache PROPERTIES
-        ENVIRONMENT "mustache_spec_dir=${MUSTACHE_SPEC_DIR}")
-    if(UNIX)
-        add_test(NAME test_spec_runners
-            COMMAND ${CMAKE_COMMAND} -E env
-                "SPEC_COMPILER=$<TARGET_FILE:test_spec_handlebars_compiler>"
-                "SPEC_PARSER=$<TARGET_FILE:test_spec_handlebars_parser>"
-                "SPEC_TOKENIZER=$<TARGET_FILE:test_spec_handlebars_tokenizer>"
-                "SPEC_RUNTIME=$<TARGET_FILE:test_spec_handlebars>"
-                "SPEC_RUNTIME_SOURCE=${HANDLEBARS_SPEC_DIR}"
-                sh "${CMAKE_SOURCE_DIR}/tests/test_spec_runners.sh")
+    if(Libjsonc_FOUND)
+        add_test(NAME test_spec_handlebars COMMAND test_spec_handlebars "${HANDLEBARS_SPEC_DIR}")
+        add_test(NAME test_spec_handlebars_compiler COMMAND test_spec_handlebars_compiler "${HANDLEBARS_EXPORT_DIR}")
+        add_test(NAME test_spec_handlebars_parser COMMAND test_spec_handlebars_parser "${HANDLEBARS_PARSER_SPEC}")
+        add_test(NAME test_spec_handlebars_tokenizer COMMAND test_spec_handlebars_tokenizer "${HANDLEBARS_TOKENIZER_SPEC}")
+        set_tests_properties(test_spec_handlebars PROPERTIES
+            ENVIRONMENT "handlebars_spec_dir=${HANDLEBARS_SPEC_DIR}")
+        set_tests_properties(test_spec_handlebars_compiler PROPERTIES
+            ENVIRONMENT "handlebars_export_dir=${HANDLEBARS_EXPORT_DIR}")
+        set_tests_properties(test_spec_handlebars_parser PROPERTIES
+            ENVIRONMENT "handlebars_parser_spec=${HANDLEBARS_PARSER_SPEC}")
+        set_tests_properties(test_spec_handlebars_tokenizer PROPERTIES
+            ENVIRONMENT "handlebars_tokenizer_spec=${HANDLEBARS_TOKENIZER_SPEC}")
+        if(UNIX)
+            add_test(NAME test_spec_runners
+                COMMAND ${CMAKE_COMMAND} -E env
+                    "SPEC_COMPILER=$<TARGET_FILE:test_spec_handlebars_compiler>"
+                    "SPEC_PARSER=$<TARGET_FILE:test_spec_handlebars_parser>"
+                    "SPEC_TOKENIZER=$<TARGET_FILE:test_spec_handlebars_tokenizer>"
+                    "SPEC_RUNTIME=$<TARGET_FILE:test_spec_handlebars>"
+                    "SPEC_RUNTIME_SOURCE=${HANDLEBARS_SPEC_DIR}"
+                    sh "${CMAKE_SOURCE_DIR}/tests/test_spec_runners.sh")
+        endif()
+    endif()
+    if(LibYaml_FOUND)
+        add_test(NAME test_spec_mustache COMMAND test_spec_mustache "${MUSTACHE_SPEC_DIR}")
+        set_tests_properties(test_spec_mustache PROPERTIES
+            ENVIRONMENT "mustache_spec_dir=${MUSTACHE_SPEC_DIR}")
     endif()
     add_test(NAME test_stack COMMAND test_stack)
     add_test(NAME test_string COMMAND test_string)
@@ -261,11 +267,11 @@ if (HANDLEBARS_ENABLE_TESTS)
                 "-DLDFLAGS=${CMAKE_EXE_LINKER_FLAGS}"
                 "-DCTEST=${CMAKE_CTEST_COMMAND}"
                 "-DCONFIG=$<CONFIG>"
-                "-DEXPECT_JSON=$<BOOL:${LIBJSONC_LIBRARY}>"
+                "-DEXPECT_JSON=$<BOOL:${Libjsonc_FOUND}>"
                 "-DEXPECT_LMDB=$<BOOL:${LMDB_FOUND}>"
                 "-DEXPECT_PCRE=$<BOOL:${PCRE2_FOUND}>"
                 "-DEXPECT_PTHREAD=$<BOOL:${CMAKE_USE_PTHREADS_INIT}>"
-                "-DEXPECT_YAML=$<BOOL:${LIBYAML_LIBRARIES}>"
+                "-DEXPECT_YAML=$<BOOL:${LibYaml_FOUND}>"
                 "-DEXPECT_MEMORY=$<BOOL:${HANDLEBARS_ENABLE_MEMORY}>"
                 "-DEXPECT_TESTING_EXPORTS=1"
                 -P "${CMAKE_SOURCE_DIR}/tests/installed_config/run.cmake")
@@ -292,7 +298,9 @@ if (HANDLEBARS_ENABLE_TESTS)
                 "HEADER_CXXFLAGS=${CMAKE_CXX_FLAGS}"
                 sh "${CMAKE_SOURCE_DIR}/tests/test_headers.sh")
     endif()
-    add_test(NAME test_yaml COMMAND test_yaml)
+    if(LibYaml_FOUND)
+        add_test(NAME test_yaml COMMAND test_yaml)
+    endif()
     if(BATS_EXECUTABLE)
         add_test(NAME test_executable
             COMMAND ${CMAKE_COMMAND} -E env

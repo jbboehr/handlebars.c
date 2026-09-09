@@ -146,6 +146,16 @@
             lmdbSupport = false;
           }
           {
+            attr = "handlebars-c-cmake-no-json";
+            cmakeSupport = true;
+            jsonSupport = false;
+          }
+          {
+            attr = "handlebars-c-cmake-no-yaml";
+            cmakeSupport = true;
+            yamlSupport = false;
+          }
+          {
             attr = "handlebars-c-norc";
             noRefcountingSupport = true;
           }

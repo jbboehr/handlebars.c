@@ -30,7 +30,6 @@ set(SOURCE_FILES
     handlebars_compiler.c
     handlebars_delimiters.c
     handlebars_helpers.c
-    handlebars_json.c
     handlebars_map.c
     handlebars_module_printer.c
     handlebars_opcode_printer.c
@@ -48,11 +47,18 @@ set(SOURCE_FILES
     handlebars_value.c
     handlebars_value_handlers.c
     handlebars_vm.c
-    handlebars_whitespace.c
-    handlebars_yaml.c)
+    handlebars_whitespace.c)
+
+if(Libjsonc_FOUND)
+    list(APPEND SOURCE_FILES handlebars_json.c)
+endif()
 
 if(LMDB_FOUND)
     list(APPEND SOURCE_FILES handlebars_cache_lmdb.c)
+endif()
+
+if(LibYaml_FOUND)
+    list(APPEND SOURCE_FILES handlebars_yaml.c)
 endif()
 
 if(HANDLEBARS_ENABLE_MEMORY)

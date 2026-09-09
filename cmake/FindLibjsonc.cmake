@@ -11,12 +11,17 @@ ENDIF (LIBJSONC_INCLUDE_DIR)
 FIND_PATH(LIBJSONC_INCLUDE_DIR json-c/json.h json/json.h)
 FIND_LIBRARY(LIBJSONC_LIBRARY json-c json)
 
-if (LIBJSONC_LIBRARY)
-    add_definitions(-DHAVE_LIBJSONC)
-endif()
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Libjsonc DEFAULT_MSG
+    LIBJSONC_LIBRARY
+    LIBJSONC_INCLUDE_DIR)
+set(LIBJSONC_FOUND ${Libjsonc_FOUND})
 
-IF (EXISTS ${LIBJSONC_INCLUDE_DIR}/json-c/json.h)
-    add_definitions(-DJSONC_INCLUDE_WITH_C)
+if (Libjsonc_FOUND)
+    add_definitions(-DHAVE_LIBJSONC)
+    IF (EXISTS ${LIBJSONC_INCLUDE_DIR}/json-c/json.h)
+        add_definitions(-DJSONC_INCLUDE_WITH_C)
+    ENDIF()
 endif()
 
 MARK_AS_ADVANCED(LIBJSONC_LIBRARY LIBJSONC_INCLUDE_DIR)

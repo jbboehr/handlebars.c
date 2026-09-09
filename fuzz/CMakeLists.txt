@@ -18,7 +18,7 @@ target_link_libraries(fuzz_module handlebars_static ${LIBS})
 set_target_properties(fuzz_module PROPERTIES
     LINK_FLAGS "-fsanitize=fuzzer,address,undefined")
 
-if(LIBJSONC_LIBRARY)
+if(Libjsonc_FOUND)
     add_executable(fuzz_json fuzz_json.c)
     target_link_libraries(fuzz_json handlebars_static ${LIBS})
     set_target_properties(fuzz_json PROPERTIES
@@ -32,7 +32,7 @@ if(LMDB_FOUND)
         LINK_FLAGS "-fsanitize=fuzzer,address,undefined")
 endif()
 
-if(LIBYAML_LIBRARIES)
+if(LibYaml_FOUND)
     add_executable(fuzz_yaml fuzz_yaml.c)
     target_link_libraries(fuzz_yaml handlebars_static ${LIBS})
     set_target_properties(fuzz_yaml PROPERTIES
